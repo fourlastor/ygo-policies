@@ -36,7 +36,7 @@ use std::sync::Arc;
 
 use ygo_policies::agent::Policy;
 use ygo_policies::cards::CardDatabase;
-use ygo_policies::model::{ChoiceKind, Decision, Observation};
+use ygo_policies::model::{Choice, ChoiceKind, Decision, Observation};
 
 #[cfg(feature = "sqlite")]
 pub use cards::SqliteCards;
@@ -50,6 +50,9 @@ pub struct Answered {
     pub decision: Decision,
     pub responses: Vec<Vec<u8>>,
     pub choice: usize,
+    /// For a sequential card/sum selection: the candidates picked, in pick
+    /// order (engine indices).  `None` for other decisions.
+    pub picks: Option<Vec<usize>>,
     retries: usize,
 }
 
@@ -116,12 +119,62 @@ impl Seat {
         let observation = self.projection.observation(me, &*self.db);
         let hint = std::mem::take(&mut self.selection_hint);
         let Some(prompt) = decision::prompt(&parsed, &observation, hint, &*self.db)? else { return Ok(None) };
+        if let Some(sequential) = prompt.sequential {
+            return self.select_sequentially(observation, sequential).map(Some);
+        }
         let choice = self.policy.choose(&observation, &prompt.decision).min(prompt.responses.len() - 1);
         let response = prompt.responses[choice].clone();
-        self.answered =
-            Some(Answered { observation, decision: prompt.decision, responses: prompt.responses, choice, retries: 0 });
+        self.answered = Some(Answered {
+            observation,
+            decision: prompt.decision,
+            responses: prompt.responses,
+            choice,
+            picks: None,
+            retries: 0,
+        });
         self.awaiting = true;
         Ok(Some(response))
+    }
+
+    /// Decide a card or sum selection one pick at a time, then answer the
+    /// whole prompt at once.
+    fn select_sequentially(&mut self, observation: Observation, sequential: decision::Sequential) -> Result<Vec<u8>> {
+        let mut picked = Vec::new();
+        let cancelled = loop {
+            let (step_decision, steps) = sequential.step(&picked);
+            if steps.is_empty() {
+                return Err(wire::error("selection message offers no legal answer"));
+            }
+            let choice = self.policy.choose(&observation, &step_decision).min(steps.len() - 1);
+            match steps[choice] {
+                decision::Step::Cancel => break true,
+                decision::Step::Finish => break false,
+                decision::Step::Pick(k) => {
+                    picked.push(k);
+                    if sequential.picks(&picked).is_empty() {
+                        break false;
+                    }
+                }
+            }
+        };
+        // Retry fallbacks: the chosen answer, then cancel when allowed.
+        let (final_decision, _) = sequential.step(&picked);
+        let mut summary = Decision { choices: Vec::new(), ..final_decision };
+        let mut responses = Vec::new();
+        let mut answer = Choice { kind: ChoiceKind::Cards, card: None, members: Vec::new(), description: 0, place: None };
+        answer.members = sequential.required.iter().chain(picked.iter().map(|k| &sequential.candidates[*k])).copied().collect();
+        summary.choices.push(answer);
+        responses.push(sequential.response(&picked));
+        if sequential.cancelable {
+            summary.choices.push(Choice { kind: ChoiceKind::Cancel, card: None, members: Vec::new(), description: 0, place: None });
+            responses.push(decision::Sequential::cancel_response());
+        }
+        let choice = if cancelled { responses.len() - 1 } else { 0 };
+        let response = responses[choice].clone();
+        self.answered =
+            Some(Answered { observation, decision: summary, responses, choice, picks: Some(picked), retries: 0 });
+        self.awaiting = true;
+        Ok(response)
     }
 
     /// Feed an `OCG_DuelGetMessage` buffer (`u32` length-prefixed messages).

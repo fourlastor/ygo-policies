@@ -230,11 +230,13 @@ pub enum DecisionKind {
     YesNo,
     Option,
     Position,
-    /// Pick one of the enumerated card subsets.
+    /// Pick cards one at a time (Toggle / Finish / Cancel); `selected` holds
+    /// the cards picked so far.
     SelectCards,
     /// Incremental select: toggle one card or finish.
     SelectToggle,
-    /// Pick a material subset that satisfies an engine-defined sum.
+    /// Pick materials one at a time until they satisfy an engine-defined sum
+    /// (Toggle / Finish); `selected` holds the cards picked so far.
     SelectSum,
     Place,
     Sort,

@@ -3,8 +3,9 @@
 //! [`prompt`] enumerates every answer a selection message allows as a
 //! [`Choice`], paired with the exact response bytes OCGCore expects, so
 //! `responses[i]` answers `decision.choices[i]`.  The choices keep the shape
-//! the policies were written against (idle commands in engine order, one
-//! choice per legal card subset, ...).
+//! the policies were written against (idle commands in engine order, ...).
+//! Card and sum selections are the exception: they are decided one card at
+//! a time through [`Sequential`].
 
 use ygo_policies::cards::CardDatabase;
 use ygo_policies::model::{
@@ -12,7 +13,7 @@ use ygo_policies::model::{
 };
 
 use crate::announce;
-use crate::message::{Cards, Message, Offered};
+use crate::message::{Message, Offered};
 use crate::projection::card_ref;
 use crate::wire::{error, location, Loc, Result, Writer};
 
@@ -23,6 +24,9 @@ pub const MAX_CHOICES: usize = 4096;
 pub struct Prompt {
     pub decision: Decision,
     pub responses: Vec<Vec<u8>>,
+    /// Card and sum selections are decided one card at a time (see
+    /// [`Sequential`]); `decision` and `responses` are then empty.
+    pub sequential: Option<Sequential>,
 }
 
 impl Prompt {
@@ -38,6 +42,7 @@ impl Prompt {
                 choices: Vec::new(),
             },
             responses: Vec::new(),
+            sequential: None,
         }
     }
 
@@ -192,21 +197,167 @@ fn valid_sum(exact: bool, target: i64, parameters: &[i64]) -> bool {
     max_sum >= target && min_sum - smallest < target
 }
 
-fn card_subsets(prompt: &mut Prompt, obs: &Observation, cards: &Cards) {
-    let members: Vec<Member> = cards.cards.iter().map(|c| member(obs, c.loc, c.code, c.value as i64, false)).collect();
-    for subset in subsets(members.len(), cards.min as usize, cards.max as usize) {
-        let mut choice = plain(ChoiceKind::Cards);
-        choice.members = subset.iter().map(|k| members[*k]).collect();
-        if let [only] = choice.members[..] {
-            choice.card = Some(only);
+/// One step of a sequential selection: pick a candidate, finish, or cancel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Step {
+    Pick(usize),
+    Finish,
+    Cancel,
+}
+
+/// A card or sum selection decided one card at a time.
+///
+/// OCGCore asks for the whole subset in one response, but enumerating every
+/// subset is combinatorial (1-5 of 27 cards is 101,583 choices).  Each step
+/// is a [`DecisionKind::SelectCards`] / [`DecisionKind::SelectSum`] decision
+/// whose choices are one [`ChoiceKind::Toggle`] per candidate that can still
+/// complete a legal answer, [`ChoiceKind::Finish`] once the picked set is a
+/// legal answer, and [`ChoiceKind::Cancel`] when allowed;
+/// `decision.selected` holds the cards picked so far.  Candidate indices are
+/// the engine's, so [`Sequential::response`] answers the original prompt.
+#[derive(Clone, Debug)]
+pub struct Sequential {
+    pub kind: DecisionKind,
+    pub hint: Hint,
+    pub candidates: Vec<Member>,
+    pub required: Vec<Member>,
+    pub minimum: usize,
+    pub maximum: usize,
+    pub cancelable: bool,
+    /// `(exact, target)` for sum prompts: `exact` bounds the count and needs
+    /// the exact total, otherwise at least the target without spare material.
+    pub sum: Option<(bool, i64)>,
+}
+
+impl Sequential {
+    fn prompt(self) -> Prompt {
+        let mut prompt = Prompt::new(self.kind);
+        prompt.decision.hint = self.hint;
+        prompt.sequential = Some(self);
+        prompt
+    }
+
+    /// The decision for the next step after `picked`, and what each choice does.
+    pub fn step(&self, picked: &[usize]) -> (Decision, Vec<Step>) {
+        let picked_members: Vec<Member> = picked.iter().map(|k| self.candidates[*k]).collect();
+        let mut decision = Decision {
+            kind: self.kind,
+            hint: self.hint,
+            minimum: self.minimum as u32,
+            maximum: self.maximum as u32,
+            selected: picked_members.iter().map(|m| m.at).collect(),
+            subject: None,
+            choices: Vec::new(),
+        };
+        let mut steps = Vec::new();
+        for k in self.picks(picked) {
+            let mut choice = with_card(ChoiceKind::Toggle, self.candidates[k], 0);
+            choice.members =
+                self.required.iter().chain(picked_members.iter()).copied().chain([self.candidates[k]]).collect();
+            decision.choices.push(choice);
+            steps.push(Step::Pick(k));
         }
-        prompt.push(choice, indices(&subset));
+        if self.valid(picked) {
+            let mut choice = plain(ChoiceKind::Finish);
+            choice.members = self.required.iter().chain(picked_members.iter()).copied().collect();
+            decision.choices.push(choice);
+            steps.push(Step::Finish);
+        }
+        if self.cancelable {
+            decision.choices.push(plain(ChoiceKind::Cancel));
+            steps.push(Step::Cancel);
+        }
+        (decision, steps)
     }
-    if cards.cancelable {
-        prompt.push(plain(ChoiceKind::Cancel), int(-1));
+
+    /// Candidates that can still complete a legal answer after `picked`.
+    pub fn picks(&self, picked: &[usize]) -> Vec<usize> {
+        (0..self.candidates.len())
+            .filter(|k| !picked.contains(k))
+            .filter(|k| {
+                let mut next = picked.to_vec();
+                next.push(*k);
+                self.completable(&mut next, 0)
+            })
+            .collect()
     }
-    prompt.decision.minimum = cards.min;
-    prompt.decision.maximum = cards.max;
+
+    /// OCGCore's response for the picked candidates (engine order).
+    pub fn response(&self, picked: &[usize]) -> Vec<u8> {
+        let mut sorted = picked.to_vec();
+        sorted.sort_unstable();
+        match self.sum {
+            Some(_) => byte_indices(&sorted),
+            None => indices(&sorted),
+        }
+    }
+
+    pub fn cancel_response() -> Vec<u8> {
+        int(-1)
+    }
+
+    fn valid(&self, set: &[usize]) -> bool {
+        if set.len() > self.maximum {
+            return false;
+        }
+        match self.sum {
+            None => set.len() >= self.minimum,
+            Some((exact, target)) => {
+                if set.len() < self.minimum {
+                    return false;
+                }
+                let parameters: Vec<i64> =
+                    self.required.iter().chain(set.iter().map(|k| &self.candidates[*k])).map(|m| m.value).collect();
+                valid_sum(exact, target, &parameters)
+            }
+        }
+    }
+
+    /// Whether some superset of `set` (adding candidates from `start` on) is legal.
+    fn completable(&self, set: &mut Vec<usize>, start: usize) -> bool {
+        if self.valid(set) {
+            return true;
+        }
+        if self.dead(set) {
+            return false;
+        }
+        if self.sum.is_none() {
+            // Plain selections only need enough cards.
+            return set.len() + (0..self.candidates.len()).filter(|k| !set.contains(k)).count() >= self.minimum;
+        }
+        for k in start..self.candidates.len() {
+            if set.contains(&k) {
+                continue;
+            }
+            set.push(k);
+            let found = self.completable(set, k + 1);
+            set.pop();
+            if found {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// No superset can become legal: every bound only grows with more cards.
+    fn dead(&self, set: &[usize]) -> bool {
+        if set.len() > self.maximum {
+            return true;
+        }
+        let Some((exact, target)) = self.sum else { return false };
+        let (mut min_sum, mut smallest) = (0, i64::MAX);
+        for m in self.required.iter().chain(set.iter().map(|k| &self.candidates[*k])) {
+            let (low, high) = (m.value & 0xffff, m.value >> 16);
+            let lo = if high > 0 && high < low { high } else { low };
+            min_sum += lo;
+            smallest = smallest.min(lo);
+        }
+        if exact {
+            min_sum > target
+        } else {
+            smallest != i64::MAX && min_sum - smallest >= target
+        }
+    }
 }
 
 /// The decision a selection message asks for, or `None` for other messages.
@@ -299,8 +450,21 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
             }
         }
         SelectCard(cards) | SelectTribute(cards) => {
-            p = Prompt::new(DecisionKind::SelectCards);
-            card_subsets(&mut p, obs, cards);
+            let members = cards.cards.iter().map(|c| member(obs, c.loc, c.code, c.value as i64, false)).collect();
+            let mut hint = hint(selection_hint);
+            if hint == ygo_policies::model::Hint::None && matches!(message, SelectTribute(_)) {
+                hint = ygo_policies::model::Hint::Tribute;
+            }
+            return Ok(Some(Sequential::prompt(Sequential {
+                kind: DecisionKind::SelectCards,
+                hint,
+                candidates: members,
+                required: Vec::new(),
+                minimum: cards.min as usize,
+                maximum: cards.max as usize,
+                cancelable: cards.cancelable,
+                sum: None,
+            })));
         }
         SelectUnselect(cards) => {
             p = Prompt::new(DecisionKind::SelectToggle);
@@ -318,28 +482,24 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
             p.decision.selected = cards.fixed.iter().map(|c| card_ref(c.loc)).collect();
         }
         SelectSum { cards, exact, target } => {
-            p = Prompt::new(DecisionKind::SelectSum);
-            let required: Vec<Member> =
-                cards.fixed.iter().map(|c| member(obs, c.loc, c.code, c.value as i64, true)).collect();
-            let members: Vec<Member> =
+            let required = cards.fixed.iter().map(|c| member(obs, c.loc, c.code, c.value as i64, true)).collect();
+            let candidates: Vec<Member> =
                 cards.cards.iter().map(|c| member(obs, c.loc, c.code, c.value as i64, false)).collect();
             let (minimum, maximum) = if *exact {
-                (cards.min as usize, if cards.max == 0 { members.len() } else { cards.max as usize })
+                (cards.min as usize, if cards.max == 0 { candidates.len() } else { cards.max as usize })
             } else {
-                (0, members.len())
+                (0, candidates.len())
             };
-            for subset in subsets(members.len(), minimum, maximum) {
-                let parameters: Vec<i64> =
-                    required.iter().chain(subset.iter().map(|k| &members[*k])).map(|m| m.value).collect();
-                if !valid_sum(*exact, *target as i64, &parameters) {
-                    continue;
-                }
-                let mut choice = plain(ChoiceKind::Cards);
-                choice.members = required.iter().copied().chain(subset.iter().map(|k| members[*k])).collect();
-                p.push(choice, byte_indices(&subset));
-            }
-            p.decision.minimum = cards.min;
-            p.decision.maximum = cards.max;
+            return Ok(Some(Sequential::prompt(Sequential {
+                kind: DecisionKind::SelectSum,
+                hint: hint(selection_hint),
+                candidates,
+                required,
+                minimum,
+                maximum,
+                cancelable: false,
+                sum: Some((*exact, *target as i64)),
+            })));
         }
         SelectPlace { player, count, blocked, .. } => {
             p = Prompt::new(DecisionKind::Place);
@@ -464,4 +624,85 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
         return Err(error("selection message offers no legal answer"));
     }
     Ok(Some(p))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidate(sequence: u32, value: i64) -> Member {
+        Member {
+            at: CardRef { controller: 0, location: Location::Graveyard, sequence },
+            code: Some(1000 + sequence),
+            value,
+            required: false,
+        }
+    }
+
+    fn cards(count: u32, minimum: usize, maximum: usize) -> Sequential {
+        Sequential {
+            kind: DecisionKind::SelectCards,
+            hint: Hint::None,
+            candidates: (0..count).map(|k| candidate(k, 0)).collect(),
+            required: Vec::new(),
+            minimum,
+            maximum,
+            cancelable: false,
+            sum: None,
+        }
+    }
+
+    fn sum(values: &[i64], target: i64, exact: bool) -> Sequential {
+        Sequential {
+            kind: DecisionKind::SelectSum,
+            hint: Hint::None,
+            candidates: values.iter().enumerate().map(|(k, v)| candidate(k as u32, *v)).collect(),
+            required: Vec::new(),
+            minimum: if exact { 1 } else { 0 },
+            maximum: values.len(),
+            cancelable: false,
+            sum: Some((exact, target)),
+        }
+    }
+
+    fn kinds(steps: &[Step]) -> (Vec<usize>, bool) {
+        let picks = steps.iter().filter_map(|s| if let Step::Pick(k) = s { Some(*k) } else { None }).collect();
+        (picks, steps.contains(&Step::Finish))
+    }
+
+    #[test]
+    fn card_selection_offers_finish_once_the_minimum_is_met() {
+        let selection = cards(4, 1, 3);
+        assert_eq!(kinds(&selection.step(&[]).1), (vec![0, 1, 2, 3], false));
+        let (decision, steps) = selection.step(&[2]);
+        assert_eq!(kinds(&steps), (vec![0, 1, 3], true));
+        assert_eq!(decision.selected.len(), 1);
+        assert!(selection.picks(&[2, 0, 3]).is_empty(), "the maximum ends the selection");
+        assert_eq!(selection.response(&[3, 0]), indices(&[0, 3]));
+    }
+
+    #[test]
+    fn zero_card_selection_can_finish_immediately() {
+        assert_eq!(kinds(&cards(3, 0, 2).step(&[]).1), (vec![0, 1, 2], true));
+    }
+
+    #[test]
+    fn exact_sum_only_offers_completable_picks() {
+        // 2, 3, 4, 6 with target 6: 3 cannot reach exactly 6.
+        let selection = sum(&[2, 3, 4, 6], 6, true);
+        assert_eq!(kinds(&selection.step(&[]).1), (vec![0, 2, 3], false));
+        assert_eq!(kinds(&selection.step(&[0]).1), (vec![2], false));
+        assert!(selection.picks(&[3]).is_empty());
+        assert_eq!(kinds(&selection.step(&[3]).1), (vec![], true));
+        assert_eq!(selection.response(&[2, 0]), byte_indices(&[0, 2]));
+    }
+
+    #[test]
+    fn at_least_sum_rejects_redundant_material() {
+        // At least 6 from 4, 4, 7: {4, 7} has a redundant 4, so it is never offered.
+        let selection = sum(&[4, 4, 7], 6, false);
+        assert_eq!(kinds(&selection.step(&[0]).1), (vec![1], false));
+        assert_eq!(kinds(&selection.step(&[0, 1]).1), (vec![], true));
+        assert_eq!(kinds(&selection.step(&[2]).1), (vec![], true));
+    }
 }

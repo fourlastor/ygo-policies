@@ -171,6 +171,7 @@ pub unsafe extern "C" fn ygo_policy_last_answer_json(policy: *mut YgoPolicy) -> 
                 "decision": answer.decision,
                 "choice": answer.choice,
                 "responses": answer.responses,
+                "picks": answer.picks,
             }),
         };
         Ok(store_json(policy, value))

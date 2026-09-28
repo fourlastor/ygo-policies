@@ -486,6 +486,9 @@ pub fn member_score<S: Strategy + ?Sized>(s: &S, t: &Turn, member: &Member) -> f
 }
 
 fn select<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
+    if t.choices().any(|(_, c)| c.kind == ChoiceKind::Toggle) {
+        return select_step(s, t);
+    }
     let mut best: Option<(f64, usize)> = None;
     for (i, choice) in t.choices() {
         if choice.kind == ChoiceKind::Cancel {
@@ -507,6 +510,31 @@ fn select<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
         Some((score, _)) if t.decision.hint == Hint::AttackTarget && t.memory.intent.is_empty() && score < 0.0 && cancel.is_some() => cancel,
         Some((_, i)) => Some(i),
     }
+}
+
+/// One step of a sequential card/sum selection.  Scores are per card, so
+/// taking the best card while it helps (or while the minimum is unmet) picks
+/// the same set as maximising the summed score over whole subsets: the
+/// smallest best set, without zero-score extras.
+fn select_step<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
+    let finish = t.choices().find(|(_, c)| c.kind == ChoiceKind::Finish).map(|(i, _)| i);
+    let cancel = t.choices().find(|(_, c)| c.kind == ChoiceKind::Cancel).map(|(i, _)| i);
+    let best = t
+        .choices()
+        .filter(|(_, c)| c.kind == ChoiceKind::Toggle)
+        .filter_map(|(i, c)| c.card.map(|m| (member_score(s, t, &m), i)))
+        .fold(None, |acc: Option<(f64, usize)>, x| if acc.map_or(true, |a| x.0 > a.0) { Some(x) } else { acc });
+    let first = t.decision.selected.is_empty();
+    if let Some((score, _)) = best {
+        if first && t.decision.hint == Hint::AttackTarget && t.memory.intent.is_empty() && score < 0.0 && cancel.is_some() {
+            return cancel;
+        }
+    }
+    let enough = t.decision.selected.len() as u32 >= t.decision.minimum;
+    if enough && finish.is_some() && best.map_or(true, |b| b.0 <= 0.0) {
+        return finish;
+    }
+    best.map(|b| b.1).or(finish).or(cancel)
 }
 
 fn toggle<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
