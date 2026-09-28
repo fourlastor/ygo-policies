@@ -55,6 +55,7 @@ pub mod registry {
         entry!("gishki", gishki::Gishki),
         entry!("crystal", crystal::Crystal),
         entry!("morphtronic", morphtronic::Morphtronic),
+        entry!("dragunity", dragunity::Dragunity),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
