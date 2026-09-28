@@ -7,3 +7,4 @@ pub mod monarch;
 pub mod lightsworn;
 pub mod infernity;
 pub mod gladiator;
+pub mod heroes;

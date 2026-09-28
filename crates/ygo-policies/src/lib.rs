@@ -51,6 +51,7 @@ pub mod registry {
         entry!("lightsworn", lightsworn::Lightsworn),
         entry!("infernity", infernity::Infernity),
         entry!("gladiator", gladiator::Gladiator),
+        entry!("heroes", heroes::Heroes),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
