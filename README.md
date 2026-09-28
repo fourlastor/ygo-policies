@@ -33,6 +33,7 @@ EDOPro already filtered pass through unchanged.
 | `crystal` | 12 Crystal Beast - Rainbow | Crystal Beasts stored as Continuous Spells, summoned back; Rainbow Dragon |
 | `morphtronic` | 01 Morphtronic - Straight Up | Battle Position as the main lever (each monster has an Attack- and a Defense-Position effect); Power Tool Dragon |
 | `dragunity` | Dragunity Flight | small Dragons equipped as Spells, summoned back out for Synchros |
+| `spellcaster` | 14 - Spellcaster's Command | Spell Counters: placed where they pay most, spent on destruction, draws, Endymion |
 | `heroes` | Fusion Heroes | Fusion toolbox: Polymerization, Miracle Fusion, Fusion Gate, Super Polymerization, Future Fusion |
 
 Each policy is written for its own deck list in `decks/`.
@@ -119,7 +120,7 @@ cargo run --release --bin edopro-bot -- --replay edopro-logs/<duel>.trace --poli
 cargo test
 ```
 
-- `ygo-policies-ocgcore/tests/traces.rs` replays 24 recorded OCGCore duels,
+- `ygo-policies-ocgcore/tests/traces.rs` replays 26 recorded OCGCore duels,
   two per policy, from both seats. At every decision, the projection must equal
   OCGCore's own viewer-filtered snapshot: every card, code, position, pile,
   Life Points, turn, and chain. Nothing hidden may appear.

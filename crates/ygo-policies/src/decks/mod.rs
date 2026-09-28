@@ -12,3 +12,4 @@ pub mod gishki;
 pub mod crystal;
 pub mod morphtronic;
 pub mod dragunity;
+pub mod spellcaster;
