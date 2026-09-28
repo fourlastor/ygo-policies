@@ -1,0 +1,14 @@
+[package]
+name = "ygo-policies-edopro"
+description = "EDOPro network client: a policy joins an EDOPro room as a player"
+edition.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "edopro-bot"
+path = "src/main.rs"
+
+[dependencies]
+ygo-policies.workspace = true
+ygo-policies-ocgcore = { workspace = true, features = ["sqlite"] }
+rusqlite.workspace = true

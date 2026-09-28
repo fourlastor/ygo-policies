@@ -1,0 +1,20 @@
+[package]
+name = "ygo-policies-ocgcore"
+description = "OCGCore front end: engine messages in, policy responses out"
+edition.workspace = true
+version.workspace = true
+
+[features]
+default = ["sqlite"]
+# `SqliteCards`: read printed card data from a `cards.cdb`.
+sqlite = ["dep:rusqlite"]
+serde = ["dep:serde", "ygo-policies/serde"]
+
+[dependencies]
+ygo-policies.workspace = true
+rusqlite = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json.workspace = true
+flate2 = "1"

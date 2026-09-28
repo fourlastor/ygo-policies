@@ -1,0 +1,14 @@
+[package]
+name = "ygo-policies-ffi"
+description = "C ABI for the policies: feed OCGCore messages, read back responses"
+edition.workspace = true
+version.workspace = true
+
+[lib]
+name = "ygo_policies"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+ygo-policies = { workspace = true, features = ["serde"] }
+ygo-policies-ocgcore = { workspace = true, features = ["sqlite", "serde"] }
+serde_json.workspace = true

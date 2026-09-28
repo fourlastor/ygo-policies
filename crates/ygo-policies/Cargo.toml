@@ -1,0 +1,11 @@
+[package]
+name = "ygo-policies"
+description = "Engine-agnostic, rule-based single-deck Yu-Gi-Oh! policies"
+edition.workspace = true
+version.workspace = true
+
+[features]
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { workspace = true, optional = true }
