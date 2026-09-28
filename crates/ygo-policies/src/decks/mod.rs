@@ -8,3 +8,4 @@ pub mod lightsworn;
 pub mod infernity;
 pub mod gladiator;
 pub mod heroes;
+pub mod gishki;

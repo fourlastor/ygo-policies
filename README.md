@@ -29,6 +29,7 @@ EDOPro already filtered pass through unchanged.
 | `lightsworn` | Lightsworn Judgment | mill into Judgment Dragon |
 | `infernity` | Infernity Infinity | empty-hand combos |
 | `gladiator` | Fight, Gladiators! | Gladiator Beast tag-outs |
+| `gishki` | Undersea Ceremony | Gishki Ritual Summons (exact-Level Tributes, Forbidden Arts on the opponent's monsters) |
 | `heroes` | Fusion Heroes | Fusion toolbox: Polymerization, Miracle Fusion, Fusion Gate, Super Polymerization, Future Fusion |
 
 Each policy is written for its own deck list in `decks/`.
@@ -115,7 +116,7 @@ cargo run --release --bin edopro-bot -- --replay edopro-logs/<duel>.trace --poli
 cargo test
 ```
 
-- `ygo-policies-ocgcore/tests/traces.rs` replays 16 recorded OCGCore duels,
+- `ygo-policies-ocgcore/tests/traces.rs` replays 18 recorded OCGCore duels,
   two per policy, from both seats. At every decision, the projection must equal
   OCGCore's own viewer-filtered snapshot: every card, code, position, pile,
   Life Points, turn, and chain. Nothing hidden may appear.

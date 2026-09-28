@@ -52,6 +52,7 @@ pub mod registry {
         entry!("infernity", infernity::Infernity),
         entry!("gladiator", gladiator::Gladiator),
         entry!("heroes", heroes::Heroes),
+        entry!("gishki", gishki::Gishki),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

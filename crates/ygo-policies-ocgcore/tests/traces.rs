@@ -54,7 +54,7 @@ fn location_bits(location: Location) -> u64 {
 type Slot = (u64, u64, u64);
 
 /// Differences between our observation and the engine snapshot for `viewer`.
-fn compare(obs: &Observation, snapshot: &Value, viewer: u8) -> Vec<String> {
+fn compare(obs: &Observation, snapshot: &Value, viewer: u8, confirmed: &[Vec<u64>; 2]) -> Vec<String> {
     let mut problems = Vec::new();
     let n = |v: &Value| v.as_u64().unwrap_or(u64::MAX);
     if obs.life_points.iter().map(|lp| *lp as u64).collect::<Vec<_>>() != snapshot["lp"].as_array().unwrap().iter().map(n).collect::<Vec<_>>() {
@@ -90,7 +90,9 @@ fn compare(obs: &Observation, snapshot: &Value, viewer: u8) -> Vec<String> {
                         (l.source.controller as u64, location_bits(l.source.location), l.source.sequence as u64) == *slot
                             && l.code as u64 == *our_code
                     });
-                if our_code != code && !activated {
+                // A card shown with MSG_CONFIRM_CARDS stays known until its hand is shuffled.
+                let shown = *code == 0 && slot.1 == 0x02 && confirmed[slot.0 as usize].contains(our_code);
+                if our_code != code && !activated && !shown {
                     problems.push(format!("card {slot:?}: code {our_code} vs {code}"));
                 }
                 // Spells and Traps have no battle position: compare facing only.
@@ -137,17 +139,32 @@ fn replay(path: &Path) {
         let db = Arc::new(MemoryCards::default());
         let mut seat = Seat::new(registry::create("blackwing", db.clone()).unwrap(), db, Some(viewer));
         let mut failures = Vec::new();
+        let mut confirmed: [Vec<u64>; 2] = [Vec::new(), Vec::new()];
         for (index, step) in steps.iter().enumerate() {
             for message in step["messages"].as_array().unwrap() {
                 let mut bytes = base64(message.as_str().unwrap());
                 if bytes.first() == Some(&4) {
                     bytes[1] = viewer; // MSG_START names the receiving seat
                 }
+                // Track what MSG_CONFIRM_CARDS showed (codes, per hand owner) until MSG_SHUFFLE_HAND.
+                match bytes[0] {
+                    31 => {
+                        let n = u32::from_le_bytes(bytes[2..6].try_into().unwrap()) as usize;
+                        for k in 0..n {
+                            let entry = &bytes[6 + 10 * k..16 + 10 * k];
+                            if entry[5] == 0x02 {
+                                confirmed[entry[4] as usize].push(u32::from_le_bytes(entry[0..4].try_into().unwrap()) as u64);
+                            }
+                        }
+                    }
+                    33 => confirmed[bytes[1] as usize].clear(),
+                    _ => {}
+                }
                 if let Err(error) = seat.feed(&bytes) {
                     panic!("{}: step {index}: message {} rejected: {error}", path.display(), bytes[0]);
                 }
             }
-            let problems = compare(&seat.observation().unwrap(), &step["snapshots"][viewer as usize], viewer);
+            let problems = compare(&seat.observation().unwrap(), &step["snapshots"][viewer as usize], viewer, &confirmed);
             if !problems.is_empty() {
                 failures.push(format!("step {index} (viewer {viewer}): {}", problems.join("; ")));
             }
