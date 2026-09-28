@@ -53,6 +53,7 @@ pub mod registry {
         entry!("gladiator", gladiator::Gladiator),
         entry!("heroes", heroes::Heroes),
         entry!("gishki", gishki::Gishki),
+        entry!("crystal", crystal::Crystal),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

@@ -9,3 +9,4 @@ pub mod infernity;
 pub mod gladiator;
 pub mod heroes;
 pub mod gishki;
+pub mod crystal;
