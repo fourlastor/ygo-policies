@@ -174,6 +174,28 @@ impl<'a> Ctx<'a> {
             .unwrap_or(0)
     }
 
+    /// A face-up Spell/Trap *of the opponent* that stops our monsters from
+    /// attacking.  Our own locks are never removal targets.
+    pub fn is_attack_lock(&self, card: &CardView) -> bool {
+        card.at.controller == self.opp && Self::lock_card(self, card)
+    }
+
+    /// Our own face-up attack locks (a stall deck protects them).
+    pub fn own_attack_locks(&self) -> Vec<&'a CardView> {
+        self.spell_traps(self.me).into_iter().filter(|c| Self::lock_card(self, c)).collect()
+    }
+
+    fn lock_card(&self, card: &CardView) -> bool {
+        card.position.face_up
+            && card.at.location == Location::SpellTrapZone
+            && card.code.map_or(false, |c| crate::staples::ATTACK_LOCKS.contains(&self.canonical(c)))
+    }
+
+    /// The opponent's face-up attack locks.
+    pub fn attack_locks(&self) -> Vec<&'a CardView> {
+        self.spell_traps(self.opp).into_iter().filter(|c| self.is_attack_lock(c)).collect()
+    }
+
     /// How much we want an opponent card gone (public information only).
     pub fn threat(&self, card: &CardView) -> i32 {
         match card.at.location {
@@ -185,7 +207,9 @@ impl<'a> Ctx<'a> {
                 card.attack.max(card.defense) + bonus
             }
             Location::SpellTrapZone => {
-                if card.position.face_up {
+                if self.is_attack_lock(card) {
+                    3000
+                } else if card.position.face_up {
                     900
                 } else {
                     1200

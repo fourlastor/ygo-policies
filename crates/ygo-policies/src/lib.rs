@@ -118,6 +118,71 @@ mod tests {
         }
     }
 
+    fn card(controller: u8, location: Location, sequence: u32, code: u32, face_up: bool) -> CardView {
+        CardView {
+            at: CardRef { controller, location, sequence },
+            code: Some(code),
+            position: Position { face_up, attack: true },
+            attack: 1800,
+            defense: 1000,
+            level: 4,
+            can_attack: true,
+            counters: 0,
+        }
+    }
+
+    fn activate(code: u32, location: Location, sequence: u32) -> Choice {
+        Choice {
+            kind: ChoiceKind::Activate,
+            card: Some(Member { at: CardRef { controller: 0, location, sequence }, code: Some(code), value: 0, required: false }),
+            members: Vec::new(),
+            description: 0,
+            place: None,
+        }
+    }
+
+    /// Breaking the opponent's attack lock must never sweep our own lock away.
+    #[test]
+    fn lock_removal_spares_our_own_locks() {
+        use crate::staples::{GIANT_TRUNADE, GRAVITY_BIND, HEAVY_STORM, MYSTICAL_SPACE_TYPHOON, SWORDS_OF_REVEALING_LIGHT};
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.cards = vec![
+            card(0, Location::MonsterZone, 0, 1, true),
+            card(1, Location::SpellTrapZone, 0, GRAVITY_BIND, true),
+            card(1, Location::SpellTrapZone, 1, 2, false),
+        ];
+        let decision = |choices: Vec<Choice>| Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices,
+        };
+        let sweepers = decision(vec![
+            activate(HEAVY_STORM, Location::Hand, 0),
+            activate(GIANT_TRUNADE, Location::Hand, 1),
+            choice(ChoiceKind::EnterBattle),
+            choice(ChoiceKind::EndTurn),
+        ]);
+        let mut policy = crate::registry::create("burn", db.clone()).unwrap();
+        // Without a lock of our own, sweeping their Gravity Bind is right.
+        let index = policy.choose(&obs, &sweepers);
+        assert_eq!(sweepers.choices[index].kind, ChoiceKind::Activate);
+        // With our own Swords of Revealing Light face-up, neither sweeper is cast.
+        obs.cards.push(card(0, Location::SpellTrapZone, 0, SWORDS_OF_REVEALING_LIGHT, true));
+        let mut policy = crate::registry::create("burn", db.clone()).unwrap();
+        let index = policy.choose(&obs, &sweepers);
+        assert_ne!(sweepers.choices[index].kind, ChoiceKind::Activate, "swept our own lock");
+        // A targeted MST is still aimed at their lock, not ours.
+        let typhoon = decision(vec![activate(MYSTICAL_SPACE_TYPHOON, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("burn", db).unwrap();
+        let index = policy.choose(&obs, &typhoon);
+        assert_eq!(typhoon.choices[index].kind, ChoiceKind::Activate);
+    }
+
     #[test]
     fn registry_ids_are_unique() {
         let mut ids: Vec<_> = crate::registry::POLICIES.iter().map(|e| e.id).collect();

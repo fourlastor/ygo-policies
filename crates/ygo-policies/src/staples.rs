@@ -24,6 +24,16 @@ pub const MIRROR_FORCE: u32 = 44095762;
 pub const DIMENSIONAL_PRISON: u32 = 70342110;
 pub const THREATENING_ROAR: u32 = 36361633;
 pub const SEVEN_TOOLS: u32 = 3819470;
+pub const SWORDS_OF_REVEALING_LIGHT: u32 = 72302403;
+pub const GRAVITY_BIND: u32 = 85742772;
+pub const WALL_OF_REVEALING_LIGHT: u32 = 17078030;
+pub const MORPHTRONIC_BIND: u32 = 85101228;
+/// Attackers are stuck in Defense Position for a turn: half the attacks.
+pub const SPIDER_WEB: u32 = 69408987;
+
+/// Continuous cards that keep the other player from attacking: a stall
+/// deck's win condition, so they are the first thing to remove.
+pub const ATTACK_LOCKS: &[u32] = &[SWORDS_OF_REVEALING_LIGHT, GRAVITY_BIND, WALL_OF_REVEALING_LIGHT, MORPHTRONIC_BIND, SPIDER_WEB];
 
 pub fn value(code: u32) -> Option<i32> {
     Some(match code {
@@ -63,6 +73,24 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     let can_battle = t.has(crate::model::ChoiceKind::EnterBattle);
     let hand_monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
 
+    // 0. The opponent's attack lock stalls us out: break it whatever it
+    // costs -- but never our own locks with it.
+    let locks = ctx.attack_locks();
+    if !locks.is_empty() && (!my_monsters.is_empty() || hand_monsters > 0) {
+        if let Some(i) = usable(t, MYSTICAL_SPACE_TYPHOON) {
+            return t.pick_targeting(i, refs(&locks));
+        }
+        // These two hit both sides.
+        if ctx.own_attack_locks().is_empty() {
+            if let Some(i) = usable(t, HEAVY_STORM) {
+                return t.pick(i);
+            }
+            if let Some(i) = usable(t, GIANT_TRUNADE) {
+                return t.pick(i);
+            }
+        }
+    }
+
     // 1. Clear the opponent's backrow before we commit to attacks.
     if ctx.main1() && can_battle && (!my_monsters.is_empty() || hand_monsters > 0) {
         // Cold Wave also stops us setting our own backrow: only for an attack.
@@ -72,12 +100,14 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
             }
         }
         let my_set = ctx.set_backrow(me).len();
-        if backrow.len() >= 2 && my_set <= 1 {
+        // Both of these also sweep our own backrow: never over our own locks.
+        let own_locks = !ctx.own_attack_locks().is_empty();
+        if backrow.len() >= 2 && my_set <= 1 && !own_locks {
             if let Some(i) = usable(t, HEAVY_STORM) {
                 return t.pick(i);
             }
         }
-        if ctx.spell_traps(opp).len() >= 2 && my_set <= 1 {
+        if ctx.spell_traps(opp).len() >= 2 && my_set <= 1 && !own_locks {
             if let Some(i) = usable(t, GIANT_TRUNADE) {
                 return t.pick(i);
             }
