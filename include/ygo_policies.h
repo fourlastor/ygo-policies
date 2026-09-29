@@ -30,6 +30,12 @@ typedef struct YgoPolicy YgoPolicy;
    or -1 to learn it from MSG_START.  `cards_cdb_path` is an OCGCore cards.cdb. */
 YgoPolicy *ygo_policy_create(const char *policy_id, const char *cards_cdb_path, int32_t seat);
 
+/* Like ygo_policy_create; `seed` seeds tie-breaking between equally good
+   choices (which face-down card to destroy, which zone to use).  The same seed
+   and message stream give the same answers.  ygo_policy_create uses seed 0. */
+YgoPolicy *ygo_policy_create_seeded(const char *policy_id, const char *cards_cdb_path, int32_t seat,
+                                    uint64_t seed);
+
 /* One message (message id byte + body).  1: this seat must answer (see
    ygo_policy_response); 0: nothing to answer; -1: error. */
 int32_t ygo_policy_feed(YgoPolicy *policy, const uint8_t *message, size_t length);

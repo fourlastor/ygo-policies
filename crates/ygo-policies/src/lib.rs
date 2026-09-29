@@ -30,7 +30,8 @@ pub mod registry {
     pub struct Entry {
         pub id: &'static str,
         pub deck: &'static str,
-        pub build: fn(Arc<dyn CardDatabase>) -> Box<dyn Policy>,
+        /// Build the policy; `u64` seeds its tie-breaking.
+        pub build: fn(Arc<dyn CardDatabase>, u64) -> Box<dyn Policy>,
     }
 
     macro_rules! entry {
@@ -38,7 +39,7 @@ pub mod registry {
             Entry {
                 id: $id,
                 deck: decks::$module::DECK,
-                build: |db| Box::new(Agent::new(decks::$module::$strategy::default(), db)),
+                build: |db, seed| Box::new(Agent::seeded(decks::$module::$strategy::default(), db, seed)),
             }
         };
     }
@@ -64,7 +65,13 @@ pub mod registry {
     }
 
     pub fn create(id: &str, db: Arc<dyn CardDatabase>) -> Option<Box<dyn Policy>> {
-        find(id).map(|e| (e.build)(db))
+        create_seeded(id, db, 0)
+    }
+
+    /// A policy whose equally good choices are broken by a generator seeded
+    /// with `seed` (see [`crate::agent::TieBreak`]).
+    pub fn create_seeded(id: &str, db: Arc<dyn CardDatabase>, seed: u64) -> Option<Box<dyn Policy>> {
+        find(id).map(|e| (e.build)(db, seed))
     }
 }
 
@@ -110,7 +117,7 @@ mod tests {
             choices: vec![choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)],
         };
         for entry in crate::registry::POLICIES {
-            let mut policy = (entry.build)(db.clone());
+            let mut policy = (entry.build)(db.clone(), 0);
             let index = policy.choose(&observation(), &decision);
             assert!(index < decision.choices.len(), "{} answered {index}", entry.id);
             // Nothing to attack with: end the turn rather than enter battle.
@@ -181,6 +188,42 @@ mod tests {
         let mut policy = crate::registry::create("burn", db).unwrap();
         let index = policy.choose(&obs, &typhoon);
         assert_eq!(typhoon.choices[index].kind, ChoiceKind::Activate);
+    }
+
+    #[test]
+    fn ties_are_broken_at_random_and_reproducibly() {
+        use crate::agent::TieBreak;
+        let scored = [(1.0, 0), (0.5, 1), (1.0, 2), (1.0, 3)];
+        let ties = TieBreak::new(7);
+        let picks: Vec<usize> = (0..64).map(|_| ties.best(scored).unwrap().1).collect();
+        assert!(picks.iter().all(|pick| [0, 2, 3].contains(pick)), "picked a lower score");
+        for tied in [0, 2, 3] {
+            assert!(picks.contains(&tied), "never picked {tied}");
+        }
+        let again = TieBreak::new(7);
+        assert_eq!(picks, (0..64).map(|_| again.best(scored).unwrap().1).collect::<Vec<_>>());
+        // A unique best never consumes a draw.
+        let unique = TieBreak::new(7);
+        assert_eq!(unique.best([(2.0, 9), (1.0, 8)]), Some((2.0, 9)));
+        assert_eq!(unique.index(1_000_000), TieBreak::new(7).index(1_000_000));
+    }
+
+    #[test]
+    fn zones_are_chosen_at_random_per_seed() {
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let decision = Decision {
+            kind: DecisionKind::Place,
+            hint: Hint::None,
+            minimum: 1,
+            maximum: 1,
+            selected: Vec::new(),
+            subject: None,
+            choices: (0..5).map(|_| choice(ChoiceKind::Place)).collect(),
+        };
+        let answer = |seed| crate::registry::create_seeded("blackwing", db.clone(), seed).unwrap().choose(&observation(), &decision);
+        let answers: Vec<usize> = (0..32).map(answer).collect();
+        assert!(answers.iter().any(|a| *a != answers[0]), "every seed chose zone {}", answers[0]);
+        assert_eq!(answers, (0..32).map(answer).collect::<Vec<_>>());
     }
 
     #[test]

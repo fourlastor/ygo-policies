@@ -1,6 +1,7 @@
 //! The shared decision loop.  A deck policy is a [`Strategy`] (hooks with
 //! defaults) wrapped in an [`Agent`], which implements [`Policy`].
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -18,6 +19,53 @@ pub trait Policy: Send {
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize;
 }
 
+/// Seeded tie-breaking.  Equally scored choices are taken at random rather
+/// than in engine order, which follows zone order: an opponent could exploit
+/// "the first face-down card is always the one destroyed", a guess cannot be.
+/// The generator is part of the agent's state, so an agent rebuilt from the
+/// same seed and message stream makes the same choices.
+#[derive(Debug, Default)]
+pub struct TieBreak(Cell<u64>);
+
+impl TieBreak {
+    pub fn new(seed: u64) -> Self {
+        TieBreak(Cell::new(seed))
+    }
+
+    /// SplitMix64.
+    fn next(&self) -> u64 {
+        let state = self.0.get().wrapping_add(0x9E37_79B9_7F4A_7C15);
+        self.0.set(state);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+
+    /// A uniform index below `n` (`n > 0`).
+    pub fn index(&self, n: usize) -> usize {
+        (self.next() % n as u64) as usize
+    }
+
+    /// The highest-scored item; equal scores are broken at random.  A draw is
+    /// taken only when there is a tie.
+    pub fn best<T: Copy>(&self, scored: impl IntoIterator<Item = (f64, T)>) -> Option<(f64, T)> {
+        let mut top: Vec<(f64, T)> = Vec::new();
+        for item in scored {
+            match top.first() {
+                Some(first) if item.0 < first.0 => {}
+                Some(first) if item.0 == first.0 => top.push(item),
+                _ => top = vec![item],
+            }
+        }
+        match top.len() {
+            0 => None,
+            1 => Some(top[0]),
+            n => Some(top[self.index(n)]),
+        }
+    }
+}
+
 /// Per-agent memory that survives between prompts.
 #[derive(Default, Debug)]
 pub struct Memory {
@@ -30,6 +78,7 @@ pub struct Memory {
     /// Board signature when we last responded in a chain, for engines that do
     /// not expose the chain: an unchanged board means it is still building.
     chain_mark: Option<u64>,
+    pub ties: TieBreak,
 }
 
 /// A chain response: how much we want it, and what its targets should be.
@@ -266,7 +315,12 @@ pub struct Agent<S> {
 
 impl<S: Strategy> Agent<S> {
     pub fn new(strategy: S, db: Arc<dyn CardDatabase>) -> Self {
-        Agent { strategy, db, memory: Memory::default() }
+        Self::seeded(strategy, db, 0)
+    }
+
+    /// An agent whose ties are broken by a generator seeded with `seed`.
+    pub fn seeded(strategy: S, db: Arc<dyn CardDatabase>, seed: u64) -> Self {
+        Agent { strategy, db, memory: Memory { ties: TieBreak::new(seed), ..Memory::default() } }
     }
 }
 
@@ -299,6 +353,8 @@ impl<S: Strategy> Policy for Agent<S> {
             DecisionKind::SelectCards | DecisionKind::SelectSum => select(s, &t),
             DecisionKind::SelectToggle => toggle(s, &t),
             DecisionKind::Option => s.option(&t),
+            // No card depends on zones: any zone, at random.
+            DecisionKind::Place => Some(t.memory.ties.index(decision.choices.len())),
             _ => None,
         };
         answer.filter(|i| *i < decision.choices.len()).unwrap_or(0)
@@ -489,21 +545,10 @@ fn select<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
     if t.choices().any(|(_, c)| c.kind == ChoiceKind::Toggle) {
         return select_step(s, t);
     }
-    let mut best: Option<(f64, usize)> = None;
-    for (i, choice) in t.choices() {
-        if choice.kind == ChoiceKind::Cancel {
-            continue;
-        }
-        let score: f64 = choice
-            .members
-            .iter()
-            .filter(|m| !m.required)
-            .map(|m| member_score(s, t, m))
-            .sum();
-        if best.map_or(true, |b| score > b.0) {
-            best = Some((score, i));
-        }
-    }
+    let best = t.memory.ties.best(t.choices().filter(|(_, c)| c.kind != ChoiceKind::Cancel).map(|(i, choice)| {
+        let score: f64 = choice.members.iter().filter(|m| !m.required).map(|m| member_score(s, t, m)).sum();
+        (score, i)
+    }));
     let cancel = t.choices().find(|(_, c)| c.kind == ChoiceKind::Cancel).map(|(i, _)| i);
     match best {
         None => cancel,
@@ -519,11 +564,11 @@ fn select<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
 fn select_step<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
     let finish = t.choices().find(|(_, c)| c.kind == ChoiceKind::Finish).map(|(i, _)| i);
     let cancel = t.choices().find(|(_, c)| c.kind == ChoiceKind::Cancel).map(|(i, _)| i);
-    let best = t
-        .choices()
-        .filter(|(_, c)| c.kind == ChoiceKind::Toggle)
-        .filter_map(|(i, c)| c.card.map(|m| (member_score(s, t, &m), i)))
-        .fold(None, |acc: Option<(f64, usize)>, x| if acc.map_or(true, |a| x.0 > a.0) { Some(x) } else { acc });
+    let best = t.memory.ties.best(
+        t.choices()
+            .filter(|(_, c)| c.kind == ChoiceKind::Toggle)
+            .filter_map(|(i, c)| c.card.map(|m| (member_score(s, t, &m), i))),
+    );
     let first = t.decision.selected.is_empty();
     if let Some((score, _)) = best {
         if first && t.decision.hint == Hint::AttackTarget && t.memory.intent.is_empty() && score < 0.0 && cancel.is_some() {
@@ -545,9 +590,7 @@ fn toggle<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
         .filter_map(|(i, c)| c.card.map(|m| (member_score(s, t, &m), i)))
         .collect();
     let enough = t.decision.selected.len() as u32 >= t.decision.minimum;
-    let best = scored.iter().copied().fold(None, |acc: Option<(f64, usize)>, x| {
-        if acc.map_or(true, |a| x.0 > a.0) { Some(x) } else { acc }
-    });
+    let best = t.memory.ties.best(scored.iter().copied());
     if finish.is_some() && enough && (t.decision.hint.is_cost() || best.map_or(true, |b| b.0 < 0.0)) {
         return finish;
     }

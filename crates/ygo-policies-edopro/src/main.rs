@@ -172,7 +172,14 @@ fn run() -> Result<(), String> {
         deck,
         go_first: args.go_first,
     };
-    let mut new_seat = || Seat::new(registry::create(&policy, db.clone()).unwrap(), db.clone(), None);
+    // A fresh tie-breaking seed per duel, so no zone or target order repeats.
+    let mut seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_nanos() as u64);
+    let mut new_seat = || {
+        seed = seed.wrapping_add(1);
+        Seat::new(registry::create_seeded(&policy, db.clone(), seed).unwrap(), db.clone(), None)
+    };
     for duel in 1..=args.duels {
         let started = Instant::now();
         let mut stream = loop {

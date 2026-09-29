@@ -87,6 +87,22 @@ pub unsafe extern "C" fn ygo_policy_create(
     cards_cdb_path: *const c_char,
     seat: i32,
 ) -> *mut YgoPolicy {
+    ygo_policy_create_seeded(policy_id, cards_cdb_path, seat, 0)
+}
+
+/// Like `ygo_policy_create`; `seed` seeds the policy's tie-breaking, so equally
+/// good choices (which face-down card to destroy, which zone to use) are random
+/// but reproducible: the same seed and message stream give the same answers.
+///
+/// # Safety
+/// `policy_id` and `cards_cdb_path` must be NUL-terminated strings.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_create_seeded(
+    policy_id: *const c_char,
+    cards_cdb_path: *const c_char,
+    seat: i32,
+    seed: u64,
+) -> *mut YgoPolicy {
     guarded(std::ptr::null_mut(), || {
         let id = text(policy_id, "policy_id")?;
         let seat = match seat {
@@ -95,7 +111,7 @@ pub unsafe extern "C" fn ygo_policy_create(
             other => return Err(format!("seat must be 0, 1 or -1, got {other}")),
         };
         let db = cards(text(cards_cdb_path, "cards_cdb_path")?)?;
-        let policy = registry::create(id, db.clone()).ok_or_else(|| format!("unknown policy {id:?}"))?;
+        let policy = registry::create_seeded(id, db.clone(), seed).ok_or_else(|| format!("unknown policy {id:?}"))?;
         let seat = Seat::new(policy, db, seat);
         Ok(Box::into_raw(Box::new(YgoPolicy { seat, response: Vec::new(), json: CString::default() })))
     })

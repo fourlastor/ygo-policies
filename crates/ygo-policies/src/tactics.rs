@@ -190,7 +190,7 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
         let (i, _) = attackers.iter().filter(|(_, v)| v.attack > 0).max_by_key(|(_, v)| v.attack)?;
         return Some((*i, None));
     }
-    let mut best: Option<(f64, usize, CardRef)> = None;
+    let mut scored: Vec<(f64, (usize, CardRef))> = Vec::new();
     for (i, attacker) in &attackers {
         let trick = s.attack_trick(&ctx, attacker);
         for target in &targets {
@@ -212,10 +212,9 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
                 }
                 _ => continue,
             };
-            if best.as_ref().map_or(true, |b| score > b.0) {
-                best = Some((score, *i, target.at));
-            }
+            scored.push((score, (*i, target.at)));
         }
     }
-    best.map(|(_, i, at)| (i, Some(at)))
+    // Equal targets (two face-down monsters) are chosen at random, not by zone.
+    t.memory.ties.best(scored).map(|(_, (i, at))| (i, Some(at)))
 }
