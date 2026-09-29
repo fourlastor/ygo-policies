@@ -37,9 +37,13 @@ pub mod races {
     pub const PYRO: u32 = 0x80;
     pub const ROCK: u32 = 0x100;
     pub const WINGED_BEAST: u32 = 0x200;
+    pub const PLANT: u32 = 0x400;
+    pub const INSECT: u32 = 0x800;
+    pub const THUNDER: u32 = 0x1000;
+    pub const DRAGON: u32 = 0x2000;
     pub const BEAST: u32 = 0x4000;
     pub const BEAST_WARRIOR: u32 = 0x8000;
-    pub const DRAGON: u32 = 0x2000;
+    pub const PSYCHIC: u32 = 0x100000;
 }
 
 pub mod attributes {

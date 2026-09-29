@@ -1,9 +1,10 @@
 //! Cards many decks share, played the same way everywhere.  A deck can veto a
 //! staple with [`Strategy::allow_staple`] or take it over in its own hooks.
 
-use crate::agent::{self, Response, Strategy, Turn};
+use crate::agent::{self, Hostile, Response, Strategy, Turn};
 use crate::cards::attributes;
-use crate::model::{CardRef, CardView};
+use crate::ctx::Ctx;
+use crate::model::{CardRef, CardView, ChoiceKind, Location, Phase};
 
 pub const MYSTICAL_SPACE_TYPHOON: u32 = 5318639;
 pub const GIANT_TRUNADE: u32 = 42703248;
@@ -34,6 +35,30 @@ pub const SPIDER_WEB: u32 = 69408987;
 pub const BRIONAC: u32 = 50321796;
 /// Destroy 1 card we control and 1 card they control.
 pub const SCRAP_DRAGON: u32 = 76774528;
+pub const WABOKU: u32 = 12607053;
+pub const NEGATE_ATTACK: u32 = 14315573;
+pub const DRAINING_SHIELD: u32 = 43250041;
+pub const SAKURETSU_ARMOR: u32 = 56120475;
+pub const MAGIC_CYLINDER: u32 = 62279055;
+pub const SOLEMN_WARNING: u32 = 84749824;
+pub const SOLEMN_JUDGMENT: u32 = 41420027;
+pub const COMPULSORY_EVACUATION_DEVICE: u32 = 94192409;
+pub const DUST_TORNADO: u32 = 60082869;
+pub const TRAP_DUSTSHOOT: u32 = 64697231;
+pub const EFFECT_VEILER: u32 = 97268402;
+pub const SHRINK: u32 = 55713623;
+pub const ENEMY_CONTROLLER: u32 = 98045062;
+pub const SMASHING_GROUND: u32 = 97169186;
+pub const SHIELD_CRUSH: u32 = 30683373;
+pub const BRAIN_CONTROL: u32 = 87910978;
+pub const POT_OF_AVARICE: u32 = 67169062;
+pub const DOUBLE_SUMMON: u32 = 43422537;
+pub const LIGHTNING_VORTEX: u32 = 69162969;
+/// From the hand, after an attack leaves us with no cards.
+pub const GORZ: u32 = 44330098;
+
+/// Opponent cards that destroy several of ours at once: worth a counter.
+pub const WIPES: &[u32] = &[DARK_HOLE, RAIGEKI, HEAVY_STORM, TORRENTIAL_TRIBUTE, MIRROR_FORCE, LIGHTNING_VORTEX];
 
 /// Continuous cards that keep the other player from attacking: a stall
 /// deck's win condition, so they are the first thing to remove.
@@ -52,6 +77,16 @@ pub fn value(code: u32) -> Option<i32> {
         THREATENING_ROAR => 1100,
         SEVEN_TOOLS | GIANT_TRUNADE => 1000,
         COLD_WAVE => 900,
+        SOLEMN_JUDGMENT => 1900,
+        SOLEMN_WARNING => 1800,
+        MAGIC_CYLINDER => 1700,
+        BRAIN_CONTROL => 1600,
+        SAKURETSU_ARMOR | COMPULSORY_EVACUATION_DEVICE | SMASHING_GROUND | ENEMY_CONTROLLER => 1500,
+        DUST_TORNADO => 1300,
+        DRAINING_SHIELD | NEGATE_ATTACK | EFFECT_VEILER | SHRINK | SHIELD_CRUSH | POT_OF_AVARICE => 1200,
+        WABOKU => 1100,
+        TRAP_DUSTSHOOT => 1000,
+        DOUBLE_SUMMON => 900,
         _ => return None,
     })
 }
@@ -153,6 +188,39 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
         }
     }
 
+    // 2c. One-for-one removal and stalling.
+    if let Some(i) = usable(t, SMASHING_GROUND) {
+        // It destroys their face-up monster with the highest DEF.
+        let highest = ctx.monsters(opp).into_iter().filter(|c| c.position.face_up).max_by_key(|c| c.defense);
+        if highest.map_or(false, |c| ctx.threat(c) >= 1500) {
+            return t.pick(i);
+        }
+    }
+    if let Some(i) = usable(t, SHIELD_CRUSH) {
+        let wall = ctx.monsters(opp).into_iter().filter(|c| !c.position.attack).max_by_key(|c| ctx.threat(c));
+        if let Some(wall) = wall.filter(|c| ctx.threat(c) >= 1200) {
+            return t.pick_targeting(i, vec![wall.at]);
+        }
+    }
+    // Brain Control: borrow their best monster for this turn's attacks.
+    if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.my_lp() > 2000 && ctx.free_monster_zones(me) > 0 {
+        if let Some(i) = usable(t, BRAIN_CONTROL) {
+            let best = ctx
+                .monsters(opp)
+                .into_iter()
+                .filter(|c| c.position.face_up && !ctx.view_data(c).is_extra())
+                .max_by_key(|c| ctx.threat(c));
+            if let Some(best) = best.filter(|c| ctx.threat(c) >= 1800) {
+                return t.pick_targeting(i, vec![best.at]);
+            }
+        }
+    }
+    if !opp_monsters.is_empty() && ctx.opp_best_attack() > ctx.my_best_attack() {
+        if let Some(i) = usable(t, SWORDS_OF_REVEALING_LIGHT) {
+            return t.pick(i);
+        }
+    }
+
     // 3. Card advantage.
     let dark_in_hand = ctx
         .hand()
@@ -169,6 +237,23 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     let wants_special = t.has(crate::model::ChoiceKind::SpecialSummon);
     if !ctx.main1() || !wants_special {
         if let Some(i) = usable(t, POT_OF_DUALITY) {
+            return t.pick(i);
+        }
+    }
+    if let Some(i) = usable(t, POT_OF_AVARICE) {
+        let monsters = ctx.graveyard(me).iter().filter(|c| ctx.view_data(c).is_monster()).count();
+        if monsters >= 5 && ctx.deck_size(me) >= 3 {
+            return t.pick(i);
+        }
+    }
+    // Double Summon once the Normal Summon is spent and another monster is ready.
+    if let Some(i) = usable(t, DOUBLE_SUMMON) {
+        let spent = !t.has(ChoiceKind::NormalSummon) && !t.has(ChoiceKind::SetMonster);
+        let ready = ctx.hand().iter().any(|c| {
+            let d = ctx.view_data(c);
+            d.is_monster() && !d.is_extra() && d.tributes() == 0
+        });
+        if spent && ready && ctx.free_monster_zones(me) > 0 {
             return t.pick(i);
         }
     }
@@ -253,6 +338,34 @@ fn attack_is_coming(t: &Turn) -> bool {
 
 fn refs(cards: &[&crate::model::CardView]) -> Vec<CardRef> {
     cards.iter().map(|c| c.at).collect()
+}
+
+/// The monster the opponent is Summoning, if we can see it.
+pub fn opponent_summoning<'a>(ctx: &Ctx<'a>) -> Option<(&'a CardView, u32)> {
+    ctx.obs
+        .event_cards
+        .iter()
+        .filter(|(at, _)| at.controller == ctx.opp)
+        .find_map(|(at, code)| Some((ctx.card(*at)?, (*code)?)))
+}
+
+/// Shrink the monster ours is battling, ATK against ATK, when halving it
+/// turns our loss into a win.
+fn shrink(ctx: &Ctx) -> Response {
+    if ctx.phase().map_or(false, |p| !p.is_battle()) {
+        return Response::no();
+    }
+    let (Some(attacker), Some(target)) = (ctx.battle_attacker(), ctx.battle_target()) else { return Response::no() };
+    let (ours, theirs) = if attacker.at.controller == ctx.me { (attacker, target) } else { (target, attacker) };
+    if !ours.position.attack || !theirs.position.attack || !theirs.position.face_up {
+        return Response::no();
+    }
+    let halved = theirs.attack - ctx.view_data(theirs).attack / 2;
+    if ours.attack <= theirs.attack && ours.attack > halved {
+        Response::targeting(65.0, vec![theirs.at])
+    } else {
+        Response::no()
+    }
 }
 
 /// How much we want to chain a staple.  `None` for non-staples.
@@ -347,8 +460,103 @@ pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Resp
                 _ => Response::no(),
             }
         }
+        // Answers to a declared attack, weakest first: the stronger ones
+        // are kept for when they are the only way out.
+        WABOKU | NEGATE_ATTACK | DRAINING_SHIELD => match incoming {
+            Some((attacker, target)) if ctx.attack_hurts(attacker, target) => {
+                let others = ctx
+                    .monsters(opp)
+                    .iter()
+                    .filter(|c| c.position.face_up && c.position.attack && c.at != attacker.at)
+                    .count() as f64;
+                let score = match code {
+                    WABOKU => 45.0 + 10.0 * others,
+                    NEGATE_ATTACK => 50.0 + 10.0 * others,
+                    _ => 55.0,
+                };
+                Response::targeting(score, vec![attacker.at])
+            }
+            _ => Response::no(),
+        },
+        SAKURETSU_ARMOR => match incoming {
+            Some((attacker, target)) if ctx.attack_hurts(attacker, target) || ctx.threat(attacker) >= 1500 => {
+                Response::targeting(75.0, vec![attacker.at])
+            }
+            _ => Response::no(),
+        },
+        MAGIC_CYLINDER => match incoming {
+            Some((attacker, _)) if attacker.attack >= ctx.opp_lp() => Response::targeting(99.0, vec![attacker.at]),
+            Some((attacker, target)) if attacker.attack >= 1500 || ctx.attack_hurts(attacker, target) => {
+                Response::targeting(88.0, vec![attacker.at])
+            }
+            _ => Response::no(),
+        },
+        COMPULSORY_EVACUATION_DEVICE => match incoming {
+            Some((attacker, target)) if ctx.attack_hurts(attacker, target) => {
+                // Back to the Extra Deck is as good as destroyed.
+                let score = if ctx.view_data(attacker).is_extra() { 80.0 } else { 70.0 };
+                Response::targeting(score, vec![attacker.at])
+            }
+            _ => Response::no(),
+        },
+        // Summons are negated with an empty chain; a stale Summon must not
+        // make us negate an unrelated activation.
+        SOLEMN_WARNING => match (t.hostile_top(), opponent_summoning(&ctx)) {
+            (Hostile::No, Some((card, code))) if ctx.my_lp() > 3000 => {
+                let data = ctx.data(code);
+                if card.attack.max(data.attack) >= 1900 || data.is_extra() { Response::new(80.0) } else { Response::no() }
+            }
+            _ => Response::no(),
+        },
+        SOLEMN_JUDGMENT => {
+            let worth = match t.hostile_top() {
+                Hostile::Link(link) => WIPES.contains(&ctx.canonical(link.code)),
+                Hostile::No => opponent_summoning(&ctx).map_or(false, |(card, code)| {
+                    card.attack.max(ctx.data(code).attack) >= 2400 || ctx.data(code).is_extra()
+                }),
+                Hostile::Unseen => false,
+            };
+            if worth && ctx.my_lp() >= 4000 { Response::new(85.0) } else { Response::no() }
+        }
+        DUST_TORNADO => {
+            let locks = ctx.attack_locks();
+            if !locks.is_empty() {
+                return Some(Response::targeting(60.0, refs(&locks)));
+            }
+            let backrow = ctx.set_backrow(opp);
+            let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
+            let before_our_attack = ctx.my_turn() && ctx.main1();
+            if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
+                Response::targeting(20.0, refs(&backrow))
+            } else {
+                Response::no()
+            }
+        }
+        // Only offered while their hand holds 4+ cards.
+        TRAP_DUSTSHOOT if ctx.phase().map_or(true, |p| !p.is_damage_step()) => Response::new(30.0),
+        TRAP_DUSTSHOOT => Response::no(),
+        EFFECT_VEILER => match t.hostile_top() {
+            Hostile::Link(link)
+                if link.source.controller == opp
+                    && link.source.location == Location::MonsterZone
+                    && ctx.card(link.source).map_or(false, |c| c.position.face_up && c.code == Some(link.code)) =>
+            {
+                Response::targeting(70.0, vec![link.source])
+            }
+            _ => Response::no(),
+        },
+        SHRINK => shrink(&ctx),
+        // Only offered when it is free: our field is empty and we took damage.
+        GORZ => Response::new(70.0),
+        ENEMY_CONTROLLER => match incoming {
+            Some((attacker, target)) if attacker.position.face_up && ctx.attack_hurts(attacker, target) => {
+                Response::targeting(60.0, vec![attacker.at])
+            }
+            _ => Response::no(),
+        },
         DARK_HOLE | RAIGEKI | HEAVY_STORM | COLD_WAVE | GIANT_TRUNADE | MONSTER_REBORN
-        | POT_OF_DUALITY | ALLURE_OF_DARKNESS | PREMATURE_BURIAL | BRIONAC | SCRAP_DRAGON => Response::no(),
+        | POT_OF_DUALITY | ALLURE_OF_DARKNESS | PREMATURE_BURIAL | BRIONAC | SCRAP_DRAGON
+        | SMASHING_GROUND | SHIELD_CRUSH | BRAIN_CONTROL | POT_OF_AVARICE | DOUBLE_SUMMON => Response::no(),
         _ => return None,
     })
 }

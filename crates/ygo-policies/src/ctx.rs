@@ -215,6 +215,11 @@ impl<'a> Ctx<'a> {
                     1200
                 }
             }
+            // A revealed card in their hand (Trap Dustshoot): its printed stats.
+            Location::Hand if card.known() && self.view_data(card).is_monster() => {
+                let data = self.view_data(card);
+                data.attack.max(data.defense).max(500)
+            }
             _ => 500,
         }
     }

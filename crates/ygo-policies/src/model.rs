@@ -284,6 +284,8 @@ pub enum ChoiceKind {
 pub struct Member {
     pub at: CardRef,
     pub code: Option<u32>,
+    /// Prompt-specific: a Tribute or sum value, or for an attacker 1 when
+    /// it may attack directly.
     pub value: i64,
     /// Engine-required members (always part of the answer) are marked.
     pub required: bool,

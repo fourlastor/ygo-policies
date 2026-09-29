@@ -35,8 +35,25 @@ EDOPro already filtered pass through unchanged.
 | `dragunity` | Dragunity Flight | small Dragons equipped as Spells, summoned back out for Synchros |
 | `spellcaster` | 14 - Spellcaster's Command | Spell Counters: placed where they pay most, spent on destruction, draws, Endymion |
 | `heroes` | Fusion Heroes | Fusion toolbox: Polymerization, Miracle Fusion, Fusion Gate, Super Polymerization, Future Fusion |
+| `ojama` | Ojama Brigade | Ojamas into Ojama Delta Hurricane!! and Ojama King; Armed Dragon LV3 to LV7; XYZ-Dragon Cannon |
+| `watt` | Watt Grid | small Thunders that attack directly (Wattgiraffe, Wattkey) and punish being destroyed |
+| `pyramid` | Pyramid of Light | Sphinxes through Pyramid of Light; Guardian Sphinx's Flip Summon bounce, Des Lacooda's draw |
+| `arcana` | Arcana Force Fortune | coin-toss Fairies; The Fool as a battle-proof wall, Solidarity, the EX Rulers |
+| `toon` | Toon Kingdom | Toon World; Toons attack directly; Tribute Toons from the hand, Scapegoat's sheep as fodder |
+| `gravekeeper` | Gravekeeper's Tomb | Necrovalley; Spy and Guard Flip Summons, Descendant's removal |
+| `karakuri` | Karakuri Workshop | Machines that must attack; position changes into draws and removal; Shogun Synchros |
+| `harpie` | Harpie Sisters | Harpies' Hunting Ground: every "Harpie Lady" Summon destroys a Spell/Trap |
+| `fortune-lady` | Fortune Ladies | Spellcasters that gain a Level each turn and float into each other |
+| `destiny-hero` | Destiny HEROes | Destiny Draw engine into Destiny HERO - Dogma |
+| `six-samurai` | Legendary Six Samurai | free Special Summons, Gateway of the Six, Shi En's Spell/Trap negation |
+| `tele-dad` | Tele-DAD | Emergency Teleport Synchros, Dark Armed Dragon |
+| `quickdraw-plant` | Quickdraw Plants | Graveyard Plant Tuners into Synchros |
+| `machina` | Machina Gadgets | Gadget searches, Machina Fortress, trap wall |
+| `x-saber` | X-Sabers | XX-Saber Faultroll swarm into X-Saber Synchros |
 
-Each policy is written for its own deck list in `decks/`.
+Each policy is written for its own deck list in `decks/`.  The last 15 were
+added as opponents for *Sands of the Duel* (easy, mid and hard);
+[DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
 
 ## Layout
 
@@ -121,7 +138,7 @@ cargo test
 ```
 
 - `ygo-policies-ocgcore/tests/traces.rs` replays 26 recorded OCGCore duels,
-  two per policy, from both seats. At every decision, the projection must equal
+  two for each of the first 13 policies, from both seats. At every decision, the projection must equal
   OCGCore's own viewer-filtered snapshot: every card, code, position, pile,
   Life Points, turn, and chain. Nothing hidden may appear.
 - Redaction unit tests cover draws, moves to hidden places, prompts, and

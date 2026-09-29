@@ -402,7 +402,9 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
                 p.push(with_card(ChoiceKind::Activate, card, effect.description), command(0, index));
             }
             for (index, card) in battle.attack.iter().enumerate() {
-                p.push(with_card(ChoiceKind::Attack, offered(card), 0), command(1, index));
+                // `value` 1: the attacker may attack directly.
+                let attacker = member(obs, card.loc, card.code, card.value as i64, false);
+                p.push(with_card(ChoiceKind::Attack, attacker, 0), command(1, index));
             }
             if battle.main2 {
                 p.push(plain(ChoiceKind::EnterMain2), command(2, 0));

@@ -58,6 +58,21 @@ pub mod registry {
         entry!("morphtronic", morphtronic::Morphtronic),
         entry!("dragunity", dragunity::Dragunity),
         entry!("spellcaster", spellcaster::Spellcaster),
+        entry!("ojama", ojama::Ojama),
+        entry!("watt", watt::Watt),
+        entry!("pyramid", pyramid::Pyramid),
+        entry!("arcana", arcana::Arcana),
+        entry!("toon", toon::Toon),
+        entry!("gravekeeper", gravekeeper::Gravekeeper),
+        entry!("karakuri", karakuri::Karakuri),
+        entry!("harpie", harpie::Harpie),
+        entry!("fortune-lady", fortune_lady::FortuneLady),
+        entry!("destiny-hero", destiny_hero::DestinyHero),
+        entry!("six-samurai", six_samurai::SixSamurai),
+        entry!("tele-dad", tele_dad::TeleDad),
+        entry!("quickdraw-plant", quickdraw_plant::QuickdrawPlant),
+        entry!("machina", machina::Machina),
+        entry!("x-saber", x_saber::XSaber),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
@@ -224,6 +239,86 @@ mod tests {
         let answers: Vec<usize> = (0..32).map(answer).collect();
         assert!(answers.iter().any(|a| *a != answers[0]), "every seed chose zone {}", answers[0]);
         assert_eq!(answers, (0..32).map(answer).collect::<Vec<_>>());
+    }
+
+    fn attack(code: u32, sequence: u32, direct: bool) -> Choice {
+        Choice {
+            kind: ChoiceKind::Attack,
+            card: Some(Member {
+                at: CardRef { controller: 0, location: Location::MonsterZone, sequence },
+                code: Some(code),
+                value: direct as i64,
+                required: false,
+            }),
+            members: Vec::new(),
+            description: 0,
+            place: None,
+        }
+    }
+
+    /// A monster that must attack leaves no way out of the Battle Phase: the
+    /// least bad attack beats the engine's first choice.
+    #[test]
+    fn a_forced_battle_attacks() {
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![card(0, Location::MonsterZone, 0, 1, true), card(1, Location::MonsterZone, 0, 2, true)];
+        obs.cards[1].attack = 3000;
+        let decision = Decision {
+            kind: DecisionKind::Battle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: vec![activate(3, Location::SpellTrapZone, 0), attack(1, 0, false)],
+        };
+        let mut policy = crate::registry::create("karakuri", db).unwrap();
+        let index = policy.choose(&obs, &decision);
+        assert_eq!(decision.choices[index].kind, ChoiceKind::Attack);
+    }
+
+    /// Main Phase 1 cannot end any other way than through the Battle Phase.
+    #[test]
+    fn a_turn_that_cannot_end_enters_battle() {
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let decision = Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: vec![activate(3, Location::SpellTrapZone, 0), choice(ChoiceKind::EnterBattle)],
+        };
+        let mut policy = crate::registry::create("karakuri", db).unwrap();
+        let index = policy.choose(&observation(), &decision);
+        assert_eq!(decision.choices[index].kind, ChoiceKind::EnterBattle);
+    }
+
+    /// "Attack directly?" follows the plan: direct unless a target was chosen.
+    #[test]
+    fn attacking_directly_follows_the_plan() {
+        use crate::agent::{Memory, Turn};
+        let db = MemoryCards::default();
+        let obs = observation();
+        let answer = |kind| Choice { description: crate::tactics::ATTACK_DIRECTLY, ..choice(kind) };
+        let decision = Decision {
+            kind: DecisionKind::YesNo,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: vec![answer(ChoiceKind::Yes), answer(ChoiceKind::No)],
+        };
+        let mut memory = Memory::default();
+        let t = Turn { ctx: crate::ctx::Ctx::new(&obs, &db), decision: &decision, memory: &mut memory };
+        assert_eq!(crate::tactics::attack_directly(&t), Some(true));
+        memory.intent = vec![(CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 }, None)];
+        let t = Turn { ctx: crate::ctx::Ctx::new(&obs, &db), decision: &decision, memory: &mut memory };
+        assert_eq!(crate::tactics::attack_directly(&t), Some(false));
     }
 
     #[test]

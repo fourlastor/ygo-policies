@@ -186,6 +186,93 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
     }
 }
 
+/// Worth of the best Synchro Monster of this Level in our Extra Deck.
+/// Material restrictions are left to the engine: it only offers legal ones.
+pub fn synchro_worth<S: Strategy + ?Sized>(s: &S, ctx: &Ctx, level: u32) -> Option<i32> {
+    ctx.pile(ctx.me, Location::Extra)
+        .into_iter()
+        .filter_map(|c| c.code)
+        .filter(|code| ctx.data(*code).is(types::SYNCHRO) && ctx.data(*code).level == level)
+        .map(|code| value(s, ctx, Some(code), None))
+        .max()
+}
+
+/// The best Synchro a Tuner of `tuner_level` would make with one of our
+/// face-up non-Tuner monsters.
+pub fn synchro_with_tuner<S: Strategy + ?Sized>(s: &S, ctx: &Ctx, tuner_level: u32) -> Option<i32> {
+    ctx.monsters(ctx.me)
+        .into_iter()
+        .filter(|c| c.position.face_up && !ctx.view_data(c).is_tuner() && c.level > 0)
+        .filter_map(|c| synchro_worth(s, ctx, c.level + tuner_level))
+        .max()
+}
+
+/// OCGCore's "Attack directly?" prompt, for an attacker that may attack
+/// directly while the opponent has monsters.
+pub const ATTACK_DIRECTLY: u64 = 31;
+
+/// Our answer to "Attack directly?": yes unless the attack was planned
+/// against a monster (its target is then the intent).  `None` for other prompts.
+pub fn attack_directly(t: &Turn) -> Option<bool> {
+    t.decision
+        .choices
+        .iter()
+        .any(|c| c.description == ATTACK_DIRECTLY && c.card.is_none())
+        .then(|| t.memory.intent.is_empty())
+}
+
+/// A direct attack past the opponent's monsters: the strongest attacker the
+/// engine lets attack directly.  (On an empty field `plan_attack` already
+/// attacks directly.)
+pub fn direct_attack(t: &Turn) -> Option<usize> {
+    let ctx = t.ctx;
+    if ctx.monsters(ctx.opp).is_empty() {
+        return None;
+    }
+    t.choices()
+        .filter(|(i, c)| c.kind == ChoiceKind::Attack && t.fresh(*i) && c.card.map_or(false, |m| m.value == 1))
+        .filter_map(|(i, c)| c.at().and_then(|at| ctx.card(at)).map(|v| (i, v.attack)))
+        .filter(|(_, attack)| *attack > 0)
+        .max_by_key(|(_, attack)| *attack)
+        .map(|(i, _)| i)
+}
+
+/// An attack we cannot decline (a monster that must attack if able): the
+/// attacker and target that lose least.  Attacks already declined three
+/// times are still allowed, the engine offers nothing else.
+pub fn forced_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Option<CardRef>)> {
+    let ctx = t.ctx;
+    let targets = ctx.monsters(ctx.opp);
+    let mut best: Option<(f64, (usize, Option<CardRef>))> = None;
+    for (i, choice) in t.choices().filter(|(_, c)| c.kind == ChoiceKind::Attack) {
+        let Some(attacker) = choice.at().and_then(|at| ctx.card(at)) else { continue };
+        let direct = targets.is_empty() || choice.card.map_or(false, |m| m.value == 1);
+        let mut options: Vec<(f64, Option<CardRef>)> = Vec::new();
+        if direct {
+            options.push((attacker.attack as f64, None));
+        }
+        for target in &targets {
+            let outcome = s
+                .attack_outcome(&ctx, attacker, target)
+                .unwrap_or_else(|| default_outcome(&ctx, attacker, target, s.attack_trick(&ctx, attacker)));
+            let mine = value(s, &ctx, None, Some(attacker)) as f64;
+            let score = match outcome {
+                Outcome::Win { .. } => 1000.0 + ctx.threat(target) as f64,
+                Outcome::Trade => ctx.threat(target) as f64 - mine,
+                Outcome::Bounce => -(ctx.battle_stat(target) - attacker.attack).max(0) as f64 / 10.0,
+                Outcome::Lose => -mine - (ctx.battle_stat(target) - attacker.attack) as f64 / 10.0,
+            };
+            options.push((score, Some(target.at)));
+        }
+        for (score, target) in options {
+            if best.as_ref().map_or(true, |b| score > b.0) {
+                best = Some((score, (i, target)));
+            }
+        }
+    }
+    best.map(|(_, choice)| choice)
+}
+
 /// Pick the next attack: (attack choice, target or `None` for direct).
 pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Option<CardRef>)> {
     let ctx = t.ctx;

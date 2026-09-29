@@ -438,8 +438,11 @@ fn idle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
     if let Some(i) = tactics::set_spell_trap(s, t) {
         return t.pick(i);
     }
+    // A monster that must attack keeps us from ending Main Phase 1 any
+    // other way than through the Battle Phase.
     t.find(ChoiceKind::EndTurn, None, None)
         .or_else(|| t.find(ChoiceKind::EnterMain2, None, None))
+        .or_else(|| t.find(ChoiceKind::EnterBattle, None, None))
         .and_then(|i| t.pick(i))
 }
 
@@ -452,9 +455,12 @@ fn battle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
     if let Some((i, target)) = tactics::plan_attack(s, t) {
         return t.pick_targeting(i, target.into_iter().collect());
     }
-    t.find(ChoiceKind::EnterMain2, None, None)
-        .or_else(|| t.find(ChoiceKind::EndTurn, None, None))
-        .and_then(|i| t.pick(i))
+    if let Some(i) = t.find(ChoiceKind::EnterMain2, None, None).or_else(|| t.find(ChoiceKind::EndTurn, None, None)) {
+        return t.pick(i);
+    }
+    // No way out of the Battle Phase: a monster must attack.
+    let (i, target) = tactics::forced_attack(s, t)?;
+    t.pick_targeting(i, target.into_iter().collect())
 }
 
 // ---- Chain windows -------------------------------------------------------------
