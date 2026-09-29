@@ -28,3 +28,4 @@ pub mod tele_dad;
 pub mod quickdraw_plant;
 pub mod machina;
 pub mod x_saber;
+pub mod draconic_might;

@@ -73,6 +73,7 @@ pub mod registry {
         entry!("quickdraw-plant", quickdraw_plant::QuickdrawPlant),
         entry!("machina", machina::Machina),
         entry!("x-saber", x_saber::XSaber),
+        entry!("draconic-might", draconic_might::DraconicMight),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
@@ -319,6 +320,100 @@ mod tests {
         memory.intent = vec![(CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 }, None)];
         let t = Turn { ctx: crate::ctx::Ctx::new(&obs, &db), decision: &decision, memory: &mut memory };
         assert_eq!(crate::tactics::attack_directly(&t), Some(false));
+    }
+
+    fn toggle(location: Location, sequence: u32, code: u32) -> Choice {
+        Choice {
+            kind: ChoiceKind::Toggle,
+            card: Some(Member { at: CardRef { controller: 0, location, sequence }, code: Some(code), value: 0, required: false }),
+            members: Vec::new(),
+            description: 0,
+            place: None,
+        }
+    }
+
+    fn select_one(hint: Hint, choices: Vec<Choice>) -> Decision {
+        Decision { kind: DecisionKind::SelectCards, hint, minimum: 1, maximum: 1, selected: Vec::new(), subject: None, choices }
+    }
+
+    /// Level Up! pays with the monster whose upgrade gains most, and never
+    /// with Armed Dragon LV7, whose Level Up! would summon an LV5.
+    #[test]
+    fn level_up_never_levels_down() {
+        const ARMED_DRAGON_LV7: u32 = 73879377;
+        const HORUS_LV4: u32 = 75830094;
+        const LEVEL_UP: u32 = 25290459;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.cards = vec![
+            card(0, Location::MonsterZone, 0, ARMED_DRAGON_LV7, true),
+            card(0, Location::MonsterZone, 1, HORUS_LV4, true),
+            card(0, Location::Hand, 0, LEVEL_UP, true),
+        ];
+        let mut policy = crate::registry::create("draconic-might", db).unwrap();
+        let idle = Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: vec![activate(LEVEL_UP, Location::Hand, 0), choice(ChoiceKind::EndTurn)],
+        };
+        assert_eq!(policy.choose(&obs, &idle), 0, "Level Up! not played");
+        let cost = select_one(
+            Hint::ToGraveyard,
+            vec![toggle(Location::MonsterZone, 0, ARMED_DRAGON_LV7), toggle(Location::MonsterZone, 1, HORUS_LV4)],
+        );
+        assert_eq!(policy.choose(&obs, &cost), 1, "Level Up! sent Armed Dragon LV7");
+    }
+
+    /// Red-Eyes Darkness Metal Dragon banishes the cheapest face-up Dragon,
+    /// and never another REDMD: its effect is once per turn anyway.
+    #[test]
+    fn red_eyes_darkness_metal_banishes_the_cheapest_dragon() {
+        use crate::cards::{races, types, CardData};
+        const REDMD: u32 = 88264978;
+        const PRIME_MATERIAL: u32 = 12298909;
+        const MASKED: u32 = 39191307;
+        let dragon = |code, attack, level| {
+            (code, CardData { code, kind: types::MONSTER | types::EFFECT, attack, level, race: races::DRAGON, ..Default::default() })
+        };
+        let db: Arc<dyn crate::CardDatabase> =
+            Arc::new(MemoryCards([dragon(REDMD, 2800, 10), dragon(PRIME_MATERIAL, 2400, 6), dragon(MASKED, 1400, 3)].into()));
+        let mut obs = observation();
+        obs.cards = vec![
+            card(0, Location::MonsterZone, 0, REDMD, true),
+            card(0, Location::MonsterZone, 1, PRIME_MATERIAL, true),
+            card(0, Location::MonsterZone, 2, MASKED, true),
+            card(0, Location::Hand, 0, REDMD, true),
+        ];
+        let mut policy = crate::registry::create("draconic-might", db.clone()).unwrap();
+        let banish = select_one(
+            Hint::Banish,
+            (0..3).map(|sequence| toggle(Location::MonsterZone, sequence, obs.cards[sequence as usize].code.unwrap())).collect(),
+        );
+        assert_eq!(policy.choose(&obs, &banish), 2, "banished more than Masked Dragon");
+        // With only the other REDMD to banish, the second one stays in the hand.
+        obs.cards = vec![card(0, Location::MonsterZone, 0, REDMD, true), card(0, Location::Hand, 0, REDMD, true)];
+        let special = Choice {
+            kind: ChoiceKind::SpecialSummon,
+            card: Some(Member { at: CardRef { controller: 0, location: Location::Hand, sequence: 0 }, code: Some(REDMD), value: 0, required: false }),
+            members: Vec::new(),
+            description: 0,
+            place: None,
+        };
+        let idle = Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: vec![special, choice(ChoiceKind::EndTurn)],
+        };
+        let mut policy = crate::registry::create("draconic-might", db).unwrap();
+        assert_eq!(idle.choices[policy.choose(&obs, &idle)].kind, ChoiceKind::EndTurn, "banished a REDMD for a REDMD");
     }
 
     #[test]

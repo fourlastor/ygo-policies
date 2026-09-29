@@ -50,10 +50,14 @@ EDOPro already filtered pass through unchanged.
 | `quickdraw-plant` | Quickdraw Plants | Graveyard Plant Tuners into Synchros |
 | `machina` | Machina Gadgets | Gadget searches, Machina Fortress, trap wall |
 | `x-saber` | X-Sabers | XX-Saber Faultroll swarm into X-Saber Synchros |
+| `draconic-might` | Draconic Might | Red-Eyes Darkness Metal Dragon every turn, guarded by Prime Material Dragon, Jinzo and Horus LV8; Armed Dragon and Horus LV lines |
 
-Each policy is written for its own deck list in `decks/`.  The last 15 were
-added as opponents for *Sands of the Duel* (easy, mid and hard);
-[DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
+Each policy is written for its own deck list in `decks/`.  Fifteen of them
+(`ojama` to `x-saber`) were added as opponents for *Sands of the Duel* (easy,
+mid and hard), and `draconic-might` pilots a player's own deck; its Red-Eyes
+Darkness Metal Dragon needs the card's script from ProjectIgnis' `pre-errata/`
+folder, which EDOPro loads.  [DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every
+deck by measured strength.
 
 ## Layout
 
