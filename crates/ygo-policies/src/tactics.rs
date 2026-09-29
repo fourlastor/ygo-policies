@@ -5,6 +5,18 @@ use crate::cards::types;
 use crate::ctx::Ctx;
 use crate::model::{CardRef, CardView, ChoiceKind, Location};
 
+/// Our monsters that can still attack take the opponent's last Life Points
+/// on an open field (no monsters, no attack lock): attack before anything
+/// that would spend them (Synchro or Fusion materials, Tributes).
+pub fn lethal_on_board(t: &Turn) -> bool {
+    let ctx = t.ctx;
+    if !ctx.main1() || !t.has(ChoiceKind::EnterBattle) || !ctx.monsters(ctx.opp).is_empty() || !ctx.attack_locks().is_empty() {
+        return false;
+    }
+    let damage: i32 = ctx.monsters(ctx.me).iter().filter(|c| ctx.can_attack(c)).map(|c| c.attack.max(0)).sum();
+    damage >= ctx.opp_lp()
+}
+
 /// Best Normal Summon / Set, or `None` to keep the summon.
 pub fn normal_summon<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
     let ctx = t.ctx;

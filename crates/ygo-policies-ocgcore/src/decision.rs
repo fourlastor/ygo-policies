@@ -411,8 +411,8 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
                 p.push(plain(ChoiceKind::EndTurn), command(3, 0));
             }
         }
-        SelectChain { forced, chains, .. } => {
-            p = Prompt::new(DecisionKind::Chain { forced: *forced });
+        SelectChain { forced, triggers, chains, .. } => {
+            p = Prompt::new(DecisionKind::Chain { forced: *forced, triggers: *triggers });
             for (index, effect) in chains.iter().enumerate() {
                 let card = member(obs, effect.loc, effect.code, 0, false);
                 p.push(with_card(ChoiceKind::Activate, card, effect.description), int(index as i32));

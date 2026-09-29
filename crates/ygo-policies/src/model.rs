@@ -225,8 +225,11 @@ pub enum DecisionKind {
     Idle,
     /// Battle Phase command.
     Battle,
-    /// Chain window; `forced` means passing is not allowed.
-    Chain { forced: bool },
+    /// Chain window; `forced` means passing is not allowed.  `triggers` means
+    /// only triggered effects are offered (the engine is building a chain of
+    /// triggers); otherwise it is a free window, where the turn player can
+    /// also be offered its monsters' Ignition effects.
+    Chain { forced: bool, triggers: bool },
     YesNo,
     Option,
     Position,

@@ -77,7 +77,9 @@ pub enum Message {
     SelectTribute(Cards),
     SelectUnselect(Cards),
     SelectSum { cards: Cards, exact: bool, target: u32 },
-    SelectChain { player: u8, forced: bool, chains: Vec<Effect> },
+    /// `triggers`: only triggered effects are offered (the engine is building
+    /// a chain of triggers), not a free chain window.
+    SelectChain { player: u8, forced: bool, triggers: bool, chains: Vec<Effect> },
     SelectPlace { player: u8, count: u8, blocked: u32, disable: bool },
     SelectPosition { player: u8, code: u32, positions: u8 },
     SelectCounter { player: u8, kind: u16, count: u16, cards: Vec<Offered> },
@@ -302,10 +304,11 @@ pub fn parse(message: &[u8]) -> Result<Message> {
         }
         msg::SELECT_CHAIN => {
             let player = r.u8()?;
-            let _special_count = r.u8()?;
+            // OCGCore writes 0x7f here when it asks which trigger goes on the chain.
+            let triggers = r.u8()? == 0x7f;
             let forced = r.bool()?;
             let _hint_timing = (r.u32()?, r.u32()?);
-            SelectChain { player, forced, chains: list(r, 23, |r| effect(r, true))? }
+            SelectChain { player, forced, triggers, chains: list(r, 23, |r| effect(r, true))? }
         }
         msg::SELECT_PLACE | msg::SELECT_DISFIELD => SelectPlace {
             player: r.u8()?,

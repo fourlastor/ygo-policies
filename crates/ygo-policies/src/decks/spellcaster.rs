@@ -170,8 +170,25 @@ impl Strategy for Spellcaster {
             }
         }
         if let Some(target) = Self::best_opponent_monster(&ctx, 1500) {
-            for code in [MARIONETTE, BLAST_MAGICIAN, ENDYMION] {
+            for code in [MARIONETTE, ENDYMION] {
                 if let Some(i) = t.activate_from(code, Location::MonsterZone) {
+                    return t.pick_targeting(i, vec![target.at]);
+                }
+            }
+        }
+        // Blast Magician reaches face-up monsters with up to 700 ATK per
+        // counter it holds, on either field: past its reach, the only targets
+        // left would be our own.
+        if let Some(blast) = Self::mine(&ctx, BLAST_MAGICIAN) {
+            let reach = 700 * blast.counters as i32;
+            let target = ctx
+                .monsters(ctx.opp)
+                .into_iter()
+                .filter(|c| c.position.face_up && c.attack <= reach)
+                .max_by_key(|c| ctx.threat(c))
+                .filter(|c| ctx.threat(c) >= 1000);
+            if let Some(target) = target {
+                if let Some(i) = t.activate_from(BLAST_MAGICIAN, Location::MonsterZone) {
                     return t.pick_targeting(i, vec![target.at]);
                 }
             }

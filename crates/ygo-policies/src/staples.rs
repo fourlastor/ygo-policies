@@ -1,9 +1,9 @@
 //! Cards many decks share, played the same way everywhere.  A deck can veto a
 //! staple with [`Strategy::allow_staple`] or take it over in its own hooks.
 
-use crate::agent::{Response, Strategy, Turn};
+use crate::agent::{self, Response, Strategy, Turn};
 use crate::cards::attributes;
-use crate::model::CardRef;
+use crate::model::{CardRef, CardView};
 
 pub const MYSTICAL_SPACE_TYPHOON: u32 = 5318639;
 pub const GIANT_TRUNADE: u32 = 42703248;
@@ -30,6 +30,10 @@ pub const WALL_OF_REVEALING_LIGHT: u32 = 17078030;
 pub const MORPHTRONIC_BIND: u32 = 85101228;
 /// Attackers are stuck in Defense Position for a turn: half the attacks.
 pub const SPIDER_WEB: u32 = 69408987;
+/// Synchros several Extra Decks share: discard N, bounce N of theirs.
+pub const BRIONAC: u32 = 50321796;
+/// Destroy 1 card we control and 1 card they control.
+pub const SCRAP_DRAGON: u32 = 76774528;
 
 /// Continuous cards that keep the other player from attacking: a stall
 /// deck's win condition, so they are the first thing to remove.
@@ -69,8 +73,6 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     };
     let my_monsters = ctx.monsters(me);
     let opp_monsters = ctx.monsters(opp);
-    let backrow = ctx.set_backrow(opp);
-    let can_battle = t.has(crate::model::ChoiceKind::EnterBattle);
     let hand_monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
 
     // 0. The opponent's attack lock stalls us out: break it whatever it
@@ -92,31 +94,8 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     }
 
     // 1. Clear the opponent's backrow before we commit to attacks.
-    if ctx.main1() && can_battle && (!my_monsters.is_empty() || hand_monsters > 0) {
-        // Cold Wave also stops us setting our own backrow: only for an attack.
-        if !backrow.is_empty() && attack_is_coming(t) {
-            if let Some(i) = usable(t, COLD_WAVE) {
-                return t.pick(i);
-            }
-        }
-        let my_set = ctx.set_backrow(me).len();
-        // Both of these also sweep our own backrow: never over our own locks.
-        let own_locks = !ctx.own_attack_locks().is_empty();
-        if backrow.len() >= 2 && my_set <= 1 && !own_locks {
-            if let Some(i) = usable(t, HEAVY_STORM) {
-                return t.pick(i);
-            }
-        }
-        if ctx.spell_traps(opp).len() >= 2 && my_set <= 1 && !own_locks {
-            if let Some(i) = usable(t, GIANT_TRUNADE) {
-                return t.pick(i);
-            }
-        }
-        if !backrow.is_empty() {
-            if let Some(i) = usable(t, MYSTICAL_SPACE_TYPHOON) {
-                return t.pick_targeting(i, refs(&backrow));
-            }
-        }
+    if let Some(i) = clear_backrow(s, t) {
+        return Some(i);
     }
 
     // 2. Wipe a board we cannot beat.
@@ -146,6 +125,29 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
                     .max_by_key(|c| c.attack);
                 if let Some(w) = wall {
                     return t.pick_targeting(i, vec![w.at]);
+                }
+            }
+        }
+    }
+
+    // 2b. Synchro removal: always one of their cards, paid with one of ours.
+    let their_best = ctx.monsters(opp).into_iter().chain(ctx.spell_traps(opp)).max_by_key(|c| ctx.threat(c));
+    if let Some(target) = their_best {
+        let threat = ctx.threat(target);
+        // Brionac: discard our cheapest card, bounce their best.
+        if let Some(i) = usable(t, BRIONAC) {
+            let cheapest = ctx.hand().iter().map(|c| agent::value(s, &ctx, c.code, None)).min();
+            if cheapest.map_or(false, |v| v < threat) {
+                return t.pick_targeting(i, vec![target.at]);
+            }
+        }
+        // Scrap Dragon: our cheapest card on the field for their best.
+        if let Some(i) = usable(t, SCRAP_DRAGON) {
+            let cheapest: Option<&CardView> =
+                ctx.monsters(me).into_iter().chain(ctx.spell_traps(me)).min_by_key(|c| agent::value(s, &ctx, None, Some(c)));
+            if let Some(ours) = cheapest {
+                if threat >= 1200 && agent::value(s, &ctx, None, Some(ours)) + 300 < threat {
+                    return t.pick_targeting(i, vec![ours.at, target.at]);
                 }
             }
         }
@@ -181,6 +183,44 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
             if ctx.view_data(b).attack >= 1600 || my_monsters.is_empty() {
                 return t.pick_targeting(i, vec![b.at]);
             }
+        }
+    }
+    None
+}
+
+/// Staples that clear the opponent's backrow before we commit to attacks.
+pub fn clear_backrow<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
+    let ctx = t.ctx;
+    let (me, opp) = (ctx.me, ctx.opp);
+    let usable = |t: &Turn, code: u32| -> Option<usize> { if s.allow_staple(t, code) { t.activate(code) } else { None } };
+    let backrow = ctx.set_backrow(opp);
+    let can_battle = t.has(crate::model::ChoiceKind::EnterBattle);
+    let hand_monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
+    if !ctx.main1() || !can_battle || (ctx.monsters(me).is_empty() && hand_monsters == 0) {
+        return None;
+    }
+    // Cold Wave also stops us setting our own backrow: only for an attack.
+    if !backrow.is_empty() && attack_is_coming(t) {
+        if let Some(i) = usable(t, COLD_WAVE) {
+            return t.pick(i);
+        }
+    }
+    let my_set = ctx.set_backrow(me).len();
+    // Both of these also sweep our own backrow: never over our own locks.
+    let own_locks = !ctx.own_attack_locks().is_empty();
+    if backrow.len() >= 2 && my_set <= 1 && !own_locks {
+        if let Some(i) = usable(t, HEAVY_STORM) {
+            return t.pick(i);
+        }
+    }
+    if ctx.spell_traps(opp).len() >= 2 && my_set <= 1 && !own_locks {
+        if let Some(i) = usable(t, GIANT_TRUNADE) {
+            return t.pick(i);
+        }
+    }
+    if !backrow.is_empty() {
+        if let Some(i) = usable(t, MYSTICAL_SPACE_TYPHOON) {
+            return t.pick_targeting(i, refs(&backrow));
         }
     }
     None
@@ -308,7 +348,7 @@ pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Resp
             }
         }
         DARK_HOLE | RAIGEKI | HEAVY_STORM | COLD_WAVE | GIANT_TRUNADE | MONSTER_REBORN
-        | POT_OF_DUALITY | ALLURE_OF_DARKNESS | PREMATURE_BURIAL => Response::no(),
+        | POT_OF_DUALITY | ALLURE_OF_DARKNESS | PREMATURE_BURIAL | BRIONAC | SCRAP_DRAGON => Response::no(),
         _ => return None,
     })
 }

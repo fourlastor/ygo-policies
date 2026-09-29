@@ -55,6 +55,12 @@ impl Monarch {
         ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, TREEBORN_FROG))
     }
 
+    /// Mobius' optional trigger destroys Spells/Traps on either field: only
+    /// worth it when some are theirs.
+    fn mobius_has_targets(ctx: &Ctx) -> bool {
+        !ctx.spell_traps(ctx.opp).is_empty()
+    }
+
     /// How much a Monarch's summon effect is worth on this board.
     fn monarch_score(ctx: &Ctx, code: u32) -> f64 {
         let opp_backrow = ctx.spell_traps(ctx.opp).len();
@@ -146,8 +152,13 @@ impl Strategy for Monarch {
         let ctx = t.ctx;
         let code = ctx.canonical(choice.code()?);
         if Self::is_monarch(&ctx, code) {
+            // Caius and Raiza must target a card when they arrive: with
+            // nothing of theirs on the field it is one of ours, often the
+            // Monarch itself.
+            let theirs = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
+            let hits_our_own = matches!(code, CAIUS | RAIZA) && theirs == 0;
             return Some(match choice.kind {
-                ChoiceKind::NormalSummon => Some(Self::monarch_score(&ctx, code)),
+                ChoiceKind::NormalSummon if !hits_our_own => Some(Self::monarch_score(&ctx, code)),
                 _ => None,
             });
         }
@@ -189,10 +200,20 @@ impl Strategy for Monarch {
         let code = ctx.canonical(choice.code()?);
         Some(match code {
             // Hand traps: always.
-            BATTLE_FADER | GORZ | TRAGOEDIA => Response::new(70.0),
+            BATTLE_FADER | GORZ => Response::new(70.0),
+            // Tragoedia: the hand trap and, on the field, its steal; its
+            // Level change does nothing on its own.
+            TRAGOEDIA if choice.description & 0xf == 2 => Response::no(),
+            TRAGOEDIA => Response::new(70.0),
+            MOBIUS if !Self::mobius_has_targets(&ctx) => Response::no(),
             CAIUS | RAIZA | MOBIUS | THESTALOS => Response::new(50.0),
             _ => return None,
         })
+    }
+
+    fn yes_no(&self, t: &Turn) -> Option<bool> {
+        let ctx = t.ctx;
+        (t.decision.subject.map(|c| ctx.canonical(c)) == Some(MOBIUS)).then(|| Self::mobius_has_targets(&ctx))
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {

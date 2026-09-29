@@ -9,7 +9,7 @@ use crate::cards::CardDatabase;
 use crate::ctx::Ctx;
 use crate::model::{
     CardRef, CardView, ChainLink, Choice, ChoiceKind, Decision, DecisionKind, Hint, Location,
-    Member, Observation, Position,
+    Member, Observation, Phase, Position,
 };
 use crate::{staples, tactics};
 
@@ -69,8 +69,10 @@ impl TieBreak {
 /// Per-agent memory that survives between prompts.
 #[derive(Default, Debug)]
 pub struct Memory {
-    /// Cards the next target prompt should pick (set when we activate/attack).
-    pub intent: Vec<CardRef>,
+    /// Cards the next target prompt should pick (set when we activate/attack),
+    /// with the card each slot held then: once another card sits there, the
+    /// slot is no longer the one we meant.
+    pub intent: Vec<(CardRef, Option<u32>)>,
     /// Passcode of the last card effect we activated.
     pub last_activated: Option<u32>,
     picks: HashMap<(ChoiceKind, Option<u32>, Option<CardRef>), u32>,
@@ -214,7 +216,8 @@ impl<'a> Turn<'a> {
 
     /// Commit to a choice whose follow-up target prompt should pick `intent`.
     pub fn pick_targeting(&mut self, index: usize, intent: Vec<CardRef>) -> Option<usize> {
-        self.memory.intent = intent;
+        let ctx = self.ctx;
+        self.memory.intent = intent.into_iter().map(|at| (at, ctx.card(at).and_then(|c| c.code))).collect();
         self.pick(index)
     }
 
@@ -348,7 +351,7 @@ impl<S: Strategy> Policy for Agent<S> {
                 battle(s, &mut t)
             }
             DecisionKind::Chain { .. } => chain(s, &mut t),
-            DecisionKind::YesNo => yes_no(s, &t),
+            DecisionKind::YesNo => yes_no(s, &mut t),
             DecisionKind::Position => position(s, &t),
             DecisionKind::SelectCards | DecisionKind::SelectSum => select(s, &t),
             DecisionKind::SelectToggle => toggle(s, &t),
@@ -382,6 +385,22 @@ pub fn value<S: Strategy + ?Sized>(s: &S, ctx: &Ctx, code: Option<u32>, view: Op
 // ---- Main Phase --------------------------------------------------------------
 
 fn idle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
+    if tactics::lethal_on_board(t) {
+        // Clear their backrow and add a free attacker, then swing.
+        if let Some(i) = staples::clear_backrow(s, t) {
+            return Some(i);
+        }
+        let attacker = tactics::normal_summon(s, t).filter(|i| {
+            let choice = t.choice(*i);
+            choice.kind == ChoiceKind::NormalSummon && choice.code().map_or(false, |c| t.ctx.data(c).tributes() == 0)
+        });
+        if let Some(i) = attacker {
+            return t.pick(i);
+        }
+        if let Some(i) = t.find(ChoiceKind::EnterBattle, None, None) {
+            return t.pick(i);
+        }
+    }
     if let Some(i) = s.main_phase(t) {
         return Some(i);
     }
@@ -444,17 +463,42 @@ fn battle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
 /// stacking a second answer to the same threat usually wastes one of them.
 const CHAIN_ON_OWN_LINK: f64 = 100.0;
 
+/// Our own Main Phase with nothing on the chain, and not a trigger window.
+/// After a summon or a resolved chain the engine gives the turn player
+/// priority here and offers its monsters' Ignition effects besides Quick
+/// ones (OCGCore's obsolete ignition ruling).  Anything used here could also
+/// wait for the next Main Phase command.
+fn open_window(t: &Turn) -> bool {
+    let ctx = t.ctx;
+    matches!(t.decision.kind, DecisionKind::Chain { triggers: false, .. })
+        && ctx.my_turn()
+        && matches!(ctx.phase(), Some(Phase::Main1 | Phase::Main2))
+        && ctx.obs.chain_known
+        && ctx.obs.chain.is_empty()
+}
+
 fn chain<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
+    let open = open_window(t);
+    if open {
+        // Using an effect now is using it in the Main Phase: the plan decides.
+        let planned = s.main_phase(t).or_else(|| staples::main_phase(s, t)).or_else(|| s.main_phase_late(t));
+        if let Some(i) = planned.filter(|i| t.choice(*i).kind == ChoiceKind::Activate) {
+            return Some(i);
+        }
+    }
     let own_top = t.own_top();
     let mut best: Option<(f64, usize, Vec<CardRef>)> = None;
     for (i, choice) in t.choices() {
         if choice.kind != ChoiceKind::Activate || !t.fresh(i) {
             continue;
         }
+        // The plan passed on our monsters' Ignition effects; resolving them
+        // anyway, with no aim, spends them on our own cards.
+        let ignition = open && choice.at().map_or(false, |at| at.controller == t.ctx.me && at.location == Location::MonsterZone);
         let response = s
             .chain(t, i)
             .or_else(|| staples::chain(s, t, i))
-            .unwrap_or_else(|| default_trigger(t, choice));
+            .unwrap_or_else(|| if ignition { Response::no() } else { default_trigger(t, choice) });
         let threshold = if own_top { CHAIN_ON_OWN_LINK } else { 0.0 };
         if response.score > threshold && best.as_ref().map_or(true, |b| response.score > b.0) {
             best = Some((response.score, i, response.intent));
@@ -480,8 +524,13 @@ fn default_trigger(t: &Turn, choice: &Choice) -> Response {
 
 // ---- small prompts ---------------------------------------------------------------
 
-fn yes_no<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
+fn yes_no<S: Strategy>(s: &S, t: &mut Turn) -> Option<usize> {
     let yes = s.yes_no(t).unwrap_or(true);
+    // Yes to "use this card's effect?" starts a new activation: the targets
+    // of the previous one (Test Tiger's Beast) are not this one's.
+    if yes && t.decision.choices.iter().any(|c| c.kind == ChoiceKind::Yes && c.card.is_some()) {
+        t.memory.intent.clear();
+    }
     let wanted = if yes { ChoiceKind::Yes } else { ChoiceKind::No };
     t.choices().find(|(_, c)| c.kind == wanted).map(|(i, _)| i)
 }
@@ -512,7 +561,10 @@ fn position<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
 
 /// How good it is for us that `member` is part of the answer.
 pub fn member_score<S: Strategy + ?Sized>(s: &S, t: &Turn, member: &Member) -> f64 {
-    if let Some(rank) = t.memory.intent.iter().position(|at| *at == member.at) {
+    let intended = |(at, code): &(CardRef, Option<u32>)| {
+        *at == member.at && (code.is_none() || member.code.is_none() || *code == member.code)
+    };
+    if let Some(rank) = t.memory.intent.iter().position(intended) {
         return 10_000.0 - rank as f64;
     }
     if let Some(score) = s.select(t, member) {

@@ -50,6 +50,12 @@ impl Gladiator {
         ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && Self::is_beast(ctx, c))
     }
 
+    /// Gyzarus destroys up to 2 cards on either field: only worth it when
+    /// some are theirs, or it destroys our own.
+    fn gyzarus_has_targets(ctx: &Ctx) -> bool {
+        !ctx.monsters(ctx.opp).is_empty() || !ctx.spell_traps(ctx.opp).is_empty()
+    }
+
     /// Which Beast to bring from the deck for this board.
     fn tag_in_score(ctx: &Ctx, code: u32) -> f64 {
         let opp_backrow = ctx.spell_traps(ctx.opp).len();
@@ -213,8 +219,17 @@ impl Strategy for Gladiator {
                 _ => Response::no(),
             },
             TEST_TIGER | PRISMA => Response::no(),
+            GYZARUS if choice.description & 0xf == 0 => {
+                if Self::gyzarus_has_targets(&ctx) { Response::new(60.0) } else { Response::no() }
+            }
             _ => return None,
         })
+    }
+
+    fn yes_no(&self, t: &Turn) -> Option<bool> {
+        let ctx = t.ctx;
+        let destroy = t.decision.choices.iter().any(|c| c.kind == ChoiceKind::Yes && c.description & 0xf == 0);
+        (t.decision.subject.map(|c| ctx.canonical(c)) == Some(GYZARUS) && destroy).then(|| Self::gyzarus_has_targets(&ctx))
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {

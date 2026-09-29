@@ -53,13 +53,6 @@ impl Gishki {
     fn hand_has(ctx: &Ctx, pred: impl Fn(u32) -> bool) -> bool {
         ctx.hand().iter().filter_map(|c| c.code).any(|c| pred(ctx.canonical(c)))
     }
-
-    fn cheap_gishki_in_hand(ctx: &Ctx) -> bool {
-        ctx.hand().iter().filter_map(|c| c.code).any(|c| {
-            let d = ctx.data(c);
-            d.in_set(SET_GISHKI) && d.is_monster() && !Self::ritual_monster(ctx, c) && d.level <= 4
-        })
-    }
 }
 
 impl Strategy for Gishki {
@@ -122,15 +115,17 @@ impl Strategy for Gishki {
                 return t.pick_targeting(i, vec![threat.at]);
             }
         }
-        // Soul Ogre: pay a small Gishki to shuffle their best face-up card away.
-        if Self::cheap_gishki_in_hand(&ctx) {
+        // Soul Ogre: discard a Gishki to shuffle their best face-up card away
+        // (it can only target theirs): a card for a card, and even a small
+        // monster is a blocker gone.  The discard is the cheapest Gishki; a
+        // Ritual Monster is a fair price too, Aquamirror brings it back.
+        if Self::hand_has(&ctx, |c| ctx.data(c).in_set(SET_GISHKI) && ctx.data(c).is_monster()) {
             let target = ctx
                 .monsters(ctx.opp)
                 .into_iter()
                 .chain(ctx.spell_traps(ctx.opp))
                 .filter(|c| c.position.face_up)
-                .max_by_key(|c| ctx.threat(c).max(if ctx.view_data(c).is_monster() { 0 } else { 1500 }))
-                .filter(|c| ctx.threat(c) >= 1500 || !ctx.view_data(c).is_monster());
+                .max_by_key(|c| ctx.threat(c).max(if ctx.view_data(c).is_monster() { 0 } else { 1500 }));
             if let Some(target) = target {
                 if let Some(i) = t.activate_from(SOUL_OGRE, Location::MonsterZone) {
                     return t.pick_targeting(i, vec![target.at]);
