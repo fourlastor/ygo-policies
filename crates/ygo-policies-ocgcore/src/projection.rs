@@ -11,7 +11,7 @@
 //! card leaves, zones keep their slots.
 
 use ygo_policies::cards::CardDatabase;
-use ygo_policies::model::{CardRef, CardView, ChainLink, Location, Observation, Phase, Position};
+use ygo_policies::model::{CardRef, CardView, ChainLink, Coin, CoinEffect, CoinToss, Location, Observation, Phase, Position};
 
 use crate::message::Message;
 use crate::query::Query;
@@ -30,6 +30,7 @@ pub struct Card {
     /// Declared an attack this turn.
     pub attacked: bool,
     pub materials: Vec<Card>,
+    pub coin_effect: Option<CoinEffect>,
 }
 
 impl Card {
@@ -47,6 +48,7 @@ impl Card {
         }
         if let Some(position) = query.position {
             self.position = position;
+            if !self.face_up() { self.coin_effect = None; }
         }
         if query.attack.is_some() {
             self.attack = query.attack;
@@ -106,6 +108,9 @@ pub struct Link {
     pub targets: Vec<Loc>,
     /// Still being activated (costs and targets not yet final).
     pub building: bool,
+    /// Public identities at targeting time, even after a target is banished.
+    pub target_codes: Vec<Option<u32>>,
+    pub negated: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -126,6 +131,8 @@ pub struct Projection {
     summoning_open: bool,
     /// Monsters the pending Battle Phase prompt lets attack.
     pub attackable: Option<Vec<Loc>>,
+    pub coin_toss: Option<CoinToss>,
+    resolving: Option<usize>,
 }
 
 impl Projection {
@@ -236,6 +243,8 @@ impl Projection {
         use Message::*;
         match message {
             Start { seat, observer, life_points, deck, extra } => {
+                self.coin_toss = None;
+                self.resolving = None;
                 if !observer {
                     self.seat = Some(*seat);
                 }
@@ -246,6 +255,7 @@ impl Projection {
                 }
             }
             NewTurn { player } => {
+                self.coin_toss = None;
                 self.turn += 1;
                 self.turn_player = Some(*player);
                 self.end_battle();
@@ -257,6 +267,7 @@ impl Projection {
                 }
             }
             NewPhase { phase } => {
+                self.coin_toss = None;
                 self.phase = *phase;
                 self.end_battle();
                 self.summoning.clear();
@@ -271,6 +282,11 @@ impl Projection {
                 let mut card = if from.is_none() { Card::default() } else { self.take(*from) };
                 if *code != 0 {
                     card.code = Some(*code);
+                }
+                // A control change preserves the registered coin; leaving the
+                // monster zone or being turned face-down resets it.
+                if from.location != location::MZONE || to.location != location::MZONE || to.position & position::FACEUP == 0 {
+                    card.coin_effect = None;
                 }
                 let leaves_field = from.location & (location::MZONE | location::SZONE) != 0
                     && (to.location != from.location || to.controller != from.controller);
@@ -293,6 +309,7 @@ impl Projection {
             PosChange { code, controller, location, sequence, current, .. } => {
                 if let Some(card) = self.card_mut(*controller, *location, *sequence as u32) {
                     card.position = *current as u32;
+                    if !card.face_up() { card.coin_effect = None; }
                     if *code != 0 {
                         card.code = Some(*code);
                     }
@@ -342,11 +359,14 @@ impl Projection {
                         card.position = loc.position;
                     }
                 }
-                self.chain.push(Link { code: *code, controller: *controller, source: *loc, targets: Vec::new(), building: true });
+                self.chain.push(Link { code: *code, controller: *controller, source: *loc, targets: Vec::new(), building: true,
+                    target_codes: Vec::new(), negated: false });
             }
             BecomeTarget { cards } => {
+                let codes: Vec<_> = cards.iter().map(|at| self.card_mut(at.controller, at.location, at.sequence).and_then(|c| c.code)).collect();
                 if let Some(link) = self.chain.last_mut().filter(|l| l.building) {
                     link.targets.extend(cards.iter().copied());
+                    link.target_codes.extend(codes);
                 }
             }
             Chained { .. } => {
@@ -354,10 +374,58 @@ impl Projection {
                     link.building = false;
                 }
             }
-            ChainSolved { link } => self.chain.truncate((*link as usize).saturating_sub(1)),
+            ChainSolving { link } => {
+                self.resolving = (*link as usize).checked_sub(1);
+                self.coin_toss = None;
+            }
+            ChainNegated { link } => {
+                if let Some(link) = self.chain.get_mut((*link as usize).wrapping_sub(1)) { link.negated = true; }
+            }
+            ChainSolved { link } => {
+                let index = (*link as usize).saturating_sub(1);
+                // Reversal changes a Lua flag label without updating its client
+                // hint. The stream does not prove whether immunity prevented it:
+                // discard the stale hint rather than claim a known flipped coin.
+                if let Some(link) = self.chain.get(index).filter(|l| l.code == 36690018 && !l.negated).cloned() {
+                    for at in link.targets {
+                        if let Some(card) = self.card_mut(at.controller, at.location, at.sequence) { card.coin_effect = None; }
+                    }
+                }
+                self.chain.truncate(index);
+                self.resolving = None;
+                self.coin_toss = None;
+            }
             ChainEnd => {
+                self.coin_toss = None;
+                self.resolving = None;
                 self.chain.clear();
                 self.summoning.clear();
+            }
+            TossCoin { player, results } => {
+                self.coin_toss = Some(CoinToss { player: *player, results: results.clone(),
+                    source: self.resolving.and_then(|i| self.chain.get(i)).map(|l| ChainLink {
+                        code: l.code, controller: l.controller, source: card_ref(l.source),
+                        targets: l.targets.iter().copied().map(card_ref).collect(),
+                    }) });
+            }
+            CardHint { loc, kind, description } if matches!(description, 62 | 63) => {
+                // Arcana.RegisterCoinResult publishes the effective coin. Arcana
+                // Call registers the donor's effect; its end-phase restoration
+                // publishes another hint outside that resolving chain link.
+                let copied = self.resolving.and_then(|i| self.chain.get(i))
+                    .filter(|l| l.code == 99189322 && !l.negated)
+                    .and_then(|l| l.target_codes.get(1).copied().flatten());
+                if let Some(card) = self.card_mut(loc.controller, loc.location, loc.sequence) {
+                    match kind {
+                        6 if loc.location == location::MZONE && card.face_up() => {
+                            card.coin_effect = copied.or(card.code).map(|code| CoinEffect {
+                                code, result: if *description == 62 { Coin::Heads } else { Coin::Tails },
+                            });
+                        }
+                        7 => card.coin_effect = None,
+                        _ => {}
+                    }
+                }
             }
             Damage { player, amount } | PayLpCost { player, amount } => {
                 if let Some(lp) = self.life_points.get_mut(*player as usize) {
@@ -497,6 +565,7 @@ impl Projection {
             event_cards: self.summoning.iter().map(|(at, code)| (card_ref(*at), (*code != 0).then_some(*code))).collect(),
             chain_known: true,
             can_attack_known: true,
+            coin_toss: self.coin_toss.clone(),
         }
     }
 
@@ -519,6 +588,7 @@ impl Projection {
             level: code.and(card.level).or_else(|| printed.map(|d| d.level)).unwrap_or(0),
             can_attack: self.can_attack(at, card),
             counters: card.counters,
+            coin_effect: card.coin_effect.filter(|_| at.location == Location::MonsterZone && card.face_up() && code.is_some()),
         }
     }
 

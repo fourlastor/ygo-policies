@@ -1,10 +1,17 @@
 [workspace]
 resolver = "2"
+default-members = [
+    "crates/ygo-policies",
+    "crates/ygo-policies-ocgcore",
+    "crates/ygo-policies-edopro",
+    "crates/ygo-policies-ffi",
+]
 members = [
     "crates/ygo-policies",
     "crates/ygo-policies-ocgcore",
     "crates/ygo-policies-edopro",
     "crates/ygo-policies-ffi",
+    "crates/ygo-policies-bench",
 ]
 
 [workspace.package]

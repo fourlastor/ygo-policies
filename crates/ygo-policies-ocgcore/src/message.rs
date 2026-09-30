@@ -121,6 +121,8 @@ pub enum Message {
     BattleResult { attacker: Loc, attack: u32, defense: u32, target: Option<Loc>, target_attack: u32, target_defense: u32 },
     AttackDisabled,
     DamageStepEnd,
+    TossCoin { player: u8, results: Vec<ygo_policies::model::Coin> },
+    CardHint { loc: Loc, kind: u8, description: u64 },
     Other(u8),
 }
 
@@ -438,6 +440,17 @@ pub fn parse(message: &[u8]) -> Result<Message> {
         }
         msg::ATTACK_DISABLED => AttackDisabled,
         msg::DAMAGE_STEP_END => DamageStepEnd,
+        msg::TOSS_COIN => {
+            let player = r.u8()?;
+            let count = r.u8()?;
+            let results = (0..count).map(|_| match r.u8()? {
+                0 => Ok(ygo_policies::model::Coin::Tails),
+                1 => Ok(ygo_policies::model::Coin::Heads),
+                _ => Err(error("invalid coin result")),
+            }).collect::<Result<_>>()?;
+            TossCoin { player, results }
+        }
+        msg::CARD_HINT => CardHint { loc: r.loc()?, kind: r.u8()?, description: r.u64()? },
         other => Other(other),
     })
 }

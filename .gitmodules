@@ -1,0 +1,9 @@
+[submodule "vendor/ocgcore"]
+	path = vendor/ocgcore
+	url = https://github.com/edo9300/ygopro-core.git
+[submodule "vendor/CardScripts"]
+	path = vendor/CardScripts
+	url = https://github.com/ProjectIgnis/CardScripts.git
+[submodule "vendor/BabelCdb"]
+	path = vendor/BabelCdb
+	url = https://github.com/ProjectIgnis/BabelCdb.git

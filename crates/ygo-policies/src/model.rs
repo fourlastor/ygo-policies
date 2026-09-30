@@ -67,6 +67,30 @@ pub struct CardView {
     pub level: u32,
     pub can_attack: bool,
     pub counters: u32,
+    /// Registered Arcana coin effect, learned from public client hints. Unknown
+    /// after a silent effect change; never inferred from the last random toss.
+    pub coin_effect: Option<CoinEffect>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub enum Coin { Tails, Heads }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct CoinEffect {
+    /// The monster supplying the effect (can differ after Arcana Call).
+    pub code: u32,
+    pub result: Coin,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct CoinToss {
+    pub player: u8,
+    pub results: Vec<Coin>,
+    /// The resolving chain link, if the toss belongs to one.
+    pub source: Option<ChainLink>,
 }
 
 impl CardView {
@@ -135,6 +159,9 @@ pub struct Observation {
     /// Whether `CardView::can_attack` is real.  When `false` it must be
     /// approximated (see `Ctx::can_attack`).
     pub can_attack_known: bool,
+    /// Most recent toss during the currently resolving effect, including the
+    /// provisional result that Second Coin Toss can redo.
+    pub coin_toss: Option<CoinToss>,
 }
 
 impl Observation {

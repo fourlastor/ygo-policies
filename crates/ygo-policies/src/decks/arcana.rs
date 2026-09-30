@@ -13,7 +13,7 @@
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, Location};
+use crate::model::{CardRef, CardView, Choice, ChoiceKind, Coin, Hint, Location, Member, Position};
 
 pub const DECK: &str = "Arcana Force Fortune";
 
@@ -42,6 +42,58 @@ const SKULL_DICE: u32 = 126218;
 pub struct Arcana;
 
 impl Arcana {
+    /// Value of the granted effect, separate from the monster's body. The
+    /// Fool wants tails; the Rulers have useful effects on both sides.
+    fn effect_value(ctx: &Ctx, code: u32, coin: Coin) -> Option<i32> {
+        let heads = coin == Coin::Heads;
+        Some(match ctx.canonical(code) {
+            THE_FOOL => if heads { -200 } else { 1200 },
+            THE_MAGICIAN => if heads { 900 } else { -300 },
+            THE_EMPRESS => if heads { 1000 } else { -1000 },
+            THE_EMPEROR => {
+                let count = ctx.monsters(ctx.me).iter().filter(|c| ctx.view_data(c).in_set(0x5)).count().max(1) as i32;
+                if heads { 500 * count } else { -500 * count }
+            }
+            THE_LOVERS => if heads { 350 } else { -350 },
+            THE_CHARIOT => if heads { 1200 } else { -2500 },
+            TEMPERANCE => if heads { 500 } else { -500 },
+            THE_MOON => if heads { 1200 } else { -2500 },
+            LIGHT_RULER => if heads { 900 } else { 500 },
+            DARK_RULER => if heads { 1800 } else { 600 },
+            _ => return None,
+        })
+    }
+
+    fn reversal_gain(ctx: &Ctx, card: &CardView) -> Option<i32> {
+        let effect = card.coin_effect?;
+        // Heads Fool negates our own targeting effects, including Reversal.
+        if effect.code == THE_FOOL && effect.result == Coin::Heads { return None; }
+        let opposite = if effect.result == Coin::Heads { Coin::Tails } else { Coin::Heads };
+        Some(Self::effect_value(ctx, effect.code, opposite)? - Self::effect_value(ctx, effect.code, effect.result)?)
+    }
+
+    fn call_gain(ctx: &Ctx, target: &CardView, donor: &CardView) -> Option<i32> {
+        let effect = target.coin_effect?;
+        if target.at == donor.at || donor.code.is_none() || !ctx.view_data(donor).in_set(0x5) { return None; }
+        if effect.code == THE_FOOL && effect.result == Coin::Heads { return None; }
+        if donor.at.location != Location::Graveyard
+            && !(donor.at.controller == ctx.opp && donor.at.location == Location::MonsterZone && donor.position.face_up) { return None; }
+        let new = Self::effect_value(ctx, donor.code?, effect.result)?;
+        // Copying tails Chariot hands our monster to the opponent immediately.
+        if donor.code == Some(THE_CHARIOT) && effect.result == Coin::Tails { return None; }
+        let old = Self::effect_value(ctx, effect.code, effect.result)?;
+        let removal = if donor.at.location == Location::MonsterZone { ctx.threat(donor) } else { 0 };
+        // Arcana Call lasts this turn only: require a substantial improvement
+        // or a free removal of an opposing Arcana monster.
+        Some(new - old + removal - 400)
+    }
+
+    fn call_plan(ctx: &Ctx) -> Option<(i32, CardRef, CardRef)> {
+        ctx.monsters(ctx.me).into_iter().filter(|c| c.position.face_up).flat_map(|target| {
+            ctx.obs.cards.iter().filter_map(move |donor| Self::call_gain(ctx, target, donor).map(|gain| (gain, target.at, donor.at)))
+        }).max_by_key(|p| p.0).filter(|p| p.0 > 0)
+    }
+
     /// Our battle, and by how much our monster falls short of winning it.
     fn shortfall(ctx: &Ctx) -> Option<i32> {
         if ctx.phase().map_or(false, |p| !p.is_battle()) {
@@ -104,7 +156,8 @@ impl Strategy for Arcana {
                 c.kind == ChoiceKind::ChangePosition
                     && c.at().and_then(|at| ctx.card(at)).map_or(false, |card| {
                         let data = ctx.view_data(card);
-                        !card.position.face_up && !ctx.is(card, THE_FOOL) && data.attack > 0 && (opp_empty || data.attack > threat)
+                        !card.position.face_up && !ctx.is(card, THE_FOOL) && self.allow_reposition(t, card)
+                            && data.attack > 0 && (opp_empty || data.attack > threat)
                     })
             });
             if let Some(i) = flip {
@@ -129,8 +182,17 @@ impl Strategy for Arcana {
             // is stuck in Attack Position with 0 ATK.
             (ChoiceKind::SetMonster, THE_FOOL) => Some(1400.0),
             (ChoiceKind::NormalSummon, THE_FOOL) => None,
+            // Tails Chariot defects immediately. Setting it avoids the summon
+            // trigger when it is flipped by an attack; retry support makes a
+            // face-up summon a tolerable risk (75% heads instead of 50%).
+            (ChoiceKind::NormalSummon, THE_CHARIOT) if !ctx.face_up_on_field(ctx.me, SECOND_COIN_TOSS) => None,
+            (ChoiceKind::SetMonster, THE_CHARIOT) => Some(1200.0),
             _ => return None,
         })
+    }
+
+    fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
+        card.position.face_up || !t.ctx.is(card, THE_CHARIOT) || t.ctx.face_up_on_field(t.ctx.me, SECOND_COIN_TOSS)
     }
 
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
@@ -168,14 +230,50 @@ impl Strategy for Arcana {
                 Some(gap) if (0..300).contains(&gap) => Response::new(40.0),
                 _ => Response::no(),
             },
-            // Coin knowledge is not tracked: the redo and the reversals stay unused.
-            REVERSAL_OF_FATE | ARCANA_CALL => Response::no(),
+            REVERSAL_OF_FATE => ctx.monsters(ctx.me).iter()
+                .filter_map(|c| Self::reversal_gain(&ctx, c).map(|gain| (gain, c.at)))
+                .filter(|(gain, _)| *gain > 0).max_by_key(|p| p.0)
+                .map_or_else(Response::no, |(gain, at)| Response::targeting(30.0 + gain as f64 / 100.0, vec![at])),
+            ARCANA_CALL => Self::call_plan(&ctx).map_or_else(Response::no, |(gain, _, _)| Response::new(25.0 + gain as f64 / 100.0)),
             _ => return None,
         })
     }
 
+    fn yes_no(&self, t: &Turn) -> Option<bool> {
+        if t.decision.subject.map(|c| t.ctx.canonical(c)) != Some(SECOND_COIN_TOSS) { return None; }
+        let toss = t.ctx.obs.coin_toss.as_ref();
+        Some(toss.and_then(|toss| {
+            let source = toss.source.as_ref()?;
+            if toss.player != t.ctx.me || source.controller != t.ctx.me || toss.results.len() != 1 { return None; }
+            let result = toss.results[0];
+            let other = if result == Coin::Heads { Coin::Tails } else { Coin::Heads };
+            Some(Self::effect_value(&t.ctx, source.code, other)? > Self::effect_value(&t.ctx, source.code, result)?)
+        }).unwrap_or(false))
+    }
+
+    fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
+        let ctx = t.ctx;
+        match t.memory.last_activated.map(|code| ctx.canonical(code)) {
+            Some(ARCANA_CALL) if t.decision.hint == Hint::FaceUp => {
+                let target = ctx.card(member.at)?;
+                Some(ctx.obs.cards.iter().filter_map(|donor| Self::call_gain(&ctx, target, donor)).max().unwrap_or(-10000) as f64)
+            }
+            Some(ARCANA_CALL) if t.decision.hint == Hint::Banish => {
+                let at = ctx.obs.chain.last()?.targets.first()?;
+                Some(Self::call_gain(&ctx, ctx.card(*at)?, ctx.card(member.at)?).unwrap_or(-10000) as f64)
+            }
+            // Moon's forced handover should cost our least valuable monster.
+            Some(THE_MOON) if t.decision.hint == Hint::Control => Some(-value(self, &ctx, member.code, ctx.card(member.at)) as f64),
+            _ => None,
+        }
+    }
+
+    fn position(&self, t: &Turn, code: u32) -> Option<Position> {
+        matches!(t.ctx.canonical(code), THE_FOOL | 97452818).then_some(Position::FACE_UP_DEFENSE)
+    }
+
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
         let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap() && !matches!(code, REVERSAL_OF_FATE | ARCANA_CALL))
+        Some(t.ctx.data(code).is_trap())
     }
 }

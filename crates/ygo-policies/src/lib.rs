@@ -113,6 +113,7 @@ mod tests {
             event_cards: Vec::new(),
             chain_known: true,
             can_attack_known: true,
+            coin_toss: None,
         }
     }
 
@@ -151,6 +152,7 @@ mod tests {
             level: 4,
             can_attack: true,
             counters: 0,
+            coin_effect: None,
         }
     }
 

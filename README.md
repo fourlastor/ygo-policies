@@ -38,7 +38,7 @@ EDOPro already filtered pass through unchanged.
 | `ojama` | Ojama Brigade | Ojamas into Ojama Delta Hurricane!! and Ojama King; Armed Dragon LV3 to LV7; XYZ-Dragon Cannon |
 | `watt` | Watt Grid | small Thunders that attack directly (Wattgiraffe, Wattkey) and punish being destroyed |
 | `pyramid` | Pyramid of Light | Sphinxes through Pyramid of Light; Guardian Sphinx's Flip Summon bounce, Des Lacooda's draw |
-| `arcana` | Arcana Force Fortune | coin-toss Fairies; The Fool as a battle-proof wall, Solidarity, the EX Rulers |
+| `arcana` | Arcana Force Fortune | observed coin results, selective retries, Reversal of Fate / Arcana Call, safe Chariot Sets, Fairy beatdown |
 | `toon` | Toon Kingdom | Toon World; Toons attack directly; Tribute Toons from the hand, Scapegoat's sheep as fodder |
 | `gravekeeper` | Gravekeeper's Tomb | Necrovalley; Spy and Guard Flip Summons, Descendant's removal |
 | `karakuri` | Karakuri Workshop | Machines that must attack; position changes into draws and removal; Shogun Synchros |
@@ -70,9 +70,12 @@ deck by measured strength.
   `include/ygo_policies.h`.
 - `crates/ygo-policies-edopro`: `edopro-bot`, a native EDOPro network client
   that joins a room as a player.
+- `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
+  baseline/candidate comparisons, round robins, and generated tier lists.
 
-Nothing here links OCGCore. Card data comes from any `cards.cdb` (EDOPro ships
-one).
+The policy libraries do not link OCGCore. Card data comes from any `cards.cdb`
+(EDOPro ships one). The optional benchmark crate builds the pinned engine and
+Lua from `vendor/`; it is excluded from the workspace's default build members.
 
 ## Using it
 
@@ -152,3 +155,24 @@ cargo test
 
 Win-rate benchmarks against the WC2011 AI live in the host repository that
 embeds this one.
+
+## Native benchmarks and rankings
+
+```bash
+git submodule update --init --recursive
+cargo build --release -p ygo-policies-ffi -p ygo-policies-bench
+
+# Specific matchups, using this checkout's deck lists and pinned engine/data.
+target/release/policy-bench matchup --policies arcana --opponents blackwing,monarch \
+  --games 256 --output arcana-matchups.jsonl
+
+# All policies, alternating seats; produces rankings, tiers and a matchup matrix.
+target/release/policy-bench round-robin --policies all --games 256 \
+  --output tournament.jsonl --markdown DECK-TIER-LIST.md
+```
+
+See the [benchmark crate guide](crates/ygo-policies-bench/README.md) for paired
+comparisons, custom pools, saved-run ranking and reproducibility details.
+[Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
+held-out pairs against the existing 13 policies. Run all tests, including the
+benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

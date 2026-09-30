@@ -118,6 +118,7 @@ pub fn reposition<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
             return false;
         }
         let Some(card) = c.at().and_then(|at| ctx.card(at)) else { return false };
+        if !s.allow_reposition(t, card) { return false; }
         let data = ctx.view_data(card);
         if ctx.main1() && can_battle && !card.position.attack {
             // Face-down Flip monsters flip up on their own terms.

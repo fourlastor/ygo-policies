@@ -276,6 +276,10 @@ pub trait Strategy: Send {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         None
     }
+    /// Veto a position change whose triggered effect makes it undesirable.
+    fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
+        true
+    }
     fn wants_battle(&self, t: &Turn) -> Option<bool> {
         None
     }
