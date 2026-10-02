@@ -52,7 +52,8 @@ EDOPro already filtered pass through unchanged.
 | `x-saber` | X-Sabers | XX-Saber Faultroll swarm into X-Saber Synchros |
 | `draconic-might` | Draconic Might | Red-Eyes Darkness Metal Dragon every turn, guarded by Prime Material Dragon, Jinzo and Horus LV8; Armed Dragon and Horus LV lines |
 
-Each policy is written for its own deck list in `decks/`.  Fifteen of them
+Each policy is written for its own deck list in `decks/`, and every list is
+legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
 (`ojama` to `x-saber`) were added as opponents for *Sands of the Duel* (easy,
 mid and hard), and `draconic-might` pilots a player's own deck; its Red-Eyes
 Darkness Metal Dragon needs the card's script from ProjectIgnis' `pre-errata/`

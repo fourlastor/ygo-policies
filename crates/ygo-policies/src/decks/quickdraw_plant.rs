@@ -43,7 +43,6 @@ const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SCRAP_DRAGON: u32 = 76774528;
 const BRIONAC: u32 = 50321796;
 const TRISHULA: u32 = 52687916;
-const GOYO_GUARDIAN: u32 = 7391448;
 const FORMULA_SYNCHRON: u32 = 50091196;
 const SHOOTING_STAR_DRAGON: u32 = 24696097;
 const JUNK_DESTROYER: u32 = 74860293;
@@ -99,7 +98,6 @@ impl Strategy for QuickdrawPlant {
         let their_cards = (ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len()) as i32;
         Some(match code {
             SHOOTING_STAR_DRAGON | TRISHULA => 3300,
-            GOYO_GUARDIAN => 2900,
             JUNK_DESTROYER => 2600 + 200 * their_cards.min(3),
             STARDUST_DRAGON | SCRAP_DRAGON | COLOSSAL_FIGHTER | TYTANNIAL => 2800,
             BRIONAC => 2300 + 100 * their_cards.min(3),

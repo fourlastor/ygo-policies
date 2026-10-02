@@ -2,7 +2,7 @@
 //!
 //! Emergency Teleport (a Quick-Play) Special Summons Krebons or Psychic
 //! Commander from the Deck; beside any monster they are a Synchro Summon, so
-//! the Tuner is picked for the Level it reaches (Stardust, Goyo, Scrap,
+//! the Tuner is picked for the Level it reaches (Stardust, Scrap,
 //! Trishula...).  The DARK half fills the Graveyard for Dark Armed Dragon,
 //! which needs exactly three DARK monsters there and then banishes them one
 //! at a time to destroy a card each: Armageddon Knight and Dark Grepher send
@@ -40,9 +40,7 @@ const STARDUST_DRAGON: u32 = 44508094;
 const BRIONAC: u32 = 50321796;
 const TRISHULA: u32 = 52687916;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
-const GOYO_GUARDIAN: u32 = 7391448;
 const COLOSSAL_FIGHTER: u32 = 23693634;
-const DARK_STRIKE_FIGHTER: u32 = 32646477;
 const MIST_WURM: u32 = 27315304;
 const SCRAP_DRAGON: u32 = 76774528;
 const RED_DRAGON_ARCHFIEND: u32 = 70902743;
@@ -87,10 +85,9 @@ impl Strategy for TeleDad {
         let their_cards = (ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len()) as i32;
         Some(match code {
             TRISHULA => 3300,
-            GOYO_GUARDIAN => 2900,
             DARK_ARMED_DRAGON | STARDUST_DRAGON | SCRAP_DRAGON | COLOSSAL_FIGHTER => 2800,
             THOUGHT_RULER => 2700,
-            DARK_STRIKE_FIGHTER | MIST_WURM => 2600,
+            MIST_WURM => 2600,
             BRIONAC => 2300 + 100 * their_cards.min(3),
             MAGICAL_ANDROID | CAIUS => 2400,
             GORZ => 2300,

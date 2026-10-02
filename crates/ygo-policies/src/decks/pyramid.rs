@@ -1,9 +1,8 @@
 //! "Pyramid of Light": the Sphinxes of the desert tomb.
 //!
 //! Pyramid of Light (a Continuous Trap) lets Andro Sphinx and Sphinx Teleia
-//! be Special Summoned from the hand for 500 LP each; Temple of the Kings
-//! activates it the turn it is Set.  If both Sphinxes are destroyed at once,
-//! Theinen the Great Sphinx takes their place.
+//! be Special Summoned from the hand for 500 LP each.  If both Sphinxes are
+//! destroyed at once, Theinen the Great Sphinx takes their place.
 //!
 //! The rest of the deck lives face-down: Guardian Sphinx returns every
 //! monster the opponent controls to the hand whenever it is Flip Summoned
@@ -33,7 +32,6 @@ const DES_LACOODA: u32 = 2326738;
 const SAND_MOTH: u32 = 73648243;
 const SPIRIT_REAPER: u32 = 23205979;
 const PYRAMID_ENERGY: u32 = 76754619;
-const TEMPLE_OF_THE_KINGS: u32 = 29762407;
 const CALL_OF_THE_MUMMY: u32 = 4861205;
 const PYRAMID_OF_LIGHT: u32 = 53569894;
 const PHARAOHS_TREASURE: u32 = 63571750;
@@ -94,7 +92,7 @@ impl Strategy for Pyramid {
             GUARDIAN_SPHINX => 2400,
             HIERACOSPHINX => 2200,
             END_OF_ANUBIS => 2000,
-            TEMPLE_OF_THE_KINGS | CURSE_OF_ANUBIS => 1600,
+            CURSE_OF_ANUBIS => 1600,
             REGENERATING_MUMMY | CRIOSPHINX => 1500,
             DES_LACOODA | SPIRIT_REAPER => 1400,
             SAND_MOTH | PYRAMID_TURTLE | CALL_OF_THE_MUMMY => 1300,
@@ -106,19 +104,10 @@ impl Strategy for Pyramid {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
-        // The Pyramid first: Temple of the Kings lets it go up this turn.
+        // The Pyramid first, once it has been Set for a turn.
         if !Self::pyramid_up(&ctx) {
             if let Some(i) = t.activate_from(PYRAMID_OF_LIGHT, Location::SpellTrapZone) {
                 return t.pick(i);
-            }
-            if ctx.in_hand(PYRAMID_OF_LIGHT) {
-                if !ctx.face_up_on_field(ctx.me, TEMPLE_OF_THE_KINGS) {
-                    if let Some(i) = t.activate_from(TEMPLE_OF_THE_KINGS, Location::Hand) {
-                        return t.pick(i);
-                    }
-                } else if let Some(i) = t.find(ChoiceKind::SetSpellTrap, Some(PYRAMID_OF_LIGHT), None) {
-                    return t.pick(i);
-                }
             }
         }
         // Guardian Sphinx's bounce and Des Lacooda's draw.

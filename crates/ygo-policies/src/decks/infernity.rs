@@ -32,7 +32,6 @@ const DUST_TORNADO: u32 = 60082869;
 const DIVINE_WRATH: u32 = 49010598;
 const DOOM_DRAGON: u32 = 72896720;
 const CATASTOR: u32 = 26593852;
-const GOYO_GUARDIAN: u32 = 7391448;
 const SCRAP_DRAGON: u32 = 76774528;
 const STARDUST: u32 = 44508094;
 const TRISHULA: u32 = 52687916;
@@ -72,7 +71,7 @@ impl Strategy for Infernity {
             DOOM_DRAGON => 3300,
             TRISHULA => 3200,
             MIST_WURM | SCRAP_DRAGON => 2900,
-            STARDUST | GOYO_GUARDIAN => 2700,
+            STARDUST => 2700,
             BRIONAC | BLACK_ROSE => 2400,
             CATASTOR => 2300,
             LAUNCHER => 2100,

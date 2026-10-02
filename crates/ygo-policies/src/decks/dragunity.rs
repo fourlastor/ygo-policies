@@ -9,7 +9,8 @@
 //! Trap Zone.  Dragon Ravine and Tribus stock the Graveyard (Phalanx first).
 //!
 //! Synchros: Vajrayana (6), Barcha (8, equips every Dragunity Dragon),
-//! Trishula (9, banishes 3), Mist Wurm (9, bounces 3), Scrap Dragon, Goyo.
+//! Trishula (9, banishes 3), Mist Wurm (9, bounces 3), Scrap Dragon,
+//! Gaia Knight.
 
 use crate::agent::{Response, Strategy, Turn};
 use crate::ctx::Ctx;
@@ -35,7 +36,6 @@ const CARDS_OF_CONSONANCE: u32 = 39701395;
 const TERRAFORMING: u32 = 73628505;
 const DRAGON_RAVINE: u32 = 62265044;
 const CATASTOR: u32 = 26593852;
-const GOYO: u32 = 7391448;
 const SCRAP_DRAGON: u32 = 76774528;
 const TRIDENT_DRAGION: u32 = 39402797;
 const BARCHA: u32 = 25682811;
@@ -88,7 +88,6 @@ impl Dragunity {
             MIST_WURM => 2500.0 + 200.0 * their_cards.min(3.0),
             BARCHA => 2000.0 + 300.0 * equips_in_graveyard + 400.0,
             SCRAP_DRAGON => 2800.0,
-            GOYO => 2700.0,
             TRIDENT_DRAGION => 2600.0,
             BRIONAC => 2300.0 + 100.0 * their_cards.min(3.0),
             CATASTOR => 2200.0,
@@ -101,7 +100,7 @@ impl Dragunity {
 impl Strategy for Dragunity {
     fn value(&self, ctx: &Ctx, code: u32) -> Option<i32> {
         Some(match code {
-            TRISHULA | SCRAP_DRAGON | GOYO | TRIDENT_DRAGION | MIST_WURM | BARCHA | BRIONAC | CATASTOR | VAJRAYANA => {
+            TRISHULA | SCRAP_DRAGON | TRIDENT_DRAGION | MIST_WURM | BARCHA | BRIONAC | CATASTOR | VAJRAYANA => {
                 Self::synchro_score(ctx, code) as i32
             }
             LIGHT_AND_DARKNESS => 2800,

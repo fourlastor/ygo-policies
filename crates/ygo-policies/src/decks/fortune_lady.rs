@@ -26,7 +26,6 @@ const WATER: u32 = 29088922;
 const DARK: u32 = 55586621;
 const EARTH: u32 = 82971335;
 const SUMMONER_MONK: u32 = 423585;
-const MAGICIAN_OF_FAITH: u32 = 31560081;
 const FORTUNES_FUTURE: u32 = 68663748;
 const MAGICAL_STONE_EXCAVATION: u32 = 98494543;
 const INHERITED_FORTUNE: u32 = 20057949;
@@ -82,7 +81,7 @@ impl Strategy for FortuneLady {
             WATER => 1700,
             FIRE => 1600,
             LIGHT | SUMMONER_MONK => 1500,
-            MAGICIAN_OF_FAITH | SLIP_OF_FORTUNE => 1300,
+            SLIP_OF_FORTUNE => 1300,
             INHERITED_FORTUNE => 1200,
             OMINOUS_FORTUNETELLING => 1100,
             MAGICAL_STONE_EXCAVATION => 900,
@@ -134,7 +133,6 @@ impl Strategy for FortuneLady {
             (ChoiceKind::NormalSummon, WIND | WATER) if Self::arrival_attack(&ctx, code) >= threat => Some(1300.0),
             // Monk goes to Defense anyway; its effect makes Water from the Deck.
             (ChoiceKind::NormalSummon, SUMMONER_MONK) if ctx.hand().iter().any(|c| ctx.view_data(c).is_spell()) => Some(1600.0),
-            (ChoiceKind::SetMonster, MAGICIAN_OF_FAITH) if ctx.graveyard(ctx.me).iter().any(|c| ctx.view_data(c).is_spell()) => Some(1500.0),
             // A face-down Fortune Lady does not grow; set only as a last wall.
             (ChoiceKind::SetMonster, LIGHT | FIRE | WIND | WATER) if !ctx.monsters(ctx.me).is_empty() => None,
             (ChoiceKind::NormalSummon, LIGHT | FIRE) => None,

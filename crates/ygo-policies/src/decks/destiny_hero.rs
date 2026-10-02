@@ -6,7 +6,7 @@
 //! Malicious banishes itself from the Graveyard for another from the Deck,
 //! Over Destiny and D - Spirit summon small ones, Destiny Signal answers a
 //! battle loss.  Destiny Draw discards a Destiny HERO for two cards, and the
-//! discard is chosen for the Graveyard (Malicious, Disk Commander, Dasher).
+//! discard is chosen for the Graveyard (Malicious, Dasher).
 //! Diamond Dude excavates Normal Spells to use from the Graveyard next turn,
 //! Plasma steals a monster and negates the others, Doom Lord banishes one
 //! for two turns.  D - Counter and D - Shield answer attacks on the HEROes.
@@ -19,7 +19,6 @@ pub const DECK: &str = "Destiny HEROes";
 
 const MALICIOUS: u32 = 9411399;
 const DIAMOND_DUDE: u32 = 13093792;
-const DISK_COMMANDER: u32 = 56570271;
 const DASHER: u32 = 81866673;
 const DOOM_LORD: u32 = 41613948;
 const DUNKER: u32 = 93431862;
@@ -60,7 +59,6 @@ impl DestinyHero {
     fn discard_priority(ctx: &Ctx, code: u32) -> i32 {
         match code {
             MALICIOUS => 300,
-            DISK_COMMANDER => 250,
             DASHER => 200,
             DOUBLE_DUDE | FEAR_MONGER => 100,
             DOGMA | PLASMA if ctx.monsters(ctx.me).len() + 2 < 3 => 50,
@@ -84,7 +82,7 @@ impl Strategy for DestinyHero {
             DOUBLE_DUDE | DESTINY_DRAW => 1800,
             D_COUNTER => 1700,
             DOOM_LORD | MALICIOUS | OVER_DESTINY => 1500,
-            DISK_COMMANDER | DUNKER | CLOCK_TOWER_PRISON => 1400,
+            DUNKER | CLOCK_TOWER_PRISON => 1400,
             CAPTAIN_TENACIOUS | FEAR_MONGER | DEFENDER | D_SPIRIT | D_SHIELD | DESTINY_SIGNAL => 1300,
             BLADE_MASTER | D_FORMATION | D_CHAIN => 1200,
             DREAD_SERVANT => 800,
@@ -176,7 +174,7 @@ impl Strategy for DestinyHero {
             (ChoiceKind::NormalSummon | ChoiceKind::SetMonster, _) if Self::finisher_in_hand(&ctx) && Self::bodies_missing(&ctx) == 1 && ctx.data(code).level <= 4 => {
                 Some(1900.0)
             }
-            (ChoiceKind::NormalSummon, DISK_COMMANDER | BLADE_MASTER | DREAD_SERVANT) => None,
+            (ChoiceKind::NormalSummon, BLADE_MASTER | DREAD_SERVANT) => None,
             _ => return None,
         })
     }
