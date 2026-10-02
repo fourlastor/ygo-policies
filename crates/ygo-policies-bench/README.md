@@ -47,6 +47,21 @@ against `--reference existing`; a policy is unrated until every required referen
 opponent has been played. A small sample still produces a noisy ranking—use the
 intervals and counts. `--reference` also accepts an explicit pool or `all`.
 
+### One player first, uneven Life Points
+
+A game can give one side the first turn every game and different starting Life
+Points, as *Sands of the Duel* does (the player always goes first at 8000; the
+opponent starts at 4000, 6000 or 8000):
+
+```bash
+target/release/policy-bench matchup --policies blackwing --opponents all --games 1024 \
+  --first blackwing --lp 8000,4000 --output blackwing-first-4000.jsonl
+```
+
+`--first POLICY` seats that policy first in every game of its pairs (every pair
+must include it); `--lp FIRST,SECOND` sets the starting Life Points of the
+first and second player. Without them seats alternate and both start at 8000.
+
 ## Paired before/after comparisons
 
 Preserve the baseline library before changing a policy, then rebuild the candidate:
@@ -72,8 +87,9 @@ compare multiple pilots. A comparison cannot be used as a tournament ranking.
 
 ## Protocol and artifacts
 
-- Master Rule 1, 8000 LP, five-card opening hands, one draw per turn (including
-  the first turn). `--games` must be positive and even; seats alternate.
+- Master Rule 1, 8000 LP (or `--lp`), five-card opening hands, one draw per turn
+  (including the first turn). `--games` must be positive and even; seats
+  alternate unless `--first` fixes them.
 - The host shuffles both main decks with a specified SplitMix64/Fisher–Yates
   algorithm. Seeds depend on the pair's names and `--seed`, not scheduling or
   the order/size of the requested pool. Filtering a tournament preserves those
@@ -93,8 +109,10 @@ compare multiple pilots. A comparison cannot be used as a tournament ranking.
   truncated. `NAME.metadata.json` stores the resolved deck/data/library fingerprints,
   source revisions, dirty state, protocol, and planned sample count.
   `NAME.summary.json` contains statistics. Fingerprints use FNV-1a for reproducibility
-  checks, not security. `--trace true` includes every decision and chosen response
-  for debugging and can produce large files.
+  checks, not security. Each game records its number of `turns` and the `reason`
+  it ended (1: Life Points, 2: deck-out, 16 and up: a card's own win condition).
+  `--trace true` includes every decision and chosen response for debugging and
+  can produce large files.
 - `--markdown PATH` writes a standalone ranking and matrix from a tournament or
   matchup run. Historical editorial commentary is not carried into generated data.
 

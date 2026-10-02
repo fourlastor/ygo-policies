@@ -157,10 +157,11 @@ pub fn set_spell_trap<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
 }
 
 /// Default battle resolution on public numbers, with an optional hand trick.
+/// Card facts adjust it ([`crate::knowledge`]): monsters battle cannot
+/// destroy, Damage Step ATK changes, the Karakuri switching position when
+/// attacked, D.D. Warrior Lady taking the attacker with it.
 pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick: i32) -> Outcome {
-    let atk = attacker.attack;
-    let stat = ctx.battle_stat(target);
-    let defending = target.position.face_up && !target.position.attack;
+    let atk = attacker.attack + ctx.facts(attacker).attack_bonus;
     if !target.position.face_up && !target.known() {
         // Unknown face-down monster: only strong attackers risk it.
         if atk >= 1900 {
@@ -171,20 +172,42 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
         }
         return Outcome::Lose;
     }
-    if atk > stat {
-        return Outcome::Win { trick: false };
-    }
-    if atk == stat && !defending {
-        return Outcome::Trade;
-    }
-    if trick > 0 && atk + trick > stat {
-        return Outcome::Win { trick: true };
-    }
-    if defending {
+    let (stat, defending) = ctx.attacked_stance(target);
+    let outcome = if ctx.battle_proof(target) {
+        // Nothing of theirs is destroyed; an Attack Position wall at least as
+        // strong still destroys our attacker.
+        if !defending && atk <= stat { Outcome::Lose } else { Outcome::Bounce }
+    } else if atk > stat {
+        Outcome::Win { trick: false }
+    } else if atk == stat && !defending {
+        Outcome::Trade
+    } else if trick > 0 && atk + trick > stat {
+        Outcome::Win { trick: true }
+    } else if defending {
         Outcome::Bounce
     } else {
         Outcome::Lose
+    };
+    // D.D. Warrior Lady banishes the monster it battles, and itself.
+    match outcome {
+        Outcome::Win { .. } | Outcome::Bounce if target.position.face_up && ctx.facts(target).banishes_in_battle => {
+            Outcome::Trade
+        }
+        Outcome::Lose | Outcome::Bounce if target.position.face_up && ctx.facts(attacker).banishes_in_battle => {
+            Outcome::Trade
+        }
+        other => other,
     }
+}
+
+/// Battle damage an attack on a monster battle cannot destroy still deals:
+/// worth swinging at an Attack Position wall with less ATK.
+fn damage_through_wall(ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
+    let (stat, defending) = ctx.attacked_stance(target);
+    if !ctx.battle_proof(target) || defending || ctx.facts(target).no_battle_damage {
+        return 0;
+    }
+    (attacker.attack + ctx.facts(attacker).attack_bonus - stat).max(0)
 }
 
 /// Worth of the best Synchro Monster of this Level in our Extra Deck.
@@ -297,7 +320,11 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
             let outcome = s
                 .attack_outcome(&ctx, attacker, target)
                 .unwrap_or_else(|| default_outcome(&ctx, attacker, target, trick));
-            let gain = ctx.threat(target) as f64;
+            // A monster that replaces itself when battle destroys it is worth
+            // less to kill; one whose controller can negate the attack is
+            // still worth a try, after the others.
+            let negatable = if ctx.attack_negatable(target) { 600 } else { 0 };
+            let gain = (ctx.threat(target) - ctx.facts(target).battle_payoff - negatable) as f64;
             let score = match outcome {
                 // Prefer the weakest attacker that still wins; keep tricks.
                 Outcome::Win { trick } => {
@@ -309,6 +336,10 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
                         continue;
                     }
                     200.0 + gain - mine
+                }
+                // A wall battle cannot destroy still takes damage in Attack Position.
+                Outcome::Bounce if damage_through_wall(&ctx, attacker, target) > 0 => {
+                    100.0 + damage_through_wall(&ctx, attacker, target) as f64 / 10.0
                 }
                 _ => continue,
             };

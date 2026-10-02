@@ -6,12 +6,15 @@
 //! * [`agent`]: the [`Policy`] trait, the per-deck [`Strategy`] hooks and the
 //!   shared decision loop ([`Agent`]).
 //! * [`tactics`] / [`staples`]: deck-independent play and shared staple cards.
+//! * [`knowledge`]: facts about particular cards that every deck plays around
+//!   (what battle cannot destroy, what effects cannot reach).
 //! * [`decks`]: one strategy per deck; [`registry`] builds them by id.
 
 pub mod agent;
 pub mod cards;
 pub mod ctx;
 pub mod decks;
+pub mod knowledge;
 pub mod model;
 pub mod staples;
 pub mod tactics;
@@ -424,5 +427,63 @@ mod tests {
         ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), crate::registry::POLICIES.len());
+    }
+
+    fn monster(controller: u8, sequence: u32, code: Option<u32>, position: Position, attack: i32, defense: i32) -> CardView {
+        CardView {
+            at: CardRef { controller, location: Location::MonsterZone, sequence },
+            code,
+            position,
+            attack,
+            defense,
+            level: 1,
+            can_attack: true,
+            counters: 0,
+            coin_effect: None,
+        }
+    }
+
+    /// Card facts come from the code the seat can see: the opponent's
+    /// face-down monster is just an unknown monster, whatever it really is.
+    #[test]
+    fn face_down_cards_reveal_no_facts() {
+        use crate::knowledge::{Facts, THE_FOOL};
+        use crate::agent::Outcome;
+        use crate::tactics::default_outcome;
+        let db = MemoryCards::default();
+        let mut obs = observation();
+        let ours = monster(0, 0, Some(1), Position { face_up: true, attack: true }, 1800, 1000);
+        // The Fool, Set: the redacted view has no code.
+        let hidden = monster(1, 0, None, Position { face_up: false, attack: false }, 0, 0);
+        obs.cards = vec![ours.clone(), hidden.clone()];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert_eq!(ctx.facts(&hidden), Facts::NONE);
+        assert!(!ctx.battle_proof(&hidden));
+        // An unknown face-down monster: an 1800 attacker does not risk it.
+        assert_eq!(default_outcome(&ctx, &ours, &hidden, 0), Outcome::Lose);
+        // Flipped face-up, it is The Fool: battle cannot destroy it.
+        let fool = monster(1, 0, Some(THE_FOOL), Position { face_up: true, attack: false }, 0, 0);
+        obs.cards = vec![ours.clone(), fool.clone()];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(ctx.battle_proof(&fool));
+        assert_eq!(default_outcome(&ctx, &ours, &fool, 0), Outcome::Bounce);
+    }
+
+    /// The Fool's coin decides whose targeting effects it negates; until the
+    /// coin is known, nobody's are assumed to resolve.
+    #[test]
+    fn the_fool_coin_decides_who_cannot_target_it() {
+        use crate::knowledge::THE_FOOL;
+        let db = MemoryCards::default();
+        let obs = observation();
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        let mut fool = monster(1, 0, Some(THE_FOOL), Position { face_up: true, attack: true }, 0, 0);
+        assert!(!ctx.targetable(&fool, true));
+        fool.coin_effect = Some(CoinEffect { code: THE_FOOL, result: Coin::Tails });
+        assert!(!ctx.targetable(&fool, false));
+        assert!(ctx.targetable_by(&fool, 1, false));
+        fool.coin_effect = Some(CoinEffect { code: THE_FOOL, result: Coin::Heads });
+        assert!(ctx.targetable(&fool, true));
+        assert!(!ctx.targetable_by(&fool, 1, false));
     }
 }

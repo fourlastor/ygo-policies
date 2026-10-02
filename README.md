@@ -63,7 +63,11 @@ deck by measured strength.
 ## Layout
 
 - `crates/ygo-policies`: engine-agnostic model (`Observation`, `Decision`), the
-  `Policy` trait, the shared decision loop, and one strategy per deck.
+  `Policy` trait, the shared decision loop, and one strategy per deck. Shared
+  card knowledge (`knowledge.rs`) tells every deck what printed stats do not:
+  what battle cannot destroy, what effects cannot target, which face-up cards
+  a deck runs on. It is looked up only by the code the seat can see, so the
+  opponent's face-down cards stay unknown.
 - `crates/ygo-policies-ocgcore`: the OCGCore front end. It contains the message
   parser, redaction, the event-driven projection, and the decision/response
   encoding, plus `Seat`, the thing you feed. `SqliteCards` reads `cards.cdb`.

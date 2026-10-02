@@ -132,6 +132,12 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     if let Some(i) = clear_backrow(s, t) {
         return Some(i);
     }
+    // 1b. A face-up Spell/Trap their deck runs on (Toon World, Necrovalley...).
+    if let Some(key) = key_spell_traps(&ctx).first() {
+        if let Some(i) = usable(t, MYSTICAL_SPACE_TYPHOON) {
+            return t.pick_targeting(i, vec![key.at]);
+        }
+    }
 
     // 2. Wipe a board we cannot beat.
     if !opp_monsters.is_empty() {
@@ -157,6 +163,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
                 let wall = opp_monsters
                     .iter()
                     .filter(|c| c.position.face_up && c.position.attack && c.attack >= best && c.defense < best)
+                    .filter(|c| ctx.targetable(c, true))
                     .max_by_key(|c| c.attack);
                 if let Some(w) = wall {
                     return t.pick_targeting(i, vec![w.at]);
@@ -166,7 +173,12 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     }
 
     // 2b. Synchro removal: always one of their cards, paid with one of ours.
-    let their_best = ctx.monsters(opp).into_iter().chain(ctx.spell_traps(opp)).max_by_key(|c| ctx.threat(c));
+    let their_best = ctx
+        .monsters(opp)
+        .into_iter()
+        .chain(ctx.spell_traps(opp))
+        .filter(|c| ctx.targetable(c, false))
+        .max_by_key(|c| ctx.threat(c));
     if let Some(target) = their_best {
         let threat = ctx.threat(target);
         // Brionac: discard our cheapest card, bounce their best.
@@ -192,12 +204,16 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     if let Some(i) = usable(t, SMASHING_GROUND) {
         // It destroys their face-up monster with the highest DEF.
         let highest = ctx.monsters(opp).into_iter().filter(|c| c.position.face_up).max_by_key(|c| c.defense);
-        if highest.map_or(false, |c| ctx.threat(c) >= 1500) {
+        if highest.map_or(false, |c| ctx.sweep_worth(c) >= 1500) {
             return t.pick(i);
         }
     }
     if let Some(i) = usable(t, SHIELD_CRUSH) {
-        let wall = ctx.monsters(opp).into_iter().filter(|c| !c.position.attack).max_by_key(|c| ctx.threat(c));
+        let wall = ctx
+            .monsters(opp)
+            .into_iter()
+            .filter(|c| !c.position.attack && ctx.targetable(c, true))
+            .max_by_key(|c| ctx.threat(c));
         if let Some(wall) = wall.filter(|c| ctx.threat(c) >= 1200) {
             return t.pick_targeting(i, vec![wall.at]);
         }
@@ -208,7 +224,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
             let best = ctx
                 .monsters(opp)
                 .into_iter()
-                .filter(|c| c.position.face_up && !ctx.view_data(c).is_extra())
+                .filter(|c| c.position.face_up && !ctx.view_data(c).is_extra() && ctx.targetable(c, true))
                 .max_by_key(|c| ctx.threat(c));
             if let Some(best) = best.filter(|c| ctx.threat(c) >= 1800) {
                 return t.pick_targeting(i, vec![best.at]);
@@ -340,6 +356,19 @@ fn refs(cards: &[&crate::model::CardView]) -> Vec<CardRef> {
     cards.iter().map(|c| c.at).collect()
 }
 
+/// The opponent's face-up Spells/Traps worth a card to remove: the ones
+/// their deck runs on ([`crate::knowledge::owner_worth`]) and attack locks,
+/// most valuable first.
+pub fn key_spell_traps<'a>(ctx: &Ctx<'a>) -> Vec<&'a crate::model::CardView> {
+    let mut key: Vec<_> = ctx
+        .spell_traps(ctx.opp)
+        .into_iter()
+        .filter(|c| c.position.face_up && ctx.threat(c) >= 1500)
+        .collect();
+    key.sort_by_key(|c| -ctx.threat(c));
+    key
+}
+
 /// The monster the opponent is Summoning, if we can see it.
 pub fn opponent_summoning<'a>(ctx: &Ctx<'a>) -> Option<(&'a CardView, u32)> {
     ctx.obs
@@ -368,8 +397,40 @@ fn shrink(ctx: &Ctx) -> Response {
     }
 }
 
-/// How much we want to chain a staple.  `None` for non-staples.
+/// Staples whose effect targets the card it answers.
+const TARGETING: &[u32] = &[
+    BOOK_OF_MOON,
+    DIMENSIONAL_PRISON,
+    SAKURETSU_ARMOR,
+    MAGIC_CYLINDER,
+    COMPULSORY_EVACUATION_DEVICE,
+    ENEMY_CONTROLLER,
+    SHRINK,
+    DRAINING_SHIELD,
+    EFFECT_VEILER,
+];
+
+/// How much we want to chain a staple.  `None` for non-staples.  An answer
+/// whose target its effect could not reach (The Fool's coin, White Night
+/// Dragon against Spells and Traps) is no answer.
 pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
+    let response = chain_response(s, t, index)?;
+    let ctx = t.ctx;
+    let code = ctx.canonical(t.choice(index).code()?);
+    let data = ctx.data(code);
+    let spell_trap = data.is_spell() || data.is_trap();
+    let unreachable = |card: &crate::model::CardView| card.at.controller == ctx.opp && !ctx.targetable(card, spell_trap);
+    let blocked = if TARGETING.contains(&code) {
+        response.intent.iter().filter_map(|at| ctx.card(*at)).any(unreachable)
+    } else if matches!(code, TRAP_HOLE | BOTTOMLESS_TRAP_HOLE) {
+        opponent_summoning(&ctx).map_or(false, |(card, _)| unreachable(card))
+    } else {
+        false
+    };
+    Some(if blocked { Response::no() } else { response })
+}
+
+fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
     let ctx = t.ctx;
     let choice = t.choice(index);
     let code = ctx.canonical(choice.code()?);
@@ -439,10 +500,13 @@ pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Resp
             }
         }
         MYSTICAL_SPACE_TYPHOON => {
+            let key = key_spell_traps(&ctx);
             let backrow = ctx.set_backrow(opp);
             let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(crate::model::Phase::End);
             let before_our_attack = ctx.my_turn() && ctx.main1();
-            if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
+            if !key.is_empty() && (end_of_their_turn || before_our_attack) {
+                Response::targeting(25.0, refs(&key))
+            } else if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
                 Response::targeting(20.0, refs(&backrow))
             } else {
                 Response::no()
@@ -523,10 +587,13 @@ pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Resp
             if !locks.is_empty() {
                 return Some(Response::targeting(60.0, refs(&locks)));
             }
+            let key = key_spell_traps(&ctx);
             let backrow = ctx.set_backrow(opp);
             let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
             let before_our_attack = ctx.my_turn() && ctx.main1();
-            if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
+            if !key.is_empty() && (end_of_their_turn || before_our_attack) {
+                Response::targeting(25.0, refs(&key))
+            } else if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
                 Response::targeting(20.0, refs(&backrow))
             } else {
                 Response::no()

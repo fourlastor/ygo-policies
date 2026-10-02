@@ -1,7 +1,8 @@
 //! Read-only helpers over an [`Observation`] plus printed card data.
 
 use crate::cards::{CardData, CardDatabase};
-use crate::model::{CardRef, CardView, Location, Observation, Phase};
+use crate::knowledge::{self, BattleProof, Facts};
+use crate::model::{CardRef, CardView, Coin, Location, Observation, Phase};
 
 /// Assumed battle stat of a face-down monster we cannot see.
 pub const UNKNOWN_MONSTER_STAT: i32 = 1500;
@@ -196,21 +197,150 @@ impl<'a> Ctx<'a> {
         self.spell_traps(self.opp).into_iter().filter(|c| self.is_attack_lock(c)).collect()
     }
 
-    /// How much we want an opponent card gone (public information only).
+    /// What we know about a card beyond its printed stats (see
+    /// [`knowledge`]).  Only a card we can see has a code, so nothing about
+    /// the opponent's face-down cards leaks: they get no facts.
+    pub fn facts(&self, card: &CardView) -> Facts {
+        card.code.map_or(Facts::NONE, |c| knowledge::facts(self.canonical(c)))
+    }
+
+    /// Battle cannot destroy this face-up monster as things stand.
+    pub fn battle_proof(&self, card: &CardView) -> bool {
+        if card.at.location != Location::MonsterZone || !card.position.face_up {
+            return false;
+        }
+        match self.facts(card).battle_proof {
+            BattleProof::Always => true,
+            BattleProof::EmptyHand => self.hand_size(card.at.controller) == 0,
+            // Morphtronic Boarden in Defense Position shields the other Morphtronics.
+            BattleProof::No => {
+                self.view_data(card).in_set(knowledge::SET_MORPHTRONIC)
+                    && self.monsters(card.at.controller).iter().any(|c| {
+                        c.at != card.at
+                            && c.position.face_up
+                            && !c.position.attack
+                            && self.is(c, knowledge::MORPHTRONIC_BOARDEN)
+                    })
+            }
+        }
+    }
+
+    /// Would an effect of `player` that targets this card resolve?
+    /// `spell_trap`: the effect is a Spell's or Trap's.
+    pub fn targetable_by(&self, card: &CardView, player: u8, spell_trap: bool) -> bool {
+        if !card.position.face_up {
+            return true;
+        }
+        if player != card.at.controller
+            && card.at.location == Location::MonsterZone
+            && self.view_data(card).in_set(knowledge::SET_TOON)
+            && self.face_up_on_field(card.at.controller, knowledge::TOON_KINGDOM)
+        {
+            return false;
+        }
+        let facts = self.facts(card);
+        if spell_trap && facts.spell_trap_shield {
+            return false;
+        }
+        if facts.coin_targeting_shield {
+            // Heads shields it from its controller's effects, tails from the
+            // opponent's; before the coin is known, from both.
+            return match card.coin_effect.map(|e| e.result) {
+                Some(Coin::Heads) => player != card.at.controller,
+                Some(Coin::Tails) => player == card.at.controller,
+                None => false,
+            };
+        }
+        true
+    }
+
+    /// Would an effect of ours that targets this card resolve?
+    pub fn targetable(&self, card: &CardView, spell_trap: bool) -> bool {
+        self.targetable_by(card, self.me, spell_trap)
+    }
+
+    /// Toon World on the field (Toon Kingdom is treated as it).
+    pub fn is_toon_world(&self, card: &CardView) -> bool {
+        card.code.map_or(false, |c| knowledge::TOON_WORLDS.contains(&self.canonical(c)))
+    }
+
+    /// Can the controller of this face-up monster negate an attack on it
+    /// (Krebons for 800 LP, a Defense Position Morphtronic Boomboxen)?
+    pub fn attack_negatable(&self, target: &CardView) -> bool {
+        if !target.position.face_up {
+            return false;
+        }
+        let owner = target.at.controller;
+        let paid = self.facts(target).negates_attacks_for.map_or(false, |cost| self.obs.life_points[owner as usize] > cost);
+        let boomboxen = self.view_data(target).in_set(knowledge::SET_MORPHTRONIC)
+            && self
+                .monsters(owner)
+                .iter()
+                .any(|c| c.position.face_up && !c.position.attack && self.is(c, knowledge::MORPHTRONIC_BOOMBOXEN));
+        paid || boomboxen
+    }
+
+    /// The stat an attack on this monster meets, and whether it then defends:
+    /// a Karakuri switches position when selected as an attack target, and
+    /// some monsters lose ATK when attacked.
+    pub fn attacked_stance(&self, target: &CardView) -> (i32, bool) {
+        if !target.position.face_up {
+            return (self.battle_stat(target), !target.position.attack);
+        }
+        let facts = self.facts(target);
+        let attack = match facts.switches_when_attacked {
+            knowledge::Switch::No => target.position.attack,
+            knowledge::Switch::ToDefense => false,
+            knowledge::Switch::Either => !target.position.attack,
+        };
+        if attack {
+            (target.attack - facts.attacked_malus, false)
+        } else {
+            (target.defense, true)
+        }
+    }
+
+    /// How much we want an opponent card gone by an effect that targets it
+    /// (public information only).
     pub fn threat(&self, card: &CardView) -> i32 {
+        self.removal_worth(card, true)
+    }
+
+    /// How much we want an opponent card gone by an effect that does not
+    /// target it (Dark Hole, Raigeki, Smashing Ground): a monster battle
+    /// cannot destroy counts even when no targeting effect could reach it.
+    pub fn sweep_worth(&self, card: &CardView) -> i32 {
+        self.removal_worth(card, false)
+    }
+
+    fn removal_worth(&self, card: &CardView, targeting: bool) -> i32 {
+        // What the card is worth to the deck that plays it, once we can see it.
+        let owner = card.code.map_or(0, |c| knowledge::owner_worth(self.canonical(c)));
         match card.at.location {
             Location::MonsterZone => {
                 if !card.position.face_up {
                     return UNKNOWN_MONSTER_STAT;
                 }
                 let bonus = if self.view_data(card).is_extra() { 300 } else { 0 };
-                card.attack.max(card.defense) + bonus
+                // Battle cannot remove it: an effect that can is the one to use.
+                let reachable = !targeting || self.targetable(card, false);
+                let wall = if self.battle_proof(card) && reachable { 2000 } else { 0 };
+                card.attack.max(card.defense).max(owner) + bonus + wall
             }
             Location::SpellTrapZone => {
                 if self.is_attack_lock(card) {
                     3000
+                } else if card.position.face_up && self.is_toon_world(card) {
+                    // Destroying Toon World destroys every Toon it carries.
+                    let toons: i32 = self
+                        .monsters(card.at.controller)
+                        .iter()
+                        .filter(|c| c.position.face_up && self.view_data(c).in_set(knowledge::SET_TOON))
+                        .map(|c| c.attack.max(c.defense))
+                        .sum();
+                    owner.max(900 + toons)
                 } else if card.position.face_up {
-                    900
+                    owner.max(900)
                 } else {
                     1200
                 }
@@ -229,7 +359,7 @@ impl<'a> Ctx<'a> {
             .iter()
             .map(|c| {
                 if controller == self.opp {
-                    self.threat(c)
+                    self.sweep_worth(c)
                 } else {
                     c.attack.max(c.defense).max(self.view_data(c).attack)
                 }
@@ -280,8 +410,15 @@ impl<'a> Ctx<'a> {
                     || attacker.attack >= self.my_lp()
                     || (self.monsters(self.me).is_empty() && self.opp_attack_potential() >= 2000)
             }
-            Some(t) if !t.position.attack => attacker.attack > t.defense,
-            Some(t) => attacker.attack >= t.attack,
+            Some(t) => {
+                let attack = attacker.attack + self.facts(attacker).attack_bonus;
+                let (stat, defending) = self.attacked_stance(t);
+                if defending {
+                    attack > stat && !self.battle_proof(t)
+                } else {
+                    attack >= stat
+                }
+            }
         }
     }
 }

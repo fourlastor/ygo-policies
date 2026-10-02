@@ -42,7 +42,9 @@ fn names(spec: &str, catalog: &std::collections::HashMap<String, String>) -> Res
     Ok(result)
 }
 
-fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed: u64) -> Vec<Job> {
+/// `first`: the policy that takes seat 0, and so the first turn, in every
+/// game of its pairs.  Otherwise each pair alternates seats.
+fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed: u64, first: Option<&str>) -> Vec<Job> {
     let mut pairs = BTreeSet::new();
     for a in pilots {
         for b in opponents {
@@ -64,11 +66,12 @@ fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed:
             let mut pair = [a.as_str(), b.as_str()];
             pair.sort();
             let salt = fingerprint(format!("{}\0{}", pair[0], pair[1]).as_bytes());
+            let fixed = first.map(|p| if a == p { 0 } else { 1 });
             (0..games).map(move |i| Job {
                 a: a.clone(),
                 b: b.clone(),
                 seed: seed.wrapping_add(salt).wrapping_add(i as u64) & 0x7fffffff,
-                seat: i % 2,
+                seat: fixed.unwrap_or(i % 2),
             })
         })
         .collect()
@@ -116,6 +119,8 @@ fn help() {
   --cards PATH --scripts DIR --decks DIR (default to this checkout's vendor/decks)\n\
   --reference existing (ranking reference pool; all or comma-separated ids also work)\n\
   --limit 4096 --trace true --markdown PATH\n\
+  --first POLICY (that policy goes first in every game; default: seats alternate)\n\
+  --lp 8000,4000 (starting Life Points of the first and second player)\n\
 Deck lists and libraries are never modified. Each pair alternates seats.\n\
 Compare keeps opponents on the baseline library and runs both versions on identical seeds."
     );
@@ -159,6 +164,8 @@ fn run() -> Result<()> {
             "--limit",
             "--trace",
             "--markdown",
+            "--first",
+            "--lp",
         ]
         .contains(&key.as_str())
         {
@@ -279,7 +286,20 @@ fn run() -> Result<()> {
     if games == 0 || games % 2 != 0 || workers == 0 || limit == 0 {
         return Err("games must be positive and even; workers and limit must be positive".into());
     }
-    let jobs = jobs(&pilots, &opponents, &mode, games, seed);
+    let first = args.get("--first").map(String::as_str);
+    let life_points: [u32; 2] = match args.get("--lp") {
+        None => [8000, 8000],
+        Some(v) => match v.split(',').map(|n| n.trim().parse::<u32>()).collect::<std::result::Result<Vec<_>, _>>() {
+            Ok(lp) if lp.len() == 2 && lp.iter().all(|&n| n > 0) => [lp[0], lp[1]],
+            _ => return Err("--lp takes two positive numbers: FIRST,SECOND".into()),
+        },
+    };
+    let jobs = jobs(&pilots, &opponents, &mode, games, seed, first);
+    if let Some(first) = first {
+        if mode == "compare" || jobs.iter().any(|j| j.a != first && j.b != first) {
+            return Err(format!("--first {first}: every pair must include it (matchup or round-robin with it)"));
+        }
+    }
     if jobs.is_empty() {
         return Err("No distinct matchups selected".into());
     }
@@ -291,7 +311,7 @@ fn run() -> Result<()> {
         deck_ids.insert(name.clone(), file_identity(&file));
     }
     let metadata = json!({"mode": mode, "arguments": args, "games_per_matchup": games, "seed": seed,
-        "decision_limit": limit, "life_points": 8000, "rules": "MasterRule1 (0xD0700)",
+        "decision_limit": limit, "life_points": life_points, "first": first, "rules": "MasterRule1 (0xD0700)",
         "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed", "policy_seed": "engine seed + seat",
         "engine": core_path.as_ref().map(|p| file_identity(p)).unwrap_or_else(|| json!({"linked": true})),
         "cards": file_identity(&cards), "scripts": git_revision(&scripts), "core": git_revision(&root.join("vendor/ocgcore")),
@@ -350,7 +370,7 @@ fn run() -> Result<()> {
                                 policies,
                                 names,
                                 cards,
-                                PlayOptions { seed, limit, trace },
+                                PlayOptions { seed, limit, trace, life_points },
                             ) {
                                 Ok(mut game) => {
                                     game["score"] = json!(match game["winner"].as_u64() {
@@ -413,9 +433,9 @@ mod tests {
     #[test]
     fn round_robin_is_unique_balanced_and_subset_stable() {
         let names = vec!["a".into(), "b".into(), "c".into()];
-        let all = jobs(&names, &names, "round-robin", 4, 7);
+        let all = jobs(&names, &names, "round-robin", 4, 7, None);
         assert_eq!(all.len(), 12);
-        let subset = jobs(&names[..1], &names[1..2], "matchup", 4, 7);
+        let subset = jobs(&names[..1], &names[1..2], "matchup", 4, 7, None);
         assert_eq!(
             subset,
             all.iter()

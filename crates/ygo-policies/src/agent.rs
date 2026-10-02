@@ -537,9 +537,13 @@ fn default_trigger(t: &Turn, choice: &Choice) -> Response {
 fn yes_no<S: Strategy>(s: &S, t: &mut Turn) -> Option<usize> {
     let yes = s.yes_no(t).unwrap_or(true);
     // Yes to "use this card's effect?" starts a new activation: the targets
-    // of the previous one (Test Tiger's Beast) are not this one's.
+    // of the previous one (Test Tiger's Beast) are not this one's, and the
+    // selections that follow are this card's.
     if yes && t.decision.choices.iter().any(|c| c.kind == ChoiceKind::Yes && c.card.is_some()) {
         t.memory.intent.clear();
+        if let Some(code) = t.decision.subject {
+            t.memory.last_activated = Some(code);
+        }
     }
     let wanted = if yes { ChoiceKind::Yes } else { ChoiceKind::No };
     t.choices().find(|(_, c)| c.kind == wanted).map(|(i, _)| i)

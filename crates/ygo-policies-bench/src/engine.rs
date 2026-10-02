@@ -19,6 +19,8 @@ pub struct PlayOptions {
     pub seed: u64,
     pub limit: usize,
     pub trace: bool,
+    /// Starting Life Points of seat 0 (who goes first) and seat 1.
+    pub life_points: [u32; 2],
 }
 
 #[repr(C)]
@@ -260,7 +262,7 @@ impl Core {
         cards: &Path,
         run: PlayOptions,
     ) -> Result<serde_json::Value> {
-        let PlayOptions { seed, limit, trace } = run;
+        let PlayOptions { seed, limit, trace, life_points } = run;
         self.resources.errors.clear();
         for code in decks.iter().flat_map(|d| d.main.iter().chain(&d.extra)) {
             if !self.resources.cards.contains_key(code) {
@@ -268,8 +270,8 @@ impl Core {
             }
         }
         let payload = (&mut *self.resources) as *mut Resources as Handle;
-        let player = Player {
-            lp: 8000,
+        let player = |lp| Player {
+            lp,
             draw: 5,
             per_turn: 1,
         };
@@ -281,8 +283,8 @@ impl Core {
                 4,
             ],
             flags: 0xD0700,
-            p0: player,
-            p1: player,
+            p0: player(life_points[0]),
+            p1: player(life_points[1]),
             reader,
             payload1: payload,
             scripts,
@@ -315,7 +317,7 @@ impl Core {
                 seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
                 seats[p].feed(&message::start_message(
                     p as u8,
-                    [8000; 2],
+                    life_points,
                     [decks[0].main.len() as u16, decks[1].main.len() as u16],
                     [decks[0].extra.len() as u16, decks[1].extra.len() as u16],
                 ))?;
@@ -341,6 +343,7 @@ impl Core {
             (self.start)(handle);
             let mut decisions = 0;
             let mut winner = None;
+            let (mut reason, mut turns) = (None, 0u32);
             let mut digest = 0xcbf29ce484222325u64;
             let mut traces = Vec::new();
             let mut activations = HashMap::<u32, u32>::new();
@@ -371,6 +374,11 @@ impl Core {
                     }
                     if id == msg::WIN {
                         winner = message.get(1).copied();
+                        // 1: Life Points, 2: deck-out, 0x10 and up: a card's own win condition.
+                        reason = message.get(2).copied();
+                    }
+                    if id == msg::NEW_TURN {
+                        turns += 1;
                     }
                     if id == msg::CHAINING && message.len() >= 5 {
                         *activations
@@ -423,7 +431,7 @@ impl Core {
                     if status == 0 && winner.is_none() {
                         return Err("Engine ended without MSG_WIN".into());
                     }
-                    return Ok(serde_json::json!({"winner": winner, "decisions": decisions,
+                    return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
                         "limit": winner.is_none(), "digest": format!("{digest:016x}"), "trace": traces, "activations": activations}));
                 }
                 if let Some(answer) = response {
