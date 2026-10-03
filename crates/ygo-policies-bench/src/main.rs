@@ -4,7 +4,7 @@ mod knowledge;
 mod probe;
 mod replay;
 mod report;
-use engine::{Asked, Core, Deck, PlayOptions, PolicyLibrary, Result};
+use engine::{Asked, Core, Deck, PlayOptions, PolicyLibrary, Result, SearchOptions};
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -149,6 +149,25 @@ fn examine_all(codes: &[u32], workers: usize, core: Option<&Path>, cards: &Path,
     results.into_iter().collect::<Option<Vec<_>>>().ok_or_else(|| "Incomplete probe run".to_string())
 }
 
+/// A finished game with the score of the player in `seat`, or its error.
+fn scored(game: Result<Value>, seat: usize) -> Value {
+    match game {
+        Ok(mut game) => {
+            game["score"] = json!(match game["winner"].as_u64() {
+                Some(winner) if winner < 2 =>
+                    if winner == seat as u64 {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                _ => 0.5,
+            });
+            game
+        }
+        Err(e) => json!({"error": e}),
+    }
+}
+
 fn fingerprint(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf29ce484222325, |hash, b| {
         (hash ^ *b as u64).wrapping_mul(0x100000001b3)
@@ -180,8 +199,9 @@ fn git_revision(path: &Path) -> Value {
 
 fn help() {
     println!(
-        "policy-bench <matchup|round-robin|compare|rank|knowledge|probe|replay> [OPTIONS]\n\
+        "policy-bench <matchup|round-robin|compare|search|rank|knowledge|probe|replay> [OPTIONS]\n\
   matchup --policies arcana --opponents blackwing,monarch\n\
+  search --policies monarch --opponents existing --core libocgcore.so\n\
   round-robin --policies all --games 256 --markdown DECK-TIER-LIST.md\n\
   compare --policies arcana --opponents existing --baseline old.so --candidate new.so\n\
   rank --input tournament.jsonl --markdown DECK-TIER-LIST.md\n\
@@ -204,6 +224,13 @@ shows as the policies' card facts (crates/ygo-policies/src/knowledge/pool.rs):\n
   --rust PATH (the table) --report PATH (the same in words, with what needs review)\n\
   --output PATH (the staged attacks this build's tactics call wrong)\n\
 probe writes what the engine did, monster by monster, as JSON lines (--output).\n\
+search plays each game twice on the same seed: the pilot alone, and the pilot with a\n\
+one-step search at each of its decisions (see the bench README).  It needs --core with\n\
+arena snapshots.  --worlds 8 --confirm 32 --final 96 (worlds tried after each stage)\n\
+  --z 1.645 (how far ahead of the pilot's answer an alternative must be)\n\
+  --strict false (also search while the other player has a face-down monster, which\n\
+  the worlds cannot deal again: the search then sees what it is)\n\
+  --validate true (search nothing; check that snapshots and rebuilt seats replay the duel)\n\
 replay plays a duel from Beat Claudi-oh's database again (--input, and --duel ID, default\n\
 the last one) and tells it turn by turn with nothing hidden (to --output, else printed).\n\
   --recheck true also asks the policy that played, as --library has it now, at each of its\n\
@@ -221,7 +248,7 @@ fn run() -> Result<()> {
         help();
         return Ok(());
     }
-    if !["matchup", "round-robin", "compare", "rank", "probe", "knowledge", "replay"].contains(&mode.as_str()) {
+    if !["matchup", "round-robin", "compare", "search", "rank", "probe", "knowledge", "replay"].contains(&mode.as_str()) {
         return Err(format!("Unknown mode {mode}; use --help"));
     }
     let mut args = BTreeMap::new();
@@ -257,6 +284,12 @@ fn run() -> Result<()> {
             "--report",
             "--duel",
             "--recheck",
+            "--worlds",
+            "--confirm",
+            "--final",
+            "--z",
+            "--validate",
+            "--strict",
         ]
         .contains(&key.as_str())
         {
@@ -473,9 +506,25 @@ fn run() -> Result<()> {
             _ => return Err("--lp takes two positive numbers: FIRST,SECOND".into()),
         },
     };
-    let jobs = jobs(&pilots, &opponents, &mode, games, seed, first);
+    // A searching pilot keeps its side of each pair, as a compared one does.
+    let pairing = if mode == "search" { "compare" } else { mode.as_str() };
+    let jobs = jobs(&pilots, &opponents, pairing, games, seed, first);
+    let stages = [number("--worlds", 8)?, number("--confirm", 32)?, number("--final", 96)?];
+    let z: f64 = args.get("--z").map_or(Ok(1.645), |v| v.parse().map_err(|_| "Invalid --z".to_string()))?;
+    let flag = |key: &str, default: bool| -> Result<bool> {
+        match args.get(key).map(String::as_str) {
+            None => Ok(default),
+            Some("true") => Ok(true),
+            Some("false") => Ok(false),
+            Some(_) => Err(format!("{key} must be true or false")),
+        }
+    };
+    let (validate, strict) = (flag("--validate", false)?, flag("--strict", true)?);
+    if mode == "search" && (core_path.is_none() || stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
+        return Err("search needs --core, and --worlds <= --confirm <= --final".into());
+    }
     if let Some(first) = first {
-        if mode == "compare" || jobs.iter().any(|j| j.a != first && j.b != first) {
+        if mode != "matchup" && mode != "round-robin" || jobs.iter().any(|j| j.a != first && j.b != first) {
             return Err(format!("--first {first}: every pair must include it (matchup or round-robin with it)"));
         }
     }
@@ -531,6 +580,17 @@ fn run() -> Result<()> {
                         let names = if seat == 0 { [a, b] } else { [b, a] };
                         let decks = [deck_map[names[0]].clone(), deck_map[names[1]].clone()];
                         let mut row = json!({"a": a, "b": b, "seed": seed, "seat": seat});
+                        if mode == "search" {
+                            let policies = [&candidate, &candidate];
+                            let options = PlayOptions { seed, limit, trace: false, life_points };
+                            row["baseline"] = scored(core.play(&decks, policies, names, cards, options), seat);
+                            let started = std::time::Instant::now();
+                            let search = SearchOptions { searcher: seat, stages, z, validate, strict };
+                            row["search"] = scored(core.play_searching(&decks, policies, names, cards, options, search), seat);
+                            row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
+                            tx.send(Ok(row)).map_err(|e| e.to_string())?;
+                            continue;
+                        }
                         let versions = if mode == "compare" {
                             vec![("baseline", &baseline), ("candidate", &candidate)]
                         } else {
@@ -544,27 +604,10 @@ fn run() -> Result<()> {
                             } else {
                                 [&baseline, library]
                             };
-                            row[label] = match core.play(
-                                &decks,
-                                policies,
-                                names,
-                                cards,
-                                PlayOptions { seed, limit, trace, life_points },
-                            ) {
-                                Ok(mut game) => {
-                                    game["score"] = json!(match game["winner"].as_u64() {
-                                        Some(winner) if winner < 2 =>
-                                            if winner == seat as u64 {
-                                                1.0
-                                            } else {
-                                                0.0
-                                            },
-                                        _ => 0.5,
-                                    });
-                                    game
-                                }
-                                Err(e) => json!({"error": e}),
-                            };
+                            row[label] = scored(
+                                core.play(&decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points }),
+                                seat,
+                            );
                         }
                         tx.send(Ok(row)).map_err(|e| e.to_string())?;
                     }
@@ -576,11 +619,24 @@ fn run() -> Result<()> {
             });
         }
         drop(tx);
+        let started = std::time::Instant::now();
         for result in rx {
             let result = result?;
             writeln!(file, "{result}").map_err(|e| e.to_string())?;
             results.push(result);
-            if results.len() % games.max(128) == 0 || results.len() == jobs.len() {
+            if mode == "search" {
+                if results.len() % 16 == 0 || results.len() == jobs.len() {
+                    let rate = |label: &str| 100.0 * results.iter().filter_map(|r| r[label]["score"].as_f64()).sum::<f64>() / results.len() as f64;
+                    eprintln!(
+                        "{}/{} games, {:.0} s: pilot {:.1}%, searching {:.1}%",
+                        results.len(),
+                        jobs.len(),
+                        started.elapsed().as_secs_f64(),
+                        rate("baseline"),
+                        rate("search")
+                    );
+                }
+            } else if results.len() % games.max(128) == 0 || results.len() == jobs.len() {
                 eprintln!(
                     "{}/{} {}",
                     results.len(),
@@ -594,7 +650,10 @@ fn run() -> Result<()> {
     if results.len() != jobs.len() {
         return Err("Incomplete run".into());
     }
-    if mode == "compare" {
+    if mode == "search" {
+        // The rows hold both games of each seed; their analysis is left to the reader.
+        Ok(())
+    } else if mode == "compare" {
         report::comparison(&results, &output.with_extension("summary.json"))
     } else {
         report::ranking(

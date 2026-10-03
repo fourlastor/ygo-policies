@@ -8,8 +8,11 @@ use std::{
 };
 use ygo_policies_ocgcore::{
     message::{self, Message},
-    wire::{msg, query},
+    wire::{msg, position, query},
 };
+
+mod search;
+pub use search::SearchOptions;
 
 pub type Result<T> = std::result::Result<T, String>;
 type Handle = *mut c_void;
@@ -225,6 +228,8 @@ unsafe fn symbol<T: Copy>(library: &Library, name: &[u8]) -> Result<T> {
 
 pub struct Core {
     _library: Option<Library>,
+    /// Snapshots and the hidden-card swap, when `--core` has them.
+    extensions: Option<search::Extensions>,
     resources: Box<Resources>,
     create: unsafe extern "C" fn(*mut Handle, *const Options) -> i32,
     destroy: unsafe extern "C" fn(Handle),
@@ -329,6 +334,7 @@ impl Core {
                 messages: api!(OCG_DuelGetMessage),
                 respond: api!(OCG_DuelSetResponse),
                 query: api!(OCG_DuelQueryLocation),
+                extensions: library.as_ref().and_then(|library| search::Extensions::load(library)),
                 _library: library,
             })
         }
@@ -868,6 +874,7 @@ pub struct PolicyLibrary {
     create: unsafe extern "C" fn(*const c_char, *const c_char, i32, u64) -> Handle,
     destroy: unsafe extern "C" fn(Handle),
     feed: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
+    feed_buffer: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
     response: unsafe extern "C" fn(Handle, *mut usize) -> *const u8,
     error: unsafe extern "C" fn() -> *const c_char,
     answer: unsafe extern "C" fn(Handle) -> *const c_char,
@@ -900,6 +907,7 @@ impl PolicyLibrary {
                 create: symbol(&library, b"ygo_policy_create_seeded")?,
                 destroy: symbol(&library, b"ygo_policy_destroy")?,
                 feed: symbol(&library, b"ygo_policy_feed")?,
+                feed_buffer: symbol(&library, b"ygo_policy_feed_buffer")?,
                 response: symbol(&library, b"ygo_policy_response")?,
                 error: symbol(&library, b"ygo_policy_last_error")?,
                 answer: symbol(&library, b"ygo_policy_last_answer_json")?,
@@ -948,6 +956,16 @@ impl Seat<'_> {
                     let bytes = (self.library.response)(self.handle, &mut length);
                     Ok(Some(std::slice::from_raw_parts(bytes, length).to_vec()))
                 }
+                _ => Err(self.library.last_error()),
+            }
+        }
+    }
+    /// Feed several messages at once, each behind its length as OCGCore
+    /// writes them; answers along the way are dropped.
+    fn feed_buffer(&self, buffer: &[u8]) -> Result<()> {
+        unsafe {
+            match (self.library.feed_buffer)(self.handle, buffer.as_ptr(), buffer.len()) {
+                0 | 1 => Ok(()),
                 _ => Err(self.library.last_error()),
             }
         }

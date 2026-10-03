@@ -85,6 +85,58 @@ transcripts and a paired normal-approximation 95% interval. This measures a poli
 change, not a simultaneous change to its opponents. Pass several `--policies` to
 compare multiple pilots. A comparison cannot be used as a tournament ranking.
 
+## A search on top of a pilot
+
+`search` plays each game twice on the same seed: the pilot alone, and the
+pilot with a one-step search at each of its decisions.  What the search gains
+is a floor on what a better pilot of the same deck would gain.
+
+```bash
+target/release/policy-bench search --policies monarch --opponents existing \
+  --games 64 --workers 20 --core /path/to/libocgcore.so --output monarch-search.jsonl
+```
+
+At a decision of the searching seat the duel is snapshotted.  Every
+alternative its policy listed (Main and Battle Phase actions, optional chain
+responses, yes/no, battle positions; two copies of a card in the same pile
+count once, and the zone a card goes to is never an alternative) is tried in
+worlds where the cards the seat
+cannot see are dealt again: its own Deck in another order, the other
+player's Deck, hand and Set Spells and Traps among themselves.  Both policies
+play each world out, rebuilt from what the live seats were fed and breaking
+ties their own way in each world.  All
+alternatives share their worlds, so they are compared world by world.  The
+seat leaves its pilot's answer only for an alternative ahead of it by `--z`
+(paired, default 1.645) after `--final` worlds (96).  `--worlds` (8) and
+`--confirm` (32) are the stages at which alternatives that are not ahead are
+dropped; one far ahead after `--confirm` is taken there.
+
+What it cannot do, and what it knows that a player would not:
+
+- It needs `--core`: an OCGCore with arena snapshots and a hidden-card swap
+  (the `ygo` repository's build of its `ygopro-core` fork).  The pinned
+  engine has neither.
+- Cards cannot be dealt again while a chain is open: those decisions are the
+  pilot's.
+- The other player's face-down monsters cannot be dealt again, so a world
+  would show what they are.  By default (`--strict true`) every decision
+  taken while one is on the field is the pilot's.
+- The worlds are drawn from the other player's real cards: the search knows
+  their Deck list, as a policy trained against that deck would.
+- Selections of cards and zones are the pilot's.
+- Every world starts from the engine's random state at the decision: a coin
+  or a die lands as it will in the duel.
+
+`--validate true` searches nothing: at each decision of the seat it plays
+the pilot's answer out in the world as it is and checks that the playout
+ends as the duel does (`mispredicted` must be 0).  The duel must also keep
+the digest of the plain game.
+
+Each row holds both games (`baseline`, `search`), the search's counts
+(decisions searched, left to the pilot in a chain or facing a face-down
+monster, playouts) and every deviation: the decision, the pilot's answer,
+the one taken, its gain over the worlds and its z.
+
 ## Protocol and artifacts
 
 - Master Rule 1, 8000 LP (or `--lp`), five-card opening hands, one draw per turn
