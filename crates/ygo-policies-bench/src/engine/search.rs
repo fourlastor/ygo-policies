@@ -53,6 +53,11 @@ pub struct SearchOptions {
     /// Search nothing: at each decision, play the pilot's answer out in the
     /// world as it is, and check that it ends as the duel itself does.
     pub validate: bool,
+    /// Not a player: play every alternative out in the world as it is (the
+    /// real hidden cards, the draws to come) and leave the pilot's answer
+    /// whenever it loses and another one wins.  What it still loses, no
+    /// single change of answer could have won.
+    pub foresight: bool,
 }
 
 /// After the middle stage: far enough ahead to stop there, or too close to go on.
@@ -468,6 +473,46 @@ impl Core {
         Ok((candidates[chosen].index, seen))
     }
 
+    /// With foresight (see [`SearchOptions::foresight`]): the first alternative
+    /// that wins in the world as it is, when the pilot's answer does not.
+    unsafe fn foresee(
+        &mut self,
+        handle: Handle,
+        setup: &Setup,
+        logs: &[Vec<u8>; 2],
+        viewer: u8,
+        decision: &Listed,
+        decisions: usize,
+        counts: &mut [u64; 2],
+    ) -> Result<usize> {
+        let mut snapshot = ptr::null_mut();
+        let extensions = self.extensions.as_ref().unwrap();
+        let (restore, discard) = (extensions.restore, extensions.discard);
+        let status = (extensions.snapshot)(handle, &mut snapshot);
+        if status != 0 {
+            return Err(format!("OCG_DuelCreateSnapshot: {status}"));
+        }
+        let _guard = SnapshotGuard { handle: snapshot, discard };
+        let mut chosen = 0;
+        for index in 0..decision.responses.len() {
+            counts[0] += 1;
+            match self.playout(handle, snapshot, setup, logs, None, &decision.responses[index], decisions) {
+                Ok(Some(winner)) if winner == viewer => {
+                    chosen = index;
+                    break;
+                }
+                Ok(_) => {}
+                Err(_) => counts[1] += 1,
+            }
+        }
+        let status = restore(handle, snapshot);
+        if status != 0 {
+            return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
+        }
+        self.resources.errors.clear();
+        Ok(chosen)
+    }
+
     /// [`Core::play`] with one seat searching (see the module).  Without a
     /// deviation the duel is the one `play` plays, answer for answer.
     pub fn play_searching(
@@ -636,7 +681,15 @@ impl Core {
                             return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
                         }
                     } else if let Some(decision) = listed(&table.seats[p].last_answer()?, &answer) {
-                        if chain {
+                        if search.foresight {
+                            searched += 1;
+                            let index = self.foresee(handle, &setup, &table.logs, viewer, &decision, decisions, &mut counts)?;
+                            if index != 0 {
+                                answer = decision.responses[index].clone();
+                                deviations.push(serde_json::json!({"kind": decision.kind, "from": decision.labels[0],
+                                    "to": decision.labels[index], "decision": decisions, "turn": turns}));
+                            }
+                        } else if chain {
                             in_chain += 1;
                         } else if search.strict
                             && self.monsters(handle).iter().any(|m| m.controller != viewer && m.position & position::FACEDOWN != 0)

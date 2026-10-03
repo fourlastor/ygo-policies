@@ -127,6 +127,12 @@ What it cannot do, and what it knows that a player would not:
 - Every world starts from the engine's random state at the decision: a coin
   or a die lands as it will in the duel.
 
+`--foresight true` is not a player but a mark of what luck leaves: every
+alternative is played out in the world as it is, with the real hidden cards
+and the draws to come, and the seat leaves its pilot's answer whenever that
+one loses and another wins.  The games it still loses could not have been won
+by changing any single answer.
+
 `--validate true` searches nothing: at each decision of the seat it plays
 the pilot's answer out in the world as it is and checks that the playout
 ends as the duel does (`mispredicted` must be 0).  The duel must also keep

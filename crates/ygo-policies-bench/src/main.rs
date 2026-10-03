@@ -230,6 +230,9 @@ arena snapshots.  --worlds 8 --confirm 32 --final 96 (worlds tried after each st
   --z 1.645 (how far ahead of the pilot's answer an alternative must be)\n\
   --strict false (also search while the other player has a face-down monster, which\n\
   the worlds cannot deal again: the search then sees what it is)\n\
+  --foresight true (not a player: tries every alternative in the world as it is, hidden\n\
+  cards and draws to come included, and leaves the pilot's answer when it loses and another\n\
+  wins; what it still loses, no single change of answer could have won)\n\
   --validate true (search nothing; check that snapshots and rebuilt seats replay the duel)\n\
 replay plays a duel from Beat Claudi-oh's database again (--input, and --duel ID, default\n\
 the last one) and tells it turn by turn with nothing hidden (to --output, else printed).\n\
@@ -290,6 +293,7 @@ fn run() -> Result<()> {
             "--z",
             "--validate",
             "--strict",
+            "--foresight",
         ]
         .contains(&key.as_str())
         {
@@ -519,7 +523,7 @@ fn run() -> Result<()> {
             Some(_) => Err(format!("{key} must be true or false")),
         }
     };
-    let (validate, strict) = (flag("--validate", false)?, flag("--strict", true)?);
+    let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
     if mode == "search" && (core_path.is_none() || stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --core, and --worlds <= --confirm <= --final".into());
     }
@@ -585,7 +589,7 @@ fn run() -> Result<()> {
                             let options = PlayOptions { seed, limit, trace: false, life_points };
                             row["baseline"] = scored(core.play(&decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
-                            let search = SearchOptions { searcher: seat, stages, z, validate, strict };
+                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight };
                             row["search"] = scored(core.play_searching(&decks, policies, names, cards, options, search), seat);
                             row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
                             tx.send(Ok(row)).map_err(|e| e.to_string())?;
