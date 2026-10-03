@@ -83,8 +83,9 @@ by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
 - `crates/ygo-policies-edopro`: `edopro-bot`, a native EDOPro network client
   that joins a room as a player.
 - `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
-  baseline/candidate comparisons, round robins, generated tier lists, and
-  the card probes that generate the shared card knowledge.
+  baseline/candidate comparisons, round robins, generated tier lists, the
+  card probes that generate the shared card knowledge, and a search on top
+  of a pilot that shows where its answers lose games.
 - `data/`: the World Championship 2011 card pool and Forbidden & Limited list
   (an EDOPro lflist), and what the engine shows about each of its monsters.
 

@@ -4,7 +4,9 @@
 //! the duel is snapshotted, every alternative the policy listed is tried in
 //! worlds where the cards this seat cannot see are dealt again, and both
 //! policies play each world out.  The seat leaves its pilot's answer only for
-//! an alternative that wins clearly more often over the same worlds.
+//! an alternative that wins clearly more often over the same worlds.  The
+//! pilot's answer is tried first: where it wins every first-stage world no
+//! alternative can be ahead of it, and none is tried.
 //!
 //! The other player's face-down monsters cannot be dealt again, so a world
 //! would show the search what they are.  A strict search leaves every
@@ -50,6 +52,9 @@ pub struct SearchOptions {
     /// Leave decisions to the pilot while the other player has a face-down
     /// monster, whose identity the worlds would give away.
     pub strict: bool,
+    /// Write every decision examined, with the situation it was taken in and
+    /// how each alternative did in the first-stage worlds.
+    pub log: bool,
     /// Search nothing: at each decision, play the pilot's answer out in the
     /// world as it is, and check that it ends as the duel itself does.
     pub validate: bool,
@@ -155,6 +160,35 @@ fn card_query(bytes: &[u8]) -> (u32, u32, bool) {
         offset += 2 + size;
     }
     (code, position, public)
+}
+
+/// The situation a decision is taken in, as the seat sees it: what a rule
+/// could look at before deciding whether the decision is worth a search.
+fn situation(answer: &serde_json::Value, me: u8) -> serde_json::Value {
+    let observation = &answer["observation"];
+    let count = |mine: bool, location: &str, face_down: bool| -> usize {
+        observation["cards"].as_array().map_or(0, |cards| {
+            cards
+                .iter()
+                .filter(|card| {
+                    (card["at"]["controller"] == me) == mine
+                        && card["at"]["location"] == location
+                        && (!face_down || card["position"]["face_up"] == false)
+                })
+                .count()
+        })
+    };
+    let life = |player: usize| observation["life_points"][player].as_u64().unwrap_or(0);
+    serde_json::json!({
+        "phase": observation["phase"],
+        "own_turn": observation["turn_player"] == me,
+        "life": [life(me as usize), life(1 - me as usize)],
+        "monsters": [count(true, "MonsterZone", false), count(false, "MonsterZone", false)],
+        "backrow": [count(true, "SpellTrapZone", false), count(false, "SpellTrapZone", false)],
+        "set_backrow": [count(true, "SpellTrapZone", true), count(false, "SpellTrapZone", true)],
+        "hand": [count(true, "Hand", false), count(false, "Hand", false)],
+        "attack": !observation["battle_attacker"].is_null(),
+    })
 }
 
 /// A decision as the policy's answer describes it: the alternatives worth
@@ -412,7 +446,9 @@ impl Core {
         search: &SearchOptions,
         decisions: usize,
         counts: &mut [u64; 2],
+        log: Option<&mut Vec<serde_json::Value>>,
     ) -> Result<(usize, serde_json::Value)> {
+        let before = counts[0];
         let mut snapshot = ptr::null_mut();
         let status = (self.extensions.as_ref().unwrap().snapshot)(handle, &mut snapshot);
         if status != 0 {
@@ -424,21 +460,37 @@ impl Core {
         let mut seen = serde_json::Value::Null;
         let mut chosen = 0;
         let mut done = 0;
+        let mut won_everywhere = false;
         for (stage, total) in search.stages.iter().copied().enumerate() {
-            for world in done..total {
-                let seed = setup.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
-                for index in std::iter::once(0).chain(alive.iter().copied()) {
-                    counts[0] += 1;
-                    let played = self.playout(handle, snapshot, setup, logs, Some((viewer, seed)), &decision.responses[index], decisions);
-                    candidates[index].payoffs.push(match played {
-                        Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
-                        Ok(None) => Some(0.0),
-                        Err(_) => {
-                            counts[1] += 1;
-                            None
-                        }
-                    });
+            // The pilot's answer goes first.  Where it wins every first-stage
+            // world no alternative can be ahead of it, so none is tried: the
+            // answer is the one the full stage would keep.
+            for pilot_pass in [true, false] {
+                if !pilot_pass && won_everywhere {
+                    break;
                 }
+                for world in done..total {
+                    let seed = setup.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
+                    let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
+                    for index in indices {
+                        counts[0] += 1;
+                        let played = self.playout(handle, snapshot, setup, logs, Some((viewer, seed)), &decision.responses[index], decisions);
+                        candidates[index].payoffs.push(match played {
+                            Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
+                            Ok(None) => Some(0.0),
+                            Err(_) => {
+                                counts[1] += 1;
+                                None
+                            }
+                        });
+                    }
+                }
+                if pilot_pass && stage == 0 {
+                    won_everywhere = candidates[0].payoffs.iter().all(|payoff| payoff.map_or(true, |p| p >= 1.0));
+                }
+            }
+            if won_everywhere {
+                break;
             }
             done = total;
             let mut ranked: Vec<(usize, f64, f64, usize)> = alive
@@ -470,6 +522,38 @@ impl Core {
             return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
         }
         self.resources.errors.clear();
+        if let Some(log) = log {
+            // How each alternative did in the first-stage worlds (wins, of
+            // the worlds played), the pilot's answer first.
+            let first = search.stages[0];
+            let record: Vec<serde_json::Value> = candidates
+                .iter()
+                .map(|candidate| {
+                    let played: Vec<f64> = candidate.payoffs.iter().take(first).filter_map(|p| *p).collect();
+                    serde_json::json!([played.iter().filter(|p| **p > 0.0).count(), played.len()])
+                })
+                .collect();
+            // Every world each alternative was played in: + won, - lost,
+            // 0 drawn, x not played out.
+            let played: Vec<String> = candidates
+                .iter()
+                .map(|candidate| {
+                    candidate
+                        .payoffs
+                        .iter()
+                        .map(|payoff| match payoff {
+                            Some(p) if *p > 0.0 => '+',
+                            Some(p) if *p < 0.0 => '-',
+                            Some(_) => '0',
+                            None => 'x',
+                        })
+                        .collect()
+                })
+                .collect();
+            log.push(serde_json::json!({"kind": decision.kind, "labels": decision.labels, "first": record, "played": played,
+                "worlds": candidates[0].payoffs.len(), "playouts": counts[0] - before, "chosen": chosen,
+                "skipped": won_everywhere}));
+        }
         Ok((candidates[chosen].index, seen))
     }
 
@@ -600,6 +684,7 @@ impl Core {
             // face-down monster, playouts, failed playouts.
             let (mut searched, mut in_chain, mut facing_set, mut counts) = (0u64, 0u64, 0u64, [0u64; 2]);
             let mut deviations = Vec::new();
+            let mut examined: Vec<serde_json::Value> = Vec::new();
             let mut predictions: Vec<Option<u8>> = Vec::new();
             loop {
                 let status = (self.process)(handle);
@@ -654,7 +739,7 @@ impl Core {
                     return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
                         "limit": winner.is_none(), "digest": format!("{digest:016x}"), "searched": searched, "in_chain": in_chain,
                         "facing_set": facing_set,
-                        "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations,
+                        "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations, "examined": examined,
                         "predictions": predictions.len(), "mispredicted": mispredicted}));
                 }
                 let Some((p, mut answer, message)) = response else {
@@ -680,7 +765,10 @@ impl Core {
                         if status != 0 {
                             return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
                         }
-                    } else if let Some(decision) = listed(&table.seats[p].last_answer()?, &answer) {
+                    } else if let Some((described, decision)) = {
+                        let described = table.seats[p].last_answer()?;
+                        listed(&described, &answer).map(|decision| (described, decision))
+                    } {
                         if search.foresight {
                             searched += 1;
                             let index = self.foresee(handle, &setup, &table.logs, viewer, &decision, decisions, &mut counts)?;
@@ -697,7 +785,20 @@ impl Core {
                             facing_set += 1;
                         } else {
                             searched += 1;
-                            let (index, seen) = self.decide(handle, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts)?;
+                            let log = search.log.then_some(&mut examined);
+                            let (index, seen) = self.decide(handle, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts, log)?;
+                            if search.log {
+                                if let Some(record) = examined.last_mut() {
+                                    record["decision"] = serde_json::json!(decisions);
+                                    record["turn"] = serde_json::json!(turns);
+                                    record["situation"] = situation(&described, viewer);
+                                    if index != 0 {
+                                        // Where the pilot's answer was left: all the seat saw and
+                                        // every choice it had, for whoever writes the pilot's rules.
+                                        record["seen"] = described.clone();
+                                    }
+                                }
+                            }
                             if index != 0 {
                                 answer = decision.responses[index].clone();
                                 let mut seen = seen;

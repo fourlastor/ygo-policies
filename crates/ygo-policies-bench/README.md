@@ -109,7 +109,9 @@ alternatives share their worlds, so they are compared world by world.  The
 seat leaves its pilot's answer only for an alternative ahead of it by `--z`
 (paired, default 1.645) after `--final` worlds (96).  `--worlds` (8) and
 `--confirm` (32) are the stages at which alternatives that are not ahead are
-dropped; one far ahead after `--confirm` is taken there.
+dropped; one far ahead after `--confirm` is taken there.  The pilot's answer
+is tried first: where it wins every first-stage world, as in about half of a
+Blackwing's decisions, no alternative can be ahead and none is tried.
 
 What it cannot do, and what it knows that a player would not:
 
@@ -142,6 +144,25 @@ Each row holds both games (`baseline`, `search`), the search's counts
 (decisions searched, left to the pilot in a chain or facing a face-down
 monster, playouts) and every deviation: the decision, the pilot's answer,
 the one taken, its gain over the worlds and its z.
+
+`--log true` adds `examined`: every decision the search looked at, with
+
+- `kind`, and `labels`: what each alternative is (kind and card), the
+  pilot's answer first;
+- `situation`: phase, whose turn, Life Points, monsters, Spells and Traps
+  (and how many of them Set) and hand sizes, each for the seat then the other
+  player, and whether an attack is under way;
+- `first`: wins and worlds played in the first stage, per alternative, and
+  `played`: every world each was played in (`+` won, `-` lost, `0` drawn,
+  `x` not played out);
+- `worlds`, `playouts`, `chosen` (0 is the pilot's answer) and `skipped`
+  (the pilot's answer won every first-stage world);
+- `seen`, only where the pilot's answer was left: what `--trace` writes for
+  a decision, all the seat saw and every choice it had.
+
+This is the material for a pilot's rules: `seen` shows the positions where
+another answer won clearly more often, and `examined` how often the same
+choice came up without mattering.
 
 ## Protocol and artifacts
 

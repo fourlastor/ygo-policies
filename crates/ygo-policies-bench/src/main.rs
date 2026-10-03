@@ -233,6 +233,8 @@ arena snapshots.  --worlds 8 --confirm 32 --final 96 (worlds tried after each st
   --foresight true (not a player: tries every alternative in the world as it is, hidden\n\
   cards and draws to come included, and leaves the pilot's answer when it loses and another\n\
   wins; what it still loses, no single change of answer could have won)\n\
+  --log true (write every decision examined: the situation, how each alternative did in\n\
+  the first-stage worlds, the playouts it took and what was chosen)\n\
   --validate true (search nothing; check that snapshots and rebuilt seats replay the duel)\n\
 replay plays a duel from Beat Claudi-oh's database again (--input, and --duel ID, default\n\
 the last one) and tells it turn by turn with nothing hidden (to --output, else printed).\n\
@@ -294,6 +296,7 @@ fn run() -> Result<()> {
             "--validate",
             "--strict",
             "--foresight",
+            "--log",
         ]
         .contains(&key.as_str())
         {
@@ -524,6 +527,7 @@ fn run() -> Result<()> {
         }
     };
     let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
+    let log = flag("--log", false)?;
     if mode == "search" && (core_path.is_none() || stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --core, and --worlds <= --confirm <= --final".into());
     }
@@ -589,7 +593,7 @@ fn run() -> Result<()> {
                             let options = PlayOptions { seed, limit, trace: false, life_points };
                             row["baseline"] = scored(core.play(&decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
-                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight };
+                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
                             row["search"] = scored(core.play_searching(&decks, policies, names, cards, options, search), seat);
                             row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
                             tx.send(Ok(row)).map_err(|e| e.to_string())?;
