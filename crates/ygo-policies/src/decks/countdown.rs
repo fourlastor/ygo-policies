@@ -19,7 +19,8 @@
 //! One cover a turn is enough, so the policy spends one and keeps the rest:
 //! a lock already up, then a Set Trap (which could be destroyed before it is
 //! used), the hand traps last.  A cover that gets negated is seen in the
-//! chain and answered with the next one.
+//! chain and answered with the next one.  The rest stay in hand: one Trap
+//! is Set at a time, so that removal aimed at the back row finds one card.
 
 use std::cell::Cell;
 
@@ -74,6 +75,8 @@ const EMBERS: &[u32] = &[FIRE_PRINCESS, OMINOUS_FORTUNETELLING, 73134081, 453118
 const COVERS: &[u32] = &[THREATENING_ROAR, WABOKU, RAINBOW_LIFE, CYBER_VALLEY, SWIFT_SCARECROW, BATTLE_FADER];
 /// The covers that let the attacks come and take their damage away.
 const SHIELDS: &[u32] = &[WABOKU, RAINBOW_LIFE];
+/// The covers that have to be Set a turn before they are used.
+const SET_COVERS: &[u32] = &[THREATENING_ROAR, WABOKU, RAINBOW_LIFE];
 
 /// ATK a face-down monster of theirs is counted for.
 const FACE_DOWN: i32 = 1000;
@@ -432,6 +435,17 @@ impl Strategy for Countdown {
         // One Skill Drain at a time: the next stays in hand, out of reach.
         if code == SKILL_DRAIN && (Self::face_up(&ctx, code) || Self::set(&ctx, code)) {
             return Some(false);
+        }
+        // The covers wait in hand, where nothing destroys them: one is Set
+        // at a time, for their next turn, and Rainbow Life (which needs a
+        // card to discard) after the others.  Against burn every Rainbow
+        // Life is Set at once: it is the answer, and it has to be ready.
+        if SET_COVERS.contains(&code) && !(code == RAINBOW_LIFE && Self::burning(&ctx)) {
+            let waiting = ctx.spell_traps(ctx.me).iter().any(|c| !c.position.face_up && SET_COVERS.iter().any(|k| ctx.is(c, *k)));
+            let later = code == RAINBOW_LIFE && (ctx.in_hand(THREATENING_ROAR) || ctx.in_hand(WABOKU));
+            if waiting || later {
+                return Some(false);
+            }
         }
         Some(Self::free_zones(&ctx) > self.kept_zones(&ctx))
     }

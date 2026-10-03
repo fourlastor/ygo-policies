@@ -155,6 +155,9 @@ pub struct Observation {
     /// Card(s) of the event being responded to, e.g. the monster being
     /// Summoned.  Codes follow the same visibility rule as everything else.
     pub event_cards: Vec<(CardRef, Option<u32>)>,
+    /// The turn player has made this turn's Normal Summon or Set: both
+    /// players saw it.
+    pub summon_used: bool,
     /// Whether `chain` is tracked by the front end.  When `false`, an empty
     /// `chain` means "unknown", not "no chain".
     pub chain_known: bool,

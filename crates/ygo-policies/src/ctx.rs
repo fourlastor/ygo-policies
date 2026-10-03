@@ -1,6 +1,6 @@
 //! Read-only helpers over an [`Observation`] plus printed card data.
 
-use crate::cards::{CardData, CardDatabase};
+use crate::cards::{types, CardData, CardDatabase};
 use crate::knowledge::{self, kind, Against, Attacked, Facts, Fate, Needs, ALWAYS};
 use crate::model::{CardRef, CardView, Coin, Location, Observation, Phase};
 
@@ -250,6 +250,13 @@ impl<'a> Ctx<'a> {
     /// no effects.
     pub fn effects_drained(&self) -> bool {
         self.face_up_on_field(self.me, knowledge::SKILL_DRAIN) || self.face_up_on_field(self.opp, knowledge::SKILL_DRAIN)
+    }
+
+    /// A monster whose Summon brings no effect of its own to the field: it
+    /// has none (a Gemini monster has none yet), or a Skill Drain is face-up.
+    pub fn effectless(&self, card: &CardView) -> bool {
+        let data = self.view_data(card);
+        self.effects_drained() || !data.is(types::EFFECT) || data.is(types::GEMINI)
     }
 
     /// What an attack on this monster meets.  `attacker`: the monster that

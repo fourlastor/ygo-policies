@@ -116,6 +116,7 @@ mod tests {
             battle_attacker: None,
             battle_target: None,
             event_cards: Vec::new(),
+            summon_used: false,
             chain_known: true,
             can_attack_known: true,
             coin_toss: None,
@@ -720,6 +721,126 @@ mod tests {
         let shi_en = monster(1, 0, Some(SHI_EN), attack, 2500, 1400);
         let obs = direct_attack(&shi_en, 5);
         assert_eq!(both.choices[policy.choose(&obs, &both)].code(), Some(SWIFT_SCARECROW));
+    }
+
+    /// Claudi-oh's Countdown keeps its covers in hand and Sets one at a time:
+    /// removal aimed at the back row then finds one card, not all of them.
+    #[test]
+    fn countdown_sets_one_cover_at_a_time() {
+        use crate::cards::types;
+        const WABOKU: u32 = 12607053;
+        const THREATENING_ROAR: u32 = 36361633;
+        const RAINBOW_LIFE: u32 = 34002992;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [WABOKU, THREATENING_ROAR, RAINBOW_LIFE].into_iter().map(|code| printed(code, types::TRAP, 0)).collect(),
+        ));
+        let mut policy = crate::registry::create("countdown", db).unwrap();
+        let set = |code: u32, sequence: u32| Choice { kind: ChoiceKind::SetSpellTrap, ..activate(code, Location::Hand, sequence) };
+        let idle = |choices: Vec<Choice>| Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices,
+        };
+        let mut obs = observation();
+        obs.turn = 2;
+        // Rainbow Life needs a card to discard: Threatening Roar goes first.
+        obs.cards = vec![card(0, Location::Hand, 0, RAINBOW_LIFE, false), card(0, Location::Hand, 1, THREATENING_ROAR, false)];
+        let both = idle(vec![set(RAINBOW_LIFE, 0), set(THREATENING_ROAR, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(both.choices[policy.choose(&obs, &both)].code(), Some(THREATENING_ROAR));
+        // With one cover Set, the next stays in hand.
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, THREATENING_ROAR, false), card(0, Location::Hand, 0, WABOKU, false)];
+        let another = idle(vec![set(WABOKU, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(another.choices[policy.choose(&obs, &another)].kind, ChoiceKind::EndTurn);
+    }
+
+    /// Two turns of a duel Claudi-oh's Verdict lost (Beat Claudi-oh's log,
+    /// duel 10), under its own Skill Drain and with no monster of its own.
+    #[test]
+    fn free_traps_come_before_solemn_ones_and_torrential_waits_for_two() {
+        use crate::cards::types;
+        use crate::knowledge::SKILL_DRAIN;
+        use crate::staples::{SOLEMN_WARNING, TORRENTIAL_TRIBUTE};
+        const ABSOLUTE_ZERO: u32 = 40854197;
+        const NEOS_ALIUS: u32 = 69884162;
+        const ARMORED_BEE: u32 = 86915847;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                printed(SKILL_DRAIN, types::TRAP | types::CONTINUOUS, 0),
+                printed(TORRENTIAL_TRIBUTE, types::TRAP, 0),
+                printed(SOLEMN_WARNING, types::TRAP | types::COUNTER, 0),
+                printed(ABSOLUTE_ZERO, types::MONSTER | types::EFFECT | types::FUSION, 0),
+                printed(NEOS_ALIUS, types::MONSTER | types::EFFECT | types::GEMINI, 0),
+                printed(ARMORED_BEE, types::MONSTER | types::EFFECT, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let chain = |codes: &[u32]| Decision {
+            kind: DecisionKind::Chain { forced: false, triggers: false },
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices: codes
+                .iter()
+                .enumerate()
+                .map(|(sequence, code)| activate(*code, Location::SpellTrapZone, sequence as u32))
+                .chain([choice(ChoiceKind::Pass)])
+                .collect(),
+        };
+        let attack = Position { face_up: true, attack: true };
+        let their_turn = |life_points: [i32; 2], hand: u32, theirs: Vec<CardView>| {
+            let mut obs = observation();
+            obs.turn = 8;
+            obs.turn_player = Some(1);
+            obs.life_points = life_points;
+            obs.pile_sizes = vec![(1, Location::Hand, hand)];
+            obs.cards = vec![
+                card(0, Location::SpellTrapZone, 0, TORRENTIAL_TRIBUTE, false),
+                card(0, Location::SpellTrapZone, 1, SOLEMN_WARNING, false),
+                card(0, Location::SpellTrapZone, 2, SKILL_DRAIN, true),
+            ];
+            obs.cards.extend(theirs);
+            obs
+        };
+        let mut policy = crate::registry::create("verdict", db).unwrap();
+        let zero = monster(1, 0, Some(ABSOLUTE_ZERO), attack, 2500, 2000);
+        let alius = monster(1, 1, Some(NEOS_ALIUS), attack, 1900, 1300);
+        let bee = monster(1, 0, Some(ARMORED_BEE), attack, 1600, 1200);
+
+        // Neos Alius is being Normal Summoned next to Absolute Zero.  Solemn
+        // Warning would stop it for 2000 Life Points; Torrential Tribute, one
+        // window later, destroys both for nothing.
+        let negation = chain(&[SOLEMN_WARNING]);
+        let mut obs = their_turn([6200, 2200], 1, vec![zero.clone(), alius.clone()]);
+        obs.summon_used = true;
+        obs.event_cards = vec![(alius.at, alius.code)];
+        assert_eq!(negation.choices[policy.choose(&obs, &negation)].kind, ChoiceKind::Pass);
+        let summoned = chain(&[TORRENTIAL_TRIBUTE]);
+        assert_eq!(summoned.choices[policy.choose(&obs, &summoned)].code(), Some(TORRENTIAL_TRIBUTE));
+        // Without Torrential Tribute behind it, Solemn Warning is the answer.
+        obs.cards.remove(0);
+        assert_eq!(negation.choices[policy.choose(&obs, &negation)].code(), Some(SOLEMN_WARNING));
+
+        // Armored Bee (1600 ATK) is Flip Summoned at 1700 Life Points, their
+        // Normal Summon still to come: the monster after it would end the
+        // duel if Torrential Tribute went now, and both go if it waits.
+        let mut obs = their_turn([1700, 2200], 2, vec![bee.clone()]);
+        obs.turn = 12;
+        obs.event_cards = vec![(bee.at, bee.code)];
+        assert_eq!(summoned.choices[policy.choose(&obs, &summoned)].kind, ChoiceKind::Pass);
+        // It does not wait for a Summon that cannot come...
+        obs.summon_used = true;
+        assert_eq!(summoned.choices[policy.choose(&obs, &summoned)].code(), Some(TORRENTIAL_TRIBUTE));
+        // ...nor when what stands already ends the duel.
+        obs.summon_used = false;
+        obs.life_points = [1600, 2200];
+        assert_eq!(summoned.choices[policy.choose(&obs, &summoned)].code(), Some(TORRENTIAL_TRIBUTE));
     }
 
     /// Claudi-oh's Verdict Summons Beast King Barbaros without Tributes

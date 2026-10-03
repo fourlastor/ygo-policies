@@ -68,6 +68,41 @@ pub enum Step<'a> {
     Prompt(&'a Message, &'a [Monster]),
 }
 
+/// A duel recorded elsewhere (Beat Claudi-oh's log): all it takes to play
+/// it again.
+pub struct Recorded {
+    pub seed: [u64; 4],
+    pub flags: u64,
+    pub life_points: [u32; 2],
+    pub hand: u32,
+    pub per_turn: u32,
+    /// Each player's Deck in the order it was loaded, already shuffled.
+    pub decks: [Deck; 2],
+    /// Who answered each of the engine's questions, and with which bytes.
+    pub responses: Vec<(u8, Vec<u8>)>,
+}
+
+/// What a replayed duel shows its watcher.
+pub enum Replayed<'a> {
+    /// Every engine message, in order, as the engine wrote it: nothing hidden.
+    Message(&'a Message),
+    /// The recorded answer to the selection just shown, and who gave it.
+    Answer(u8, &'a [u8]),
+    /// Before a recorded answer that the policy asked alongside
+    /// ([`Asked`]) would not give: its own (as `policy-bench --trace`
+    /// writes a decision), and the recorded one.
+    Otherwise(&'a serde_json::Value, &'a [u8]),
+}
+
+/// A policy to ask, at every decision one seat took in a recorded duel,
+/// what it would answer there.
+pub struct Asked<'a> {
+    pub library: &'a PolicyLibrary,
+    pub policy: &'a str,
+    pub cards: &'a Path,
+    pub seat: u8,
+}
+
 #[repr(C)]
 #[derive(Default, Clone, Copy)]
 struct CardData {
@@ -506,6 +541,144 @@ impl Core {
         }
     }
 
+    /// Both players' cards as `MSG_UPDATE_DATA` messages, for the seats
+    /// before a selection: current ATK/DEF and positions.
+    unsafe fn field(&self, handle: Handle) -> Vec<Vec<u8>> {
+        let mut updates = Vec::new();
+        for p in 0..2 {
+            for loc in [2, 4, 8, 16, 32, 64] {
+                let q = Query { flags: query::RECOMMENDED, controller: p, location: loc, sequence: 0, overlay: 0 };
+                let mut length = 0;
+                let bytes = (self.query)(handle, &mut length, &q);
+                let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
+                if length > 0 {
+                    update.extend_from_slice(std::slice::from_raw_parts(bytes, length as usize));
+                }
+                updates.push(update);
+            }
+        }
+        updates
+    }
+
+    /// Play a recorded duel again: its seed and Decks, and the recorded
+    /// answers in order.  The Decks go in as Beat Claudi-oh's server loads
+    /// them, last card first.  `watch` sees every message and every answer.
+    /// A policy can be `asked` alongside: it is fed the duel as its seat saw
+    /// it and answers each of that seat's decisions, the duel going on with
+    /// the recorded answer whatever it says.
+    /// Returns how many recorded answers were left when the duel ended.
+    pub fn replay(&mut self, record: &Recorded, asked: Option<&Asked>, watch: &mut dyn FnMut(Replayed)) -> Result<usize> {
+        self.resources.errors.clear();
+        for code in record.decks.iter().flat_map(|d| d.main.iter().chain(&d.extra)) {
+            if !self.resources.cards.contains_key(code) {
+                return Err(format!("Deck card {code} is absent from the database"));
+            }
+        }
+        let payload = (&mut *self.resources) as *mut Resources as Handle;
+        let player = |lp| Player { lp, draw: record.hand, per_turn: record.per_turn };
+        let options = Options {
+            seed: record.seed,
+            flags: record.flags,
+            p0: player(record.life_points[0]),
+            p1: player(record.life_points[1]),
+            reader,
+            payload1: payload,
+            scripts,
+            payload2: payload,
+            log,
+            payload3: payload,
+            done,
+            payload4: payload,
+            unsafe_libraries: 0,
+        };
+        unsafe {
+            let mut handle = ptr::null_mut();
+            let status = (self.create)(&mut handle, &options);
+            if status != 0 {
+                return Err(format!("OCG_CreateDuel: {status}"));
+            }
+            let _duel = DuelGuard { handle, destroy: self.destroy };
+            for name in ["constant.lua", "utility.lua"] {
+                let name = CString::new(name).unwrap();
+                if scripts(payload, handle, name.as_ptr()) == 0 {
+                    return Err(format!("Failed to load {name:?}"));
+                }
+            }
+            for (p, deck) in record.decks.iter().enumerate() {
+                for (location, pile) in [(1, &deck.main), (0x40, &deck.extra)] {
+                    for code in pile.iter().rev() {
+                        (self.new_card)(
+                            handle,
+                            &NewCard { team: p as u8, duelist: 0, code: *code, controller: p as u8, location, sequence: 0, position: 8 },
+                        );
+                    }
+                }
+            }
+            let seat = match asked {
+                Some(asked) => {
+                    let seat = asked.library.seat(asked.policy, asked.cards, asked.seat as i32, record.seed[0])?;
+                    let size = |pile: fn(&Deck) -> &Vec<u32>| [pile(&record.decks[0]).len() as u16, pile(&record.decks[1]).len() as u16];
+                    seat.feed(&message::start_message(asked.seat, record.life_points, size(|d| &d.main), size(|d| &d.extra)))?;
+                    Some(seat)
+                }
+                None => None,
+            };
+            (self.start)(handle);
+            let mut answers = record.responses.iter();
+            let mut responder = None;
+            loop {
+                let status = (self.process)(handle);
+                let mut length = 0;
+                let bytes = (self.messages)(handle, &mut length);
+                let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
+                let mut offset = 0;
+                let mut won = false;
+                let mut own = None;
+                while offset < buffer.len() {
+                    let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
+                    let raw = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
+                    offset += 4 + n;
+                    let parsed = message::parse(raw).map_err(|e| e.to_string())?;
+                    // A rejected answer: the same player is asked again.
+                    if let Some(player) = parsed.responder() {
+                        responder = Some(player);
+                    }
+                    won |= matches!(parsed, Message::Win { .. });
+                    if let Some(seat) = &seat {
+                        if raw.first().is_some_and(|id| message::is_selection(*id)) {
+                            for update in self.field(handle) {
+                                seat.feed(&update)?;
+                            }
+                        }
+                        if let Some(answer) = seat.feed(raw)? {
+                            own = Some(answer);
+                        }
+                    }
+                    watch(Replayed::Message(&parsed));
+                }
+                if !self.resources.errors.is_empty() {
+                    return Err(self.resources.errors.join("\n"));
+                }
+                if won || status == 0 {
+                    return Ok(answers.len());
+                }
+                if status == 1 {
+                    let (player, answer) = answers.next().ok_or("The record ends before the duel does")?;
+                    if responder.is_some_and(|p| p != *player) {
+                        return Err(format!("The record has player {player} answering a question for player {}: not the same duel", responder.unwrap()));
+                    }
+                    if let (Some(seat), Some(own)) = (&seat, own) {
+                        if own != *answer {
+                            watch(Replayed::Otherwise(&seat.last_answer()?, answer));
+                        }
+                    }
+                    watch(Replayed::Answer(*player, answer));
+                    (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
+                }
+            }
+        }
+    }
+
     pub fn play(
         &mut self,
         decks: &[Deck; 2],
@@ -638,26 +811,9 @@ impl Core {
                             .or_default() += 1;
                     }
                     if message::is_selection(id) {
-                        for p in 0..2 {
-                            for loc in [2, 4, 8, 16, 32, 64] {
-                                let q = Query {
-                                    flags: query::RECOMMENDED,
-                                    controller: p,
-                                    location: loc,
-                                    sequence: 0,
-                                    overlay: 0,
-                                };
-                                let bytes = (self.query)(handle, &mut length, &q);
-                                let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
-                                if length > 0 {
-                                    update.extend_from_slice(std::slice::from_raw_parts(
-                                        bytes,
-                                        length as usize,
-                                    ));
-                                }
-                                for seat in &seats {
-                                    seat.feed(&update)?;
-                                }
+                        for update in self.field(handle) {
+                            for seat in &seats {
+                                seat.feed(&update)?;
                             }
                         }
                     }

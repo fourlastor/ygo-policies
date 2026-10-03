@@ -208,7 +208,10 @@ target/release/policy-bench round-robin --policies all --games 256 \
 ```
 
 See the [benchmark crate guide](crates/ygo-policies-bench/README.md) for paired
-comparisons, custom pools, saved-run ranking and reproducibility details.
+comparisons, custom pools, saved-run ranking and reproducibility details, and
+for [replaying a duel](crates/ygo-policies-bench/README.md#replaying-a-recorded-duel)
+that *Beat Claudi-oh* recorded: the duel told turn by turn with nothing
+hidden, and where the policy as it is built now would play it otherwise.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

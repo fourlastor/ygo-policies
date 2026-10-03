@@ -169,3 +169,48 @@ stays out of the table, and the listing says which cards need a look:
 
 Those go in `knowledge::facts` by hand.  `--only CODE,CODE` prints the facts
 of a few cards without touching the table; `probe` dumps what the engine did.
+
+## Replaying a recorded duel
+
+*Beat Claudi-oh* keeps every finished duel in its SQLite database with what
+it takes to play it again: the seed, both Decks as they were loaded and every
+answer either player gave.
+
+```bash
+# The last duel of the log, or one by id; --output writes it to a file.
+target/release/policy-bench replay --input beat-claudio.sqlite --duel 7
+# The same, asking the policy as it is built now at each of its decisions.
+target/release/policy-bench replay --input beat-claudio.sqlite --duel 7 --recheck true
+```
+
+`replay` runs the record through the pinned engine and tells the duel turn by
+turn with nothing hidden: both hands and the Set cards at the start of each
+turn, every draw, Summon, activation with its targets, negation, attack and
+Life Point change, and at the end what each player held when each turn ended.
+Where a player could have chained a card and passed, it says so
+(`(Claudi-oh could activate Torrential Tribute and does not)`), once per turn
+for the same cards.  It reads what a policy did against a player, which the
+benchmarks cannot show.
+
+`--recheck true` plays the policy of the duel's row (`--library`, default the
+one built here) alongside the record: it is fed the duel as its seat saw it,
+asked at each of that seat's decisions, and the duel goes on with the recorded
+answer whatever it says.  Where it would answer otherwise the story has a line
+starting with `>>`, before what was done:
+
+```text
+   Duelist Normal Summons Elemental HERO Neos Alius
+   >> as built now, Claudi-oh would pass here, not activate Solemn Warning
+   Claudi-oh activates Solemn Warning [the Spell & Trap Zone]
+```
+
+That tells whether a change to a policy reaches the position it was made
+for.  Each answer is given with the duel as recorded up to there, so the lines
+are independent of one another; between cards a policy values the same, the
+pick is drawn at random and can differ from the record for no other reason.
+
+The record must come from the same engine, scripts and card database as this
+checkout's `vendor/`; a record from other versions stops with an error when an
+answer no longer fits the question.  `--input` also takes a `.json` file
+holding one duel's `replay` column (without `--recheck`: the bare replay does
+not say which policy played).

@@ -15,15 +15,17 @@ rules every policy plays by: they see what their seat sees.
 
 `policy-bench round-robin`, 31 policies, 256 games per pairing, seats
 alternating: 119,040 games, no failures, one draw
-([tier list](../DECK-TIER-LIST.md)).
+([tier list](../DECK-TIER-LIST.md)).  These are the numbers after the first
+duels against a player ([below](#against-a-player)); the decks' first
+tournament, in brackets, is kept next to this file.
 
 | # | Deck | Elo | Win rate against the pool [95% CI] | Against the 29 older decks |
 |---:|---|---:|---:|---:|
-| 1 | Claudi-oh's Countdown | 2011 | 93.6% [93.1, 94.1] | 93.5% |
-| 2 | Claudi-oh's Verdict | 1848 | 85.0% [84.2, 85.8] | 87.9% |
-| 3 | Machina Gadgets | 1710 | 73.6% [72.6, 74.5] | |
+| 1 | Claudi-oh's Countdown | 2024 | 94.0% [93.5, 94.5] (93.6%) | 93.9% (93.5%) |
+| 2 | Claudi-oh's Verdict | 1849 | 85.1% [84.3, 85.9] (85.0%) | 87.9% (87.9%) |
+| 3 | Machina Gadgets | 1714 | 73.9% [73.0, 74.9] | |
 | 4 | Emperor, Arise! | 1687 | 71.2% [70.2, 72.3] | |
-| 5 | Gravekeeper's Tomb | 1682 | 70.8% [69.8, 71.8] | |
+| 5 | Gravekeeper's Tomb | 1681 | 70.7% [69.6, 71.7] | |
 
 Before the two decks joined, Machina Gadgets led the pool with 77.6%.
 
@@ -32,11 +34,11 @@ attacking has little to say to one that cannot be attacked.
 
 | | Hardest opponents (win rate) |
 |---|---|
-| Countdown | Burn Princess 45.7%, Gladiator Beasts 88.3%, Gravekeeper's 89.1%, Six Samurai 89.1%, Tele-DAD 89.8% |
-| Verdict | the Countdown 2.7%, Machina Gadgets 67.2%, Fusion Heroes 69.5%, Monarchs 70.3%, Blackwings 74.2% |
+| Countdown | Burn Princess 46.1%, Gravekeeper's 89.1%, Six Samurai 89.1%, Gladiator Beasts 89.8%, Fortune Ladies 91.8% |
+| Verdict | the Countdown 2.7%, Machina Gadgets 66.0%, Fusion Heroes 70.7%, Monarchs 70.7%, Blackwings 73.8% |
 
-The Countdown's 7,680 games: 7,057 won by Final Countdown, 133 because the
-opponent ran out of cards, 426 lost on Life Points, 64 lost by running out
+The Countdown's 7,680 games: 7,099 won by Final Countdown, 122 because the
+opponent ran out of cards, 388 lost on Life Points, 71 lost by running out
 of cards before the clock did.  They last 26 turns on average; the
 Verdict's last 12.
 
@@ -118,6 +120,79 @@ even next to our own monsters (the engine asks which way: the pilot answers).
 Skill Drain is the deck: against its four hardest opponents it was activated
 0.86 times a game in the traced games the deck won and 0.58 in those it lost.
 
+## Against a player
+
+The first duels a player played against the two decks were read back from
+the game's log with `policy-bench replay`
+([how](../crates/ygo-policies-bench/README.md#replaying-a-recorded-duel)).
+The player won one of two against the Countdown, with a deck built against
+it (small Blackwings that attack under the locks, Icarus Attack, Delta Crow -
+Anti Reverse, Mystical Space Typhoon, Dust Tornado, Giant Trunade), and two
+of two against the Verdict, with the pool's Fusion Heroes.
+
+What the replays showed, and what was done about it:
+
+- **The Countdown Set every Trap it drew.**  In the duel it lost, its hand
+  was empty from the third turn on: one Delta Crow in its End Phase took two
+  Set Traps, each Icarus Attack two more cards, and the Rainbow Life Set at
+  the end had no card to discard.  Covers are now Set one at a time and the
+  others kept in hand (Rainbow Life excepted against a burn deck).  Against
+  a pilot of the player's list, 69.4% became 74.1% over 4,096 games each;
+  against the pool nothing changes (+0.0 points [-0.2, +0.3] over 15,360
+  paired games).  (That pilot is a test opponent and not part of this
+  repository: its deck is good against the Countdown and little else.)
+- **The Verdict never used Solemn Warning on Polymerization.**  The shared
+  rule only negated Summons.  It now also negates a Spell or Trap that
+  Special Summons, the ones that bring tokens or a small monster excepted:
+  over eight decks that play the card, +0.26 points in 61,440 paired games,
+  four decks significantly better and none worse.
+- **It paid for an answer it had for nothing.**  With Torrential Tribute Set
+  next to it, the Verdict paid 2000 Life Points for Solemn Warning on a Normal
+  Summon; one window later Torrential Tribute would have destroyed that
+  monster and the Elemental HERO Absolute Zero beside it.  A Solemn card now
+  leaves a Summon to a Set Bottomless Trap Hole or Torrential Tribute that
+  answers it once it is made, when the monster brings no effect of its own
+  (it has none, or Skill Drain is face-up).
+- **It spent Torrential Tribute one Summon early.**  At 1700 Life Points it
+  destroyed a Flip Summoned Armored Bee (1600 ATK), and the Normal Summon
+  that followed ended the duel.  On their turn, with their Normal Summon
+  still to come and cards in their hand, Torrential Tribute now waits when
+  what stands cannot end the duel and has no effect.
+
+The last two rules are there for duels against a player: the benchmark does
+not move with them.  For the Verdict against the 29 older decks, over 29,696
+paired games each, they are worth -0.03 points [-0.07, +0.02] and -0.02
+[-0.05, +0.02], and change how 1.9% and 0.6% of its games are played.  The
+policies Summon in another order than the player did: over 3,620 traced
+turns of the Verdict's opponents, the Normal Summon or Set came before any
+other Summon in 96.2%, and a Summon was followed by the Normal Summon, as in
+that duel, in 1.1%.  A unit test holds both positions, and `policy-bench
+replay --recheck true` on the recorded duel shows the policy answering them
+otherwise now.
+
+What was measured and did not help.  For the Countdown, over 1,024 games
+against the pilot of the player's list and 256 against each of the 29 decks
+(68.4% and 93.5% before any of it, 73.5% and 93.5% with one cover Set at a
+time): two covers Set at a time (70.1% and 93.6%); on top of one at a time,
+locks kept in hand until they stop a monster on the field (73.0% and 93.3%),
+and Nightmare's Steelcage and Swords of Revealing Light held back while
+another cover is ready (71.1% and 93.2%); Skill Drain only in answer to a
+monster effect (66.2% and 92.3%).  For the Verdict: keeping in hand, or
+Setting, a monster their best one would destroy (87.6% and 87.9% against the
+29 decks, from 88.0%).  And the two Trap rules for any monster, with or
+without an effect, over every deck that plays those cards: -0.01 points in
+57,600 paired games and +0.07 in 42,240.
+
+`policy-bench compare`, each of the 31 policies against the others as they
+were (commit 9da85f3) on the same seeds, 128 games per pairing: +0.07 points
+over 119,040 paired games, with Machina Gadgets (+0.5), X-Sabers (+0.4) and
+Six Samurai (+0.3) significantly better and no deck worse
+([summary](duel-replays-vs-old.summary.json),
+[metadata](duel-replays-vs-old.metadata.json)).  With 512 games per pairing
+for the two decks ([summary](duel-replays-boss-decks-vs-old.summary.json),
+[metadata](duel-replays-boss-decks-vs-old.metadata.json)): the Verdict +0.5
+points [+0.3, +0.7], the Countdown +0.0 [-0.2, +0.3].
+
 ## Shared code
 
 Three changes reach every policy:
@@ -162,6 +237,10 @@ target/release/policy-bench round-robin --policies all --games 256 --seed 730000
   --output tournament.jsonl --markdown DECK-TIER-LIST.md
 ```
 
-The tournament's [raw games](round-robin-2026-10-03-claudi-oh.jsonl.gz),
-[metadata](round-robin-2026-10-03-claudi-oh.metadata.json) and
-[summary](round-robin-2026-10-03-claudi-oh.summary.json) are next to this file.
+The tournament's [raw games](round-robin-2026-10-03-duel-replays.jsonl.gz),
+[metadata](round-robin-2026-10-03-duel-replays.metadata.json) and
+[summary](round-robin-2026-10-03-duel-replays.summary.json) are next to this
+file, and so are those of the decks' first tournament
+([raw games](round-robin-2026-10-03-claudi-oh.jsonl.gz),
+[metadata](round-robin-2026-10-03-claudi-oh.metadata.json),
+[summary](round-robin-2026-10-03-claudi-oh.summary.json)).

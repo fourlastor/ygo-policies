@@ -131,6 +131,8 @@ pub struct Projection {
     /// The card(s) being Summoned: what a "when a monster is Summoned" response answers.
     pub summoning: Vec<(Loc, u32)>,
     summoning_open: bool,
+    /// The turn player has Normal Summoned or Set a monster this turn.
+    pub summon_used: bool,
     /// Monsters the pending Battle Phase prompt lets attack.
     pub attackable: Option<Vec<Loc>>,
     pub coin_toss: Option<CoinToss>,
@@ -260,6 +262,7 @@ impl Projection {
                 self.coin_toss = None;
                 self.turn += 1;
                 self.turn_player = Some(*player);
+                self.summon_used = false;
                 self.end_battle();
                 self.summoning.clear();
                 for side in &mut self.sides {
@@ -323,6 +326,9 @@ impl Projection {
                 if let Some(card) = self.card_mut(loc.controller, loc.location, loc.sequence) {
                     card.position = loc.position;
                 }
+                if loc.location == location::MZONE && Some(loc.controller) == self.turn_player {
+                    self.summon_used = true;
+                }
             }
             Swap { first, second } => {
                 let mut a = self.take(first.1);
@@ -340,6 +346,9 @@ impl Projection {
                 self.put(first.1, b);
             }
             Summoning { code, loc } | FlipSummoning { code, loc } => {
+                if matches!(message, Summoning { .. }) && Some(loc.controller) == self.turn_player {
+                    self.summon_used = true;
+                }
                 self.reveal(*loc, *code);
                 if let Some(card) = self.card_mut(loc.controller, loc.location, loc.sequence) {
                     card.position = loc.position;
@@ -569,6 +578,7 @@ impl Projection {
             battle_attacker: self.attacker.map(card_ref),
             battle_target: self.attack_target.map(card_ref),
             event_cards: self.summoning.iter().map(|(at, code)| (card_ref(*at), (*code != 0).then_some(*code))).collect(),
+            summon_used: self.summon_used,
             chain_known: true,
             can_attack_known: true,
             coin_toss: self.coin_toss.clone(),
@@ -647,4 +657,31 @@ pub fn phase(bits: u16) -> Option<Phase> {
         0x200 => Phase::End,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The turn player's Normal Summon or Set is used up for the turn; a
+    /// Special or Flip Summon leaves it.
+    #[test]
+    fn the_normal_summon_is_used_once_a_turn() {
+        let at = |controller, location, position| Loc { controller, location, sequence: 0, position };
+        let monster = |controller| at(controller, location::MZONE, position::FACEUP_ATTACK);
+        let mut projection = Projection::new(Some(0));
+        projection.apply(&Message::NewTurn { player: 1 });
+        projection.apply(&Message::SpecialSummoning { code: 1, loc: monster(1) });
+        projection.apply(&Message::FlipSummoning { code: 1, loc: monster(1) });
+        assert!(!projection.summon_used);
+        projection.apply(&Message::Summoning { code: 1, loc: monster(1) });
+        assert!(projection.summon_used);
+        projection.apply(&Message::NewTurn { player: 0 });
+        assert!(!projection.summon_used);
+        // A Set monster uses it as well; a Set Spell or Trap does not.
+        projection.apply(&Message::Set { code: 0, loc: at(0, location::SZONE, position::FACEDOWN) });
+        assert!(!projection.summon_used);
+        projection.apply(&Message::Set { code: 0, loc: at(0, location::MZONE, position::FACEDOWN_DEFENSE) });
+        assert!(projection.summon_used);
+    }
 }

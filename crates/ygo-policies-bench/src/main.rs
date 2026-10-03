@@ -2,8 +2,9 @@
 mod engine;
 mod knowledge;
 mod probe;
+mod replay;
 mod report;
-use engine::{Core, Deck, PlayOptions, PolicyLibrary, Result};
+use engine::{Asked, Core, Deck, PlayOptions, PolicyLibrary, Result};
 use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -179,13 +180,14 @@ fn git_revision(path: &Path) -> Value {
 
 fn help() {
     println!(
-        "policy-bench <matchup|round-robin|compare|rank|knowledge|probe> [OPTIONS]\n\
+        "policy-bench <matchup|round-robin|compare|rank|knowledge|probe|replay> [OPTIONS]\n\
   matchup --policies arcana --opponents blackwing,monarch\n\
   round-robin --policies all --games 256 --markdown DECK-TIER-LIST.md\n\
   compare --policies arcana --opponents existing --baseline old.so --candidate new.so\n\
   rank --input tournament.jsonl --markdown DECK-TIER-LIST.md\n\
   knowledge --workers 8 --report data/wc2011-monster-facts.md\n\
   probe --only 26593852 --output catastor.jsonl\n\
+  replay --input beat-claudio.sqlite --duel 7 --recheck true\n\
 \nOptions: --output results.jsonl --games 64 --seed 730000 --workers 4\n\
   --library PATH (matchup/round-robin; defaults to target/release/libygo_policies.so)\n\
   --core PATH (optional external OCGCore; default builds the pinned vendor engine)\n\
@@ -201,7 +203,11 @@ shows as the policies' card facts (crates/ygo-policies/src/knowledge/pool.rs):\n
   --pool FILE (an EDOPro lflist; default data/wc2011.lflist.conf) or --only CODE,CODE\n\
   --rust PATH (the table) --report PATH (the same in words, with what needs review)\n\
   --output PATH (the staged attacks this build's tactics call wrong)\n\
-probe writes what the engine did, monster by monster, as JSON lines (--output)."
+probe writes what the engine did, monster by monster, as JSON lines (--output).\n\
+replay plays a duel from Beat Claudi-oh's database again (--input, and --duel ID, default\n\
+the last one) and tells it turn by turn with nothing hidden (to --output, else printed).\n\
+  --recheck true also asks the policy that played, as --library has it now, at each of its\n\
+  decisions, and says where it would answer otherwise."
     );
 }
 
@@ -215,7 +221,7 @@ fn run() -> Result<()> {
         help();
         return Ok(());
     }
-    if !["matchup", "round-robin", "compare", "rank", "probe", "knowledge"].contains(&mode.as_str()) {
+    if !["matchup", "round-robin", "compare", "rank", "probe", "knowledge", "replay"].contains(&mode.as_str()) {
         return Err(format!("Unknown mode {mode}; use --help"));
     }
     let mut args = BTreeMap::new();
@@ -249,6 +255,8 @@ fn run() -> Result<()> {
             "--pool",
             "--rust",
             "--report",
+            "--duel",
+            "--recheck",
         ]
         .contains(&key.as_str())
         {
@@ -304,6 +312,32 @@ fn run() -> Result<()> {
     let scripts = path("--scripts", "vendor/CardScripts");
     let decks = path("--decks", "decks");
     let core_path = args.get("--core").map(PathBuf::from);
+    if mode == "replay" {
+        // A duel from Beat Claudi-oh's log, played again and told.
+        let duel = args.get("--duel").map(|v| v.parse().map_err(|_| "Invalid --duel".to_string())).transpose()?;
+        let record = replay::load(&required("--input")?, duel)?;
+        let mut core = Core::open(core_path.as_deref(), &cards, &scripts)?;
+        // The policy that played, as it is built now, asked at each of its decisions.
+        let library = match args.get("--recheck").map(String::as_str).unwrap_or("false") {
+            "true" => {
+                let name = format!("target/release/{}ygo_policies{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX);
+                Some(PolicyLibrary::open(&path("--library", &name))?)
+            }
+            "false" => None,
+            _ => return Err("Invalid --recheck".into()),
+        };
+        let asked = match (&library, &record.policy) {
+            (Some(library), Some((policy, seat))) => Some(Asked { library, policy, cards: &cards, seat: *seat }),
+            (Some(_), None) => return Err("--recheck needs a duel from the database: a bare replay does not say which policy played it".into()),
+            (None, _) => None,
+        };
+        let story = replay::narrate(&mut core, &record, &replay::names(&cards)?, asked.as_ref())?;
+        match args.get("--output") {
+            Some(path) => std::fs::write(path, story).map_err(|e| format!("{path}: {e}"))?,
+            None => print!("{story}"),
+        }
+        return Ok(());
+    }
     if mode == "probe" {
         // What the engine shows about each monster of a pool, as JSON lines.
         let codes = pool(&args, &root, &cards)?;

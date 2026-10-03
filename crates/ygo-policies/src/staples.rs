@@ -63,6 +63,10 @@ pub const GORZ: u32 = 44330098;
 /// Opponent cards that destroy several of ours at once: worth a counter.
 pub const WIPES: &[u32] = &[DARK_HOLE, RAIGEKI, HEAVY_STORM, TORRENTIAL_TRIBUTE, MIRROR_FORCE, LIGHTNING_VORTEX];
 
+/// Spells and Traps whose Special Summon is not worth a Solemn Warning:
+/// Scapegoat, Fires of Doomsday, Ojama Trio, One for One, Emergency Teleport.
+pub const SMALL_SUMMONS: &[u32] = &[73915051, 46173679, 29843091, 2295440, 67723438];
+
 /// Continuous cards that keep the other player from attacking: a stall
 /// deck's win condition, so they are the first thing to remove.
 pub const ATTACK_LOCKS: &[u32] = &[
@@ -449,6 +453,44 @@ pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Resp
     Some(if blocked || (response.score > 0.0 && ctx.wasted(code)) { Response::no() } else { response })
 }
 
+/// What Torrential Tribute would take from them, less what it takes from us.
+fn torrential_gain(ctx: &Ctx) -> i32 {
+    ctx.swept_strength(TORRENTIAL_TRIBUTE) - ctx.field_strength(ctx.me)
+}
+
+/// On their turn, with their Normal Summon still to be made and cards in
+/// hand to make it with, a Torrential Tribute kept one Summon longer takes
+/// two monsters for one.  It is kept when what stands now cannot end the
+/// duel and has no effect that could take the Trap first.
+fn more_to_come(ctx: &Ctx) -> bool {
+    !ctx.my_turn()
+        && !ctx.obs.summon_used
+        && ctx.hand_size(ctx.opp) > 0
+        && ctx.opp_attack_potential() < ctx.my_lp()
+        && ctx.monsters(ctx.opp).iter().all(|c| !c.position.face_up || ctx.effectless(c))
+}
+
+/// On their turn, a Set Trap of ours that answers this Summon once it is
+/// made, and for nothing: the Solemn cards are then not worth their price.
+/// Only for a monster that brings no effect with it: negating the Summon of
+/// any other also stops what it does when it arrives, and when it goes.
+fn answered_free<S: Strategy + ?Sized>(s: &S, t: &Turn, card: &CardView) -> bool {
+    let ctx = t.ctx;
+    let facts = ctx.facts(card);
+    if ctx.my_turn() || !ctx.effectless(card) || facts.effect_payoff > 0 || facts.effect_collateral != 0 {
+        return false;
+    }
+    let ready = |code: u32| {
+        s.allow_staple(t, code)
+            && !ctx.wasted(code)
+            && ctx.reaches(card, code, false, true)
+            && ctx.spell_traps(ctx.me).iter().any(|c| !c.position.face_up && ctx.is(c, code))
+    };
+    let bottomless = card.attack >= 1500 && ready(BOTTOMLESS_TRAP_HOLE);
+    let torrential = ready(TORRENTIAL_TRIBUTE) && torrential_gain(&ctx) >= 1000 && !more_to_come(&ctx);
+    bottomless || torrential
+}
+
 fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
     let ctx = t.ctx;
     let choice = t.choice(index);
@@ -461,8 +503,8 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
     Some(match code {
         TRAP_HOLE | BOTTOMLESS_TRAP_HOLE => Response::new(100.0),
         TORRENTIAL_TRIBUTE => {
-            let gain = ctx.swept_strength(TORRENTIAL_TRIBUTE) - ctx.field_strength(me);
-            if gain >= 1000 {
+            let gain = torrential_gain(&ctx);
+            if gain >= 1000 && !more_to_come(&ctx) {
                 // Capped below Trap Hole so it never stacks on our own answer.
                 Response::new((gain as f64 / 10.0).min(95.0))
             } else {
@@ -587,7 +629,16 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
         SOLEMN_WARNING => match (t.hostile_top(), opponent_summoning(&ctx)) {
             (Hostile::No, Some((card, code))) if ctx.my_lp() > 3000 => {
                 let data = ctx.data(code);
-                if card.attack.max(data.attack) >= 1900 || data.is_extra() { Response::new(80.0) } else { Response::no() }
+                let worth = card.attack.max(data.attack) >= 1900 || data.is_extra();
+                if worth && !answered_free(s, t, card) { Response::new(80.0) } else { Response::no() }
+            }
+            // Against an activation it is only offered when that activation
+            // Special Summons.  A Spell or Trap that does brings a Fusion or
+            // the best monster of a Graveyard; tokens and Tuners are not
+            // worth the Life Points.
+            (Hostile::Link(link), _) if ctx.my_lp() > 3000 => {
+                let code = ctx.canonical(link.code);
+                if ctx.data(code).is_monster() || SMALL_SUMMONS.contains(&code) { Response::no() } else { Response::new(78.0) }
             }
             _ => Response::no(),
         },
@@ -595,7 +646,7 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             let worth = match t.hostile_top() {
                 Hostile::Link(link) => WIPES.contains(&ctx.canonical(link.code)),
                 Hostile::No => opponent_summoning(&ctx).map_or(false, |(card, code)| {
-                    card.attack.max(ctx.data(code).attack) >= 2400 || ctx.data(code).is_extra()
+                    (card.attack.max(ctx.data(code).attack) >= 2400 || ctx.data(code).is_extra()) && !answered_free(s, t, card)
                 }),
                 Hostile::Unseen => false,
             };
