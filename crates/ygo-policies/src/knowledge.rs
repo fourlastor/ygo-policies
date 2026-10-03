@@ -29,6 +29,9 @@ pub const TOON_WORLD: u32 = 15259703;
 pub const TOON_KINGDOM: u32 = 43175858;
 pub const SET_TOON: u16 = 0x62;
 
+/// Skill Drain: while it is face-up, monsters on the field have no effects.
+pub const SKILL_DRAIN: u32 = 82732705;
+
 /// Toon World by name: Toon Kingdom is treated as it while in the Field Zone.
 pub const TOON_WORLDS: &[u32] = &[TOON_WORLD, TOON_KINGDOM];
 
@@ -321,6 +324,7 @@ pub fn owner_worth(code: u32) -> i32 {
         39910367 => 2400, // Magical Citadel of Endymion (spellcaster)
         34487429 | // Ancient City - Rainbow Ruins (crystal)
         62265044 => 2300, // Dragon Ravine (dragunity)
+        3657444 | // Cyber Valley (countdown)
         51481927 => 2200, // Spell Absorption (burn)
         66957584 | // Infernity Launcher (infernity)
         82971335 => 2100, // Fortune Lady Earth (fortune-lady)

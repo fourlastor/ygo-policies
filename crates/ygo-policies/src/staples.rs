@@ -31,6 +31,9 @@ pub const WALL_OF_REVEALING_LIGHT: u32 = 17078030;
 pub const MORPHTRONIC_BIND: u32 = 85101228;
 /// Attackers are stuck in Defense Position for a turn: half the attacks.
 pub const SPIDER_WEB: u32 = 69408987;
+pub const MESSENGER_OF_PEACE: u32 = 44656491;
+pub const LEVEL_LIMIT_AREA_B: u32 = 3136426;
+pub const NIGHTMARES_STEELCAGE: u32 = 58775978;
 /// Synchros several Extra Decks share: discard N, bounce N of theirs.
 pub const BRIONAC: u32 = 50321796;
 /// Destroy 1 card we control and 1 card they control.
@@ -62,7 +65,16 @@ pub const WIPES: &[u32] = &[DARK_HOLE, RAIGEKI, HEAVY_STORM, TORRENTIAL_TRIBUTE,
 
 /// Continuous cards that keep the other player from attacking: a stall
 /// deck's win condition, so they are the first thing to remove.
-pub const ATTACK_LOCKS: &[u32] = &[SWORDS_OF_REVEALING_LIGHT, GRAVITY_BIND, WALL_OF_REVEALING_LIGHT, MORPHTRONIC_BIND, SPIDER_WEB];
+pub const ATTACK_LOCKS: &[u32] = &[
+    SWORDS_OF_REVEALING_LIGHT,
+    GRAVITY_BIND,
+    WALL_OF_REVEALING_LIGHT,
+    MORPHTRONIC_BIND,
+    SPIDER_WEB,
+    MESSENGER_OF_PEACE,
+    LEVEL_LIMIT_AREA_B,
+    NIGHTMARES_STEELCAGE,
+];
 
 pub fn value(code: u32) -> Option<i32> {
     Some(match code {

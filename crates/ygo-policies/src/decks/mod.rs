@@ -29,3 +29,5 @@ pub mod quickdraw_plant;
 pub mod machina;
 pub mod x_saber;
 pub mod draconic_might;
+pub mod countdown;
+pub mod verdict;

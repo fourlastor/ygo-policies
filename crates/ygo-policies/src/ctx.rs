@@ -225,7 +225,31 @@ impl<'a> Ctx<'a> {
             facts.immune = 0;
             facts.unaffected = 0;
         }
+        // Skill Drain leaves a face-up monster only what it does once it has
+        // left the field.
+        if card.at.location == Location::MonsterZone && card.position.face_up && self.effects_drained() {
+            let left = |a: Attacked| Attacked {
+                attacker: if a.when_destroyed { a.attacker } else { Fate::Unharmed },
+                when_destroyed: a.when_destroyed,
+                payoff: a.payoff,
+                collateral: a.collateral,
+                against: a.against,
+                ..Attacked::PLAIN
+            };
+            facts = Facts {
+                attacked: [left(facts.attacked[0]), left(facts.attacked[1])],
+                effect_payoff: facts.effect_payoff,
+                effect_collateral: facts.effect_collateral,
+                ..Facts::NONE
+            };
+        }
         facts
+    }
+
+    /// A face-up Skill Drain, on either field: monsters on the field have
+    /// no effects.
+    pub fn effects_drained(&self) -> bool {
+        self.face_up_on_field(self.me, knowledge::SKILL_DRAIN) || self.face_up_on_field(self.opp, knowledge::SKILL_DRAIN)
     }
 
     /// What an attack on this monster meets.  `attacker`: the monster that

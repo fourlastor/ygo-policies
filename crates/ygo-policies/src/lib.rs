@@ -77,6 +77,8 @@ pub mod registry {
         entry!("machina", machina::Machina),
         entry!("x-saber", x_saber::XSaber),
         entry!("draconic-might", draconic_might::DraconicMight),
+        entry!("countdown", countdown::Countdown),
+        entry!("verdict", verdict::Verdict),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
@@ -605,5 +607,139 @@ mod tests {
         fool.coin_effect = Some(CoinEffect { code: THE_FOOL, result: Coin::Heads });
         assert!(ctx.targetable(&fool, true));
         assert!(!ctx.targetable_by(&fool, 1, false));
+    }
+
+    /// Skill Drain leaves a face-up monster only what it does once it has
+    /// left the field.
+    #[test]
+    fn skill_drain_switches_card_facts_off() {
+        use crate::agent::Outcome;
+        use crate::cards::{attributes, types};
+        use crate::knowledge::SKILL_DRAIN;
+        use crate::staples::SMASHING_GROUND;
+        use crate::tactics::default_outcome;
+        const CATASTOR: u32 = 26593852;
+        const HORUS_LV8: u32 = 48229808;
+        const SANGAN: u32 = 26202165;
+        let db = MemoryCards(
+            [printed(1, types::MONSTER, attributes::EARTH), printed(SMASHING_GROUND, types::SPELL, 0), printed(SKILL_DRAIN, types::TRAP, 0)]
+                .into_iter()
+                .collect(),
+        );
+        let attack = Position { face_up: true, attack: true };
+        let ours = monster(0, 0, Some(1), attack, 3000, 1000);
+        let catastor = monster(1, 0, Some(CATASTOR), attack, 2200, 1200);
+        let horus = monster(1, 1, Some(HORUS_LV8), attack, 3000, 1800);
+        let sangan = monster(1, 2, Some(SANGAN), attack, 1000, 600);
+        let plain = monster(1, 3, Some(1), attack, 1000, 600);
+        let mut obs = observation();
+        obs.cards = vec![ours.clone(), catastor.clone(), horus, sangan.clone(), plain.clone()];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(ctx.wasted(SMASHING_GROUND));
+        assert_eq!(default_outcome(&ctx, &ours, &catastor, 0), Outcome::Lose);
+        // Face-up on either field, Skill Drain makes them plain monsters...
+        obs.cards.push(card(1, Location::SpellTrapZone, 0, SKILL_DRAIN, true));
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(ctx.effects_drained() && !ctx.wasted(SMASHING_GROUND));
+        assert_eq!(default_outcome(&ctx, &ours, &catastor, 0), Outcome::Win { trick: false });
+        // ...but Sangan still searches from the Graveyard.
+        assert!(ctx.sweep_worth(&sangan) < ctx.sweep_worth(&plain));
+        // Set, it does nothing yet.
+        obs.cards.pop();
+        obs.cards.push(card(1, Location::SpellTrapZone, 0, SKILL_DRAIN, false));
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(!ctx.effects_drained() && ctx.wasted(SMASHING_GROUND));
+    }
+
+    /// Claudi-oh's Countdown spends one cover a turn, a Set Trap before a
+    /// hand trap, and answers a negation it sees in the chain with the next.
+    #[test]
+    fn countdown_covers_a_turn_once_unless_negated() {
+        use crate::cards::types;
+        use crate::staples::SEVEN_TOOLS;
+        const WABOKU: u32 = 12607053;
+        const SWIFT_SCARECROW: u32 = 18964575;
+        const SHI_EN: u32 = 29981921;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                printed(1, types::MONSTER, 0),
+                printed(WABOKU, types::TRAP, 0),
+                printed(SWIFT_SCARECROW, types::MONSTER | types::EFFECT, 0),
+                printed(SEVEN_TOOLS, types::TRAP | types::COUNTER, 0),
+                printed(SHI_EN, types::MONSTER | types::EFFECT | types::SYNCHRO, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let prompt = |choices: Vec<Choice>| Decision {
+            kind: DecisionKind::Chain { forced: false, triggers: false },
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices,
+        };
+        let both = prompt(vec![
+            activate(SWIFT_SCARECROW, Location::Hand, 0),
+            activate(WABOKU, Location::SpellTrapZone, 0),
+            choice(ChoiceKind::Pass),
+        ]);
+        let hand_trap = prompt(vec![activate(SWIFT_SCARECROW, Location::Hand, 0), choice(ChoiceKind::Pass)]);
+        let attack = Position { face_up: true, attack: true };
+        let waboku = card(0, Location::SpellTrapZone, 0, WABOKU, false);
+        let scarecrow = card(0, Location::Hand, 0, SWIFT_SCARECROW, false);
+        let direct_attack = |attacker: &CardView, turn: u32| {
+            let mut obs = observation();
+            obs.turn = turn;
+            obs.turn_player = Some(1);
+            obs.phase = Some(Phase::BattleStep);
+            obs.battle_attacker = Some(attacker.at);
+            obs.cards = vec![attacker.clone(), waboku.clone(), scarecrow.clone()];
+            obs
+        };
+
+        let mut policy = crate::registry::create("countdown", db.clone()).unwrap();
+        let attacker = monster(1, 0, Some(1), attack, 2500, 1400);
+        let mut obs = direct_attack(&attacker, 3);
+        // A direct attack: Waboku, which could be destroyed before it is used.
+        assert_eq!(both.choices[policy.choose(&obs, &both)].code(), Some(WABOKU));
+        // The turn is covered: Swift Scarecrow stays in hand.
+        obs.cards.remove(1);
+        assert_eq!(hand_trap.choices[policy.choose(&obs, &hand_trap)].kind, ChoiceKind::Pass);
+        // A Counter Trap answers Waboku: the next cover goes on top of it.
+        let zone = |controller| CardRef { controller, location: Location::SpellTrapZone, sequence: 0 };
+        obs.chain = vec![
+            ChainLink { code: WABOKU, controller: 0, source: zone(0), targets: Vec::new() },
+            ChainLink { code: SEVEN_TOOLS, controller: 1, source: zone(1), targets: Vec::new() },
+        ];
+        assert_eq!(hand_trap.choices[policy.choose(&obs, &hand_trap)].code(), Some(SWIFT_SCARECROW));
+
+        // Under Shi En, which negates one Trap a turn, the hand trap goes first.
+        let mut policy = crate::registry::create("countdown", db).unwrap();
+        let shi_en = monster(1, 0, Some(SHI_EN), attack, 2500, 1400);
+        let obs = direct_attack(&shi_en, 5);
+        assert_eq!(both.choices[policy.choose(&obs, &both)].code(), Some(SWIFT_SCARECROW));
+    }
+
+    /// Claudi-oh's Verdict Summons Beast King Barbaros without Tributes
+    /// when the engine asks which way.
+    #[test]
+    fn verdict_summons_barbaros_without_tributes() {
+        const BARBAROS: u64 = 78651105;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards::default());
+        let mut policy = crate::registry::create("verdict", db).unwrap();
+        let option = |description: u64| Choice { description, ..choice(ChoiceKind::Option) };
+        let decision = Decision {
+            kind: DecisionKind::Option,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            // 1: the ordinary Tribute Summon.
+            choices: vec![option(1), option(BARBAROS << 20)],
+        };
+        assert_eq!(policy.choose(&observation(), &decision), 1);
     }
 }

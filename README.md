@@ -51,14 +51,18 @@ EDOPro already filtered pass through unchanged.
 | `machina` | Machina Gadgets | Gadget searches, Machina Fortress, trap wall |
 | `x-saber` | X-Sabers | XX-Saber Faultroll swarm into X-Saber Synchros |
 | `draconic-might` | Draconic Might | Red-Eyes Darkness Metal Dragon every turn, guarded by Prime Material Dragon, Jinzo and Horus LV8; Armed Dragon and Horus LV lines |
+| `countdown` | Claudi-oh's Countdown | Final Countdown behind attack locks kept by Skill Drain; one cover a turn, Cyber Valley and Shining Angel for the rest |
+| `verdict` | Claudi-oh's Verdict | Skill Drain beatdown: Beast King Barbaros and big Level 4 monsters behind the era's Traps |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
 (`ojama` to `x-saber`) were added as opponents for *Sands of the Duel* (easy,
 mid and hard), and `draconic-might` pilots a player's own deck; its Red-Eyes
 Darkness Metal Dragon needs the card's script from ProjectIgnis' `pre-errata/`
-folder, which EDOPro loads.  [DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every
-deck by measured strength.
+folder, which EDOPro loads.  `countdown` and `verdict` are the boss's decks for
+*Beat Claudi-oh*, built to rank first: one wins without attacking, the other
+by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
+[DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
 
 ## Layout
 

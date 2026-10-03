@@ -75,6 +75,8 @@ pub struct Memory {
     pub intent: Vec<(CardRef, Option<u32>)>,
     /// Passcode of the last card effect we activated.
     pub last_activated: Option<u32>,
+    /// Passcodes of the card effects we activated this turn, in order.
+    pub activated: Vec<u32>,
     picks: HashMap<(ChoiceKind, Option<u32>, Option<CardRef>), u32>,
     turn: u32,
     /// Board signature when we last responded in a chain, for engines that do
@@ -208,6 +210,7 @@ impl<'a> Turn<'a> {
         *self.memory.picks.entry(Self::pick_key(choice)).or_insert(0) += 1;
         if choice.kind == ChoiceKind::Activate {
             self.memory.last_activated = choice.code();
+            self.memory.activated.extend(choice.code());
             // Whatever the prompt, our activation is now the chain's top link.
             self.memory.chain_mark = Some(chain_signature(&self.ctx));
         }
@@ -339,6 +342,7 @@ impl<S: Strategy> Policy for Agent<S> {
         if obs.turn != self.memory.turn {
             self.memory.turn = obs.turn;
             self.memory.picks.clear();
+            self.memory.activated.clear();
         }
         let db = self.db.clone();
         let mut t = Turn { ctx: Ctx::new(obs, db.as_ref()), decision, memory: &mut self.memory };
@@ -559,6 +563,7 @@ fn yes_no<S: Strategy>(s: &S, t: &mut Turn) -> Option<usize> {
         t.memory.intent.clear();
         if let Some(code) = t.decision.subject {
             t.memory.last_activated = Some(code);
+            t.memory.activated.push(code);
         }
     }
     let wanted = if yes { ChoiceKind::Yes } else { ChoiceKind::No };
