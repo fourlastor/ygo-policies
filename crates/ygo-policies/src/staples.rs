@@ -99,8 +99,9 @@ pub fn is_revival(code: u32) -> bool {
 pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     let ctx = t.ctx;
     let (me, opp) = (ctx.me, ctx.opp);
+    // Not into a monster whose controller negates it for free every time.
     let usable = |t: &Turn, code: u32| -> Option<usize> {
-        if s.allow_staple(t, code) {
+        if s.allow_staple(t, code) && !ctx.wasted(code) {
             t.activate(code)
         } else {
             None
@@ -141,16 +142,15 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
 
     // 2. Wipe a board we cannot beat.
     if !opp_monsters.is_empty() {
-        let opp_strength = ctx.field_strength(opp);
         let my_strength = ctx.field_strength(me);
         if let Some(i) = usable(t, RAIGEKI) {
-            if opp_strength >= 1500 {
+            if ctx.swept_strength(RAIGEKI) >= 1500 {
                 return t.pick(i);
             }
         }
         if let Some(i) = usable(t, DARK_HOLE) {
             let outclassed = ctx.opp_best_attack() > ctx.my_best_attack();
-            if my_strength <= opp_strength
+            if my_strength <= ctx.swept_strength(DARK_HOLE)
                 && (opp_monsters.len() >= 2 || outclassed || my_monsters.is_empty())
             {
                 return t.pick(i);
@@ -163,7 +163,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
                 let wall = opp_monsters
                     .iter()
                     .filter(|c| c.position.face_up && c.position.attack && c.attack >= best && c.defense < best)
-                    .filter(|c| ctx.targetable(c, true))
+                    .filter(|c| ctx.reaches(c, BOOK_OF_MOON, true, false))
                     .max_by_key(|c| c.attack);
                 if let Some(w) = wall {
                     return t.pick_targeting(i, vec![w.at]);
@@ -173,22 +173,25 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     }
 
     // 2b. Synchro removal: always one of their cards, paid with one of ours.
-    let their_best = ctx
-        .monsters(opp)
-        .into_iter()
-        .chain(ctx.spell_traps(opp))
-        .filter(|c| ctx.targetable(c, false))
-        .max_by_key(|c| ctx.threat(c));
-    if let Some(target) = their_best {
-        let threat = ctx.threat(target);
-        // Brionac: discard our cheapest card, bounce their best.
+    let their_best = |by: u32, destroys: bool| {
+        ctx.monsters(opp)
+            .into_iter()
+            .chain(ctx.spell_traps(opp))
+            .filter(|c| ctx.reaches(c, by, true, destroys))
+            .max_by_key(|c| ctx.threat(c))
+    };
+    // Brionac: discard our cheapest card, bounce their best.
+    if let Some(target) = their_best(BRIONAC, false) {
         if let Some(i) = usable(t, BRIONAC) {
             let cheapest = ctx.hand().iter().map(|c| agent::value(s, &ctx, c.code, None)).min();
-            if cheapest.map_or(false, |v| v < threat) {
+            if cheapest.map_or(false, |v| v < ctx.threat(target)) {
                 return t.pick_targeting(i, vec![target.at]);
             }
         }
-        // Scrap Dragon: our cheapest card on the field for their best.
+    }
+    // Scrap Dragon: our cheapest card on the field for their best.
+    if let Some(target) = their_best(SCRAP_DRAGON, true) {
+        let threat = ctx.threat(target);
         if let Some(i) = usable(t, SCRAP_DRAGON) {
             let cheapest: Option<&CardView> =
                 ctx.monsters(me).into_iter().chain(ctx.spell_traps(me)).min_by_key(|c| agent::value(s, &ctx, None, Some(c)));
@@ -204,7 +207,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     if let Some(i) = usable(t, SMASHING_GROUND) {
         // It destroys their face-up monster with the highest DEF.
         let highest = ctx.monsters(opp).into_iter().filter(|c| c.position.face_up).max_by_key(|c| c.defense);
-        if highest.map_or(false, |c| ctx.sweep_worth(c) >= 1500) {
+        if highest.map_or(false, |c| ctx.reaches(c, SMASHING_GROUND, false, true) && ctx.sweep_worth(c) >= 1500) {
             return t.pick(i);
         }
     }
@@ -212,7 +215,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
         let wall = ctx
             .monsters(opp)
             .into_iter()
-            .filter(|c| !c.position.attack && ctx.targetable(c, true))
+            .filter(|c| !c.position.attack && ctx.reaches(c, SHIELD_CRUSH, true, true))
             .max_by_key(|c| ctx.threat(c));
         if let Some(wall) = wall.filter(|c| ctx.threat(c) >= 1200) {
             return t.pick_targeting(i, vec![wall.at]);
@@ -224,7 +227,7 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
             let best = ctx
                 .monsters(opp)
                 .into_iter()
-                .filter(|c| c.position.face_up && !ctx.view_data(c).is_extra() && ctx.targetable(c, true))
+                .filter(|c| c.position.face_up && !ctx.view_data(c).is_extra() && ctx.reaches(c, BRAIN_CONTROL, true, false))
                 .max_by_key(|c| ctx.threat(c));
             if let Some(best) = best.filter(|c| ctx.threat(c) >= 1800) {
                 return t.pick_targeting(i, vec![best.at]);
@@ -293,7 +296,9 @@ pub fn main_phase<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
 pub fn clear_backrow<S: Strategy + ?Sized>(s: &S, t: &mut Turn) -> Option<usize> {
     let ctx = t.ctx;
     let (me, opp) = (ctx.me, ctx.opp);
-    let usable = |t: &Turn, code: u32| -> Option<usize> { if s.allow_staple(t, code) { t.activate(code) } else { None } };
+    let usable = |t: &Turn, code: u32| -> Option<usize> {
+        if s.allow_staple(t, code) && !ctx.wasted(code) { t.activate(code) } else { None }
+    };
     let backrow = ctx.set_backrow(opp);
     let can_battle = t.has(crate::model::ChoiceKind::EnterBattle);
     let hand_monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
@@ -411,23 +416,25 @@ const TARGETING: &[u32] = &[
 ];
 
 /// How much we want to chain a staple.  `None` for non-staples.  An answer
-/// whose target its effect could not reach (The Fool's coin, White Night
-/// Dragon against Spells and Traps) is no answer.
+/// whose effect would not do its work is no answer: its target cannot be
+/// reached (The Fool's coin, White Night Dragon against Spells and Traps),
+/// or a monster of theirs negates every card of its kind.
 pub fn chain<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
     let response = chain_response(s, t, index)?;
     let ctx = t.ctx;
     let code = ctx.canonical(t.choice(index).code()?);
-    let data = ctx.data(code);
-    let spell_trap = data.is_spell() || data.is_trap();
-    let unreachable = |card: &crate::model::CardView| card.at.controller == ctx.opp && !ctx.targetable(card, spell_trap);
+    let destroys = matches!(code, SAKURETSU_ARMOR | TRAP_HOLE | BOTTOMLESS_TRAP_HOLE);
+    let unreachable = |card: &crate::model::CardView, aimed: bool| {
+        card.at.controller == ctx.opp && !ctx.reaches(card, code, aimed, destroys)
+    };
     let blocked = if TARGETING.contains(&code) {
-        response.intent.iter().filter_map(|at| ctx.card(*at)).any(unreachable)
+        response.intent.iter().filter_map(|at| ctx.card(*at)).any(|c| unreachable(c, true))
     } else if matches!(code, TRAP_HOLE | BOTTOMLESS_TRAP_HOLE) {
-        opponent_summoning(&ctx).map_or(false, |(card, _)| unreachable(card))
+        opponent_summoning(&ctx).map_or(false, |(card, _)| unreachable(card, false))
     } else {
         false
     };
-    Some(if blocked { Response::no() } else { response })
+    Some(if blocked || (response.score > 0.0 && ctx.wasted(code)) { Response::no() } else { response })
 }
 
 fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
@@ -442,7 +449,7 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
     Some(match code {
         TRAP_HOLE | BOTTOMLESS_TRAP_HOLE => Response::new(100.0),
         TORRENTIAL_TRIBUTE => {
-            let gain = ctx.field_strength(opp) - ctx.field_strength(me);
+            let gain = ctx.swept_strength(TORRENTIAL_TRIBUTE) - ctx.field_strength(me);
             if gain >= 1000 {
                 // Capped below Trap Hole so it never stacks on our own answer.
                 Response::new((gain as f64 / 10.0).min(95.0))
@@ -452,7 +459,7 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
         }
         MIRROR_FORCE => match incoming {
             Some(_) => {
-                let hit = ctx.monsters(opp).iter().filter(|c| c.position.attack).count();
+                let hit = ctx.monsters(opp).iter().filter(|c| c.position.attack && ctx.reaches(c, MIRROR_FORCE, false, true)).count();
                 Response::new(50.0 + 20.0 * hit as f64)
             }
             None => Response::no(),

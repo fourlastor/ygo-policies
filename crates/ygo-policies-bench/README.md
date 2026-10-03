@@ -120,3 +120,52 @@ Tests: `cargo test -p ygo-policies-bench`. The tests cover schedule uniqueness,
 seat balance, subset-stable seeds, paired uncertainty, rating orientation and
 refusal to rank failed/incomplete runs. Engine smoke tests are ordinary CLI runs;
 running `compare` with the same library twice should produce identical transcripts.
+
+## Card facts from the engine
+
+The policies' shared card knowledge (`ygo_policies::knowledge`) is generated
+here.  `knowledge` stages every monster of a card pool on a plain board, one
+mini-duel per situation, and writes down what the engine does:
+
+- it is attacked, in Attack and in Defense Position, three times in a row by a
+  plain 5100 ATK monster, then once by other attackers: every other Attribute,
+  four other Types, a lower and a higher Level, one barely strong enough and
+  one too weak (where one of them fares differently, the Levels or ATK values
+  in between are tried too, to find where the difference starts);
+- a Spell, a Trap and a monster effect are used on it, twice each: one that
+  targets and destroys, one that targets and does something else, one that
+  destroys without targeting, and two that have nothing to do with it;
+- it attacks a 0/0 monster in Attack and in Defense Position, and, when its
+  attack does more than battle, monsters of the other Attributes and a
+  4000/4000 one.
+
+Its controller uses every effect of the monster the engine offers.
+
+```bash
+cargo build --release -p ygo-policies-bench
+target/release/policy-bench knowledge --workers 8 --report data/wc2011-monster-facts.md
+cargo build --release -p ygo-policies-ffi -p ygo-policies-bench   # the table is compiled in
+target/release/policy-bench knowledge --workers 8 --rust /tmp/check.rs --output /tmp/misses.txt
+```
+
+The first run writes `crates/ygo-policies/src/knowledge/pool.rs` and the
+listing; the last one, on the rebuilt binary, reports how many of the staged
+attacks the shared tactics (`tactics::default_outcome`) call right with that
+table, and lists the ones they do not.  For the World Championship 2011 pool
+(`data/wc2011.lflist.conf`, 2,444 monsters, about 100,000 mini-duels, half a
+minute on 20 workers) the table holds 344 monsters, and the tactics call
+99.7% of 74,959 staged attacks right, against 96.7% with an empty table; of
+the 2,697 attacks printed stats do not explain, 92.9% against 10.6%.
+
+A fact is written only when a probe showed it.  What the probes cannot show
+stays out of the table, and the listing says which cards need a look:
+
+- the monster is placed, not Summoned: no coin toss (the Arcana Force), no
+  counters (the B.E.S. ships);
+- effects that need particular cards in the hand, Deck or Graveyard, or a
+  board state (Birdface, Morphtronic Cameran, Infernity Guardian);
+- effects on other monsters of the same side (Morphtronic Boarden, Aurkus);
+- monsters that leave a plain board at once (Malefic, Earthbound Immortals).
+
+Those go in `knowledge::facts` by hand.  `--only CODE,CODE` prints the facts
+of a few cards without touching the table; `probe` dumps what the engine did.

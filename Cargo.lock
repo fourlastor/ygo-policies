@@ -278,6 +278,7 @@ dependencies = [
  "libloading",
  "rusqlite",
  "serde_json",
+ "ygo-policies",
  "ygo-policies-ocgcore",
 ]
 

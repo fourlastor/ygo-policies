@@ -3,6 +3,7 @@
 use crate::agent::{value, Outcome, Strategy, Turn};
 use crate::cards::types;
 use crate::ctx::Ctx;
+use crate::knowledge::{Burn, Fate, ALWAYS};
 use crate::model::{CardRef, CardView, ChoiceKind, Location};
 
 /// Our monsters that can still attack take the opponent's last Life Points
@@ -157,13 +158,14 @@ pub fn set_spell_trap<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
 }
 
 /// Default battle resolution on public numbers, with an optional hand trick.
-/// Card facts adjust it ([`crate::knowledge`]): monsters battle cannot
-/// destroy, Damage Step ATK changes, the Karakuri switching position when
-/// attacked, D.D. Warrior Lady taking the attacker with it.
+/// Card facts adjust it ([`crate::knowledge`]): monsters battle does not
+/// destroy, monsters that take their attacker with them, Damage Step ATK
+/// changes, monsters that switch position when attacked.
 pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick: i32) -> Outcome {
-    let atk = attacker.attack + ctx.facts(attacker).attack_bonus;
+    let striking = ctx.facts(attacker).striking;
     if !target.position.face_up && !target.known() {
         // Unknown face-down monster: only strong attackers risk it.
+        let atk = attacker.attack + striking.bonus;
         if atk >= 1900 {
             return Outcome::Win { trick: false };
         }
@@ -172,15 +174,26 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
         }
         return Outcome::Lose;
     }
-    let (stat, defending) = ctx.attacked_stance(target);
-    let outcome = if ctx.battle_proof(target) {
+    let met = ctx.attack_meets(Some(attacker), target);
+    let removes = ctx.strike_removes(attacker, target);
+    // No battle: one of the two is gone before damage calculation.
+    if met.facts.attacker != Fate::Unharmed && met.facts.before_damage {
+        return if met.facts.leaves { Outcome::Trade } else { Outcome::Lose };
+    }
+    if removes == Some(true) {
+        return if striking.leaves { Outcome::Trade } else { Outcome::Win { trick: false } };
+    }
+    let atk = met.facts.attacker_atk.apply(attacker.attack + striking.bonus);
+    let (stat, defending) = (met.stat, met.defending);
+    let outcome = if met.survives {
         // Nothing of theirs is destroyed; an Attack Position wall at least as
         // strong still destroys our attacker.
         if !defending && atk <= stat { Outcome::Lose } else { Outcome::Bounce }
     } else if atk > stat {
         Outcome::Win { trick: false }
     } else if atk == stat && !defending {
-        Outcome::Trade
+        // Two monsters with 0 ATK destroy nothing.
+        if atk > 0 { Outcome::Trade } else { Outcome::Bounce }
     } else if trick > 0 && atk + trick > stat {
         Outcome::Win { trick: true }
     } else if defending {
@@ -188,26 +201,65 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
     } else {
         Outcome::Lose
     };
-    // D.D. Warrior Lady banishes the monster it battles, and itself.
-    match outcome {
-        Outcome::Win { .. } | Outcome::Bounce if target.position.face_up && ctx.facts(target).banishes_in_battle => {
-            Outcome::Trade
+    // After the battle, their monster takes ours with it (and may go too):
+    // whenever it battles, or only when the battle destroys it...
+    let takes = met.facts.attacker != Fate::Unharmed;
+    let outcome = match outcome {
+        Outcome::Win { .. } if takes => Outcome::Trade,
+        Outcome::Bounce if takes && !met.facts.when_destroyed => {
+            if met.facts.leaves { Outcome::Trade } else { Outcome::Lose }
         }
-        Outcome::Lose | Outcome::Bounce if target.position.face_up && ctx.facts(attacker).banishes_in_battle => {
-            Outcome::Trade
+        other => other,
+    };
+    // ...or ours takes theirs (D.D. Warrior Lady), when the battle did not.
+    match outcome {
+        Outcome::Lose | Outcome::Bounce if removes.is_some() => {
+            if striking.leaves || outcome == Outcome::Lose { Outcome::Trade } else { Outcome::Win { trick: false } }
         }
         other => other,
     }
 }
 
-/// Battle damage an attack on a monster battle cannot destroy still deals:
+/// Battle damage an attack on a monster battle does not destroy still deals:
 /// worth swinging at an Attack Position wall with less ATK.
 fn damage_through_wall(ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
-    let (stat, defending) = ctx.attacked_stance(target);
-    if !ctx.battle_proof(target) || defending || ctx.facts(target).no_battle_damage {
+    let met = ctx.attack_meets(Some(attacker), target);
+    if !met.survives || met.defending || met.facts.no_damage {
         return 0;
     }
-    (attacker.attack + ctx.facts(attacker).attack_bonus - stat).max(0)
+    (met.facts.attacker_atk.apply(attacker.attack + ctx.facts(attacker).striking.bonus) - met.stat).max(0)
+}
+
+/// Life Points an attack on this monster costs us on top of the battle's
+/// own damage (Reflect Bounder, Amazoness Swords Woman).
+fn attack_burn(ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
+    let met = ctx.attack_meets(Some(attacker), target);
+    let atk = attacker.attack + ctx.facts(attacker).striking.bonus;
+    match met.facts.burn {
+        Burn::None => 0,
+        Burn::Fixed(n) => n,
+        Burn::AttackerAtk => atk,
+        Burn::Reflected => {
+            if met.defending { 0 } else { (atk - met.stat).max(0) }
+        }
+    }
+}
+
+/// What destroying this monster by battle costs us and gives them back: the
+/// cards its controller gets, and the other cards of ours it takes along.
+fn battle_price<S: Strategy + ?Sized>(s: &S, ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
+    let met = ctx.attack_meets(Some(attacker), target).facts;
+    let others = || ctx.monsters(ctx.me).into_iter().filter(|c| c.at != attacker.at).map(|c| value(s, ctx, None, Some(c)));
+    let collateral = match met.collateral {
+        0 => 0,
+        ALWAYS => others().sum(),
+        n => {
+            let mut values: Vec<i32> = others().collect();
+            values.sort_unstable_by(|a, b| b.cmp(a));
+            values.into_iter().take(n as usize).sum::<i32>().max(n as i32 * 500)
+        }
+    };
+    met.payoff + collateral
 }
 
 /// Worth of the best Synchro Monster of this Level in our Extra Deck.
@@ -320,19 +372,29 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
             let outcome = s
                 .attack_outcome(&ctx, attacker, target)
                 .unwrap_or_else(|| default_outcome(&ctx, attacker, target, trick));
-            // A monster that replaces itself when battle destroys it is worth
-            // less to kill; one whose controller can negate the attack is
-            // still worth a try, after the others.
+            // A monster that pays its controller back when battle destroys it
+            // is worth less to kill; one whose controller can negate the
+            // attack is still worth a try, after the others.
             let negatable = if ctx.attack_negatable(target) { 600 } else { 0 };
-            let gain = (ctx.threat(target) - ctx.facts(target).battle_payoff - negatable) as f64;
+            let burn = attack_burn(&ctx, attacker, target);
+            if burn > 0 && burn >= ctx.my_lp() {
+                continue;
+            }
+            let gain = (ctx.threat(target) - battle_price(s, &ctx, attacker, target) - negatable - burn / 2) as f64;
             let score = match outcome {
                 // Prefer the weakest attacker that still wins; keep tricks.
                 Outcome::Win { trick } => {
                     1000.0 + gain - attacker.attack as f64 / 10.0 - if trick { 600.0 } else { 0.0 }
                 }
                 Outcome::Trade => {
-                    let mine = value(s, &ctx, None, Some(attacker)) as f64;
-                    if gain < mine {
+                    let (mine, gain) = trade(s, &ctx, attacker, target, gain);
+                    // Equal ATK: only for a target worth our attacker.  A
+                    // monster that takes its attacker with it: one for one
+                    // beats waiting behind it (measured), unless it takes
+                    // more than the attacker.
+                    let met = ctx.attack_meets(Some(attacker), target).facts;
+                    let by_effect = met.attacker != Fate::Unharmed || ctx.strike_removes(attacker, target).is_some();
+                    if gain < mine && (!by_effect || met.collateral > 0) {
                         continue;
                     }
                     200.0 + gain - mine
@@ -341,6 +403,9 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
                 Outcome::Bounce if damage_through_wall(&ctx, attacker, target) > 0 => {
                     100.0 + damage_through_wall(&ctx, attacker, target) as f64 / 10.0
                 }
+                // It survives a battle or two a turn: spend our weakest
+                // attacker that beats it, when another can finish the job.
+                Outcome::Bounce if breaks_shield(&ctx, attacker, target, &attackers) => 150.0 - attacker.attack as f64 / 10.0,
                 _ => continue,
             };
             scored.push((score, (*i, target.at)));
@@ -348,4 +413,38 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
     }
     // Equal targets (two face-down monsters) are chosen at random, not by zone.
     t.memory.ties.best(scored).map(|(_, (i, at))| (i, Some(at)))
+}
+
+/// What a battle that takes both monsters off the field costs us and them:
+/// (our loss, our gain), `gain` being what removing the target is worth.  A
+/// monster that only returns to the hand is a Summon to make again, not a
+/// card lost; one that returns to the Extra Deck is lost.
+fn trade<S: Strategy + ?Sized>(s: &S, ctx: &Ctx, attacker: &CardView, target: &CardView, gain: f64) -> (f64, f64) {
+    const SUMMON_AGAIN: f64 = 400.0;
+    let met = ctx.attack_meets(Some(attacker), target).facts;
+    let striking = ctx.facts(attacker).striking;
+    let ours_bounces = ctx.strike_removes(attacker, target).is_some() && striking.target == Fate::Returned;
+    if met.attacker != Fate::Returned && !ours_bounces {
+        return (value(s, ctx, None, Some(attacker)) as f64, gain);
+    }
+    let mine = if ctx.view_data(attacker).is_extra() { value(s, ctx, None, Some(attacker)) as f64 } else { SUMMON_AGAIN };
+    // Theirs goes back too (Grand Mole), unless the battle destroyed it.
+    let theirs_returns = ours_bounces || met.leaves;
+    let gain = if theirs_returns && !ctx.view_data(target).is_extra() { SUMMON_AGAIN } else { gain };
+    (mine, gain)
+}
+
+/// The target survives only so many battles a turn, this attacker beats it
+/// on the numbers, and enough of our other attackers do too to get through.
+fn breaks_shield(ctx: &Ctx, attacker: &CardView, target: &CardView, attackers: &[(usize, &CardView)]) -> bool {
+    let met = ctx.attack_meets(Some(attacker), target);
+    if !met.survives || met.facts.survives == ALWAYS || met.facts.survives == 0 {
+        return false;
+    }
+    let beats = |a: &CardView| {
+        let m = ctx.attack_meets(Some(a), target);
+        m.facts.attacker == Fate::Unharmed && m.facts.attacker_atk.apply(a.attack + ctx.facts(a).striking.bonus) > m.stat
+    };
+    let left = (met.facts.survives as u32).saturating_sub(target.battles) as usize;
+    beats(attacker) && attackers.iter().filter(|(_, a)| a.at != attacker.at && beats(a)).count() >= left
 }

@@ -154,6 +154,7 @@ mod tests {
             defense: 1000,
             level: 4,
             can_attack: true,
+            battles: 0,
             counters: 0,
             coin_effect: None,
         }
@@ -438,6 +439,7 @@ mod tests {
             defense,
             level: 1,
             can_attack: true,
+            battles: 0,
             counters: 0,
             coin_effect: None,
         }
@@ -467,6 +469,124 @@ mod tests {
         let ctx = crate::ctx::Ctx::new(&obs, &db);
         assert!(ctx.battle_proof(&fool));
         assert_eq!(default_outcome(&ctx, &ours, &fool, 0), Outcome::Bounce);
+    }
+
+    fn printed(code: u32, kind: u32, attribute: u32) -> (u32, crate::cards::CardData) {
+        (code, crate::cards::CardData { code, kind, attribute, ..Default::default() })
+    }
+
+    /// What the probes showed decides how an attack is expected to end.
+    #[test]
+    fn probed_facts_decide_battles() {
+        use crate::agent::Outcome;
+        use crate::cards::{attributes, types};
+        use crate::tactics::default_outcome;
+        const CATASTOR: u32 = 26593852;
+        const DARK_RESONATOR: u32 = 97021916;
+        const NISAMU: u32 = 3846170;
+        let (earth, dark) = (1, 2);
+        let db = MemoryCards(
+            [printed(earth, types::MONSTER, attributes::EARTH), printed(dark, types::MONSTER, attributes::DARK)].into_iter().collect(),
+        );
+        let attack = Position { face_up: true, attack: true };
+        let ours = monster(0, 0, Some(earth), attack, 3000, 1000);
+        let ours_dark = monster(0, 1, Some(dark), attack, 3000, 1000);
+        // Ally of Justice Catastor destroys the non-DARK monster it battles
+        // before damage calculation, whichever of the two attacks.
+        let catastor = monster(1, 0, Some(CATASTOR), attack, 2200, 1200);
+        let mut resonator = monster(1, 1, Some(DARK_RESONATOR), attack, 1300, 300);
+        let nisamu = monster(1, 2, Some(NISAMU), attack, 1400, 200);
+        let mut obs = observation();
+        obs.cards = vec![ours.clone(), ours_dark.clone(), catastor.clone(), resonator.clone(), nisamu.clone()];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert_eq!(default_outcome(&ctx, &ours, &catastor, 0), Outcome::Lose);
+        assert_eq!(default_outcome(&ctx, &ours_dark, &catastor, 0), Outcome::Win { trick: false });
+        let our_catastor = monster(0, 2, Some(CATASTOR), attack, 2200, 1200);
+        let their_big = monster(1, 3, Some(earth), attack, 3000, 1000);
+        assert_eq!(default_outcome(&ctx, &our_catastor, &their_big, 0), Outcome::Win { trick: false });
+        // Dark Resonator survives one battle a turn; a Karakuri attacked in
+        // Attack Position battles in Defense Position.
+        assert_eq!(default_outcome(&ctx, &ours, &resonator, 0), Outcome::Bounce);
+        assert!(!ctx.battle_proof(&resonator));
+        resonator.battles = 1;
+        assert_eq!(default_outcome(&ctx, &ours, &resonator, 0), Outcome::Win { trick: false });
+        let met = ctx.attack_meets(Some(&ours), &nisamu);
+        assert!(met.defending && met.stat == 200 && met.facts.payoff > 0);
+    }
+
+    /// ...and which of our effects are worth using on a card.
+    #[test]
+    fn probed_facts_decide_what_effects_reach() {
+        use crate::cards::types;
+        use crate::staples::{BRIONAC, MIRROR_FORCE, SMASHING_GROUND};
+        const WHITE_NIGHT_DRAGON: u32 = 79473793;
+        const PRIME_MATERIAL_DRAGON: u32 = 12298909;
+        const HORUS_LV8: u32 = 48229808;
+        const SANGAN: u32 = 26202165;
+        let db = MemoryCards(
+            [printed(SMASHING_GROUND, types::SPELL, 0), printed(MIRROR_FORCE, types::TRAP, 0), printed(BRIONAC, types::MONSTER, 0)]
+                .into_iter()
+                .collect(),
+        );
+        let attack = Position { face_up: true, attack: true };
+        let white_night = monster(1, 0, Some(WHITE_NIGHT_DRAGON), attack, 3000, 2500);
+        let prime = monster(1, 1, Some(PRIME_MATERIAL_DRAGON), attack, 2400, 2000);
+        let sangan = monster(1, 2, Some(SANGAN), attack, 1000, 600);
+        let plain = monster(1, 3, Some(1), attack, 1000, 600);
+        let mut obs = observation();
+        obs.cards = vec![white_night.clone(), prime.clone(), sangan.clone(), plain.clone()];
+        obs.pile_sizes = vec![(1, Location::Hand, 2)];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        // White Night Dragon negates the Spells and Traps that target it:
+        // one that does not target, or a monster's effect, still works.
+        assert!(!ctx.targetable(&white_night, true) && ctx.targetable(&white_night, false));
+        assert!(ctx.reaches(&white_night, SMASHING_GROUND, false, true));
+        // Prime Material Dragon discards to negate what would destroy it,
+        // not a bounce; with no card in hand it negates nothing.
+        assert!(!ctx.reaches(&prime, SMASHING_GROUND, false, true));
+        assert!(ctx.reaches(&prime, BRIONAC, true, false));
+        assert_eq!(ctx.sweep_worth(&prime), 0);
+        // Destroying Sangan by an effect pays its controller back.
+        assert!(ctx.sweep_worth(&sangan) < ctx.sweep_worth(&plain));
+        // Nothing here negates every Spell...
+        assert!(!ctx.wasted(SMASHING_GROUND));
+        obs.pile_sizes = vec![(1, Location::Hand, 0)];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(ctx.reaches(&prime, SMASHING_GROUND, false, true));
+        // ...Horus LV8 does, and only Spells; face-down it is not known to.
+        let mut horus = monster(1, 4, Some(HORUS_LV8), attack, 3000, 1800);
+        obs.cards.push(horus.clone());
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(ctx.wasted(SMASHING_GROUND) && !ctx.wasted(MIRROR_FORCE));
+        horus.code = None;
+        horus.position = Position { face_up: false, attack: false };
+        obs.cards.pop();
+        obs.cards.push(horus);
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        assert!(!ctx.wasted(SMASHING_GROUND));
+    }
+
+    /// A monster that sends its attacker back to the hand, and goes with it,
+    /// is still worth attacking with a monster we can Summon again.
+    #[test]
+    fn a_bounce_is_not_a_card_lost() {
+        use crate::agent::Outcome;
+        use crate::cards::{attributes, types};
+        use crate::tactics::default_outcome;
+        const GRAND_MOLE: u32 = 80344569;
+        let db = MemoryCards(
+            [printed(1, types::MONSTER, attributes::EARTH), printed(GRAND_MOLE, types::MONSTER, attributes::EARTH)].into_iter().collect(),
+        );
+        let attack = Position { face_up: true, attack: true };
+        let ours = monster(0, 0, Some(1), attack, 1800, 1000);
+        let mole = monster(1, 0, Some(GRAND_MOLE), attack, 900, 300);
+        let mut obs = observation();
+        obs.cards = vec![ours.clone(), mole.clone()];
+        let ctx = crate::ctx::Ctx::new(&obs, &db);
+        // Both go back to the hand before damage calculation...
+        assert_eq!(default_outcome(&ctx, &ours, &mole, 0), Outcome::Trade);
+        // ...which its own attack on our monster does too: no loss to prevent.
+        assert!(!ctx.attack_hurts(&mole, Some(&ours)));
     }
 
     /// The Fool's coin decides whose targeting effects it negates; until the

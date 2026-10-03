@@ -65,9 +65,12 @@ deck by measured strength.
 - `crates/ygo-policies`: engine-agnostic model (`Observation`, `Decision`), the
   `Policy` trait, the shared decision loop, and one strategy per deck. Shared
   card knowledge (`knowledge.rs`) tells every deck what printed stats do not:
-  what battle cannot destroy, what effects cannot target, which face-up cards
-  a deck runs on. It is looked up only by the code the seat can see, so the
-  opponent's face-down cards stay unknown.
+  what battle does not destroy, what becomes of a monster that attacks it,
+  what effects cannot reach, which face-up cards a deck runs on. It covers
+  every monster of the World Championship 2011 pool (`data/`), generated from
+  what the engine does with each one ([Card knowledge](#card-knowledge)), and
+  is looked up only by the code the seat can see, so the opponent's face-down
+  cards stay unknown.
 - `crates/ygo-policies-ocgcore`: the OCGCore front end. It contains the message
   parser, redaction, the event-driven projection, and the decision/response
   encoding, plus `Seat`, the thing you feed. `SqliteCards` reads `cards.cdb`.
@@ -76,7 +79,10 @@ deck by measured strength.
 - `crates/ygo-policies-edopro`: `edopro-bot`, a native EDOPro network client
   that joins a room as a player.
 - `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
-  baseline/candidate comparisons, round robins, and generated tier lists.
+  baseline/candidate comparisons, round robins, generated tier lists, and
+  the card probes that generate the shared card knowledge.
+- `data/`: the World Championship 2011 card pool and Forbidden & Limited list
+  (an EDOPro lflist), and what the engine shows about each of its monsters.
 
 The policy libraries do not link OCGCore. Card data comes from any `cards.cdb`
 (EDOPro ships one). The optional benchmark crate builds the pinned engine and
@@ -160,6 +166,27 @@ cargo test
 
 Win-rate benchmarks against the WC2011 AI live in the host repository that
 embeds this one.
+
+## Card knowledge
+
+A policy meets cards its own deck does not play.  What every deck should
+know about them is in `ygo_policies::knowledge`: Arcana Force 0 - The Fool is
+not destroyed by battle, Ally of Justice Catastor destroys the non-DARK
+monster that attacks it before damage calculation, Dark Resonator survives
+one battle a turn, Stardust Dragon negates what would destroy it but not a
+bounce, Sangan pays its controller back when it is destroyed.
+
+These facts are not written by hand.  `policy-bench knowledge` stages each
+of the pool's 2,444 monsters on a plain board against the pinned engine, has
+it attacked, aimed at and attacking, and writes down what happened as
+`crates/ygo-policies/src/knowledge/pool.rs`; the same in words, with the
+cards that need a look, is [data/wc2011-monster-facts.md](data/wc2011-monster-facts.md).
+The few things a staged board cannot show (a coin toss at Summon, an effect
+that needs an empty hand) are added by hand in `knowledge::facts`.  See the
+[benchmark crate guide](crates/ygo-policies-bench/README.md#card-facts-from-the-engine)
+and [what it changed](benchmarks/pool-knowledge.md).
+
+A deck that wants the exception still decides it in its own `Strategy` hooks.
 
 ## Native benchmarks and rankings
 

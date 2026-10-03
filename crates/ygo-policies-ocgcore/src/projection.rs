@@ -29,6 +29,8 @@ pub struct Card {
     pub counters: u32,
     /// Declared an attack this turn.
     pub attacked: bool,
+    /// Damage calculations it has been through this turn.
+    pub battles: u32,
     pub materials: Vec<Card>,
     pub coin_effect: Option<CoinEffect>,
 }
@@ -263,6 +265,7 @@ impl Projection {
                 for side in &mut self.sides {
                     for card in side.monsters.iter_mut().flatten() {
                         card.attacked = false;
+                        card.battles = 0;
                     }
                 }
             }
@@ -296,6 +299,7 @@ impl Projection {
                     card.level = None;
                     card.counters = 0;
                     card.attacked = false;
+                    card.battles = 0;
                     card.materials.clear();
                 }
                 card.position = to.position;
@@ -458,11 +462,13 @@ impl Projection {
                 if let Some(card) = self.card_mut(attacker.controller, attacker.location, attacker.sequence) {
                     card.attack = Some(*attack as i32);
                     card.defense = Some(*defense as i32);
+                    card.battles += 1;
                 }
                 if let Some(target) = target {
                     if let Some(card) = self.card_mut(target.controller, target.location, target.sequence) {
                         card.attack = Some(*target_attack as i32);
                         card.defense = Some(*target_defense as i32);
+                        card.battles += 1;
                     }
                 }
             }
@@ -587,6 +593,7 @@ impl Projection {
             defense: stat(card.defense, |d| d.defense),
             level: code.and(card.level).or_else(|| printed.map(|d| d.level)).unwrap_or(0),
             can_attack: self.can_attack(at, card),
+            battles: if at.location == Location::MonsterZone { card.battles } else { 0 },
             counters: card.counters,
             coin_effect: card.coin_effect.filter(|_| at.location == Location::MonsterZone && card.face_up() && code.is_some()),
         }

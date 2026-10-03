@@ -405,7 +405,7 @@ fn idle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
             return t.pick(i);
         }
     }
-    if let Some(i) = s.main_phase(t) {
+    if let Some(i) = s.main_phase(t).filter(|i| !wasted(t, *i)) {
         return Some(i);
     }
     if let Some(i) = staples::main_phase(s, t) {
@@ -423,7 +423,7 @@ fn idle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
             return t.pick(i);
         }
     }
-    if let Some(i) = s.main_phase_late(t) {
+    if let Some(i) = s.main_phase_late(t).filter(|i| !wasted(t, *i)) {
         return Some(i);
     }
     if let Some(i) = tactics::extra_deck_summon(s, t) {
@@ -448,6 +448,19 @@ fn idle<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
         .or_else(|| t.find(ChoiceKind::EnterMain2, None, None))
         .or_else(|| t.find(ChoiceKind::EnterBattle, None, None))
         .and_then(|i| t.pick(i))
+}
+
+/// The plan activates a card from the hand or a Set one, or a monster's
+/// effect, that a monster of theirs negates for free, every time (Horus LV8
+/// against Spells): keep it for later.
+fn wasted(t: &Turn, index: usize) -> bool {
+    let choice = t.choice(index);
+    let played = choice.at().map_or(false, |at| match at.location {
+        Location::Hand | Location::MonsterZone => true,
+        Location::SpellTrapZone => t.view(choice).map_or(false, |v| !v.position.face_up),
+        _ => false,
+    });
+    choice.kind == ChoiceKind::Activate && played && choice.code().map_or(false, |code| t.ctx.wasted(t.ctx.canonical(code)))
 }
 
 // ---- Battle Phase ------------------------------------------------------------
@@ -505,10 +518,13 @@ fn chain<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
         // The plan passed on our monsters' Ignition effects; resolving them
         // anyway, with no aim, spends them on our own cards.
         let ignition = open && choice.at().map_or(false, |at| at.controller == t.ctx.me && at.location == Location::MonsterZone);
-        let response = s
-            .chain(t, i)
-            .or_else(|| staples::chain(s, t, i))
-            .unwrap_or_else(|| if ignition { Response::no() } else { default_trigger(t, choice) });
+        let response = if wasted(t, i) {
+            Response::no()
+        } else {
+            s.chain(t, i)
+                .or_else(|| staples::chain(s, t, i))
+                .unwrap_or_else(|| if ignition { Response::no() } else { default_trigger(t, choice) })
+        };
         let threshold = if own_top { CHAIN_ON_OWN_LINK } else { 0.0 };
         if response.score > threshold && best.as_ref().map_or(true, |b| response.score > b.0) {
             best = Some((response.score, i, response.intent));
@@ -581,13 +597,24 @@ pub fn member_score<S: Strategy + ?Sized>(s: &S, t: &Turn, member: &Member) -> f
     if let Some(rank) = t.memory.intent.iter().position(intended) {
         return 10_000.0 - rank as f64;
     }
-    if let Some(score) = s.select(t, member) {
-        return score;
-    }
     let ctx = &t.ctx;
     let view = ctx.card(member.at);
     let mine = member.at.controller == ctx.me;
     let hint = t.decision.hint;
+    // A card of theirs our effect would do nothing to is the last one to
+    // pick, whatever the deck thinks of it.
+    if !mine && !hint.is_gain() && !hint.is_cost() && hint != Hint::AttackTarget {
+        if let (Some(v), Some(by)) = (view, t.memory.last_activated) {
+            // Targets are chosen before our card is on the chain.
+            let aimed = !ctx.obs.chain.iter().any(|l| l.controller == ctx.me && l.code == by);
+            if !ctx.reaches(v, by, aimed, hint == Hint::Destroy) {
+                return -1.0;
+            }
+        }
+    }
+    if let Some(score) = s.select(t, member) {
+        return score;
+    }
     let worth = if mine {
         value(s, ctx, member.code, view.filter(|v| v.known())) as f64
     } else {

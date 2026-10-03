@@ -66,6 +66,8 @@ pub struct CardView {
     pub defense: i32,
     pub level: u32,
     pub can_attack: bool,
+    /// Damage calculations it has been through this turn.
+    pub battles: u32,
     pub counters: u32,
     /// Registered Arcana coin effect, learned from public client hints. Unknown
     /// after a silent effect change; never inferred from the last random toss.

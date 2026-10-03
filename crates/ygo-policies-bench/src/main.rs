@@ -1,5 +1,7 @@
 //! Reproducible matchups, round robins, and paired policy comparisons.
 mod engine;
+mod knowledge;
+mod probe;
 mod report;
 use engine::{Core, Deck, PlayOptions, PolicyLibrary, Result};
 use serde_json::{json, Value};
@@ -77,6 +79,75 @@ fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed:
         .collect()
 }
 
+/// The monsters to probe: `--only CODE,CODE`, or every allowed monster of
+/// `--pool` (an EDOPro lflist; default `data/wc2011.lflist.conf`).
+fn pool(args: &BTreeMap<String, String>, root: &Path, cards: &Path) -> Result<Vec<u32>> {
+    let db = rusqlite::Connection::open_with_flags(cards, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
+    let monster = |code: u32| -> bool {
+        db.query_row("select type from datas where id = ?", [code], |row| row.get::<_, i64>(0)).map_or(false, |kind| kind & 1 != 0)
+    };
+    let mut codes = Vec::new();
+    if let Some(only) = args.get("--only") {
+        for code in only.split(',') {
+            codes.push(code.trim().parse().map_err(|_| format!("Invalid card code: {code}"))?);
+        }
+        return Ok(codes);
+    }
+    let path = args.get("--pool").map(PathBuf::from).unwrap_or_else(|| root.join("data/wc2011.lflist.conf"));
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    for line in text.lines() {
+        let mut parts = line.split_whitespace();
+        if let (Some(Ok(code)), Some(Ok(limit))) = (parts.next().map(str::parse::<u32>), parts.next().map(str::parse::<i32>)) {
+            if limit > 0 && monster(code) {
+                codes.push(code);
+            }
+        }
+    }
+    codes.sort_unstable();
+    codes.dedup();
+    Ok(codes)
+}
+
+/// Probe every monster, each worker on its own engine.  In `codes` order.
+fn examine_all(codes: &[u32], workers: usize, core: Option<&Path>, cards: &Path, scripts: &Path) -> Result<Vec<probe::Examined>> {
+    let cursor = std::sync::atomic::AtomicUsize::new(0);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut results: Vec<Option<probe::Examined>> = vec![None; codes.len()];
+    std::thread::scope(|scope| -> Result<()> {
+        for _ in 0..workers.max(1) {
+            let tx = tx.clone();
+            let cursor = &cursor;
+            scope.spawn(move || {
+                let work = || -> Result<()> {
+                    let mut lab = probe::Lab::new(Core::open(core, cards, scripts)?)?;
+                    loop {
+                        let index = cursor.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(code) = codes.get(index) else { break };
+                        let examined = lab.examine(*code).map_err(|e| format!("{code}: {e}"))?;
+                        tx.send(Ok((index, examined))).map_err(|e| e.to_string())?;
+                    }
+                    Ok(())
+                };
+                if let Err(e) = work() {
+                    let _ = tx.send(Err(e));
+                }
+            });
+        }
+        drop(tx);
+        let mut done = 0;
+        for result in rx {
+            let (index, examined) = result?;
+            results[index] = Some(examined);
+            done += 1;
+            if done % 500 == 0 {
+                eprintln!("{done}/{} monsters", codes.len());
+            }
+        }
+        Ok(())
+    })?;
+    results.into_iter().collect::<Option<Vec<_>>>().ok_or_else(|| "Incomplete probe run".to_string())
+}
+
 fn fingerprint(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf29ce484222325, |hash, b| {
         (hash ^ *b as u64).wrapping_mul(0x100000001b3)
@@ -108,11 +179,13 @@ fn git_revision(path: &Path) -> Value {
 
 fn help() {
     println!(
-        "policy-bench <matchup|round-robin|compare|rank> [OPTIONS]\n\
+        "policy-bench <matchup|round-robin|compare|rank|knowledge|probe> [OPTIONS]\n\
   matchup --policies arcana --opponents blackwing,monarch\n\
   round-robin --policies all --games 256 --markdown DECK-TIER-LIST.md\n\
   compare --policies arcana --opponents existing --baseline old.so --candidate new.so\n\
   rank --input tournament.jsonl --markdown DECK-TIER-LIST.md\n\
+  knowledge --workers 8 --report data/wc2011-monster-facts.md\n\
+  probe --only 26593852 --output catastor.jsonl\n\
 \nOptions: --output results.jsonl --games 64 --seed 730000 --workers 4\n\
   --library PATH (matchup/round-robin; defaults to target/release/libygo_policies.so)\n\
   --core PATH (optional external OCGCore; default builds the pinned vendor engine)\n\
@@ -122,7 +195,13 @@ fn help() {
   --first POLICY (that policy goes first in every game; default: seats alternate)\n\
   --lp 8000,4000 (starting Life Points of the first and second player)\n\
 Deck lists and libraries are never modified. Each pair alternates seats.\n\
-Compare keeps opponents on the baseline library and runs both versions on identical seeds."
+Compare keeps opponents on the baseline library and runs both versions on identical seeds.\n\
+\nknowledge stages every monster of a card pool against the engine and writes what it\n\
+shows as the policies' card facts (crates/ygo-policies/src/knowledge/pool.rs):\n\
+  --pool FILE (an EDOPro lflist; default data/wc2011.lflist.conf) or --only CODE,CODE\n\
+  --rust PATH (the table) --report PATH (the same in words, with what needs review)\n\
+  --output PATH (the staged attacks this build's tactics call wrong)\n\
+probe writes what the engine did, monster by monster, as JSON lines (--output)."
     );
 }
 
@@ -136,7 +215,7 @@ fn run() -> Result<()> {
         help();
         return Ok(());
     }
-    if !["matchup", "round-robin", "compare", "rank"].contains(&mode.as_str()) {
+    if !["matchup", "round-robin", "compare", "rank", "probe", "knowledge"].contains(&mode.as_str()) {
         return Err(format!("Unknown mode {mode}; use --help"));
     }
     let mut args = BTreeMap::new();
@@ -166,6 +245,10 @@ fn run() -> Result<()> {
             "--markdown",
             "--first",
             "--lp",
+            "--only",
+            "--pool",
+            "--rust",
+            "--report",
         ]
         .contains(&key.as_str())
         {
@@ -221,6 +304,68 @@ fn run() -> Result<()> {
     let scripts = path("--scripts", "vendor/CardScripts");
     let decks = path("--decks", "decks");
     let core_path = args.get("--core").map(PathBuf::from);
+    if mode == "probe" {
+        // What the engine shows about each monster of a pool, as JSON lines.
+        let codes = pool(&args, &root, &cards)?;
+        let workers = number("--workers", 4)?;
+        let examined = examine_all(&codes, workers, core_path.as_deref(), &cards, &scripts)?;
+        let mut file = std::fs::File::create(&output).map_err(|e| format!("{}: {e}", output.display()))?;
+        for e in &examined {
+            writeln!(file, "{}", probe::examined_json(e)).map_err(|e| e.to_string())?;
+        }
+        eprintln!("{} monsters probed -> {}", examined.len(), output.display());
+        return Ok(());
+    }
+    if mode == "knowledge" {
+        // The facts the policies use, from what the probes show.
+        let codes = pool(&args, &root, &cards)?;
+        let workers = number("--workers", 4)?;
+        let examined = examine_all(&codes, workers, core_path.as_deref(), &cards, &scripts)?;
+        let db = rusqlite::Connection::open_with_flags(&cards, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
+        let name = |code: u32| -> String {
+            db.query_row("select name from texts where id = ?", [code], |row| row.get::<_, String>(0)).unwrap_or_else(|_| code.to_string())
+        };
+        let derived: BTreeMap<u32, knowledge::Derived> = examined.iter().map(|e| (e.code, knowledge::derive(e))).collect();
+        let pool_name = args.get("--pool").map(|p| format!("`{p}`")).unwrap_or_else(|| "`data/wc2011.lflist.conf`".into());
+        let known = derived.values().filter(|d| d.facts != ygo_policies::knowledge::Facts::NONE).count();
+        if !args.contains_key("--only") {
+            let rust = path("--rust", "crates/ygo-policies/src/knowledge/pool.rs");
+            std::fs::write(&rust, knowledge::table(&derived, &name, &pool_name)).map_err(|e| format!("{}: {e}", rust.display()))?;
+            eprintln!("{} monsters probed, {known} with something to know -> {}", derived.len(), rust.display());
+        }
+        if let Some(report) = args.get("--report") {
+            std::fs::write(report, knowledge::report(&examined, &derived, &name)).map_err(|e| format!("{report}: {e}"))?;
+        }
+        // How well the tactics built into this binary call the battles staged.
+        let (all, special, misses) = knowledge::agreement(&examined);
+        let share = |n: [usize; 2]| if n[0] == 0 { 0.0 } else { 100.0 * n[1] as f64 / n[0] as f64 };
+        eprintln!("attacks staged: {}, called right by this build's tactics: {} ({:.1}%)", all[0], all[1], share(all));
+        eprintln!("  of the {} that printed stats alone do not explain: {} ({:.1}%)", special[0], special[1], share(special));
+        if let Some(path) = args.get("--output") {
+            // The attacks called wrong, for a look at what the facts still miss.
+            let mut text = String::new();
+            for (code, miss) in &misses {
+                text.push_str(&format!("{} ({code}): {miss}\n", name(*code)));
+            }
+            std::fs::write(path, text).map_err(|e| format!("{path}: {e}"))?;
+        }
+        if args.contains_key("--only") {
+            for e in &examined {
+                let d = &derived[&e.code];
+                println!("{} {}", e.code, name(e.code));
+                for line in knowledge::describe(&d.facts) {
+                    println!("  {line}");
+                }
+                for note in &d.notes {
+                    println!("  note: {note}");
+                }
+            }
+            for (code, miss) in misses.iter().take(8) {
+                println!("  miss: {} {miss}", name(*code));
+            }
+        }
+        return Ok(());
+    }
     let library = path(
         "--library",
         &format!(

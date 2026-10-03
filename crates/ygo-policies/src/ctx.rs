@@ -1,7 +1,7 @@
 //! Read-only helpers over an [`Observation`] plus printed card data.
 
 use crate::cards::{CardData, CardDatabase};
-use crate::knowledge::{self, BattleProof, Facts};
+use crate::knowledge::{self, kind, Against, Attacked, Facts, Fate, Needs, ALWAYS};
 use crate::model::{CardRef, CardView, Coin, Location, Observation, Phase};
 
 /// Assumed battle stat of a face-down monster we cannot see.
@@ -18,6 +18,18 @@ static EMPTY: CardData = CardData {
     attribute: 0,
     setcodes: Vec::new(),
 };
+
+/// What an attack on a monster meets (see [`Ctx::attack_meets`]).
+#[derive(Clone, Copy, Debug)]
+pub struct Meets {
+    /// The facts of the battle position the monster ends up in.
+    pub facts: Attacked,
+    /// The stat the attacker's ATK is compared with.
+    pub stat: i32,
+    pub defending: bool,
+    /// Battle will not destroy it this time.
+    pub survives: bool,
+}
 
 #[derive(Clone, Copy)]
 pub struct Ctx<'a> {
@@ -198,51 +210,116 @@ impl<'a> Ctx<'a> {
     }
 
     /// What we know about a card beyond its printed stats (see
-    /// [`knowledge`]).  Only a card we can see has a code, so nothing about
-    /// the opponent's face-down cards leaks: they get no facts.
+    /// [`knowledge`]), as things stand on the board.  Only a card we can see
+    /// has a code, so nothing about the opponent's face-down cards leaks:
+    /// they get no facts.
     pub fn facts(&self, card: &CardView) -> Facts {
-        card.code.map_or(Facts::NONE, |c| knowledge::facts(self.canonical(c)))
+        let Some(code) = card.code else { return Facts::NONE };
+        let mut facts = knowledge::facts(self.canonical(code));
+        let met = match facts.needs {
+            Needs::Nothing => true,
+            Needs::EmptyHand => self.hand_size(card.at.controller) == 0,
+        };
+        if !met {
+            facts.attacked = [Attacked::PLAIN; 2];
+            facts.immune = 0;
+            facts.unaffected = 0;
+        }
+        facts
     }
 
-    /// Battle cannot destroy this face-up monster as things stand.
+    /// What an attack on this monster meets.  `attacker`: the monster that
+    /// attacks, or `None` for "whoever attacks" (facts that only hold
+    /// against some attackers then do not count).
+    pub fn attack_meets(&self, attacker: Option<&CardView>, target: &CardView) -> Meets {
+        // Our own Set monster is known to us: it is flipped before damage calculation.
+        let seen = target.position.face_up || (target.at.controller == self.me && target.known());
+        if target.at.location != Location::MonsterZone || !seen {
+            let facts = Attacked::PLAIN;
+            return Meets { facts, stat: self.battle_stat(target), defending: !target.position.attack, survives: false };
+        }
+        let facts = self.facts(target);
+        // A monster that switches position when attacked battles in the other one.
+        let start = if target.position.attack { 0 } else { 1 };
+        let switches = facts.attacked[start].switches;
+        let end = if switches { 1 - start } else { start };
+        let mut met = facts.attacked[end];
+        let holds = match attacker {
+            Some(a) => met.against.holds(a.attack + self.facts(a).striking.bonus, a.level, self.view_data(a).attribute),
+            None => met.against == Against::All,
+        };
+        if !holds {
+            met = Attacked::PLAIN;
+        }
+        met.switches = switches;
+        let defending = end == 1;
+        let stat = if defending { target.defense } else { target.attack } + met.stat;
+        // Morphtronic Boarden in Defense Position shields the other Morphtronics.
+        let boarden = self.view_data(target).in_set(knowledge::SET_MORPHTRONIC)
+            && self.monsters(target.at.controller).iter().any(|c| {
+                c.at != target.at && c.position.face_up && !c.position.attack && self.is(c, knowledge::MORPHTRONIC_BOARDEN)
+            });
+        let survives = boarden || met.survives == ALWAYS || met.survives as u32 > target.battles;
+        Meets { facts: met, stat, defending, survives }
+    }
+
+    /// Battle cannot destroy this face-up monster as things stand, whoever
+    /// attacks it and however often.
     pub fn battle_proof(&self, card: &CardView) -> bool {
         if card.at.location != Location::MonsterZone || !card.position.face_up {
             return false;
         }
-        match self.facts(card).battle_proof {
-            BattleProof::Always => true,
-            BattleProof::EmptyHand => self.hand_size(card.at.controller) == 0,
-            // Morphtronic Boarden in Defense Position shields the other Morphtronics.
-            BattleProof::No => {
-                self.view_data(card).in_set(knowledge::SET_MORPHTRONIC)
-                    && self.monsters(card.at.controller).iter().any(|c| {
-                        c.at != card.at
-                            && c.position.face_up
-                            && !c.position.attack
-                            && self.is(c, knowledge::MORPHTRONIC_BOARDEN)
-                    })
-            }
+        let met = self.attack_meets(None, card);
+        met.survives && (met.facts.survives == ALWAYS || met.facts.survives == 0)
+    }
+
+    /// The kind of effect a card of ours has (see [`knowledge::kind`]).
+    pub fn kind_of(&self, code: u32) -> u8 {
+        let data = self.data(code);
+        if data.is_spell() {
+            kind::SPELL
+        } else if data.is_trap() {
+            kind::TRAP
+        } else {
+            kind::MONSTER
         }
     }
 
-    /// Would an effect of `player` that targets this card resolve?
-    /// `spell_trap`: the effect is a Spell's or Trap's.
-    pub fn targetable_by(&self, card: &CardView, player: u8, spell_trap: bool) -> bool {
+    /// Would an effect of one of these `kinds`, used by `player` on this
+    /// card, do its work?  `aimed`: it targets the card.  `destroys`: its
+    /// work is destroying it.  What stops it: the card cannot be targeted,
+    /// its controller negates the effect, or the effect does nothing to it.
+    pub fn reached_by(&self, card: &CardView, player: u8, kinds: u8, aimed: bool, destroys: bool) -> bool {
         if !card.position.face_up {
             return true;
         }
-        if player != card.at.controller
-            && card.at.location == Location::MonsterZone
-            && self.view_data(card).in_set(knowledge::SET_TOON)
-            && self.face_up_on_field(card.at.controller, knowledge::TOON_KINGDOM)
-        {
-            return false;
-        }
         let facts = self.facts(card);
-        if spell_trap && facts.spell_trap_shield {
-            return false;
+        if player != card.at.controller {
+            if aimed
+                && card.at.location == Location::MonsterZone
+                && self.view_data(card).in_set(knowledge::SET_TOON)
+                && self.face_up_on_field(card.at.controller, knowledge::TOON_KINGDOM)
+            {
+                return false;
+            }
+            // A negation paid with a card from the hand needs one.
+            let negates = !facts.negate_discards || self.hand_size(card.at.controller) > 0;
+            let mut stopped = facts.negates_any;
+            if aimed {
+                stopped |= facts.untargetable;
+            }
+            if aimed && negates {
+                stopped |= facts.negates_aimed;
+            }
+            if destroys && negates {
+                stopped |= facts.negates_destruction;
+            }
+            stopped |= if destroys { facts.immune } else { facts.unaffected };
+            if stopped & kinds != 0 {
+                return false;
+            }
         }
-        if facts.coin_targeting_shield {
+        if aimed && facts.coin_targeting_shield {
             // Heads shields it from its controller's effects, tails from the
             // opponent's; before the coin is known, from both.
             return match card.coin_effect.map(|e| e.result) {
@@ -254,9 +331,30 @@ impl<'a> Ctx<'a> {
         true
     }
 
+    /// Would our card `by` do its work on this card?  See [`Ctx::reached_by`].
+    pub fn reaches(&self, card: &CardView, by: u32, aimed: bool, destroys: bool) -> bool {
+        self.reached_by(card, self.me, self.kind_of(by), aimed, destroys)
+    }
+
+    /// Would an effect of `player` that targets this card resolve?
+    /// `spell_trap`: the effect is a Spell's or Trap's (either is assumed);
+    /// otherwise a monster's.
+    pub fn targetable_by(&self, card: &CardView, player: u8, spell_trap: bool) -> bool {
+        let kinds = if spell_trap { kind::SPELL | kind::TRAP } else { kind::MONSTER };
+        self.reached_by(card, player, kinds, true, false)
+    }
+
     /// Would an effect of ours that targets this card resolve?
     pub fn targetable(&self, card: &CardView, spell_trap: bool) -> bool {
         self.targetable_by(card, self.me, spell_trap)
+    }
+
+    /// A face-up monster of the opponent whose controller negates, at no
+    /// cost and every time, any effect of the kind our card `by` has: using
+    /// the card now would waste it.
+    pub fn wasted(&self, by: u32) -> bool {
+        let kinds = self.kind_of(by);
+        self.monsters(self.opp).iter().any(|c| c.position.face_up && self.facts(c).negates_any & kinds != 0)
     }
 
     /// Toon World on the field (Toon Kingdom is treated as it).
@@ -271,7 +369,8 @@ impl<'a> Ctx<'a> {
             return false;
         }
         let owner = target.at.controller;
-        let paid = self.facts(target).negates_attacks_for.map_or(false, |cost| self.obs.life_points[owner as usize] > cost);
+        let met = self.attack_meets(None, target).facts;
+        let paid = met.negates > 0 && self.obs.life_points[owner as usize] > met.negate_cost;
         let boomboxen = self.view_data(target).in_set(knowledge::SET_MORPHTRONIC)
             && self
                 .monsters(owner)
@@ -280,24 +379,16 @@ impl<'a> Ctx<'a> {
         paid || boomboxen
     }
 
-    /// The stat an attack on this monster meets, and whether it then defends:
-    /// a Karakuri switches position when selected as an attack target, and
-    /// some monsters lose ATK when attacked.
-    pub fn attacked_stance(&self, target: &CardView) -> (i32, bool) {
-        if !target.position.face_up {
-            return (self.battle_stat(target), !target.position.attack);
-        }
-        let facts = self.facts(target);
-        let attack = match facts.switches_when_attacked {
-            knowledge::Switch::No => target.position.attack,
-            knowledge::Switch::ToDefense => false,
-            knowledge::Switch::Either => !target.position.attack,
-        };
-        if attack {
-            (target.attack - facts.attacked_malus, false)
-        } else {
-            (target.defense, true)
-        }
+    /// What its own attack does to this monster besides the battle: `Some`
+    /// when the target is gone whatever the result (`true`: before damage
+    /// calculation, so there is no battle at all).
+    pub fn strike_removes(&self, attacker: &CardView, target: &CardView) -> Option<bool> {
+        let striking = self.facts(attacker).striking;
+        let known = target.position.face_up || target.known();
+        let hits = striking.target != Fate::Unharmed
+            && known
+            && striking.against.holds(target.attack, target.level, self.view_data(target).attribute);
+        hits.then_some(striking.before_damage)
     }
 
     /// How much we want an opponent card gone by an effect that targets it
@@ -321,11 +412,32 @@ impl<'a> Ctx<'a> {
                 if !card.position.face_up {
                     return UNKNOWN_MONSTER_STAT;
                 }
-                let bonus = if self.view_data(card).is_extra() { 300 } else { 0 };
-                // Battle cannot remove it: an effect that can is the one to use.
-                let reachable = !targeting || self.targetable(card, false);
-                let wall = if self.battle_proof(card) && reachable { 2000 } else { 0 };
-                card.attack.max(card.defense).max(owner) + bonus + wall
+                let facts = self.facts(card);
+                let mut worth = card.attack.max(card.defense).max(owner);
+                if self.view_data(card).is_extra() {
+                    worth += 300;
+                }
+                // Its controller negates what we play: it comes first.
+                if facts.negates_any != 0 {
+                    worth += 1000;
+                }
+                if targeting {
+                    // Battle cannot remove it: an effect that can is the one to use.
+                    if self.battle_proof(card) && self.targetable(card, false) {
+                        worth += 2000;
+                    }
+                } else {
+                    // No kind of effect destroys it.
+                    if [kind::SPELL, kind::TRAP, kind::MONSTER].iter().all(|k| !self.reached_by(card, self.me, *k, false, true)) {
+                        return 0;
+                    }
+                    if self.battle_proof(card) {
+                        worth += 2000;
+                    }
+                    // Destroyed by an effect, it pays its controller back.
+                    worth = (worth - facts.effect_payoff).max(worth.min(300));
+                }
+                worth
             }
             Location::SpellTrapZone => {
                 if self.is_attack_lock(card) {
@@ -352,6 +464,12 @@ impl<'a> Ctx<'a> {
             }
             _ => 500,
         }
+    }
+
+    /// What our card `by`, which destroys without targeting, would take off
+    /// the opponent's field: the monsters it does destroy.
+    pub fn swept_strength(&self, by: u32) -> i32 {
+        self.monsters(self.opp).iter().filter(|c| self.reaches(c, by, false, true)).map(|c| self.sweep_worth(c)).sum()
     }
 
     pub fn field_strength(&self, controller: u8) -> i32 {
@@ -411,12 +529,22 @@ impl<'a> Ctx<'a> {
                     || (self.monsters(self.me).is_empty() && self.opp_attack_potential() >= 2000)
             }
             Some(t) => {
-                let attack = attacker.attack + self.facts(attacker).attack_bonus;
-                let (stat, defending) = self.attacked_stance(t);
-                if defending {
-                    attack > stat && !self.battle_proof(t)
+                // Its attack removes our monster whatever the numbers say:
+                // a loss, unless ours only goes back to the hand.
+                if self.strike_removes(attacker, t).is_some() {
+                    return self.facts(attacker).striking.target != Fate::Returned || self.view_data(t).is_extra();
+                }
+                let met = self.attack_meets(Some(attacker), t);
+                // Our monster rids us of the attacker before any damage.
+                if met.facts.attacker != Fate::Unharmed && met.facts.before_damage {
+                    return false;
+                }
+                let striking = self.facts(attacker).striking;
+                let attack = met.facts.attacker_atk.apply(attacker.attack + striking.bonus);
+                if met.defending {
+                    attack > met.stat && (!met.survives || striking.piercing)
                 } else {
-                    attack >= stat
+                    attack >= met.stat && !(met.survives && met.facts.no_damage)
                 }
             }
         }

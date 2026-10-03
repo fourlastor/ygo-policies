@@ -7,7 +7,7 @@ use std::{
     ptr,
 };
 use ygo_policies_ocgcore::{
-    message,
+    message::{self, Message},
     wire::{msg, query},
 };
 
@@ -21,6 +21,51 @@ pub struct PlayOptions {
     pub trace: bool,
     /// Starting Life Points of seat 0 (who goes first) and seat 1.
     pub life_points: [u32; 2],
+}
+
+/// Life Points of both players in a staged duel.
+pub const STAGED_LIFE_POINTS: u32 = 30000;
+
+/// A card put somewhere before a staged duel starts (see [`Core::stage`]).
+/// `location`, `sequence` and `position` are OCGCore's own values.
+#[derive(Clone, Copy, Debug)]
+pub struct Placed {
+    pub controller: u8,
+    pub code: u32,
+    pub location: u32,
+    pub sequence: u32,
+    pub position: u32,
+}
+
+/// A monster on the field, as the engine reports it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Monster {
+    pub controller: u8,
+    pub sequence: u32,
+    pub code: u32,
+    pub position: u32,
+    pub attack: i32,
+    pub defense: i32,
+}
+
+/// Printed data of a card.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Printed {
+    pub kind: u32,
+    pub level: u32,
+    pub attribute: u32,
+    pub race: u64,
+    pub attack: i32,
+    pub defense: i32,
+    pub alias: u32,
+}
+
+/// What a staged duel shows its watcher.
+pub enum Step<'a> {
+    /// Every engine message, in order, with its bytes (id first).
+    Message(&'a Message, &'a [u8]),
+    /// A selection about to be answered, with both monster zones as they stand.
+    Prompt(&'a Message, &'a [Monster]),
 }
 
 #[repr(C)]
@@ -251,6 +296,213 @@ impl Core {
                 query: api!(OCG_DuelQueryLocation),
                 _library: library,
             })
+        }
+    }
+
+    /// Printed data of a card, if the database (or [`Core::define`]) has it.
+    pub fn printed(&self, code: u32) -> Option<Printed> {
+        self.resources.cards.get(&code).map(|(c, _)| Printed {
+            kind: c.kind,
+            level: c.level,
+            attribute: c.attribute,
+            race: c.race,
+            attack: c.attack,
+            defense: c.defense,
+            alias: c.alias,
+        })
+    }
+
+    /// Every code in the database, in order.
+    pub fn codes(&self) -> Vec<u32> {
+        let mut codes: Vec<u32> = self.resources.cards.keys().copied().collect();
+        codes.sort_unstable();
+        codes
+    }
+
+    /// Add or replace a card of our own: staged duels use plain monsters
+    /// that no script touches.  Duels read card data when they start, so a
+    /// card can be redefined between duels.
+    pub fn define(&mut self, code: u32, card: Printed) {
+        let sets: Box<[u16]> = Box::new([0]);
+        let data = CardData {
+            code,
+            alias: card.alias,
+            sets: sets.as_ptr(),
+            kind: card.kind,
+            level: card.level,
+            attribute: card.attribute,
+            race: card.race,
+            attack: card.attack,
+            defense: card.defense,
+            lscale: 0,
+            rscale: 0,
+            link: 0,
+        };
+        self.resources.cards.insert(code, (data, sets));
+    }
+
+    fn monsters(&self, handle: Handle) -> Vec<Monster> {
+        let mut out = Vec::new();
+        for controller in 0..2u8 {
+            let q = Query { flags: query::RECOMMENDED, controller, location: 4, sequence: 0, overlay: 0 };
+            let mut length = 0;
+            let bytes = unsafe { (self.query)(handle, &mut length, &q) };
+            let mut update = vec![msg::UPDATE_DATA, controller, 4];
+            if length > 0 {
+                update.extend_from_slice(unsafe { std::slice::from_raw_parts(bytes, length as usize) });
+            }
+            if let Ok(Message::UpdateData { cards, .. }) = message::parse(&update) {
+                for (sequence, card) in cards.iter().enumerate() {
+                    if let Some(card) = card {
+                        out.push(Monster {
+                            controller,
+                            sequence: sequence as u32,
+                            code: card.code.unwrap_or(0),
+                            position: card.position.unwrap_or(0),
+                            attack: card.attack.unwrap_or(0),
+                            defense: card.defense.unwrap_or(0),
+                        });
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// A duel that starts from a staged board instead of two shuffled decks:
+    /// `cards` are put in place, nobody draws an opening hand, and seat 0
+    /// takes the first turn with attacks allowed (Master Rule 1 otherwise).
+    /// Both players start at [`STAGED_LIFE_POINTS`], so that a few attacks
+    /// in a row do not end the duel.
+    /// The seats answer in process.  `watch` sees every message, and every
+    /// selection with the monster zones before it is answered; it returns
+    /// `false` to end the duel there.  Returns the monster zones at the end.
+    pub fn stage(
+        &mut self,
+        cards: &[Placed],
+        seed: u64,
+        seats: &mut [ygo_policies_ocgcore::Seat; 2],
+        limit: usize,
+        watch: &mut dyn FnMut(Step) -> bool,
+    ) -> Result<Vec<Monster>> {
+        self.resources.errors.clear();
+        let payload = (&mut *self.resources) as *mut Resources as Handle;
+        let player = Player { lp: STAGED_LIFE_POINTS, draw: 0, per_turn: 1 };
+        let options = Options {
+            seed: [seed, 2, 3, 4],
+            // Master Rule 1 plus DUEL_ATTACK_FIRST_TURN.
+            flags: 0xD0700 | 0x02,
+            p0: player,
+            p1: player,
+            reader,
+            payload1: payload,
+            scripts,
+            payload2: payload,
+            log,
+            payload3: payload,
+            done,
+            payload4: payload,
+            unsafe_libraries: 0,
+        };
+        let failed = |e: ygo_policies_ocgcore::ProtocolError| e.to_string();
+        unsafe {
+            let mut handle = ptr::null_mut();
+            let status = (self.create)(&mut handle, &options);
+            if status != 0 {
+                return Err(format!("OCG_CreateDuel: {status}"));
+            }
+            let _duel = DuelGuard { handle, destroy: self.destroy };
+            for name in ["constant.lua", "utility.lua"] {
+                let name = CString::new(name).unwrap();
+                if scripts(payload, handle, name.as_ptr()) == 0 {
+                    return Err(format!("Failed to load {name:?}"));
+                }
+            }
+            let count = |p: u8, l: u32| cards.iter().filter(|c| c.controller == p && c.location == l).count() as u16;
+            for (p, seat) in seats.iter_mut().enumerate() {
+                let start = message::start_message(
+                    p as u8,
+                    [STAGED_LIFE_POINTS; 2],
+                    [count(0, 1), count(1, 1)],
+                    [count(0, 0x40), count(1, 0x40)],
+                );
+                seat.feed(&start).map_err(failed)?;
+            }
+            for card in cards {
+                (self.new_card)(
+                    handle,
+                    &NewCard {
+                        team: card.controller,
+                        duelist: 0,
+                        code: card.code,
+                        controller: card.controller,
+                        location: card.location,
+                        sequence: card.sequence,
+                        position: card.position,
+                    },
+                );
+            }
+            (self.start)(handle);
+            let mut decisions = 0;
+            loop {
+                let status = (self.process)(handle);
+                let mut length = 0;
+                let bytes = (self.messages)(handle, &mut length);
+                let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
+                let mut offset = 0;
+                let mut response = None;
+                let mut running = true;
+                while running && offset < buffer.len() {
+                    let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
+                    let raw = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
+                    offset += 4 + n;
+                    let id = *raw.first().ok_or("Empty message")?;
+                    let parsed = message::parse(raw).map_err(failed)?;
+                    if matches!(parsed, Message::Retry) {
+                        return Err("Engine rejected response (MSG_RETRY)".into());
+                    }
+                    running = watch(Step::Message(&parsed, raw)) && !matches!(parsed, Message::Win { .. });
+                    if running && message::is_selection(id) {
+                        running = watch(Step::Prompt(&parsed, &self.monsters(handle)));
+                        if running {
+                            for p in 0..2 {
+                                for loc in [2, 4, 8, 16, 32, 64] {
+                                    let q = Query { flags: query::RECOMMENDED, controller: p, location: loc, sequence: 0, overlay: 0 };
+                                    let bytes = (self.query)(handle, &mut length, &q);
+                                    let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
+                                    if length > 0 {
+                                        update.extend_from_slice(std::slice::from_raw_parts(bytes, length as usize));
+                                    }
+                                    for seat in seats.iter_mut() {
+                                        seat.feed(&update).map_err(failed)?;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if running {
+                        for seat in seats.iter_mut() {
+                            if let Some(answer) = seat.feed(raw).map_err(failed)? {
+                                response = Some(answer);
+                            }
+                        }
+                    }
+                }
+                if !self.resources.errors.is_empty() {
+                    return Err(self.resources.errors.join("\n"));
+                }
+                if !running || status == 0 || decisions >= limit {
+                    return Ok(self.monsters(handle));
+                }
+                match response {
+                    Some(answer) => {
+                        (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
+                        decisions += 1;
+                    }
+                    None if status == 1 => return Err("Engine awaiting with no answer".into()),
+                    None => {}
+                }
+            }
         }
     }
 
