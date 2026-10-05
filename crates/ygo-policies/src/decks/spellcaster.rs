@@ -356,11 +356,6 @@ impl Strategy for Spellcaster {
     }
 
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(match code {
-            TOWER_OF_BABEL => false,
-            ENEMY_CONTROLLER => true,
-            other => t.ctx.data(other).is_trap(),
-        })
+        (t.ctx.canonical(code) == TOWER_OF_BABEL).then_some(false)
     }
 }

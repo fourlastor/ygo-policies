@@ -348,9 +348,4 @@ impl Strategy for Ojama {
             _ => None,
         }
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let data = t.ctx.data(t.ctx.canonical(code));
-        Some(data.is_trap())
-    }
 }

@@ -217,9 +217,4 @@ impl Strategy for Toon {
         let data = ctx.data(code);
         (data.in_set(SET_TOON) && code != TOON_ALLIGATOR).then_some(Position::FACE_UP_ATTACK)
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap() || code == SCAPEGOAT)
-    }
 }

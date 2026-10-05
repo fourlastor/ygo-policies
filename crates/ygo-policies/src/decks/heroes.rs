@@ -359,10 +359,12 @@ impl Strategy for Heroes {
     }
 
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        let data = t.ctx.data(code);
-        // Super Polymerization stays in hand: it cannot be answered anyway,
-        // and Setting it would telegraph it.
-        Some(data.is_trap() || code == MIRACLE_SYNCHRO_FUSION)
+        match t.ctx.canonical(code) {
+            // Super Polymerization stays in hand: it cannot be answered anyway,
+            // and Setting it would telegraph it.
+            SUPER_POLYMERIZATION => Some(false),
+            MIRACLE_SYNCHRO_FUSION => Some(true),
+            _ => None,
+        }
     }
 }

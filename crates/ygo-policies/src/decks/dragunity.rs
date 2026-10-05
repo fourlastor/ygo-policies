@@ -269,8 +269,4 @@ impl Strategy for Dragunity {
         let wanted = if !graveyard_dragon && Self::winged_host_in_hand(&ctx) { 2 } else { 1 };
         t.choices().find(|(_, c)| c.description & 0xf == wanted).map(|(i, _)| i).or(Some(0))
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        Some(t.ctx.data(t.ctx.canonical(code)).is_trap())
-    }
 }

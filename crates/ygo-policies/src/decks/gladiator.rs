@@ -257,9 +257,4 @@ impl Strategy for Gladiator {
         let ctx = t.ctx;
         (ctx.canonical(code) == HOPLOMUS).then_some(Position::FACE_UP_DEFENSE)
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let data = t.ctx.data(t.ctx.canonical(code));
-        Some(data.is_trap() || matches!(t.ctx.canonical(code), crate::staples::BOOK_OF_MOON | ENEMY_CONTROLLER))
-    }
 }

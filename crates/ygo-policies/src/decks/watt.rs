@@ -250,9 +250,4 @@ impl Strategy for Watt {
         // Direct attackers attack whatever is in the way.
         (DIRECT.contains(&code) && ctx.my_turn()).then_some(Position::FACE_UP_ATTACK)
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let data = t.ctx.data(t.ctx.canonical(code));
-        Some(data.is_trap())
-    }
 }

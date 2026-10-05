@@ -194,8 +194,4 @@ impl Strategy for Gishki {
             _ => None,
         }
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        Some(t.ctx.data(t.ctx.canonical(code)).is_trap())
-    }
 }

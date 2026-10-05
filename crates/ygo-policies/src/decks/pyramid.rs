@@ -215,10 +215,4 @@ impl Strategy for Pyramid {
             _ => None,
         }
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let ctx = t.ctx;
-        let code = ctx.canonical(code);
-        Some(ctx.data(code).is_trap() || code == PYRAMID_ENERGY)
-    }
 }

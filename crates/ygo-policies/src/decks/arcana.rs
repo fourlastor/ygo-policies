@@ -271,9 +271,4 @@ impl Strategy for Arcana {
     fn position(&self, t: &Turn, code: u32) -> Option<Position> {
         matches!(t.ctx.canonical(code), THE_FOOL | 97452818).then_some(Position::FACE_UP_DEFENSE)
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap())
-    }
 }

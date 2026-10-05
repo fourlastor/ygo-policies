@@ -231,9 +231,4 @@ impl Strategy for XSaber {
         // Face-up in Defense Position, Pashuul burns us every turn.
         (t.ctx.canonical(code) == PASHUUL).then_some(Position::FACE_UP_ATTACK)
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap())
-    }
 }

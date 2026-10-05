@@ -265,7 +265,7 @@ impl Strategy for DestinyHero {
     }
 
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap() && code != D_TIME)
+        // D - Time needs an Elemental HERO, and this list has none.
+        (t.ctx.canonical(code) == D_TIME).then_some(false)
     }
 }

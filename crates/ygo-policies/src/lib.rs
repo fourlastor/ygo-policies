@@ -1382,4 +1382,45 @@ mod tests {
         };
         assert_eq!(policy.choose(&observation(), &decision), 1);
     }
+
+    /// A Quick-Play Spell answers their turn only when Set.  Most decks kept
+    /// Book of Moon, Shrink and Enemy Controller in hand: their own rule said
+    /// "Traps", and the shared default (Traps and Quick-Play Spells) never ran.
+    #[test]
+    fn quick_play_spells_are_set() {
+        use crate::cards::types;
+        use crate::staples::{BOOK_OF_MOON, ENEMY_CONTROLLER, MYSTICAL_SPACE_TYPHOON, SHRINK};
+        const D_TIME: u32 = 99075257;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [BOOK_OF_MOON, ENEMY_CONTROLLER, MYSTICAL_SPACE_TYPHOON, SHRINK]
+                .into_iter()
+                .map(|code| printed(code, types::SPELL | types::QUICKPLAY, 0))
+                .chain([printed(D_TIME, types::TRAP, 0)])
+                .collect(),
+        ));
+        let chosen = |id: &str, obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create(id, db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let set = |code: u32| decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetSpellTrap, code, 0), choice(ChoiceKind::EndTurn)]);
+        let mut obs = observation();
+        obs.phase = Some(Phase::Main2);
+        for (id, code) in [
+            ("fortune-lady", BOOK_OF_MOON),
+            ("fortune-lady", SHRINK),
+            ("destiny-hero", BOOK_OF_MOON),
+            ("gladiator", SHRINK),
+            ("karakuri", ENEMY_CONTROLLER),
+            ("tele-dad", ENEMY_CONTROLLER),
+            ("machina", MYSTICAL_SPACE_TYPHOON),
+            ("x-saber", BOOK_OF_MOON),
+        ] {
+            obs.cards = vec![card(0, Location::Hand, 0, code, false)];
+            assert_eq!(chosen(id, &obs, &set(code)), ChoiceKind::SetSpellTrap, "{id} {code}");
+        }
+        // A deck still says no where it has a reason: D - Time has no
+        // Elemental HERO to work with.
+        obs.cards = vec![card(0, Location::Hand, 0, D_TIME, false)];
+        assert_eq!(chosen("destiny-hero", &obs, &set(D_TIME)), ChoiceKind::EndTurn);
+    }
 }

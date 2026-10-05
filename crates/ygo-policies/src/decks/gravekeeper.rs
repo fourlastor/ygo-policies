@@ -267,9 +267,4 @@ impl Strategy for Gravekeeper {
             Position::FACE_UP_DEFENSE
         })
     }
-
-    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
-        let code = t.ctx.canonical(code);
-        Some(t.ctx.data(code).is_trap())
-    }
 }
