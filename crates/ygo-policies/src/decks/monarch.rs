@@ -61,6 +61,13 @@ impl Monarch {
         !ctx.spell_traps(ctx.opp).is_empty()
     }
 
+    /// Treeborn Frog's revival is a Special Summon: Pot of Duality cannot
+    /// be activated in the same turn.  The card is worth more than a Frog on
+    /// the field unless a Monarch is waiting for its Tribute.
+    fn keeps_treeborn_down(ctx: &Ctx) -> bool {
+        ctx.in_hand(crate::staples::POT_OF_DUALITY) && (!Self::monarch_in_hand(ctx) || Self::fodder(ctx) > 0)
+    }
+
     /// How much a Monarch's summon effect is worth on this board.
     fn monarch_score(ctx: &Ctx, code: u32) -> f64 {
         let opp_backrow = ctx.spell_traps(ctx.opp).len();
@@ -109,13 +116,55 @@ impl Strategy for Monarch {
                 return t.pick(i);
             }
         }
-        let can_summon = t.has(ChoiceKind::NormalSummon) || t.has(ChoiceKind::SetMonster);
-        if !Self::monarch_in_hand(&ctx) || !can_summon {
+        // With no Monarch in hand, Swap Frog returns the one on the field:
+        // it is Tribute Summoned again, and its effect is used again.  Only
+        // while that effect has something to take.
+        if ctx.main1() && !ctx.obs.summon_used && !Self::monarch_in_hand(&ctx) && Self::fodder(&ctx) >= 2 {
+            if let Some(i) = t.activate_from(SWAP_FROG, Location::MonsterZone) {
+                let theirs = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
+                let again = ctx
+                    .monsters(ctx.me)
+                    .into_iter()
+                    .filter(|c| c.position.face_up)
+                    .filter_map(|c| c.code.map(|k| (c, ctx.canonical(k))))
+                    .filter(|(_, k)| Self::is_monarch(&ctx, *k) && !(matches!(*k, CAIUS | RAIZA) && theirs == 0))
+                    .map(|(c, k)| (Self::monarch_score(&ctx, k), c.at))
+                    .filter(|(score, _)| *score > 2400.0)
+                    .max_by(|a, b| a.0.total_cmp(&b.0));
+                if let Some((_, at)) = again {
+                    return t.pick_targeting(i, vec![at]);
+                }
+            }
+        }
+        // With only Monarchs in hand and no monster of ours, no Summon is
+        // offered until the fodder is there: what counts is that the Normal
+        // Summon is still to be made.
+        if !Self::monarch_in_hand(&ctx) || ctx.obs.summon_used {
             return None;
         }
         let monarch_ready = t.find_where(|c| {
             c.kind == ChoiceKind::NormalSummon && c.code().map_or(false, |k| Self::is_monarch(&ctx, k))
         });
+        // A Set Gravekeeper's Spy is Flip Summoned before a Monarch takes its
+        // Tribute: its effect brings a second one from the Deck.
+        if monarch_ready.is_some() {
+            let flip = t.find_where(|c| {
+                c.kind == ChoiceKind::ChangePosition
+                    && c.code().map(|k| ctx.canonical(k)) == Some(GRAVEKEEPERS_SPY)
+                    && t.view(c).map_or(false, |v| !v.position.face_up)
+            });
+            if let Some(i) = flip {
+                return t.pick(i);
+            }
+        }
+        // Their monster as the Tribute, when it is one worth removing: the
+        // Monarch's own effect then takes a second card, and our monster stays.
+        if let Some(i) = t.activate(SOUL_EXCHANGE) {
+            let best = ctx.monsters(ctx.opp).into_iter().max_by_key(|c| ctx.threat(c));
+            if let Some(best) = best.filter(|c| ctx.threat(c) >= 1500) {
+                return t.pick_targeting(i, vec![best.at]);
+            }
+        }
         if monarch_ready.is_some() && Self::fodder(&ctx) > 0 {
             return None; // tactics::normal_summon picks the best Monarch
         }
@@ -140,12 +189,18 @@ impl Strategy for Monarch {
     }
 
     fn allow_staple(&self, t: &Turn, code: u32) -> bool {
-        // Pot of Duality locks Special Summons: not while we still need fodder.
         let ctx = t.ctx;
-        !(code == crate::staples::POT_OF_DUALITY
-            && Self::monarch_in_hand(&ctx)
-            && Self::fodder(&ctx) == 0
-            && ctx.hand().iter().any(|c| [JESTER_CONFIT, SWAP_FROG].iter().any(|k| ctx.is(c, *k))))
+        match code {
+            // Pot of Duality locks Special Summons: not while we still need fodder.
+            crate::staples::POT_OF_DUALITY => {
+                !(Self::monarch_in_hand(&ctx)
+                    && Self::fodder(&ctx) == 0
+                    && ctx.hand().iter().any(|c| [JESTER_CONFIT, SWAP_FROG].iter().any(|k| ctx.is(c, *k))))
+            }
+            // Dark Hole is not for one monster the Monarch of this turn beats.
+            crate::staples::DARK_HOLE => !crate::tactics::outgrown(self, t),
+            _ => true,
+        }
     }
 
     fn summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
@@ -173,6 +228,8 @@ impl Strategy for Monarch {
             (ChoiceKind::NormalSummon, SWAP_FROG) => Some(850.0),
             (ChoiceKind::SetMonster, TREEBORN_FROG) => Some(300.0),
             (ChoiceKind::NormalSummon, JESTER_CONFIT | BATTLE_FADER) => None,
+            // Battle Fader is a hand trap: Set, it is a monster with 0 DEF.
+            (ChoiceKind::SetMonster, BATTLE_FADER) => None,
             (ChoiceKind::SetMonster, _) => Some(data.defense as f64 / 10.0),
             _ => None,
         })
@@ -181,10 +238,12 @@ impl Strategy for Monarch {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         let ctx = t.ctx;
         let code = ctx.canonical(choice.code().unwrap_or(0));
-        // Fodder only when a Monarch can use it; Jester Confit bounces itself
-        // at the opponent's End Phase anyway.
+        // Fodder only when a Monarch can use it.  Jester Confit also on its
+        // own while they control a face-up monster: at their End Phase it
+        // goes back to the hand and takes one with it.
+        let bounce = code == JESTER_CONFIT && ctx.monsters(ctx.opp).iter().any(|c| c.position.face_up);
         Some(match code {
-            JESTER_CONFIT | SWAP_FROG => Self::monarch_in_hand(&ctx),
+            JESTER_CONFIT | SWAP_FROG => Self::monarch_in_hand(&ctx) || bounce,
             _ => true,
         })
     }
@@ -205,6 +264,10 @@ impl Strategy for Monarch {
             // Level change does nothing on its own.
             TRAGOEDIA if choice.description & 0xf == 2 => Response::no(),
             TRAGOEDIA => Response::new(70.0),
+            TREEBORN_FROG if choice.at().map(|a| a.location) == Some(Location::Graveyard) && Self::keeps_treeborn_down(&ctx) => {
+                Response::no()
+            }
+            TREEBORN_FROG => return None,
             MOBIUS if !Self::mobius_has_targets(&ctx) => Response::no(),
             CAIUS | RAIZA | MOBIUS | THESTALOS => Response::new(50.0),
             _ => return None,
@@ -213,7 +276,11 @@ impl Strategy for Monarch {
 
     fn yes_no(&self, t: &Turn) -> Option<bool> {
         let ctx = t.ctx;
-        (t.decision.subject.map(|c| ctx.canonical(c)) == Some(MOBIUS)).then(|| Self::mobius_has_targets(&ctx))
+        match t.decision.subject.map(|c| ctx.canonical(c)) {
+            Some(MOBIUS) => Some(Self::mobius_has_targets(&ctx)),
+            Some(TREEBORN_FROG) if Self::keeps_treeborn_down(&ctx) => Some(false),
+            _ => None,
+        }
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {

@@ -576,6 +576,16 @@ fn taken_by<S: Strategy + ?Sized>(s: &S, t: &Turn, link: &ChainLink, spent: Opti
     }
 }
 
+/// Would this Spell or Trap of theirs destroy our card at `at`?  Of the
+/// removal [`taken_by`] knows.
+pub fn destroys(ctx: &Ctx, link: &ChainLink, at: CardRef) -> bool {
+    let code = ctx.canonical(link.code);
+    match code {
+        HEAVY_STORM => at.location == Location::SpellTrapZone,
+        _ => DESTROYS_ITS_TARGETS.contains(&code) && link.targets.contains(&at),
+    }
+}
+
 /// Solemn Judgment costs half our Life Points, whatever they are: it can
 /// always be paid, and the fewer we have the less it costs.  That price is
 /// weighed against what the answer saves.

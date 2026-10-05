@@ -955,6 +955,314 @@ mod tests {
         assert_eq!(answer("verdict", &summon(2000, warning, BOSS, 2800), warning), None);
     }
 
+    fn creature(code: u32, level: u32, attack: i32, defense: i32, set: u16) -> (u32, crate::cards::CardData) {
+        use crate::cards::types;
+        let kind = types::MONSTER | types::EFFECT;
+        (code, crate::cards::CardData { code, kind, level, attack, defense, setcodes: vec![set], ..Default::default() })
+    }
+
+    fn decide(kind: DecisionKind, subject: Option<u32>, choices: Vec<Choice>) -> Decision {
+        Decision { kind, hint: Hint::None, minimum: 0, maximum: 0, selected: Vec::new(), subject, choices }
+    }
+
+    fn from_hand(kind: ChoiceKind, code: u32, sequence: u32) -> Choice {
+        Choice { kind, ..activate(code, Location::Hand, sequence) }
+    }
+
+    /// What a one-step search on top of the Blackwing pilot kept doing
+    /// otherwise (`policy-bench search`), now the pilot's own rules.
+    #[test]
+    fn blackwing_plays_what_the_search_found() {
+        use crate::cards::types;
+        use crate::staples::{DARK_HOLE, MONSTER_REBORN};
+        const SIROCCO: u32 = 75498415;
+        const SHURA: u32 = 58820853;
+        const BORA: u32 = 49003716;
+        const JIN: u32 = 38562933;
+        const BLACKWING: u16 = 0x33;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                creature(SIROCCO, 5, 2000, 900, BLACKWING),
+                creature(SHURA, 4, 1800, 1200, BLACKWING),
+                creature(BORA, 4, 1700, 800, BLACKWING),
+                creature(JIN, 1, 600, 500, BLACKWING),
+                creature(1, 4, 0, 0, 0),
+                printed(DARK_HOLE, types::SPELL, 0),
+                printed(MONSTER_REBORN, types::SPELL, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let attack = Position { face_up: true, attack: true };
+        let their = |attack_points: i32| monster(1, 0, Some(1), attack, attack_points, 1000);
+        let summon = |code: u32| {
+            vec![
+                from_hand(ChoiceKind::NormalSummon, code, 0),
+                from_hand(ChoiceKind::SetMonster, code, 0),
+                choice(ChoiceKind::EndTurn),
+            ]
+        };
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("blackwing", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+
+        // An attacker is Summoned face-up under a bigger monster; a small
+        // Blackwing is still Set.
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![card(0, Location::Hand, 0, SHURA, false), their(2500)];
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summon(SHURA))), (ChoiceKind::NormalSummon, Some(SHURA)));
+        obs.cards = vec![card(0, Location::Hand, 0, JIN, false), their(2500)];
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summon(JIN))), (ChoiceKind::SetMonster, Some(JIN)));
+
+        // Sirocco needs no Tribute while our field is empty and theirs is
+        // not: it comes down before Monster Reborn fills ours.
+        obs.cards = vec![
+            card(0, Location::Hand, 0, SIROCCO, false),
+            card(0, Location::Hand, 1, MONSTER_REBORN, false),
+            card(0, Location::Graveyard, 0, SHURA, true),
+            their(2500),
+        ];
+        let mut choices = vec![activate(MONSTER_REBORN, Location::Hand, 1)];
+        choices.extend(summon(SIROCCO));
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, choices)), (ChoiceKind::NormalSummon, Some(SIROCCO)));
+
+        // Their one monster is smaller than what we Summon: Dark Hole stays
+        // in hand.  Against a bigger one it is played.
+        let dark_hole = || {
+            let mut choices = vec![activate(DARK_HOLE, Location::Hand, 1)];
+            choices.extend(summon(SHURA));
+            decide(DecisionKind::Idle, None, choices)
+        };
+        let hand = [card(0, Location::Hand, 0, SHURA, false), card(0, Location::Hand, 1, DARK_HOLE, false)];
+        obs.cards = hand.iter().cloned().chain([their(1500)]).collect();
+        assert_eq!(chosen(&obs, &dark_hole()), (ChoiceKind::NormalSummon, Some(SHURA)));
+        obs.cards = hand.iter().cloned().chain([their(2500)]).collect();
+        assert_eq!(chosen(&obs, &dark_hole()), (ChoiceKind::Activate, Some(DARK_HOLE)));
+
+        // Sirocco for a Tribute when its effect then gets one attacker over
+        // their wall (2000 + Shura's 1800 against 3000), and not otherwise.
+        let board = |wall: i32| {
+            let mut obs = observation();
+            obs.turn = 5;
+            obs.cards = vec![
+                card(0, Location::Hand, 0, SIROCCO, false),
+                monster(0, 0, Some(BORA), attack, 1700, 800),
+                monster(0, 1, Some(SHURA), attack, 1800, 1200),
+                their(wall),
+            ];
+            obs
+        };
+        let mut choices = summon(SIROCCO);
+        choices.insert(2, choice(ChoiceKind::EnterBattle));
+        let tribute = decide(DecisionKind::Idle, None, choices);
+        assert_eq!(chosen(&board(3000), &tribute), (ChoiceKind::NormalSummon, Some(SIROCCO)));
+        assert_eq!(chosen(&board(1500), &tribute).0, ChoiceKind::EnterBattle);
+
+        // Bora Special Summoned before the Battle Phase stands in Attack
+        // Position, whatever they control.
+        let position = decide(
+            DecisionKind::Position,
+            Some(BORA),
+            vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)), choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))],
+        );
+        assert_eq!(chosen(&board(3000), &position).0, ChoiceKind::Position(Position::FACE_UP_ATTACK));
+    }
+
+    /// The same for the Monarch pilot.
+    #[test]
+    fn monarch_plays_what_the_search_found() {
+        use crate::cards::types;
+        use crate::staples::POT_OF_DUALITY;
+        const THESTALOS: u32 = 26205777;
+        const TREEBORN_FROG: u32 = 12538374;
+        const BATTLE_FADER: u32 = 19665973;
+        const SOUL_EXCHANGE: u32 = 68005187;
+        const SPY: u32 = 24317029;
+        const SWAP_FROG: u32 = 9126351;
+        const ONE_FOR_ONE: u32 = 2295440;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                creature(THESTALOS, 6, 2400, 1000, 0),
+                creature(TREEBORN_FROG, 1, 100, 100, 0),
+                creature(BATTLE_FADER, 1, 0, 0, 0),
+                creature(SPY, 4, 1200, 2000, 0),
+                creature(SWAP_FROG, 2, 1000, 500, 0),
+                creature(1, 4, 0, 0, 0),
+                printed(SOUL_EXCHANGE, types::SPELL, 0),
+                printed(ONE_FOR_ONE, types::SPELL, 0),
+                printed(POT_OF_DUALITY, types::SPELL, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let attack = Position { face_up: true, attack: true };
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("monarch", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+
+        // With a Tribute of our own on the field, Soul Exchange still takes
+        // theirs: the Monarch then removes a second card.
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![
+            card(0, Location::Hand, 0, THESTALOS, false),
+            card(0, Location::Hand, 1, SOUL_EXCHANGE, false),
+            monster(0, 0, Some(TREEBORN_FROG), Position::FACE_UP_DEFENSE, 100, 100),
+            monster(1, 0, Some(1), attack, 2800, 2000),
+        ];
+        let tribute = decide(
+            DecisionKind::Idle,
+            None,
+            vec![
+                from_hand(ChoiceKind::NormalSummon, THESTALOS, 0),
+                activate(SOUL_EXCHANGE, Location::Hand, 1),
+                choice(ChoiceKind::EndTurn),
+            ],
+        );
+        assert_eq!(chosen(&obs, &tribute), (ChoiceKind::Activate, Some(SOUL_EXCHANGE)));
+
+        // Battle Fader is a hand trap: it is never Set.
+        obs.cards = vec![card(0, Location::Hand, 0, BATTLE_FADER, false)];
+        let fader = decide(
+            DecisionKind::Idle,
+            None,
+            vec![
+                from_hand(ChoiceKind::NormalSummon, BATTLE_FADER, 0),
+                from_hand(ChoiceKind::SetMonster, BATTLE_FADER, 0),
+                choice(ChoiceKind::EndTurn),
+            ],
+        );
+        assert_eq!(chosen(&obs, &fader).0, ChoiceKind::EndTurn);
+
+        // Treeborn Frog's revival would keep Pot of Duality in hand for the
+        // turn: declined, unless a Monarch waits for the Tribute.
+        let revive = decide(DecisionKind::YesNo, Some(TREEBORN_FROG), vec![choice(ChoiceKind::Yes), choice(ChoiceKind::No)]);
+        obs.phase = Some(Phase::Standby);
+        obs.cards = vec![card(0, Location::Hand, 0, POT_OF_DUALITY, false), card(0, Location::Graveyard, 0, TREEBORN_FROG, true)];
+        assert_eq!(chosen(&obs, &revive).0, ChoiceKind::No);
+        obs.cards.push(card(0, Location::Hand, 1, THESTALOS, false));
+        assert_eq!(chosen(&obs, &revive).0, ChoiceKind::Yes);
+
+        // A Set Gravekeeper's Spy is Flip Summoned before the Monarch takes
+        // its Tribute: its effect brings a second Spy.
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![
+            card(0, Location::Hand, 0, THESTALOS, false),
+            monster(0, 0, Some(SPY), Position { face_up: false, attack: false }, 1200, 2000),
+            monster(1, 0, Some(1), attack, 1500, 1000),
+        ];
+        let flip = Choice { kind: ChoiceKind::ChangePosition, ..activate(SPY, Location::MonsterZone, 0) };
+        let summon = decide(
+            DecisionKind::Idle,
+            None,
+            vec![from_hand(ChoiceKind::NormalSummon, THESTALOS, 0), flip, choice(ChoiceKind::EndTurn)],
+        );
+        assert_eq!(chosen(&obs, &summon), (ChoiceKind::ChangePosition, Some(SPY)));
+
+        // Only a Monarch in hand and no monster of ours: no Summon is offered
+        // yet, and One for One makes the Tribute.  Not once the Normal Summon
+        // is used.
+        obs.cards = vec![
+            card(0, Location::Hand, 0, THESTALOS, false),
+            card(0, Location::Hand, 1, ONE_FOR_ONE, false),
+            monster(1, 0, Some(1), attack, 1500, 1000),
+        ];
+        let fodder = decide(DecisionKind::Idle, None, vec![activate(ONE_FOR_ONE, Location::Hand, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &fodder), (ChoiceKind::Activate, Some(ONE_FOR_ONE)));
+        obs.summon_used = true;
+        assert_eq!(chosen(&obs, &fodder).0, ChoiceKind::EndTurn);
+
+        // No Monarch in hand: Swap Frog returns the one on the field, to be
+        // Tribute Summoned again for its effect (a card of their hand).
+        let mut obs = observation();
+        obs.turn = 5;
+        obs.pile_sizes = vec![(1, Location::Hand, 3)];
+        obs.cards = vec![
+            monster(0, 0, Some(THESTALOS), attack, 2400, 1000),
+            monster(0, 1, Some(SWAP_FROG), attack, 1000, 500),
+            monster(1, 0, Some(1), attack, 1500, 1000),
+        ];
+        let again = decide(
+            DecisionKind::Idle,
+            None,
+            vec![activate(SWAP_FROG, Location::MonsterZone, 1), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)],
+        );
+        assert_eq!(chosen(&obs, &again), (ChoiceKind::Activate, Some(SWAP_FROG)));
+        obs.summon_used = true;
+        assert_ne!(chosen(&obs, &again).0, ChoiceKind::Activate);
+    }
+
+    /// A Set card of Blackwing's that their Spell or Trap is about to
+    /// destroy is chained while it still can be: Icarus Attack takes two of
+    /// their cards with it, Threatening Roar still stops this turn's attacks.
+    #[test]
+    fn blackwing_uses_a_set_card_before_it_is_destroyed() {
+        use crate::cards::types;
+        use crate::staples::{HEAVY_STORM, MYSTICAL_SPACE_TYPHOON, THREATENING_ROAR};
+        const ICARUS_ATTACK: u32 = 53567095;
+        const SHURA: u32 = 58820853;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                creature(SHURA, 4, 1800, 1200, 0x33),
+                creature(1, 4, 1900, 1000, 0),
+                printed(ICARUS_ATTACK, types::TRAP, 0),
+                printed(THREATENING_ROAR, types::TRAP, 0),
+                printed(MYSTICAL_SPACE_TYPHOON, types::SPELL | types::QUICKPLAY, 0),
+                printed(HEAVY_STORM, types::SPELL, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let attack = Position { face_up: true, attack: true };
+        let icarus = CardRef { controller: 0, location: Location::SpellTrapZone, sequence: 0 };
+        let roar = CardRef { controller: 0, location: Location::SpellTrapZone, sequence: 1 };
+        let theirs = CardRef { controller: 1, location: Location::SpellTrapZone, sequence: 0 };
+        // Their turn: they activate `code` at `targets`, with a monster and a Set card of their own.
+        let board = |phase: Phase, code: u32, targets: Vec<CardRef>| {
+            let mut obs = observation();
+            obs.turn = 4;
+            obs.turn_player = Some(1);
+            obs.phase = Some(phase);
+            obs.cards = vec![
+                card(0, Location::SpellTrapZone, 0, ICARUS_ATTACK, false),
+                card(0, Location::SpellTrapZone, 1, THREATENING_ROAR, false),
+                monster(0, 0, Some(SHURA), attack, 1800, 1200),
+                monster(1, 0, Some(1), attack, 1900, 1000),
+                card(1, Location::SpellTrapZone, 0, code, true),
+                CardView { code: None, ..card(1, Location::SpellTrapZone, 1, 0, false) },
+            ];
+            obs.chain = vec![ChainLink { code, controller: 1, source: theirs, targets }];
+            obs
+        };
+        let window = decide(
+            DecisionKind::Chain { forced: false, triggers: false },
+            None,
+            vec![
+                activate(ICARUS_ATTACK, Location::SpellTrapZone, 0),
+                activate(THREATENING_ROAR, Location::SpellTrapZone, 1),
+                choice(ChoiceKind::Pass),
+            ],
+        );
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("blackwing", db.clone()).unwrap();
+            window.choices[policy.choose(obs, &window)].code()
+        };
+        // Their Typhoon at Icarus Attack: it goes now, at two cards of theirs.
+        assert_eq!(chosen(&board(Phase::Main1, MYSTICAL_SPACE_TYPHOON, vec![icarus])), Some(ICARUS_ATTACK));
+        // At Threatening Roar, before their attacks: it still stops them.
+        assert_eq!(chosen(&board(Phase::Main1, MYSTICAL_SPACE_TYPHOON, vec![roar])), Some(THREATENING_ROAR));
+        // In their End Phase it has nothing left to stop.
+        assert_eq!(chosen(&board(Phase::End, MYSTICAL_SPACE_TYPHOON, vec![roar])), None);
+        // Heavy Storm takes both: Icarus Attack first.
+        assert_eq!(chosen(&board(Phase::Main1, HEAVY_STORM, vec![])), Some(ICARUS_ATTACK));
+    }
+
     /// Claudi-oh's Verdict Summons Beast King Barbaros without Tributes
     /// when the engine asks which way.
     #[test]

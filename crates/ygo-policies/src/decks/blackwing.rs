@@ -6,11 +6,11 @@
 //! Kalut the Moon Shadow is the Damage Step trick; Icarus Attack, Book of Moon
 //! and Threatening Roar protect the board on the opponent's turn.
 
-use crate::agent::{value, Outcome, Response, Strategy, Turn};
+use crate::agent::{value, Hostile, Outcome, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member};
-use crate::staples::{MONSTER_REBORN, POT_OF_DUALITY};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Phase, Position};
+use crate::staples::{self, BOOK_OF_MOON, DARK_HOLE, MYSTICAL_SPACE_TYPHOON, THREATENING_ROAR};
 
 pub const DECK: &str = "Blackwing Assassin";
 
@@ -49,13 +49,12 @@ impl Blackwing {
         if opp.is_empty() || !ctx.main1() || !ctx.my_turn() {
             return None;
         }
-        let ours: Vec<_> = ctx
-            .monsters(ctx.me)
-            .into_iter()
-            .filter(|c| c.position.face_up && ctx.can_attack(c) && Self::is_blackwing(ctx, c))
-            .collect();
+        let blackwings: Vec<_> =
+            ctx.monsters(ctx.me).into_iter().filter(|c| c.position.face_up && Self::is_blackwing(ctx, c)).collect();
+        let ours: Vec<_> = blackwings.iter().copied().filter(|c| ctx.can_attack(c)).collect();
         let wall = opp.iter().map(|c| ctx.battle_stat(c)).max()?;
-        let total: i32 = ours.iter().map(|c| c.attack).sum();
+        // The ATK of every other Blackwing counts, whatever its position.
+        let total: i32 = blackwings.iter().map(|c| c.attack).sum();
         if !ours.is_empty() && ours.iter().all(|c| c.attack <= wall) && total > wall {
             ours.iter().max_by_key(|c| c.attack).map(|c| c.at)
         } else {
@@ -239,26 +238,45 @@ impl Strategy for Blackwing {
                 return t.pick(i);
             }
         }
+        // Sirocco comes down without a Tribute only while we control no
+        // monster and they control one: before a Spell changes either.
+        if ctx.monsters(ctx.me).is_empty() && !ctx.monsters(ctx.opp).is_empty() {
+            let planned = crate::tactics::normal_summon(self, t).filter(|i| {
+                let choice = t.choice(*i);
+                choice.kind == ChoiceKind::NormalSummon && choice.code() == Some(SIROCCO)
+            });
+            if let Some(i) = planned {
+                return t.pick(i);
+            }
+        }
         None
     }
 
+    /// Dark Hole is not for one monster this turn's Normal Summon beats.
     fn allow_staple(&self, t: &Turn, code: u32) -> bool {
-        if code != POT_OF_DUALITY || !t.ctx.main1() {
-            return true;
-        }
-        let ctx = t.ctx;
-        let wants_special = [BORA, GALE, MONSTER_REBORN].iter().any(|c| ctx.in_hand(*c))
-            || ctx.graveyard(ctx.me).iter().any(|c| c.code == Some(ZEPHYROS))
-            || t.has(ChoiceKind::SpecialSummon);
-        !wants_special
+        !(code == DARK_HOLE && crate::tactics::outgrown(self, t))
     }
 
     fn summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
         let ctx = t.ctx;
         let code = choice.code()?;
         let data = ctx.data(code);
-        if data.level >= 5 && !ctx.monsters(ctx.me).is_empty() {
-            return Some(None); // never tribute (only Sirocco; its free summon is better)
+        let mine = ctx.monsters(ctx.me);
+        if data.level >= 5 && !mine.is_empty() {
+            // Sirocco for a Tribute (our cheapest monster) only when its
+            // effect then takes one attacker over a wall nobody gets through.
+            if choice.kind != ChoiceKind::NormalSummon || !ctx.main1() {
+                return Some(None);
+            }
+            let cheapest = mine.iter().min_by_key(|c| value(self, &ctx, None, Some(c)))?;
+            let rest: i32 = mine
+                .iter()
+                .filter(|c| c.at != cheapest.at && c.position.face_up && Self::is_blackwing(&ctx, c))
+                .map(|c| c.attack)
+                .sum();
+            let wall = ctx.monsters(ctx.opp).iter().map(|c| ctx.battle_stat(c)).max().unwrap_or(0);
+            let over = wall >= ctx.my_best_attack() && data.attack + rest > wall;
+            return Some(over.then_some(3000.0));
         }
         let revive = code == BLIZZARD
             && ctx.graveyard(ctx.me).iter().any(|c| {
@@ -279,7 +297,12 @@ impl Strategy for Blackwing {
         if follow_up {
             score += 300.0;
         }
-        let face_up_ok = data.attack >= ctx.opp_best_attack() || follow_up || revive || ctx.monsters(ctx.opp).is_empty();
+        // Sirocco, Shura, Bora and Zephyros (1600 ATK and more, 1200 DEF
+        // and less) are attackers: face-down they hold nothing, and Black
+        // Whirlwind searches nothing.
+        let attacker = data.attack >= 1600;
+        let face_up_ok =
+            attacker || data.attack >= ctx.opp_best_attack() || follow_up || revive || ctx.monsters(ctx.opp).is_empty();
         Some(match choice.kind {
             // Kalut is a Damage Step trick from the hand, not a wall.
             ChoiceKind::SetMonster if code == KALUT => None,
@@ -367,6 +390,42 @@ impl Strategy for Blackwing {
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
         let ctx = t.ctx;
         let code = t.choice(index).code()?;
+        // A Set card of ours that their Spell or Trap is about to destroy is
+        // used while it still can be.
+        let lost = match t.hostile_top() {
+            Hostile::Link(link) => t.choice(index).at().filter(|at| staples::destroys(&ctx, link, *at)).map(|_| link.source),
+            _ => None,
+        };
+        if let Some(source) = lost {
+            // Their attacks are still to come this turn.
+            let coming = !ctx.my_turn() && ctx.phase().map_or(false, |p| !matches!(p, Phase::Main2 | Phase::End));
+            match code {
+                ICARUS_ATTACK => {
+                    let targets: Vec<_> = Self::icarus_targets(&ctx).into_iter().filter(|c| c.at != source).take(2).collect();
+                    if targets.len() == 2 {
+                        return Some(Response::targeting(60.0, targets.iter().map(|c| c.at).collect()));
+                    }
+                }
+                THREATENING_ROAR if coming && !ctx.monsters(ctx.opp).is_empty() => return Some(Response::new(30.0)),
+                MYSTICAL_SPACE_TYPHOON => {
+                    let target = ctx.spell_traps(ctx.opp).into_iter().filter(|c| c.at != source).max_by_key(|c| ctx.threat(c));
+                    if let Some(target) = target {
+                        return Some(Response::targeting(25.0, vec![target.at]));
+                    }
+                }
+                BOOK_OF_MOON if coming => {
+                    let attacker = ctx
+                        .monsters(ctx.opp)
+                        .into_iter()
+                        .filter(|c| c.position.face_up && c.position.attack && ctx.reaches(c, code, true, false))
+                        .max_by_key(|c| c.attack);
+                    if let Some(attacker) = attacker {
+                        return Some(Response::targeting(50.0, vec![attacker.at]));
+                    }
+                }
+                _ => {}
+            }
+        }
         Some(match code {
             ICARUS_ATTACK => {
                 let targets = Self::icarus_targets(&ctx);
@@ -392,6 +451,15 @@ impl Strategy for Blackwing {
             },
             GALE | BLACK_WINGED_DRAGON | ZEPHYROS | ARMOR_MASTER => Response::no(),
             KALUT => Response::new(Self::kalut(&ctx)),
+            // A face-up Spell or Trap their deck runs on goes at the first
+            // chance: every turn it stays is a turn it works.
+            MYSTICAL_SPACE_TYPHOON => {
+                let key = staples::key_spell_traps(&ctx);
+                if key.is_empty() || ctx.wasted(code) || ctx.phase().map_or(false, |p| p.is_battle()) {
+                    return None;
+                }
+                Response::targeting(25.0, key.iter().map(|c| c.at).collect())
+            }
             _ => return None,
         })
     }
@@ -415,8 +483,16 @@ impl Strategy for Blackwing {
         (t.decision.subject == Some(KALUT)).then(|| Self::kalut(&t.ctx) > 0.0)
     }
 
+    /// A Blackwing Special Summoned before the Battle Phase stands in Attack
+    /// Position: it attacks, Kalut covers it, and Sirocco adds its ATK to
+    /// one attacker.
+    fn position(&self, t: &Turn, code: u32) -> Option<Position> {
+        let ctx = t.ctx;
+        (ctx.my_turn() && ctx.main1() && ctx.data(code).in_set(SET_BLACKWING)).then_some(Position::FACE_UP_ATTACK)
+    }
+
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
         let data = t.ctx.data(code);
-        Some(data.is_trap() || code == crate::staples::BOOK_OF_MOON || code == crate::staples::MYSTICAL_SPACE_TYPHOON)
+        Some(data.is_trap() || code == BOOK_OF_MOON || code == MYSTICAL_SPACE_TYPHOON)
     }
 }

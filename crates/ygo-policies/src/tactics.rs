@@ -74,6 +74,19 @@ pub fn normal_summon<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
     best.map(|b| b.1)
 }
 
+/// Their one monster is smaller than the monster this turn's Normal Summon
+/// brings: it is left to that monster, a board wipe is kept for more.
+pub fn outgrown<S: Strategy + ?Sized>(s: &S, t: &Turn) -> bool {
+    let ctx = t.ctx;
+    let theirs = ctx.monsters(ctx.opp);
+    theirs.len() == 1
+        && normal_summon(s, t)
+            .map(|i| t.choice(i))
+            .filter(|c| c.kind == ChoiceKind::NormalSummon)
+            .and_then(|c| c.code())
+            .map_or(false, |code| ctx.data(code).attack > ctx.battle_stat(theirs[0]))
+}
+
 /// Generic Extra Deck summon: take the strongest one when it helps.
 pub fn extra_deck_summon<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
     let ctx = t.ctx;
