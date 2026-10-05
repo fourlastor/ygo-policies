@@ -11,6 +11,7 @@ use crate::agent::{value, Outcome, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
 use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Phase};
+use crate::staples::SOLEMN_WARNING_PRICE;
 
 pub const DECK: &str = "06 Koaki Meiru - Rock Block";
 
@@ -193,7 +194,7 @@ impl Strategy for RockBlock {
             }
             MAGIC_JAMMER => Response::no(),
             SOLEMN_WARNING => match Self::summoned(&ctx) {
-                Some((card, code)) if ctx.my_lp() > 3000 => {
+                Some((card, code)) if ctx.my_lp() > SOLEMN_WARNING_PRICE => {
                     let data = ctx.data(code);
                     if card.attack.max(data.attack) >= 1900 || data.is_extra() {
                         Response::new(80.0)

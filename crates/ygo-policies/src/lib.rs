@@ -843,6 +843,118 @@ mod tests {
         assert_eq!(summoned.choices[policy.choose(&obs, &summoned)].code(), Some(TORRENTIAL_TRIBUTE));
     }
 
+    /// Solemn Judgment is paid with half our Life Points, whatever they are,
+    /// and Solemn Warning with 2000 while that leaves us any: the price is
+    /// weighed against what the answer saves, and no floor of Life Points
+    /// keeps either Set.  (Draconic Might in Sands of the Duel, starting at
+    /// 4000: Judgment stayed Set from turn 2 to the end of the duel, and
+    /// Smashing Ground took Red-Eyes Darkness Metal Dragon on turn 3.)
+    #[test]
+    fn solemn_cards_weigh_their_price() {
+        use crate::cards::{types, CardData};
+        use crate::staples::{
+            HEAVY_STORM, MIRROR_FORCE, MYSTICAL_SPACE_TYPHOON, SMASHING_GROUND, SOLEMN_JUDGMENT, SOLEMN_WARNING,
+        };
+        const REDMD: u32 = 88264978;
+        const BOSS: u32 = 1;
+        const BEATER: u32 = 2;
+        let body = |code, attack| (code, CardData { code, kind: types::MONSTER | types::EFFECT, attack, level: 4, ..Default::default() });
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                printed(SOLEMN_JUDGMENT, types::TRAP | types::COUNTER, 0),
+                printed(SOLEMN_WARNING, types::TRAP | types::COUNTER, 0),
+                printed(MIRROR_FORCE, types::TRAP, 0),
+                printed(SMASHING_GROUND, types::SPELL, 0),
+                printed(HEAVY_STORM, types::SPELL, 0),
+                printed(MYSTICAL_SPACE_TYPHOON, types::SPELL | types::QUICKPLAY, 0),
+                body(REDMD, 2800),
+                body(BOSS, 2800),
+                body(BEATER, 1800),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        // Their turn: our Set cards from the left, and what else is on the field.
+        let board = |life: i32, set: &[u32], rest: Vec<CardView>| {
+            let mut obs = observation();
+            obs.turn = 3;
+            obs.turn_player = Some(1);
+            obs.life_points = [life, 8000];
+            obs.cards = set.iter().enumerate().map(|(i, code)| card(0, Location::SpellTrapZone, i as u32, *code, false)).collect();
+            obs.cards.extend(rest);
+            obs
+        };
+        // The answer of `policy` with those cards Set: the card it activates.
+        let answer = |policy: &str, obs: &Observation, set: &[u32]| {
+            let window = Decision {
+                kind: DecisionKind::Chain { forced: false, triggers: false },
+                hint: Hint::None,
+                minimum: 0,
+                maximum: 0,
+                selected: Vec::new(),
+                subject: None,
+                choices: set
+                    .iter()
+                    .enumerate()
+                    .map(|(i, code)| activate(*code, Location::SpellTrapZone, i as u32))
+                    .chain([choice(ChoiceKind::Pass)])
+                    .collect(),
+            };
+            let mut policy = crate::registry::create(policy, db.clone()).unwrap();
+            window.choices[policy.choose(obs, &window)].code()
+        };
+        let attack = Position { face_up: true, attack: true };
+        let summon = |life: i32, set: &[u32], code: u32, strength: i32| {
+            let summoned = monster(1, 0, Some(code), attack, strength, 0);
+            let mut obs = board(life, set, vec![summoned.clone()]);
+            obs.event_cards = vec![(summoned.at, summoned.code)];
+            obs
+        };
+        let theirs = CardRef { controller: 1, location: Location::SpellTrapZone, sequence: 0 };
+        let spell = |life: i32, set: &[u32], code: u32, targets: Vec<CardRef>, ours: Vec<CardView>| {
+            let mut rest = vec![card(1, Location::SpellTrapZone, 0, code, true)];
+            rest.extend(ours);
+            let mut obs = board(life, set, rest);
+            obs.chain = vec![ChainLink { code, controller: 1, source: theirs, targets }];
+            obs
+        };
+        let judgment: &[u32] = &[SOLEMN_JUDGMENT];
+
+        // A 2800 ATK monster is Summoned: negated at 2300 Life Points as at 8000.
+        assert_eq!(answer("verdict", &summon(8000, judgment, BOSS, 2800), judgment), Some(SOLEMN_JUDGMENT));
+        assert_eq!(answer("verdict", &summon(2300, judgment, BOSS, 2800), judgment), Some(SOLEMN_JUDGMENT));
+        // An 1800 ATK monster is not worth 4000 Life Points, and is worth
+        // 1800: its one attack would take as much.
+        assert_eq!(answer("verdict", &summon(8000, judgment, BEATER, 1800), judgment), None);
+        assert_eq!(answer("verdict", &summon(3700, judgment, BEATER, 1800), judgment), None);
+        assert_eq!(answer("verdict", &summon(3600, judgment, BEATER, 1800), judgment), Some(SOLEMN_JUDGMENT));
+
+        // Smashing Ground would take Red-Eyes Darkness Metal Dragon: worth
+        // 2000 Life Points, not 4000.
+        let redmd = || vec![monster(0, 0, Some(REDMD), attack, 2800, 2400)];
+        assert_eq!(answer("draconic-might", &spell(4000, judgment, SMASHING_GROUND, vec![], redmd()), judgment), Some(SOLEMN_JUDGMENT));
+        assert_eq!(answer("draconic-might", &spell(8000, judgment, SMASHING_GROUND, vec![], redmd()), judgment), None);
+
+        // Heavy Storm takes the Trap itself either way: only what goes with
+        // it counts, against the price.
+        let backrow: &[u32] = &[SOLEMN_JUDGMENT, MIRROR_FORCE, SOLEMN_WARNING];
+        assert_eq!(answer("verdict", &spell(2000, judgment, HEAVY_STORM, vec![], vec![]), judgment), None);
+        assert_eq!(answer("verdict", &spell(6000, backrow, HEAVY_STORM, vec![], vec![]), judgment), Some(SOLEMN_JUDGMENT));
+        assert_eq!(answer("verdict", &spell(8000, backrow, HEAVY_STORM, vec![], vec![]), judgment), None);
+        // One Set card that is worth no more than the Trap is not saved with it.
+        let aimed = vec![CardRef { controller: 0, location: Location::SpellTrapZone, sequence: 1 }];
+        assert_eq!(answer("verdict", &spell(1000, backrow, MYSTICAL_SPACE_TYPHOON, aimed, vec![]), judgment), None);
+
+        // Next to Solemn Warning, the cheaper of the two goes first.
+        let both: &[u32] = &[SOLEMN_JUDGMENT, SOLEMN_WARNING];
+        assert_eq!(answer("verdict", &summon(8000, both, BOSS, 2800), both), Some(SOLEMN_WARNING));
+        assert_eq!(answer("verdict", &summon(3600, both, BOSS, 2800), both), Some(SOLEMN_JUDGMENT));
+        // Solemn Warning alone: paid while it leaves us Life Points.
+        let warning: &[u32] = &[SOLEMN_WARNING];
+        assert_eq!(answer("verdict", &summon(2500, warning, BOSS, 2800), warning), Some(SOLEMN_WARNING));
+        assert_eq!(answer("verdict", &summon(2000, warning, BOSS, 2800), warning), None);
+    }
+
     /// Claudi-oh's Verdict Summons Beast King Barbaros without Tributes
     /// when the engine asks which way.
     #[test]

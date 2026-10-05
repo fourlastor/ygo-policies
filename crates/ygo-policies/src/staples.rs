@@ -4,7 +4,7 @@
 use crate::agent::{self, Hostile, Response, Strategy, Turn};
 use crate::cards::attributes;
 use crate::ctx::Ctx;
-use crate::model::{CardRef, CardView, ChoiceKind, Location, Phase};
+use crate::model::{CardRef, CardView, ChainLink, ChoiceKind, Location, Phase};
 
 pub const MYSTICAL_SPACE_TYPHOON: u32 = 5318639;
 pub const GIANT_TRUNADE: u32 = 42703248;
@@ -44,6 +44,8 @@ pub const DRAINING_SHIELD: u32 = 43250041;
 pub const SAKURETSU_ARMOR: u32 = 56120475;
 pub const MAGIC_CYLINDER: u32 = 62279055;
 pub const SOLEMN_WARNING: u32 = 84749824;
+/// What Solemn Warning costs, in Life Points.
+pub const SOLEMN_WARNING_PRICE: i32 = 2000;
 pub const SOLEMN_JUDGMENT: u32 = 41420027;
 pub const COMPULSORY_EVACUATION_DEVICE: u32 = 94192409;
 pub const DUST_TORNADO: u32 = 60082869;
@@ -59,9 +61,19 @@ pub const DOUBLE_SUMMON: u32 = 43422537;
 pub const LIGHTNING_VORTEX: u32 = 69162969;
 /// From the hand, after an attack leaves us with no cards.
 pub const GORZ: u32 = 44330098;
-
-/// Opponent cards that destroy several of ours at once: worth a counter.
-pub const WIPES: &[u32] = &[DARK_HOLE, RAIGEKI, HEAVY_STORM, TORRENTIAL_TRIBUTE, MIRROR_FORCE, LIGHTNING_VORTEX];
+/// Removal the opponent may play: what Solemn Judgment weighs (see `taken_by`).
+const FISSURE: u32 = 66788016;
+const HAMMER_SHOT: u32 = 26412047;
+const ICARUS_ATTACK: u32 = 53567095;
+const RAIGEKI_BREAK: u32 = 4178474;
+const SOUL_TAKER: u32 = 81510157;
+const TRIBUTE_TO_THE_DOOMED: u32 = 79759861;
+const OFFERINGS_TO_THE_DOOMED: u32 = 19230407;
+const MYSTIC_BOX: u32 = 25774450;
+const TWISTER: u32 = 45939841;
+const KARMA_CUT: u32 = 71587526;
+const NOBLEMAN_OF_CROSSOUT: u32 = 71044499;
+const PHOENIX_WING_WIND_BLAST: u32 = 63356631;
 
 /// Spells and Traps whose Special Summon is not worth a Solemn Warning:
 /// Scapegoat, Fires of Doomsday, Ojama Trio, One for One, Emergency Teleport.
@@ -491,6 +503,106 @@ fn answered_free<S: Strategy + ?Sized>(s: &S, t: &Turn, card: &CardView) -> bool
     bottomless || torrential
 }
 
+/// Spells and Traps that destroy the cards they target.
+const DESTROYS_ITS_TARGETS: &[u32] = &[
+    SAKURETSU_ARMOR,
+    TRAP_HOLE,
+    SHIELD_CRUSH,
+    MYSTICAL_SPACE_TYPHOON,
+    DUST_TORNADO,
+    ICARUS_ATTACK,
+    RAIGEKI_BREAK,
+    SOUL_TAKER,
+    TRIBUTE_TO_THE_DOOMED,
+    OFFERINGS_TO_THE_DOOMED,
+    MYSTIC_BOX,
+    TWISTER,
+];
+/// Spells and Traps that banish the monster they target, or take control of it.
+const TAKES_ITS_TARGET: &[u32] = &[DIMENSIONAL_PRISON, BRAIN_CONTROL, KARMA_CUT, NOBLEMAN_OF_CROSSOUT];
+/// Spells and Traps that return the monster they target to the hand or the
+/// Deck: a card lost only when it goes back to the Extra Deck.
+const RETURNS_ITS_TARGET: &[u32] = &[COMPULSORY_EVACUATION_DEVICE, PHOENIX_WING_WIND_BLAST];
+
+/// What one of their Spells or Traps would take from us, in the worth of our
+/// cards ([`agent::value`]): what a wipe destroys, less their own cards that
+/// go with ours; what a removal targets, or picks by its text.  Nothing for a
+/// card not known here.  `spent`: the card we would answer with, gone either
+/// way.
+fn taken_by<S: Strategy + ?Sized>(s: &S, t: &Turn, link: &ChainLink, spent: Option<CardRef>) -> i32 {
+    let ctx = t.ctx;
+    let code = ctx.canonical(link.code);
+    let kinds = ctx.kind_of(code);
+    let worth = |c: &CardView| agent::value(s, &ctx, c.code, Some(c));
+    let total = |cards: Vec<&CardView>| -> i32 { cards.into_iter().map(worth).sum() };
+    // Our monsters it destroys without targeting them.
+    let hit = |pred: &dyn Fn(&CardView) -> bool| -> Vec<&CardView> {
+        ctx.monsters(ctx.me).into_iter().filter(|c| pred(c) && ctx.reached_by(c, ctx.opp, kinds, false, true)).collect()
+    };
+    let face_up = |c: &CardView| c.position.face_up;
+    // Our cards it targets, other than the answer itself.
+    let aimed = |destroys: bool| -> Vec<&CardView> {
+        link.targets
+            .iter()
+            .filter(|at| at.controller == ctx.me && at.location.is_field() && Some(**at) != spent)
+            .filter_map(|at| ctx.card(*at))
+            .filter(|c| ctx.reached_by(c, ctx.opp, kinds, true, destroys))
+            .collect()
+    };
+    match code {
+        DARK_HOLE | TORRENTIAL_TRIBUTE => total(hit(&|_| true)) - ctx.field_strength(ctx.opp),
+        RAIGEKI => total(hit(&|_| true)),
+        LIGHTNING_VORTEX => total(hit(&face_up)),
+        MIRROR_FORCE => total(hit(&|c| c.position.attack)),
+        HEAVY_STORM => {
+            let ours = total(ctx.spell_traps(ctx.me).into_iter().filter(|c| Some(c.at) != spent).collect());
+            let theirs: i32 = ctx.spell_traps(ctx.opp).into_iter().filter(|c| c.at != link.source).map(|c| ctx.threat(c)).sum();
+            ours - theirs
+        }
+        // Their pick is the text's: the highest DEF, the lowest ATK, the
+        // highest ATK in Attack Position.
+        SMASHING_GROUND => hit(&face_up).into_iter().max_by_key(|c| c.defense).map_or(0, worth),
+        FISSURE => hit(&face_up).into_iter().min_by_key(|c| c.attack).map_or(0, worth),
+        HAMMER_SHOT => hit(&|c| c.position.face_up && c.position.attack).into_iter().max_by_key(|c| c.attack).map_or(0, worth),
+        // The monsters we are Summoning.
+        BOTTOMLESS_TRAP_HOLE => {
+            let summoned = ctx.obs.event_cards.iter().filter(|(at, _)| at.controller == ctx.me).filter_map(|(at, _)| ctx.card(*at));
+            total(summoned.filter(|c| c.attack >= 1500 && ctx.reached_by(c, ctx.opp, kinds, false, true)).collect())
+        }
+        _ if DESTROYS_ITS_TARGETS.contains(&code) => total(aimed(true)),
+        _ if TAKES_ITS_TARGET.contains(&code) => total(aimed(false)),
+        _ if RETURNS_ITS_TARGET.contains(&code) => total(aimed(false).into_iter().filter(|c| ctx.view_data(c).is_extra()).collect()),
+        _ => 0,
+    }
+}
+
+/// Solemn Judgment costs half our Life Points, whatever they are: it can
+/// always be paid, and the fewer we have the less it costs.  That price is
+/// weighed against what the answer saves.
+fn judgment<S: Strategy + ?Sized>(s: &S, t: &Turn, spent: Option<CardRef>) -> Response {
+    let ctx = t.ctx;
+    let price = ctx.my_lp() / 2;
+    let worth = match t.hostile_top() {
+        // A Spell or Trap: what it would take from us is worth the price,
+        // and more than the Trap we give for it.
+        Hostile::Link(link) => {
+            let stake = taken_by(s, t, link, spent);
+            stake >= price && stake > agent::value(s, &ctx, Some(SOLEMN_JUDGMENT), None)
+        }
+        // A Summon: the big monsters at any price, and any monster whose one
+        // attack would cost as much as the Trap does.
+        Hostile::No => opponent_summoning(&ctx).map_or(false, |(card, code)| {
+            let data = ctx.data(code);
+            let attack = card.attack.max(data.attack);
+            (attack >= 2400 || data.is_extra() || attack >= price) && !answered_free(s, t, card)
+        }),
+        Hostile::Unseen => false,
+    };
+    // Next to a Solemn Warning that answers too (80), the cheaper goes first.
+    let score = if price > SOLEMN_WARNING_PRICE { 79.0 } else { 85.0 };
+    if worth { Response::new(score) } else { Response::no() }
+}
+
 fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
     let ctx = t.ctx;
     let choice = t.choice(index);
@@ -625,9 +737,10 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             _ => Response::no(),
         },
         // Summons are negated with an empty chain; a stale Summon must not
-        // make us negate an unrelated activation.
+        // make us negate an unrelated activation.  2000 Life Points, paid
+        // whenever they leave us any.
         SOLEMN_WARNING => match (t.hostile_top(), opponent_summoning(&ctx)) {
-            (Hostile::No, Some((card, code))) if ctx.my_lp() > 3000 => {
+            (Hostile::No, Some((card, code))) if ctx.my_lp() > SOLEMN_WARNING_PRICE => {
                 let data = ctx.data(code);
                 let worth = card.attack.max(data.attack) >= 1900 || data.is_extra();
                 if worth && !answered_free(s, t, card) { Response::new(80.0) } else { Response::no() }
@@ -636,22 +749,13 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             // Special Summons.  A Spell or Trap that does brings a Fusion or
             // the best monster of a Graveyard; tokens and Tuners are not
             // worth the Life Points.
-            (Hostile::Link(link), _) if ctx.my_lp() > 3000 => {
+            (Hostile::Link(link), _) if ctx.my_lp() > SOLEMN_WARNING_PRICE => {
                 let code = ctx.canonical(link.code);
                 if ctx.data(code).is_monster() || SMALL_SUMMONS.contains(&code) { Response::no() } else { Response::new(78.0) }
             }
             _ => Response::no(),
         },
-        SOLEMN_JUDGMENT => {
-            let worth = match t.hostile_top() {
-                Hostile::Link(link) => WIPES.contains(&ctx.canonical(link.code)),
-                Hostile::No => opponent_summoning(&ctx).map_or(false, |(card, code)| {
-                    (card.attack.max(ctx.data(code).attack) >= 2400 || ctx.data(code).is_extra()) && !answered_free(s, t, card)
-                }),
-                Hostile::Unseen => false,
-            };
-            if worth && ctx.my_lp() >= 4000 { Response::new(85.0) } else { Response::no() }
-        }
+        SOLEMN_JUDGMENT => judgment(s, t, choice.at()),
         DUST_TORNADO => {
             let locks = ctx.attack_locks();
             if !locks.is_empty() {

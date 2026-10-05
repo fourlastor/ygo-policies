@@ -26,8 +26,7 @@ use crate::cards::races;
 use crate::ctx::Ctx;
 use crate::model::{CardRef, CardView, Choice, ChoiceKind, Hint, Location, Member, Phase};
 use crate::staples::{
-    self, CALL_OF_THE_HAUNTED, DARK_HOLE, GIANT_TRUNADE, HEAVY_STORM, MIRROR_FORCE, MONSTER_REBORN,
-    MYSTICAL_SPACE_TYPHOON, RAIGEKI, SOLEMN_JUDGMENT, WIPES,
+    self, CALL_OF_THE_HAUNTED, DARK_HOLE, GIANT_TRUNADE, MONSTER_REBORN, MYSTICAL_SPACE_TYPHOON,
 };
 use crate::tactics::default_outcome;
 
@@ -813,26 +812,6 @@ impl Strategy for DraconicMight {
                 let cheapest = ctx.hand().iter().map(|c| self.discard_cost(&ctx, c)).min().unwrap_or(i32::MAX);
                 // A spare card beats Solemn Judgment's half our Life Points.
                 if hits_ours && at_stake > cheapest + 500 { Response::new(95.0) } else { Response::no() }
-            }
-            // Half our Life Points against a wipe only when the board it
-            // would take is worth it (Summons: the staple rule).
-            SOLEMN_JUDGMENT => {
-                let Hostile::Link(link) = hostile else { return None };
-                let wipe = ctx.canonical(link.code);
-                if !WIPES.contains(&wipe) {
-                    return None;
-                }
-                let ours = |pred: &dyn Fn(&CardView) -> bool| -> i32 {
-                    ctx.monsters(ctx.me).into_iter().filter(|c| pred(c)).map(|c| value(self, &ctx, None, Some(c))).sum()
-                };
-                let at_stake = match wipe {
-                    HEAVY_STORM => ctx.spell_traps(ctx.me).iter().filter(|c| c.at != choice.at().unwrap_or(c.at)).map(|c| self.backrow_cost(&ctx, c)).sum(),
-                    MIRROR_FORCE => ours(&|c| c.position.attack),
-                    RAIGEKI => ours(&|_| true),
-                    DARK_HOLE => ours(&|c| !ctx.is(c, HORUS_LV6)) - ctx.field_strength(ctx.opp),
-                    _ => ours(&|_| true) - ctx.field_strength(ctx.opp),
-                };
-                if ctx.my_lp() >= 4000 && at_stake >= 4000 { Response::new(85.0) } else { Response::no() }
             }
             // At the end of their turn (a free level-up for LV3), or as a
             // blocker when they attack.

@@ -1,0 +1,897 @@
+{
+  "failures": 0,
+  "games": 22528,
+  "limits": 0,
+  "matrix": {
+    "draconic-might": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.2958984375
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "gladiator": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.18359375
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "gravekeeper": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.44384765625
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "heroes": {
+      "draconic-might": {
+        "games": 2048,
+        "rate": 0.7041015625
+      },
+      "gladiator": {
+        "games": 2048,
+        "rate": 0.81640625
+      },
+      "gravekeeper": {
+        "games": 2048,
+        "rate": 0.55615234375
+      },
+      "heroes": {
+        "games": 0,
+        "rate": null
+      },
+      "lightsworn": {
+        "games": 2048,
+        "rate": 0.6796875
+      },
+      "machina": {
+        "games": 2048,
+        "rate": 0.56591796875
+      },
+      "quickdraw-plant": {
+        "games": 2048,
+        "rate": 0.705078125
+      },
+      "rock-block": {
+        "games": 2048,
+        "rate": 0.7333984375
+      },
+      "six-samurai": {
+        "games": 2048,
+        "rate": 0.65234375
+      },
+      "tele-dad": {
+        "games": 2048,
+        "rate": 0.74755859375
+      },
+      "verdict": {
+        "games": 2048,
+        "rate": 0.41162109375
+      },
+      "x-saber": {
+        "games": 2048,
+        "rate": 0.75048828125
+      }
+    },
+    "lightsworn": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.3203125
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "machina": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.43408203125
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "quickdraw-plant": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.294921875
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "rock-block": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.2666015625
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "six-samurai": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.34765625
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "tele-dad": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.25244140625
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "verdict": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.58837890625
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    },
+    "x-saber": {
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 2048,
+        "rate": 0.24951171875
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    }
+  },
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.5669185851423965,
+          0.6095082891348381
+        ],
+        "games": 2048,
+        "rate": 0.58837890625
+      },
+      "deck": "Claudi-oh's Verdict",
+      "elo": 1676.976408168542,
+      "policy": "verdict",
+      "reference": {
+        "ci95": [
+          0.5669185851423965,
+          0.6095082891348381
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.58837890625,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.6595168262633638,
+          0.6718364706637722
+        ],
+        "games": 22528,
+        "rate": 0.6657049005681818
+      },
+      "deck": "Fusion Heroes",
+      "elo": 1614.9435572745945,
+      "policy": "heroes",
+      "reference": {
+        "ci95": [
+          0.7320899949077221,
+          0.7539342383776638
+        ],
+        "games": 6144,
+        "opponents": 3,
+        "rate": 0.7431640625,
+        "required_opponents": 12
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.42245453402729266,
+          0.4654510430893814
+        ],
+        "games": 2048,
+        "rate": 0.44384765625
+      },
+      "deck": "Gravekeeper's Tomb",
+      "elo": 1575.7789068528198,
+      "policy": "gravekeeper",
+      "reference": {
+        "ci95": [
+          0.42245453402729266,
+          0.4654510430893814
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.44384765625,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.412759067610096,
+          0.45565182726599956
+        ],
+        "games": 2048,
+        "rate": 0.43408203125
+      },
+      "deck": "Machina Gadgets",
+      "elo": 1568.8936370762087,
+      "policy": "machina",
+      "reference": {
+        "ci95": [
+          0.412759067610096,
+          0.45565182726599956
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.43408203125,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.32733332739264404,
+          0.36854962965433263
+        ],
+        "games": 2048,
+        "rate": 0.34765625
+      },
+      "deck": "Legendary Six Samurai",
+      "elo": 1505.669919524146,
+      "policy": "six-samurai",
+      "reference": {
+        "ci95": [
+          0.32733332739264404,
+          0.36854962965433263
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.34765625,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.30045661237487054,
+          0.34084123439848657
+        ],
+        "games": 2048,
+        "rate": 0.3203125
+      },
+      "deck": "Lightsworn Judgment",
+      "elo": 1484.319367919293,
+      "policy": "lightsworn",
+      "reference": {
+        "ci95": [
+          0.30045661237487054,
+          0.34084123439848657
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.3203125,
+        "required_opponents": 12
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.2765265991785349,
+          0.31603454199337616
+        ],
+        "games": 2048,
+        "rate": 0.2958984375
+      },
+      "deck": "Draconic Might",
+      "elo": 1464.4295506362039,
+      "policy": "draconic-might",
+      "reference": {
+        "ci95": [
+          0.2765265991785349,
+          0.31603454199337616
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.2958984375,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.27557077508905536,
+          0.31504089785879785
+        ],
+        "games": 2048,
+        "rate": 0.294921875
+      },
+      "deck": "Quickdraw Plants",
+      "elo": 1463.615060892864,
+      "policy": "quickdraw-plant",
+      "reference": {
+        "ci95": [
+          0.27557077508905536,
+          0.31504089785879785
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.294921875,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.24790045107632339,
+          0.2861766433738524
+        ],
+        "games": 2048,
+        "rate": 0.2666015625
+      },
+      "deck": "06 Koaki Meiru - Rock Block",
+      "elo": 1439.2538315295385,
+      "policy": "rock-block",
+      "reference": {
+        "ci95": [
+          0.24790045107632339,
+          0.2861766433738524
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.2666015625,
+        "required_opponents": 12
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.23410225266286463,
+          0.27170755253847245
+        ],
+        "games": 2048,
+        "rate": 0.25244140625
+      },
+      "deck": "Tele-DAD",
+      "elo": 1426.4608984792405,
+      "policy": "tele-dad",
+      "reference": {
+        "ci95": [
+          0.23410225266286463,
+          0.27170755253847245
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.25244140625,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.23125070051200083,
+          0.2687107000171628
+        ],
+        "games": 2048,
+        "rate": 0.24951171875
+      },
+      "deck": "X-Sabers",
+      "elo": 1423.7557627248934,
+      "policy": "x-saber",
+      "reference": {
+        "ci95": [
+          0.23125070051200083,
+          0.2687107000171628
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.24951171875,
+        "required_opponents": 13
+      },
+      "tier": null
+    },
+    {
+      "all": {
+        "ci95": [
+          0.16742369203418125,
+          0.20094860337107803
+        ],
+        "games": 2048,
+        "rate": 0.18359375
+      },
+      "deck": "Fight, Gladiators!",
+      "elo": 1355.9030989216558,
+      "policy": "gladiator",
+      "reference": {
+        "ci95": [
+          0.16742369203418125,
+          0.20094860337107803
+        ],
+        "games": 2048,
+        "opponents": 1,
+        "rate": 0.18359375,
+        "required_opponents": 12
+      },
+      "tier": null
+    }
+  ]
+}

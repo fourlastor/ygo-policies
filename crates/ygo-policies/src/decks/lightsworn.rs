@@ -362,16 +362,6 @@ impl Strategy for Lightsworn {
                 Some((a, target)) if ctx.attack_hurts(a, target) => Response::targeting(70.0, vec![a.at]),
                 _ => Response::no(),
             },
-            SOLEMN_JUDGMENT => {
-                let summoned = ctx.obs.event_cards.iter().filter(|(at, _)| at.controller == ctx.opp).find_map(|(at, code)| {
-                    let card = ctx.card(*at)?;
-                    Some((card, (*code)?))
-                });
-                let spell = ctx.obs.chain.last().filter(|l| l.controller == ctx.opp).map(|l| ctx.canonical(l.code));
-                let big_summon = summoned.map_or(false, |(c, code)| c.attack.max(ctx.data(code).attack) >= 2400 || ctx.data(code).is_extra());
-                let wipe = spell.map_or(false, |s| matches!(s, 53129443 | 12580477 | 19613556 | 53582587));
-                if ctx.my_lp() >= 4000 && (big_summon || wipe) { Response::new(85.0) } else { Response::no() }
-            }
             // Celestia's mill is optional ("you can"): only within budget.
             CELESTIA => if Self::can_mill(&ctx, 4) { Response::new(20.0) } else { Response::no() },
             GLORIOUS_ILLUSION if !Self::can_mill(&ctx, 5) => Response::no(),
