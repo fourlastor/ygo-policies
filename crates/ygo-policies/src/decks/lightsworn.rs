@@ -423,6 +423,7 @@ impl Strategy for Lightsworn {
 
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
         let data = t.ctx.data(t.ctx.canonical(code));
-        Some(data.is_trap() || code == crate::staples::MYSTICAL_SPACE_TYPHOON)
+        let quick_play = [crate::staples::MYSTICAL_SPACE_TYPHOON, crate::staples::FORBIDDEN_CHALICE].contains(&t.ctx.canonical(code));
+        Some(data.is_trap() || quick_play)
     }
 }

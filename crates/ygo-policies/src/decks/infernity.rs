@@ -10,6 +10,7 @@
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::ctx::Ctx;
 use crate::model::{Choice, ChoiceKind, Hint, Location, Member};
+use crate::staples::FORBIDDEN_CHALICE;
 
 pub const DECK: &str = "Infernity Infinity";
 
@@ -25,7 +26,6 @@ const DARK_GREPHER: u32 = 14536035;
 const STYGIAN_PATROL: u32 = 13521194;
 const LAUNCHER: u32 = 66957584;
 const FOOLISH_BURIAL: u32 = 81439173;
-const FORBIDDEN_CHALICE: u32 = 25789292;
 const LIGHTNING_VORTEX: u32 = 69162969;
 const INFERNITY_FORCE: u32 = 18712704;
 const DUST_TORNADO: u32 = 60082869;
@@ -186,6 +186,15 @@ impl Strategy for Infernity {
         }
 
         // 2. Hand is empty: combo.
+        // Face-up, nothing destroys Guardian while the hand is empty, and an
+        // attack on it is one Infernity Force answers: a face-down one turns up.
+        let face_down_guardian = t.find_where(|c| {
+            c.kind == ChoiceKind::ChangePosition
+                && c.at().and_then(|at| ctx.card(at)).map_or(false, |v| !v.position.face_up && ctx.is(v, GUARDIAN))
+        });
+        if let Some(i) = face_down_guardian {
+            return t.pick(i);
+        }
         for (code, location) in [
             (MIRAGE, Location::MonsterZone),
             (LAUNCHER, Location::SpellTrapZone),
@@ -232,9 +241,18 @@ impl Strategy for Infernity {
         // a stronger monster it goes face-down, unless a Tuner of ours waits.
         let tuner_waits = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner());
         let guardian_down = ctx.opp_best_attack() > 1200 && !tuner_waits;
+        // Beetle with a card left in hand is 1200 ATK, 0 DEF and no effect:
+        // an attacker takes the Normal Summon, or Beetle waits face-down.
+        let beetle_waits = stays && !partner;
+        // Skill Drain leaves a Summoned Necromancer in Attack Position with 0 ATK.
+        let drained = ctx.effects_drained();
         Some(match (choice.kind, code) {
             (ChoiceKind::NormalSummon, MIRAGE) if mirage_up => Some(2600.0),
+            (ChoiceKind::SetMonster, BEETLE) if beetle_waits => Some(1500.0),
+            (ChoiceKind::NormalSummon, BEETLE) if beetle_waits => None,
             (ChoiceKind::NormalSummon, BEETLE) => Some(2300.0),
+            (ChoiceKind::SetMonster, NECROMANCER) if drained => Some(2100.0),
+            (ChoiceKind::NormalSummon, NECROMANCER) if drained => None,
             (ChoiceKind::NormalSummon, NECROMANCER) if graveyard >= 1 => Some(2100.0),
             // The Synchro Summon is there to make: before a plain attacker.
             (ChoiceKind::NormalSummon, _) if small_tuner && partner => Some(2000.0),
@@ -281,8 +299,7 @@ impl Strategy for Infernity {
             ARCHFIEND => Response::new(60.0),
             AVENGER => Response::new(40.0),
             // Ignition effects run at our own pace in the Main Phase.
-            MIRAGE | LAUNCHER | NECROMANCER | BEETLE | DARK_GREPHER | PLAGUESPREADER | GLOW_UP_BULB | DOOM_DRAGON
-            | FORBIDDEN_CHALICE => Response::no(),
+            MIRAGE | LAUNCHER | NECROMANCER | BEETLE | DARK_GREPHER | PLAGUESPREADER | GLOW_UP_BULB | DOOM_DRAGON => Response::no(),
             _ => return None,
         })
     }

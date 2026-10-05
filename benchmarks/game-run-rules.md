@@ -5,7 +5,7 @@ the policies of commit 841490a, was read for the mistakes of the opponents:
 Infernity, Fortune Lady and Draconic Might made clear ones, Crystal Beasts
 one, Destiny HERO and Gishki lost to their cards more than to their play.
 This is what came of checking each mistake against the policies of today,
-and of a search on top of the three pilots afterwards.
+and of a search on top of the three pilots afterwards (twice for Infernity).
 
 Every number here is from the standard format: 8000 Life Points, seats
 alternating.  The game's own format (the player first, the opponent at 4000)
@@ -155,6 +155,25 @@ The search can show an effect the pilot never activates, as with Patrol.  It
 cannot show a better choice of card: Archfiend's search came from asking why
 the search kept declining it.
 
+A second search, on the pilot with all of the above (384 games: 59.1% alone,
+76.6% with the search):
+
+- Beetle with another monster left in hand is 1200 ATK, 0 DEF and no effect.
+  An attacker takes the Normal Summon (Archfiend, Dark Grepher, Stygian
+  Street Patrol), or Beetle waits face-down.  It is Summoned when no other
+  monster stays in hand, or beside a non-Tuner for a Synchro Summon
+  (+1.2 [+0.7, +1.7]; face-up after the attackers is +0.8, face-down before
+  them +0.6);
+- a face-down Guardian is turned face-up once the hand is empty: nothing
+  destroys it then, and Infernity Force only answers an attack on a face-up
+  Infernity monster (+0.3 [+0.1, +0.5]);
+- under Skill Drain, Necromancer is Set: Normal Summoned it is not turned to
+  Defense Position, and stands there with 0 ATK (+0.3 [+0.1, +0.4], all of
+  it against Rock Block).
+
+With [Forbidden Chalice](#forbidden-chalice), 62.5% to 65.2% against the
+reference decks (+2.7 [+2.1, +3.3], 12,288 paired games).
+
 ## Fortune Lady
 
 A search on the pilot of the commits above (416 games): 34.5% alone, 54.0%
@@ -194,6 +213,26 @@ lose.
 One more for every deck with Shrink: a direct attack that would end the duel
 is halved (23 games of 38,912 differ, all won).
 
+## Forbidden Chalice
+
+Infernity and Lightsworn each play one.  Infernity Set it and never
+activated it; Lightsworn kept it in hand.  The second Infernity search's
+most frequent answer was to activate it at once, 39 times, and that is no
+rule: over all 4,113 times it was offered, activating it does a little worse
+than passing.  The search plays the card with the pilot's choice of target,
+and it does not try decisions inside a chain, where the card belongs.
+
+What the card is for, against the 12 reference decks (12,288 paired games
+each):
+
+| Forbidden Chalice is played... | Infernity | Lightsworn |
+|---|---:|---:|
+| on a monster of theirs that activates an effect on the field | +0.71 [+0.39, +1.02] | +0.43 [+0.06, +0.80] |
+| on a monster of ours, when 400 ATK turn its battle around | +0.59 [+0.39, +0.79] | +0.46 [+0.11, +0.81] |
+| for both | +1.05 [+0.71, +1.39] | +0.63 [+0.24, +1.02] |
+
+Both are a shared rule now, and Lightsworn Sets the card.
+
 ## What did not hold
 
 Paired, against the 12 reference decks:
@@ -214,12 +253,23 @@ Paired, against the 12 reference decks:
 | Draconic Might: Call of the Haunted from the start of their turn (three forms) | -0.34 to -0.20 |
 | Draconic Might: Red-Eyes Darkness Metal Dragon waits on a first turn | -0.44 [-0.75, -0.12] |
 | The five decks with Solemn Judgment: also against Summons of 1700 ATK and more | +0.07 [-0.08, +0.22] |
+| Infernity: Brionac instead of Gaia Knight while monsters are left in hand, and it discards them | +0.08 [-0.27, +0.43] |
+| Infernity: Dark Grepher takes the Normal Summon when its discard empties the hand | -0.07 [-0.26, +0.11] |
+| Infernity: Launcher for one monster, when it is a Beetle or an Archfiend | -0.03 [-0.21, +0.14] |
+| Infernity: Guardian is Summoned face-up as the last card in hand | +0.01 [-0.22, +0.24] |
 
 The last three are what the search did most often with Draconic Might: it
 held Red-Eyes Darkness Metal Dragon back on a first turn in seven games (z
 up to 3.8), played Call of the Haunted early in thirteen and Solemn Judgment
 against an ordinary Summon in eleven.  Right in those positions, wrong or
 nothing as habits, as with Blackwing and Monarch before.
+
+The four Infernity lines at the end are from its second search.  Brionac for
+Gaia Knight won 22 of 32 worlds against 6 in one of its positions (z 5.6),
+and nothing as a rule.  Against Gladiator Beasts the search ended six turns
+without playing a card, five of them a first or second turn, and won 10 to
+44 points more often there; over all of Infernity's first two turns against
+that deck, ending the turn at once is 4 points worse than the pilot's play.
 
 The Tortoise is the mistake of the recorded duel that is none here.  A
 Crystal Beast that is destroyed goes to the Spell & Trap Zone, where the deck
@@ -234,7 +284,8 @@ Lightsworn -1.4).
   `the_weakest_attacks_first_and_the_answer_waits_for_the_strongest`,
   `infernity_plays_toward_an_empty_hand`,
   `fortune_lady_uses_its_normal_summon`,
-  `draconic_might_plays_what_the_search_found`.
+  `draconic_might_plays_what_the_search_found`,
+  `forbidden_chalice_is_played`.
 - The logged searches are 10 to 16 MB each and are not kept here.
   `policy-bench search --policies infernity --opponents existing --games 32
   --log true`, with the `--core` build the search needs, writes one again on

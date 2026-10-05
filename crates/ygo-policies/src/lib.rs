@@ -1500,6 +1500,7 @@ mod tests {
     #[test]
     fn infernity_plays_toward_an_empty_hand() {
         use crate::cards::types;
+        use crate::knowledge::SKILL_DRAIN;
         const ARCHFIEND: u32 = 99177923;
         const BEETLE: u32 = 49080532;
         const MIRAGE: u32 = 86197239;
@@ -1528,6 +1529,7 @@ mod tests {
                 creature(1, 4, 1900, 1000, 0),
                 printed(LAUNCHER, types::SPELL | types::CONTINUOUS, 0),
                 printed(INFERNITY_FORCE, types::TRAP, 0),
+                printed(SKILL_DRAIN, types::TRAP | types::CONTINUOUS, 0),
             ]
             .into_iter()
             .collect(),
@@ -1615,6 +1617,97 @@ mod tests {
         assert_eq!(pick.choices[policy.choose(&obs, &pick)].code(), Some(INFERNITY_FORCE));
         obs.cards = [vec![field(ARCHFIEND)], graveyard(&[LAUNCHER, INFERNITY_FORCE, INFERNITY_FORCE])].concat();
         assert_eq!(chosen(&obs, &search).0, ChoiceKind::No);
+
+        // What a second search showed, on the pilot with all of the above.
+        // Beetle with another monster left in hand has no effect: an attacker
+        // takes the Normal Summon, or Beetle waits face-down.  As the last
+        // card it is Summoned.
+        obs.summon_used = false;
+        obs.cards = hand(&[BEETLE, ARCHFIEND, MIRAGE]);
+        let three = decide(DecisionKind::Idle, None, summons(&[BEETLE, ARCHFIEND, MIRAGE]));
+        assert_eq!(chosen(&obs, &three), (ChoiceKind::NormalSummon, Some(ARCHFIEND)));
+        obs.cards = hand(&[BEETLE, MIRAGE]);
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[BEETLE, MIRAGE]))), (ChoiceKind::SetMonster, Some(BEETLE)));
+        obs.cards = hand(&[BEETLE]);
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[BEETLE]))), (ChoiceKind::NormalSummon, Some(BEETLE)));
+
+        // Skill Drain leaves a Summoned Necromancer in Attack Position with
+        // 0 ATK: it is Set.
+        obs.cards = [hand(&[NECROMANCER]), graveyard(&[BEETLE])].concat();
+        let necromancer = decide(DecisionKind::Idle, None, summons(&[NECROMANCER]));
+        assert_eq!(chosen(&obs, &necromancer), (ChoiceKind::NormalSummon, Some(NECROMANCER)));
+        obs.cards.push(card(1, Location::SpellTrapZone, 0, SKILL_DRAIN, true));
+        assert_eq!(chosen(&obs, &necromancer), (ChoiceKind::SetMonster, Some(NECROMANCER)));
+
+        // A face-down Guardian turns face-up once the hand is empty: nothing
+        // destroys it then, and Infernity Force answers an attack on it.
+        let face_down = CardView { position: Position { face_up: false, attack: false }, ..field(GUARDIAN) };
+        let flip = Choice { kind: ChoiceKind::ChangePosition, ..activate(GUARDIAN, Location::MonsterZone, 0) };
+        let turn_up = decide(DecisionKind::Idle, None, vec![flip, choice(ChoiceKind::EndTurn)]);
+        obs.cards = vec![face_down.clone()];
+        assert_eq!(chosen(&obs, &turn_up), (ChoiceKind::ChangePosition, Some(GUARDIAN)));
+        obs.cards = [vec![face_down], hand(&[MIRAGE])].concat();
+        assert_eq!(chosen(&obs, &turn_up).0, ChoiceKind::EndTurn);
+    }
+
+    /// Forbidden Chalice (`benchmarks/game-run-rules.md`): two decks held it
+    /// and never played it.  It negates the effect a monster of theirs
+    /// activates on the field, and its 400 ATK turn a battle of ours around.
+    #[test]
+    fn forbidden_chalice_is_played() {
+        use crate::cards::types;
+        use crate::staples::FORBIDDEN_CHALICE;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                printed(FORBIDDEN_CHALICE, types::SPELL | types::QUICKPLAY, 0),
+                creature(1, 4, 1800, 1200, 0),
+                creature(2, 6, 2000, 1000, 0),
+                creature(3, 6, 2400, 1000, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let chosen = |id: &str, obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create(id, db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let window = decide(
+            DecisionKind::Chain { forced: false, triggers: false },
+            None,
+            vec![activate(FORBIDDEN_CHALICE, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)],
+        );
+        let attacking = Position { face_up: true, attack: true };
+        let chalice = card(0, Location::SpellTrapZone, 0, FORBIDDEN_CHALICE, false);
+        for id in ["infernity", "lightsworn"] {
+            // Their monster activates its effect on the field: negated.  With
+            // nothing to answer, the card is kept.
+            let mut obs = observation();
+            obs.turn = 4;
+            obs.turn_player = Some(1);
+            let theirs = monster(1, 0, Some(3), attacking, 2400, 1000);
+            obs.cards = vec![chalice.clone(), theirs.clone()];
+            assert_eq!(chosen(id, &obs, &window), ChoiceKind::Pass, "{id}");
+            obs.chain = vec![ChainLink { code: 3, controller: 1, source: theirs.at, targets: Vec::new() }];
+            assert_eq!(chosen(id, &obs, &window), ChoiceKind::Activate, "{id}");
+
+            // Our 1800 attacks their 2000: 400 ATK win the battle.  Against
+            // 2400 they would not.
+            let mut obs = observation();
+            obs.turn = 3;
+            obs.phase = Some(Phase::BattleStep);
+            let ours = monster(0, 0, Some(1), attacking, 1800, 1200);
+            obs.cards = vec![chalice.clone(), ours.clone(), monster(1, 0, Some(2), attacking, 2000, 1000)];
+            obs.battle_attacker = Some(ours.at);
+            obs.battle_target = Some(CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 });
+            assert_eq!(chosen(id, &obs, &window), ChoiceKind::Activate, "{id}");
+            obs.cards[2] = monster(1, 0, Some(3), attacking, 2400, 1000);
+            assert_eq!(chosen(id, &obs, &window), ChoiceKind::Pass, "{id}");
+        }
+        // Lightsworn kept it in hand: it is Set like the deck's Traps.
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, FORBIDDEN_CHALICE, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetSpellTrap, FORBIDDEN_CHALICE, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen("lightsworn", &obs, &idle), ChoiceKind::SetSpellTrap);
     }
 
     /// What a search on top of the Fortune Lady pilot kept doing otherwise:

@@ -51,6 +51,7 @@ pub const COMPULSORY_EVACUATION_DEVICE: u32 = 94192409;
 pub const DUST_TORNADO: u32 = 60082869;
 pub const TRAP_DUSTSHOOT: u32 = 64697231;
 pub const EFFECT_VEILER: u32 = 97268402;
+pub const FORBIDDEN_CHALICE: u32 = 25789292;
 pub const SHRINK: u32 = 55713623;
 pub const ENEMY_CONTROLLER: u32 = 98045062;
 pub const SMASHING_GROUND: u32 = 97169186;
@@ -437,6 +438,28 @@ fn shrink(ctx: &Ctx) -> Response {
     }
 }
 
+/// Forbidden Chalice: the effect a monster of theirs activates on the field
+/// is negated, or its 400 ATK turn a battle of ours around.
+fn chalice(t: &Turn) -> Response {
+    let ctx = t.ctx;
+    if let Hostile::Link(link) = t.hostile_top() {
+        let on_field = link.source.controller == ctx.opp
+            && link.source.location == Location::MonsterZone
+            && ctx.card(link.source).map_or(false, |c| c.position.face_up && c.code == Some(link.code));
+        if on_field {
+            return Response::targeting(70.0, vec![link.source]);
+        }
+    }
+    if let (Some(attacker), Some(target)) = (ctx.battle_attacker(), ctx.battle_target()) {
+        let (ours, theirs) = if attacker.at.controller == ctx.me { (attacker, target) } else { (target, attacker) };
+        let stat = ctx.battle_stat(theirs);
+        if ours.position.face_up && ours.position.attack && theirs.position.face_up && ours.attack <= stat && ours.attack + 400 > stat {
+            return Response::targeting(65.0, vec![ours.at]);
+        }
+    }
+    Response::no()
+}
+
 /// Staples whose effect targets the card it answers.
 const TARGETING: &[u32] = &[
     BOOK_OF_MOON,
@@ -448,6 +471,7 @@ const TARGETING: &[u32] = &[
     SHRINK,
     DRAINING_SHIELD,
     EFFECT_VEILER,
+    FORBIDDEN_CHALICE,
 ];
 
 /// How much we want to chain a staple.  `None` for non-staples.  An answer
@@ -893,6 +917,7 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             _ => Response::no(),
         },
         SHRINK => shrink(&ctx),
+        FORBIDDEN_CHALICE => chalice(t),
         // Only offered when it is free: our field is empty and we took damage.
         GORZ => Response::new(70.0),
         ENEMY_CONTROLLER => match incoming {
