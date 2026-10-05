@@ -220,7 +220,10 @@ Blackwing and Monarch: the rules it gave them, three that every deck now
 shares, and the ones that did not hold.
 [What a recorded run of the game showed](benchmarks/game-run-rules.md):
 Quick-Play Spells that were never Set, the order of attacks and of the
-answers to them, and an Infernity pilot that kept cards in its hand.
+answers to them, an Infernity pilot that kept cards in its hand, and what a
+search then gave Infernity, Fortune Lady and Draconic Might.
+[Which pilots the search has been run on](benchmarks/search-status.md), and
+which are still to do.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

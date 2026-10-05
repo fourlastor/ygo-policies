@@ -9,8 +9,64 @@ and of a search on top of the three pilots afterwards (twice for Infernity).
 
 Every number here is from the standard format: 8000 Life Points, seats
 alternating.  The game's own format (the player first, the opponent at 4000)
-decided nothing.  The numbers were taken while the rules were written:
-`policy-bench compare` of a library with one rule against the same library
+decided nothing.
+
+## Result
+
+`policy-bench compare`: each deck against the 30 others, 128 games per
+pairing, the policies after this work against the ones before it (commit
+0d51401), which the opponents keep playing.  All decks together
++2.0 [+1.9, +2.1] over 119,040 paired games; 23 of the 31 are significantly
+better, none is worse.
+
+| Deck | Before | Now | Change [95% CI] | Games with a different result |
+|---|---:|---:|---:|---:|
+| infernity | 51.8% | 65.5% | +13.7 [+12.2, +15.2] | 960 of 3,840 |
+| fortune-lady | 36.5% | 47.0% | +10.5 [+9.1, +11.8] | 710 of 3,840 |
+| gladiator | 56.5% | 60.7% | +4.2 [+3.3, +5.2] | 369 of 3,840 |
+| karakuri | 45.1% | 48.8% | +3.8 [+2.7, +4.8] | 396 of 3,840 |
+| quickdraw-plant | 52.5% | 56.1% | +3.6 [+2.7, +4.6] | 365 of 3,840 |
+| arcana | 20.9% | 23.6% | +2.8 [+1.9, +3.6] | 290 of 3,840 |
+| machina | 73.3% | 75.6% | +2.3 [+1.5, +3.2] | 254 of 3,840 |
+| six-samurai | 63.8% | 66.0% | +2.2 [+1.5, +3.0] | 215 of 3,840 |
+| pyramid | 29.7% | 31.9% | +2.2 [+1.4, +3.0] | 260 of 3,840 |
+| tele-dad | 61.9% | 64.0% | +2.1 [+1.1, +3.1] | 375 of 3,840 |
+| gravekeeper | 69.0% | 71.0% | +2.0 [+1.2, +2.7] | 220 of 3,840 |
+| spellcaster | 28.3% | 29.9% | +1.6 [+0.9, +2.4] | 199 of 3,840 |
+| harpie | 50.2% | 51.8% | +1.6 [+0.9, +2.3] | 190 of 3,840 |
+| dragunity | 58.9% | 60.4% | +1.6 [+0.9, +2.2] | 172 of 3,840 |
+| x-saber | 53.3% | 54.8% | +1.5 [+0.9, +2.2] | 179 of 3,840 |
+| destiny-hero | 17.6% | 19.1% | +1.5 [+0.7, +2.3] | 230 of 3,840 |
+| toon | 20.2% | 21.7% | +1.4 [+0.9, +2.0] | 109 of 3,840 |
+| lightsworn | 61.0% | 61.8% | +0.8 [+0.1, +1.5] | 199 of 3,840 |
+| morphtronic | 39.5% | 40.2% | +0.7 [+0.3, +1.2] | 84 of 3,840 |
+| draconic-might | 63.6% | 64.2% | +0.6 [+0.1, +1.1] | 104 of 3,840 |
+| heroes | 66.0% | 66.4% | +0.4 [-0.0, +0.8] | 61 of 3,840 |
+| verdict | 85.2% | 85.6% | +0.3 [+0.1, +0.6] | 21 of 3,840 |
+| ojama | 16.4% | 16.7% | +0.3 [-0.0, +0.6] | 33 of 3,840 |
+| monarch | 76.0% | 76.3% | +0.3 [+0.1, +0.5] | 14 of 3,840 |
+| rock-block | 61.3% | 61.5% | +0.2 [+0.0, +0.4] | 15 of 3,840 |
+| watt | 19.1% | 19.2% | +0.1 [-0.2, +0.5] | 49 of 3,840 |
+| crystal | 36.5% | 36.5% | +0.0 [-0.1, +0.1] | 8 of 3,840 |
+| countdown | 93.6% | 93.6% | +0.0 [+0.0, +0.0] | 0 of 3,840 |
+| burn | 27.4% | 27.4% | +0.0 [-0.1, +0.1] | 2 of 3,840 |
+| gishki | 45.0% | 44.9% | -0.0 [-0.6, +0.5] | 111 of 3,840 |
+| blackwing | 71.4% | 71.4% | -0.0 [-0.3, +0.2] | 29 of 3,840 |
+
+Infernity and Fortune Lady owe most of it to their own rules, below.  The
+decks from Gladiator Beasts to Toon owe it to the shared ones: Shrink, Book
+of Moon and Enemy Controller are Set, the weakest monster attacks first, the
+answer to an attack waits for the strongest.
+
+In the [tier list](../DECK-TIER-LIST.md), where every deck plays the new
+policies against every other, Infernity goes from 17th (52.4%) to 7th
+(64.6%) and Fortune Lady from 23rd (36.8%) to 20th (44.2%).  That table is a
+round robin: a deck that gained less than its opponents goes down in it
+(Monarch 75.2% to 73.3%, Blackwing 70.6% to 68.3%, Gishki 45.6% to 42.2%),
+though against the policies of before none of them does worse.
+
+The numbers in the sections below were taken while each rule was written:
+`policy-bench compare` of a library with the rule against the same library
 without it, on the same seeds, against the 12 reference decks.
 
 ## What the run showed
@@ -244,7 +300,10 @@ Paired, against the 12 reference decks:
 | Infernity: Guardian is always Set | -0.12 |
 | Infernity: leftover Spells are Set before the Battle Phase, so the hand is empty for it | +0.03 [-0.08, +0.15] |
 | Infernity: Glow-Up Bulb returns from the Graveyard only for a Synchro Summon | -0.17 [-0.41, +0.06] |
-| Infernity: Beetle is Set while another monster stays in hand | +0.24 [-0.25, +0.73] |
+| Infernity: Brionac instead of Gaia Knight while monsters are left in hand, and it discards them | +0.08 [-0.27, +0.43] |
+| Infernity: Dark Grepher takes the Normal Summon when its discard empties the hand | -0.07 [-0.26, +0.11] |
+| Infernity: Launcher for one monster, when it is a Beetle or an Archfiend | -0.03 [-0.21, +0.14] |
+| Infernity: Guardian is Summoned face-up as the last card in hand | +0.01 [-0.22, +0.24] |
 | Fortune Lady: Wind is Set unless its effect or a battle is there to win (three forms) | -1.80 to -0.10 |
 | Fortune Lady: Light before Summoner Monk too | +0.07 [-0.12, +0.26] |
 | Fortune Lady: a Shrink or Book of Moon in hand counts when choosing the Summon | +0.14 [-0.08, +0.35] |
@@ -253,10 +312,6 @@ Paired, against the 12 reference decks:
 | Draconic Might: Call of the Haunted from the start of their turn (three forms) | -0.34 to -0.20 |
 | Draconic Might: Red-Eyes Darkness Metal Dragon waits on a first turn | -0.44 [-0.75, -0.12] |
 | The five decks with Solemn Judgment: also against Summons of 1700 ATK and more | +0.07 [-0.08, +0.22] |
-| Infernity: Brionac instead of Gaia Knight while monsters are left in hand, and it discards them | +0.08 [-0.27, +0.43] |
-| Infernity: Dark Grepher takes the Normal Summon when its discard empties the hand | -0.07 [-0.26, +0.11] |
-| Infernity: Launcher for one monster, when it is a Beetle or an Archfiend | -0.03 [-0.21, +0.14] |
-| Infernity: Guardian is Summoned face-up as the last card in hand | +0.01 [-0.22, +0.24] |
 
 The last three are what the search did most often with Draconic Might: it
 held Red-Eyes Darkness Metal Dragon back on a first turn in seven games (z
@@ -264,9 +319,9 @@ up to 3.8), played Call of the Haunted early in thirteen and Solemn Judgment
 against an ordinary Summon in eleven.  Right in those positions, wrong or
 nothing as habits, as with Blackwing and Monarch before.
 
-The four Infernity lines at the end are from its second search.  Brionac for
-Gaia Knight won 22 of 32 worlds against 6 in one of its positions (z 5.6),
-and nothing as a rule.  Against Gladiator Beasts the search ended six turns
+The last four Infernity lines are from its second search.  Brionac for Gaia
+Knight won 22 of 32 worlds against 6 in one of its positions (z 5.6), and
+nothing as a rule.  Against Gladiator Beasts the search ended six turns
 without playing a card, five of them a first or second turn, and won 10 to
 44 points more often there; over all of Infernity's first two turns against
 that deck, ending the turn at once is 4 points worse than the pilot's play.
@@ -290,5 +345,8 @@ Lightsworn -1.4).
   `policy-bench search --policies infernity --opponents existing --games 32
   --log true`, with the `--core` build the search needs, writes one again on
   the commit before that deck's rules.
-- One comparison of every deck against the 30 others, and the tier list, are
-  made once for all of this work and are not in this commit.
+- `game-run-vs-old.metadata.json` and `.summary.json`: the comparison under
+  [Result](#result), on builds of the commits alone.  The tier list
+  (`DECK-TIER-LIST.md`, `round-robin-2026-10-06.*`) is from the same build.
+- [search-status.md](search-status.md): which pilots a search has been run
+  on, and which are still to do.
