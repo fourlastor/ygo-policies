@@ -955,6 +955,105 @@ mod tests {
         assert_eq!(answer("verdict", &summon(2000, warning, BOSS, 2800), warning), None);
     }
 
+    /// Three rules the search found for Blackwing that hold for every deck,
+    /// in the shared code: an attacker is not Set, a face-up Spell or Trap
+    /// their deck runs on is destroyed at the first chance, and a Set card
+    /// their Spell or Trap is about to destroy is used first.
+    #[test]
+    fn rules_every_deck_shares() {
+        use crate::cards::{types, CardData};
+        use crate::staples::{BOOK_OF_MOON, HEAVY_STORM, MYSTICAL_SPACE_TYPHOON, SWORDS_OF_REVEALING_LIGHT};
+        const ATTACKER: u32 = 1;
+        const WALL: u32 = 2;
+        const THEIRS: u32 = 3;
+        let body = |code, attack, defense| (code, CardData { code, kind: types::MONSTER | types::EFFECT, attack, defense, level: 4, ..Default::default() });
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                body(ATTACKER, 1700, 1000),
+                body(WALL, 1700, 1600),
+                body(THEIRS, 2500, 2000),
+                printed(BOOK_OF_MOON, types::SPELL | types::QUICKPLAY, 0),
+                printed(MYSTICAL_SPACE_TYPHOON, types::SPELL | types::QUICKPLAY, 0),
+                printed(HEAVY_STORM, types::SPELL, 0),
+                printed(SWORDS_OF_REVEALING_LIGHT, types::SPELL, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let attack = Position { face_up: true, attack: true };
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("verdict", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+        let idle = |choices: Vec<Choice>| Decision {
+            kind: DecisionKind::Idle,
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: Vec::new(),
+            subject: None,
+            choices,
+        };
+        let window = |codes: &[u32]| Decision {
+            kind: DecisionKind::Chain { forced: false, triggers: false },
+            choices: codes
+                .iter()
+                .enumerate()
+                .map(|(i, code)| activate(*code, Location::SpellTrapZone, i as u32))
+                .chain([choice(ChoiceKind::Pass)])
+                .collect(),
+            ..idle(Vec::new())
+        };
+
+        // Under a bigger monster, 1700 ATK with 1000 DEF is Summoned and
+        // 1700 ATK with 1600 DEF is Set.
+        let summon = |code: u32| {
+            idle(vec![
+                Choice { kind: ChoiceKind::NormalSummon, ..activate(code, Location::Hand, 0) },
+                Choice { kind: ChoiceKind::SetMonster, ..activate(code, Location::Hand, 0) },
+                choice(ChoiceKind::EndTurn),
+            ])
+        };
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![card(0, Location::Hand, 0, ATTACKER, false), monster(1, 0, Some(THEIRS), attack, 2500, 2000)];
+        assert_eq!(chosen(&obs, &summon(ATTACKER)), (ChoiceKind::NormalSummon, Some(ATTACKER)));
+        obs.cards[0] = card(0, Location::Hand, 0, WALL, false);
+        assert_eq!(chosen(&obs, &summon(WALL)), (ChoiceKind::SetMonster, Some(WALL)));
+
+        // Their Swords of Revealing Light is face-up: our Set Typhoon takes
+        // it in their Standby Phase, without waiting for the End Phase.
+        let mut obs = observation();
+        obs.turn = 4;
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Standby);
+        obs.cards = vec![
+            card(0, Location::SpellTrapZone, 0, MYSTICAL_SPACE_TYPHOON, false),
+            card(1, Location::SpellTrapZone, 0, SWORDS_OF_REVEALING_LIGHT, true),
+        ];
+        assert_eq!(chosen(&obs, &window(&[MYSTICAL_SPACE_TYPHOON])).1, Some(MYSTICAL_SPACE_TYPHOON));
+
+        // Their Heavy Storm takes our Set cards: Book of Moon first stops
+        // their attacker, and Typhoon alone takes their Set card with it.
+        obs.phase = Some(Phase::Main1);
+        obs.cards = vec![
+            card(0, Location::SpellTrapZone, 0, BOOK_OF_MOON, false),
+            card(0, Location::SpellTrapZone, 1, MYSTICAL_SPACE_TYPHOON, false),
+            card(1, Location::SpellTrapZone, 0, HEAVY_STORM, true),
+            CardView { code: None, ..card(1, Location::SpellTrapZone, 1, 0, false) },
+            monster(1, 0, Some(THEIRS), attack, 2500, 2000),
+        ];
+        let storm = CardRef { controller: 1, location: Location::SpellTrapZone, sequence: 0 };
+        obs.chain = vec![ChainLink { code: HEAVY_STORM, controller: 1, source: storm, targets: Vec::new() }];
+        assert_eq!(chosen(&obs, &window(&[BOOK_OF_MOON, MYSTICAL_SPACE_TYPHOON])).1, Some(BOOK_OF_MOON));
+        let typhoon = Decision {
+            choices: vec![activate(MYSTICAL_SPACE_TYPHOON, Location::SpellTrapZone, 1), choice(ChoiceKind::Pass)],
+            ..window(&[])
+        };
+        assert_eq!(chosen(&obs, &typhoon).1, Some(MYSTICAL_SPACE_TYPHOON));
+    }
+
     fn creature(code: u32, level: u32, attack: i32, defense: i32, set: u16) -> (u32, crate::cards::CardData) {
         use crate::cards::types;
         let kind = types::MONSTER | types::EFFECT;

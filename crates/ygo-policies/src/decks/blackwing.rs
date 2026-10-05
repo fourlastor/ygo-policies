@@ -9,8 +9,8 @@
 use crate::agent::{value, Hostile, Outcome, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Phase, Position};
-use crate::staples::{self, BOOK_OF_MOON, DARK_HOLE, MYSTICAL_SPACE_TYPHOON, THREATENING_ROAR};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Position};
+use crate::staples::{self, BOOK_OF_MOON, DARK_HOLE, MYSTICAL_SPACE_TYPHOON};
 
 pub const DECK: &str = "Blackwing Assassin";
 
@@ -390,40 +390,16 @@ impl Strategy for Blackwing {
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
         let ctx = t.ctx;
         let code = t.choice(index).code()?;
-        // A Set card of ours that their Spell or Trap is about to destroy is
-        // used while it still can be.
-        let lost = match t.hostile_top() {
-            Hostile::Link(link) => t.choice(index).at().filter(|at| staples::destroys(&ctx, link, *at)).map(|_| link.source),
-            _ => None,
-        };
-        if let Some(source) = lost {
-            // Their attacks are still to come this turn.
-            let coming = !ctx.my_turn() && ctx.phase().map_or(false, |p| !matches!(p, Phase::Main2 | Phase::End));
-            match code {
-                ICARUS_ATTACK => {
-                    let targets: Vec<_> = Self::icarus_targets(&ctx).into_iter().filter(|c| c.at != source).take(2).collect();
+        // Icarus Attack, about to be destroyed by their Spell or Trap, goes
+        // now, at two of their other cards (the staples do the same).
+        if code == ICARUS_ATTACK {
+            if let Hostile::Link(link) = t.hostile_top() {
+                if t.choice(index).at().map_or(false, |at| staples::destroys(&ctx, link, at)) {
+                    let targets: Vec<_> = Self::icarus_targets(&ctx).into_iter().filter(|c| c.at != link.source).take(2).collect();
                     if targets.len() == 2 {
                         return Some(Response::targeting(60.0, targets.iter().map(|c| c.at).collect()));
                     }
                 }
-                THREATENING_ROAR if coming && !ctx.monsters(ctx.opp).is_empty() => return Some(Response::new(30.0)),
-                MYSTICAL_SPACE_TYPHOON => {
-                    let target = ctx.spell_traps(ctx.opp).into_iter().filter(|c| c.at != source).max_by_key(|c| ctx.threat(c));
-                    if let Some(target) = target {
-                        return Some(Response::targeting(25.0, vec![target.at]));
-                    }
-                }
-                BOOK_OF_MOON if coming => {
-                    let attacker = ctx
-                        .monsters(ctx.opp)
-                        .into_iter()
-                        .filter(|c| c.position.face_up && c.position.attack && ctx.reaches(c, code, true, false))
-                        .max_by_key(|c| c.attack);
-                    if let Some(attacker) = attacker {
-                        return Some(Response::targeting(50.0, vec![attacker.at]));
-                    }
-                }
-                _ => {}
             }
         }
         Some(match code {
@@ -451,15 +427,6 @@ impl Strategy for Blackwing {
             },
             GALE | BLACK_WINGED_DRAGON | ZEPHYROS | ARMOR_MASTER => Response::no(),
             KALUT => Response::new(Self::kalut(&ctx)),
-            // A face-up Spell or Trap their deck runs on goes at the first
-            // chance: every turn it stays is a turn it works.
-            MYSTICAL_SPACE_TYPHOON => {
-                let key = staples::key_spell_traps(&ctx);
-                if key.is_empty() || ctx.wasted(code) || ctx.phase().map_or(false, |p| p.is_battle()) {
-                    return None;
-                }
-                Response::targeting(25.0, key.iter().map(|c| c.at).collect())
-            }
             _ => return None,
         })
     }

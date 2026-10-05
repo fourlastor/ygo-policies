@@ -216,7 +216,8 @@ hidden, and where the policy as it is built now would play it otherwise.
 Solemn Judgment and Solemn Warning [weigh their price](benchmarks/solemn-price.md)
 instead of waiting for a floor of Life Points.
 [What a search on top of a pilot became](benchmarks/search-rules.md) for
-Blackwing and Monarch: the rules it gave them, and the ones that did not hold.
+Blackwing and Monarch: the rules it gave them, three that every deck now
+shares, and the ones that did not hold.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

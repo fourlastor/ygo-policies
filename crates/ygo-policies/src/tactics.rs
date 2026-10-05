@@ -52,7 +52,10 @@ pub fn normal_summon<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
                         continue;
                     }
                 }
-                let face_up_ok = data.attack >= threat || opp_empty;
+                // An attacker (1600 ATK and more, 1200 DEF and less) is not
+                // Set: face-down it holds nothing.
+                let attacker = data.attack >= 1600 && data.defense <= 1200;
+                let face_up_ok = data.attack >= threat || opp_empty || attacker;
                 let flip = data.is(types::FLIP);
                 if choice.kind == ChoiceKind::SetMonster {
                     if face_up_ok && !flip {

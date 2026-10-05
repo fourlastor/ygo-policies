@@ -586,6 +586,37 @@ pub fn destroys(ctx: &Ctx, link: &ChainLink, at: CardRef) -> bool {
     }
 }
 
+/// A Set card of ours that their Spell or Trap is about to destroy, used
+/// while it still can be: what it does now, when that is worth anything.
+/// `source`: their card, already spent.
+pub fn before_it_goes(ctx: &Ctx, code: u32, source: CardRef) -> Option<Response> {
+    // Their attacks are still to come this turn.
+    let coming = !ctx.my_turn() && ctx.phase().map_or(false, |p| !matches!(p, Phase::Main2 | Phase::End));
+    match code {
+        MYSTICAL_SPACE_TYPHOON | DUST_TORNADO => ctx
+            .spell_traps(ctx.opp)
+            .into_iter()
+            .filter(|c| c.at != source)
+            .max_by_key(|c| ctx.threat(c))
+            .map(|c| Response::targeting(25.0, vec![c.at])),
+        THREATENING_ROAR | WABOKU if coming && !ctx.monsters(ctx.opp).is_empty() => Some(Response::new(30.0)),
+        BOOK_OF_MOON if coming => ctx
+            .monsters(ctx.opp)
+            .into_iter()
+            .filter(|c| c.position.face_up && c.position.attack && ctx.reaches(c, code, true, false))
+            .max_by_key(|c| c.attack)
+            .map(|c| Response::targeting(50.0, vec![c.at])),
+        COMPULSORY_EVACUATION_DEVICE => ctx
+            .monsters(ctx.opp)
+            .into_iter()
+            .filter(|c| ctx.reaches(c, code, true, false))
+            .max_by_key(|c| ctx.threat(c))
+            .filter(|c| ctx.threat(c) >= 1500)
+            .map(|c| Response::targeting(70.0, vec![c.at])),
+        _ => None,
+    }
+}
+
 /// Solemn Judgment costs half our Life Points, whatever they are: it can
 /// always be paid, and the fewer we have the less it costs.  That price is
 /// weighed against what the answer saves.
@@ -622,6 +653,14 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
     }
     let (me, opp) = (ctx.me, ctx.opp);
     let incoming = ctx.incoming_attack();
+    // A Set card their Spell or Trap is about to destroy is used now.
+    if let Hostile::Link(link) = t.hostile_top() {
+        if choice.at().map_or(false, |at| destroys(&ctx, link, at)) {
+            if let Some(response) = before_it_goes(&ctx, code, link.source) {
+                return Some(response);
+            }
+        }
+    }
     Some(match code {
         TRAP_HOLE | BOTTOMLESS_TRAP_HOLE => Response::new(100.0),
         TORRENTIAL_TRIBUTE => {
@@ -687,7 +726,10 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             let backrow = ctx.set_backrow(opp);
             let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(crate::model::Phase::End);
             let before_our_attack = ctx.my_turn() && ctx.main1();
-            if !key.is_empty() && (end_of_their_turn || before_our_attack) {
+            // A face-up Spell or Trap their deck runs on goes at the first
+            // chance: every turn it stays is a turn it works.
+            let first_chance = ctx.phase().map_or(true, |p| !p.is_battle());
+            if !key.is_empty() && first_chance {
                 Response::targeting(25.0, refs(&key))
             } else if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
                 Response::targeting(20.0, refs(&backrow))
