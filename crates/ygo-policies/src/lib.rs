@@ -1616,4 +1616,119 @@ mod tests {
         obs.cards = [vec![field(ARCHFIEND)], graveyard(&[LAUNCHER, INFERNITY_FORCE, INFERNITY_FORCE])].concat();
         assert_eq!(chosen(&obs, &search).0, ChoiceKind::No);
     }
+
+    /// What a search on top of the Fortune Lady pilot kept doing otherwise:
+    /// the Normal Summon is never left unused, and a Tribute Summon never
+    /// gives a grown Lady for a smaller one.
+    #[test]
+    fn fortune_lady_uses_its_normal_summon() {
+        const LIGHT: u32 = 34471458;
+        const FIRE: u32 = 71870152;
+        const WATER: u32 = 29088922;
+        const DARK: u32 = 55586621;
+        const EARTH: u32 = 82971335;
+        const LADY: u16 = 0x31;
+        // A Fortune Lady's ATK is "?": its Level decides.
+        let lady = |code: u32, level: u32| creature(code, level, 0, 0, LADY);
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [lady(LIGHT, 1), lady(FIRE, 2), lady(WATER, 4), lady(DARK, 5), lady(EARTH, 6), creature(1, 4, 1700, 1000, 0)].into_iter().collect(),
+        ));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("fortune-lady", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+        let hand = |codes: &[u32]| -> Vec<CardView> { codes.iter().enumerate().map(|(i, code)| card(0, Location::Hand, i as u32, *code, false)).collect() };
+        let summons = |codes: &[u32]| -> Decision {
+            let choices = codes
+                .iter()
+                .enumerate()
+                .flat_map(|(i, code)| [from_hand(ChoiceKind::NormalSummon, *code, i as u32), from_hand(ChoiceKind::SetMonster, *code, i as u32)])
+                .chain([choice(ChoiceKind::EndTurn)])
+                .collect();
+            decide(DecisionKind::Idle, None, choices)
+        };
+        let attacking = Position { face_up: true, attack: true };
+
+        // Light and Fire in hand, nothing on the field: the pilot used to end
+        // its turn.  Light is Summoned face-up; Fire alone is Set.
+        let mut obs = observation();
+        obs.cards = hand(&[LIGHT, FIRE]);
+        assert_eq!(chosen(&obs, &summons(&[LIGHT, FIRE])), (ChoiceKind::NormalSummon, Some(LIGHT)));
+        obs.cards = hand(&[FIRE]);
+        assert_eq!(chosen(&obs, &summons(&[FIRE])), (ChoiceKind::SetMonster, Some(FIRE)));
+
+        // Earth (2400 on arrival) is not Summoned for an Earth grown to 2800,
+        // and is for a Water of 1200.
+        obs.turn = 5;
+        obs.cards = [hand(&[EARTH]), vec![monster(0, 0, Some(EARTH), attacking, 2800, 2800)]].concat();
+        assert_eq!(chosen(&obs, &summons(&[EARTH])).0, ChoiceKind::EndTurn);
+        obs.cards = [hand(&[EARTH]), vec![monster(0, 0, Some(WATER), attacking, 1200, 1200)]].concat();
+        assert_eq!(chosen(&obs, &summons(&[EARTH])), (ChoiceKind::NormalSummon, Some(EARTH)));
+        // Dark before Earth when it wins a battle: its effect brings the Tribute back.
+        obs.cards = [hand(&[EARTH, DARK]), vec![monster(0, 0, Some(WATER), attacking, 1200, 1200), monster(1, 0, Some(1), attacking, 1700, 1000)]].concat();
+        assert_eq!(chosen(&obs, &summons(&[EARTH, DARK])), (ChoiceKind::NormalSummon, Some(DARK)));
+    }
+
+    /// The same for Draconic Might: Dark Hole waits for two monsters or a
+    /// big one, and Armed Dragon LV5 is Tribute Summoned under a bigger
+    /// monster when its effect destroys that monster at once.
+    #[test]
+    fn draconic_might_plays_what_the_search_found() {
+        use crate::cards::types;
+        use crate::staples::DARK_HOLE;
+        const ARMED_DRAGON_LV5: u32 = 46384672;
+        const ARMED_DRAGON_LV7: u32 = 73879377;
+        const TWIN_HEADED_BEHEMOTH: u32 = 43586926;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                creature(ARMED_DRAGON_LV5, 5, 2400, 1700, 0),
+                creature(ARMED_DRAGON_LV7, 7, 2800, 1000, 0),
+                creature(TWIN_HEADED_BEHEMOTH, 3, 1500, 1200, 0),
+                creature(1, 4, 1800, 1000, 0),
+                creature(2, 4, 1500, 1000, 0),
+                creature(3, 8, 2800, 2000, 0),
+                printed(DARK_HOLE, types::SPELL, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("draconic-might", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+        let attacking = Position { face_up: true, attack: true };
+        let their = |sequence: u32, code: u32, attack: i32| monster(1, sequence, Some(code), attacking, attack, 1000);
+
+        // Dark Hole: not for one monster of 1800, for two, or for one of 2800.
+        let dark_hole = decide(DecisionKind::Idle, None, vec![activate(DARK_HOLE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![card(0, Location::Hand, 0, DARK_HOLE, false), their(0, 1, 1800)];
+        assert_eq!(chosen(&obs, &dark_hole).0, ChoiceKind::EndTurn);
+        obs.cards.push(their(1, 2, 1500));
+        assert_eq!(chosen(&obs, &dark_hole), (ChoiceKind::Activate, Some(DARK_HOLE)));
+        obs.cards = vec![card(0, Location::Hand, 0, DARK_HOLE, false), their(0, 3, 2800)];
+        assert_eq!(chosen(&obs, &dark_hole), (ChoiceKind::Activate, Some(DARK_HOLE)));
+
+        // Armed Dragon LV5 with LV7 in hand to send: their 2800 goes.  Without
+        // a monster to send, 2400 ATK is not Summoned under 2800.
+        let summon = decide(
+            DecisionKind::Idle,
+            None,
+            vec![from_hand(ChoiceKind::NormalSummon, ARMED_DRAGON_LV5, 0), from_hand(ChoiceKind::SetMonster, ARMED_DRAGON_LV5, 0), choice(ChoiceKind::EndTurn)],
+        );
+        let behemoth = monster(0, 0, Some(TWIN_HEADED_BEHEMOTH), attacking, 1500, 1200);
+        obs.turn = 6;
+        obs.cards = vec![
+            card(0, Location::Hand, 0, ARMED_DRAGON_LV5, false),
+            card(0, Location::Hand, 1, ARMED_DRAGON_LV7, false),
+            behemoth.clone(),
+            their(0, 3, 2800),
+        ];
+        assert_eq!(chosen(&obs, &summon), (ChoiceKind::NormalSummon, Some(ARMED_DRAGON_LV5)));
+        obs.cards = vec![card(0, Location::Hand, 0, ARMED_DRAGON_LV5, false), behemoth, their(0, 3, 2800)];
+        assert_eq!(chosen(&obs, &summon).0, ChoiceKind::EndTurn);
+    }
 }

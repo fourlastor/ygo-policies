@@ -417,6 +417,13 @@ fn shrink(ctx: &Ctx) -> Response {
     if ctx.phase().map_or(false, |p| !p.is_battle()) {
         return Response::no();
     }
+    if let (Some(attacker), None) = (ctx.battle_attacker(), ctx.battle_target()) {
+        // A direct attack that ends the duel, and would not with half its ATK.
+        let halved = attacker.attack - ctx.view_data(attacker).attack / 2;
+        if attacker.at.controller == ctx.opp && attacker.position.face_up && attacker.attack >= ctx.my_lp() && halved < ctx.my_lp() {
+            return Response::targeting(65.0, vec![attacker.at]);
+        }
+    }
     let (Some(attacker), Some(target)) = (ctx.battle_attacker(), ctx.battle_target()) else { return Response::no() };
     let (ours, theirs) = if attacker.at.controller == ctx.me { (attacker, target) } else { (target, attacker) };
     if !ours.position.attack || !theirs.position.attack || !theirs.position.face_up {

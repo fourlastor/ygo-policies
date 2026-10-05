@@ -436,7 +436,9 @@ impl DraconicMight {
         let our_strength: i32 = ours.iter().map(|c| value(self, &ctx, None, Some(c))).sum();
         let our_best = ctx.monsters(ctx.me).iter().filter(|c| c.position.face_up).map(|c| c.attack).max().unwrap_or(0);
         let outclassed = ctx.opp_best_attack() > our_best;
-        if our_strength + 500 <= their_strength && (theirs.len() >= 2 || outclassed || ours.is_empty()) {
+        // The deck's only wipe waits for two monsters, or a big one.
+        let enough = theirs.len() >= 2 || ctx.opp_best_attack() >= 2400;
+        if enough && our_strength + 500 <= their_strength && (theirs.len() >= 2 || outclassed || ours.is_empty()) {
             return t.pick(i);
         }
         None
@@ -724,6 +726,17 @@ impl Strategy for DraconicMight {
                 _ => 1000,
             };
             return Some(Some(3000.0 - cost as f64));
+        }
+        if code == ARMED_DRAGON_LV5 && choice.kind == ChoiceKind::NormalSummon && !on_field {
+            // Armed Dragon LV5 under a bigger monster, when a monster in hand
+            // pays for its effect: the bigger one is destroyed at once.
+            let pays = self.dragon_cost(&ctx, false).filter(|(card, _)| Some(card.at) != choice.at());
+            let tribute = ctx.monsters(ctx.me).iter().map(|c| value(self, &ctx, None, Some(c))).min().unwrap_or(i32::MAX);
+            if let Some((_, hit)) = pays {
+                if tribute <= 2000 && hit.iter().any(|c| ctx.threat(c) >= 2000) {
+                    return Some(Some(2700.0));
+                }
+            }
         }
         Some(match (choice.kind, code) {
             // Its own Special Summon is better than two Tributes.

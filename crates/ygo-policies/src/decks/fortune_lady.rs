@@ -128,14 +128,30 @@ impl Strategy for FortuneLady {
             }
             (ChoiceKind::NormalSummon, DARK | EARTH) => {
                 let attack = Self::arrival_attack(&ctx, code);
-                (attack >= threat).then_some(attack as f64 + 500.0)
+                // The Tribute is our cheapest monster: never a grown Lady
+                // for a smaller one.
+                let tribute = ctx
+                    .monsters(ctx.me)
+                    .into_iter()
+                    .min_by_key(|c| value(self, &ctx, None, Some(c)))
+                    .map_or(0, |c| if c.position.face_up { c.attack } else { 0 });
+                // Dark brings a Lady back when one of ours wins a battle.
+                let wins = code == DARK && ctx.monsters(ctx.opp).iter().any(|c| c.position.face_up && ctx.battle_stat(c) < attack);
+                (attack >= threat && attack >= tribute + 300).then_some(attack as f64 + if wins { 1200.0 } else { 500.0 })
             }
             (ChoiceKind::NormalSummon, WIND | WATER) if Self::arrival_attack(&ctx, code) >= threat => Some(1300.0),
             // Monk goes to Defense anyway; its effect makes Water from the Deck.
             (ChoiceKind::NormalSummon, SUMMONER_MONK) if ctx.hand().iter().any(|c| ctx.view_data(c).is_spell()) => Some(1600.0),
-            // A face-down Fortune Lady does not grow; set only as a last wall.
-            (ChoiceKind::SetMonster, LIGHT | FIRE | WIND | WATER) if !ctx.monsters(ctx.me).is_empty() => None,
-            (ChoiceKind::NormalSummon, LIGHT | FIRE) => None,
+            // The Normal Summon is never left unused.  Light stands face-up:
+            // it grows, and an effect that takes it brings another Lady.
+            (ChoiceKind::NormalSummon, LIGHT) => Some(1400.0),
+            (ChoiceKind::SetMonster, LIGHT) => None,
+            // Fire's effect needs a Special Summon: from the hand it is a wall.
+            (ChoiceKind::SetMonster, FIRE) => Some(600.0),
+            (ChoiceKind::NormalSummon, FIRE) => None,
+            // Wind and Water under a stronger monster: face-down.
+            (ChoiceKind::SetMonster, WIND | WATER) if Self::arrival_attack(&ctx, code) < threat => Some(500.0),
+            (ChoiceKind::SetMonster, WIND | WATER) => None,
             _ => return None,
         })
     }

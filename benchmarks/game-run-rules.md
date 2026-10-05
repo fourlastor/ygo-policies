@@ -5,7 +5,7 @@ the policies of commit 841490a, was read for the mistakes of the opponents:
 Infernity, Fortune Lady and Draconic Might made clear ones, Crystal Beasts
 one, Destiny HERO and Gishki lost to their cards more than to their play.
 This is what came of checking each mistake against the policies of today,
-and of a search on top of the Infernity pilot afterwards.
+and of a search on top of the three pilots afterwards.
 
 Every number here is from the standard format: 8000 Life Points, seats
 alternating.  The game's own format (the player first, the opponent at 4000)
@@ -155,6 +155,45 @@ The search can show an effect the pilot never activates, as with Patrol.  It
 cannot show a better choice of card: Archfiend's search came from asking why
 the search kept declining it.
 
+## Fortune Lady
+
+A search on the pilot of the commits above (416 games): 34.5% alone, 54.0%
+with the search.
+
+- The Normal Summon is never left unused.  With Light or Fire as the only
+  monsters in hand the pilot ended its turn on an empty field of its own
+  whenever the other field was empty too, and with a monster of its own it
+  kept Light, Fire, Wind and Water in hand unless they could be Summoned in
+  Attack Position.  Now Light is Normal Summoned face-up, before Wind and
+  Water (it grows, and an effect that removes it brings another Lady from
+  the Deck), Fire is Set, and Wind and Water are Set under a stronger
+  monster (+5.7 [+5.1, +6.4]; Setting Light instead is +3.6);
+- a Tribute Summon of Dark or Earth never gives a grown Lady for a smaller
+  one, and Dark goes before Earth when it wins a battle on arrival: its
+  effect brings the Tribute back (+1.6 [+1.3, +2.0]).
+
+Together 34.1% to 41.5% against the reference decks (+7.4 [+6.7, +8.1],
+13,312 paired games).
+
+## Draconic Might
+
+The same search (416 games): 58.2% alone, 71.6% with it, the smallest gap of
+the three decks.
+
+- Dark Hole is kept for two monsters, or one of 2400 ATK and more.  With an
+  empty field of its own the pilot spent it on any single monster
+  (+0.5 [+0.2, +0.7]);
+- Armed Dragon LV5 is Tribute Summoned under a bigger monster when a monster
+  in hand pays for its effect, which destroys the bigger one at once.  With
+  2400 ATK it used to wait in hand (+0.4 [+0.3, +0.5]).
+
+Together 58.9% to 59.8% (+0.9 [+0.6, +1.1], 13,312 paired games).  Two of
+the search's most frequent answers are in the table below: as rules they
+lose.
+
+One more for every deck with Shrink: a direct attack that would end the duel
+is halved (23 games of 38,912 differ, all won).
+
 ## What did not hold
 
 Paired, against the 12 reference decks:
@@ -167,6 +206,20 @@ Paired, against the 12 reference decks:
 | Infernity: leftover Spells are Set before the Battle Phase, so the hand is empty for it | +0.03 [-0.08, +0.15] |
 | Infernity: Glow-Up Bulb returns from the Graveyard only for a Synchro Summon | -0.17 [-0.41, +0.06] |
 | Infernity: Beetle is Set while another monster stays in hand | +0.24 [-0.25, +0.73] |
+| Fortune Lady: Wind is Set unless its effect or a battle is there to win (three forms) | -1.80 to -0.10 |
+| Fortune Lady: Light before Summoner Monk too | +0.07 [-0.12, +0.26] |
+| Fortune Lady: a Shrink or Book of Moon in hand counts when choosing the Summon | +0.14 [-0.08, +0.35] |
+| Every deck with Shrink: on our own turn, to get an attack over a bigger monster | -0.04 [-0.14, +0.07] |
+| Every deck: Call of the Haunted before their attacks, on an empty field | -0.04 [-0.13, +0.05] (Fortune Lady) |
+| Draconic Might: Call of the Haunted from the start of their turn (three forms) | -0.34 to -0.20 |
+| Draconic Might: Red-Eyes Darkness Metal Dragon waits on a first turn | -0.44 [-0.75, -0.12] |
+| The five decks with Solemn Judgment: also against Summons of 1700 ATK and more | +0.07 [-0.08, +0.22] |
+
+The last three are what the search did most often with Draconic Might: it
+held Red-Eyes Darkness Metal Dragon back on a first turn in seven games (z
+up to 3.8), played Call of the Haunted early in thirteen and Solemn Judgment
+against an ordinary Summon in eleven.  Right in those positions, wrong or
+nothing as habits, as with Blackwing and Monarch before.
 
 The Tortoise is the mistake of the recorded duel that is none here.  A
 Crystal Beast that is destroyed goes to the Spell & Trap Zone, where the deck
@@ -179,10 +232,12 @@ Lightsworn -1.4).
 
 - Unit tests: `quick_play_spells_are_set`,
   `the_weakest_attacks_first_and_the_answer_waits_for_the_strongest`,
-  `infernity_plays_toward_an_empty_hand`.
-- The logged search is 16 MB and is not kept here.  `policy-bench search
-  --policies infernity --opponents existing --games 32 --log true`, with the
-  `--core` build the search needs, writes it again on the commit before the
-  Infernity rules.
+  `infernity_plays_toward_an_empty_hand`,
+  `fortune_lady_uses_its_normal_summon`,
+  `draconic_might_plays_what_the_search_found`.
+- The logged searches are 10 to 16 MB each and are not kept here.
+  `policy-bench search --policies infernity --opponents existing --games 32
+  --log true`, with the `--core` build the search needs, writes one again on
+  the commit before that deck's rules.
 - One comparison of every deck against the 30 others, and the tier list, are
   made once for all of this work and are not in this commit.
