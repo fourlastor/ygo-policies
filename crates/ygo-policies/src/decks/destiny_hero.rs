@@ -129,7 +129,10 @@ impl Strategy for DestinyHero {
                 return t.pick(i);
             }
             let big_in_graveyard = ctx.graveyard(ctx.me).iter().any(|c| Self::is_dhero(&ctx, c) && ctx.view_data(c).level >= 2);
-            if big_in_graveyard {
+            // What Over Destiny brings is destroyed in the End Phase: it is a
+            // Tribute for the finisher, not a monster to keep.
+            let for_finisher = Self::finisher_in_hand(&ctx) && Self::bodies_missing(&ctx) > 0;
+            if big_in_graveyard && for_finisher {
                 if let Some(i) = t.activate(OVER_DESTINY) {
                     return t.pick(i);
                 }

@@ -1493,4 +1493,127 @@ mod tests {
         obs.cards = vec![card(0, Location::SpellTrapZone, 0, DUST_TORNADO, false), card(1, Location::SpellTrapZone, 5, NECROVALLEY, true)];
         assert_eq!(chosen("fortune-lady", &obs, &window(DUST_TORNADO)).code(), Some(DUST_TORNADO));
     }
+
+    /// Infernity plays toward an empty hand (`benchmarks/game-run-rules.md`):
+    /// what a recorded duel of the game showed, and what a search on top of
+    /// the pilot kept doing otherwise.
+    #[test]
+    fn infernity_plays_toward_an_empty_hand() {
+        use crate::cards::types;
+        const ARCHFIEND: u32 = 99177923;
+        const BEETLE: u32 = 49080532;
+        const MIRAGE: u32 = 86197239;
+        const AVENGER: u32 = 85475641;
+        const PLAGUESPREADER: u32 = 33420078;
+        const LAUNCHER: u32 = 66957584;
+        const GUARDIAN: u32 = 51566770;
+        const NECROMANCER: u32 = 56209279;
+        const STYGIAN_PATROL: u32 = 13521194;
+        const INFERNITY_FORCE: u32 = 18712704;
+        const CATASTOR: u32 = 26593852;
+        const INFERNITY: u16 = 0xb;
+        let tuner = |card: (u32, crate::cards::CardData)| (card.0, crate::cards::CardData { kind: card.1.kind | types::TUNER, ..card.1 });
+        let synchro = |card: (u32, crate::cards::CardData)| (card.0, crate::cards::CardData { kind: card.1.kind | types::SYNCHRO, ..card.1 });
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                creature(ARCHFIEND, 4, 1800, 1200, INFERNITY),
+                tuner(creature(BEETLE, 2, 1200, 0, INFERNITY)),
+                creature(MIRAGE, 1, 0, 0, INFERNITY),
+                tuner(creature(AVENGER, 1, 0, 0, INFERNITY)),
+                tuner(creature(PLAGUESPREADER, 2, 400, 200, 0)),
+                creature(GUARDIAN, 4, 1200, 1700, INFERNITY),
+                creature(NECROMANCER, 3, 0, 2000, INFERNITY),
+                creature(STYGIAN_PATROL, 4, 1600, 1200, 0),
+                synchro(creature(CATASTOR, 5, 2200, 1200, 0)),
+                creature(1, 4, 1900, 1000, 0),
+                printed(LAUNCHER, types::SPELL | types::CONTINUOUS, 0),
+                printed(INFERNITY_FORCE, types::TRAP, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("infernity", db.clone()).unwrap();
+            let choice = &decision.choices[policy.choose(obs, decision)];
+            (choice.kind, choice.code())
+        };
+        let hand = |codes: &[u32]| -> Vec<CardView> { codes.iter().enumerate().map(|(i, code)| card(0, Location::Hand, i as u32, *code, false)).collect() };
+        let graveyard = |codes: &[u32]| -> Vec<CardView> { codes.iter().enumerate().map(|(i, code)| card(0, Location::Graveyard, i as u32, *code, true)).collect() };
+        let summons = |codes: &[u32]| -> Vec<Choice> {
+            codes
+                .iter()
+                .enumerate()
+                .flat_map(|(i, code)| [from_hand(ChoiceKind::NormalSummon, *code, i as u32), from_hand(ChoiceKind::SetMonster, *code, i as u32)])
+                .chain([choice(ChoiceKind::EndTurn)])
+                .collect()
+        };
+        let launcher = card(0, Location::SpellTrapZone, 0, LAUNCHER, true);
+        let mut obs = observation();
+        obs.turn = 8;
+        obs.life_points = [1600, 8000];
+
+        // The recorded turn: Launcher on the field, Avenger and Plaguespreader
+        // Zombie in hand, two Beetles in the Graveyard.  Launcher sends Avenger
+        // away, the Zombie takes the Normal Summon face-up, and the hand is
+        // empty for Launcher to bring the Beetles back.
+        obs.cards = [hand(&[AVENGER, PLAGUESPREADER]), graveyard(&[BEETLE, BEETLE]), vec![launcher.clone()]].concat();
+        let mut choices = vec![activate(LAUNCHER, Location::SpellTrapZone, 0)];
+        choices.extend(summons(&[AVENGER, PLAGUESPREADER]));
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, choices)), (ChoiceKind::Activate, Some(LAUNCHER)));
+        obs.cards = [hand(&[PLAGUESPREADER]), graveyard(&[BEETLE, BEETLE, AVENGER]), vec![launcher]].concat();
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[PLAGUESPREADER]))), (ChoiceKind::NormalSummon, Some(PLAGUESPREADER)));
+
+        // Avenger alone, nothing to follow: face-down, not 0 ATK in Attack Position.
+        obs.cards = hand(&[AVENGER]);
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[AVENGER]))), (ChoiceKind::SetMonster, Some(AVENGER)));
+
+        // Mirage needs an empty hand: alone it is Summoned for the two in the
+        // Graveyard; beside Archfiend, Archfiend takes the Normal Summon.
+        obs.cards = [hand(&[MIRAGE]), graveyard(&[BEETLE, ARCHFIEND])].concat();
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[MIRAGE]))), (ChoiceKind::NormalSummon, Some(MIRAGE)));
+        obs.cards = [hand(&[MIRAGE, ARCHFIEND]), graveyard(&[BEETLE, ARCHFIEND])].concat();
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[MIRAGE, ARCHFIEND]))), (ChoiceKind::NormalSummon, Some(ARCHFIEND)));
+
+        // What a search on top of the pilot kept doing otherwise.
+        // Stygian Street Patrol in the Graveyard puts Mirage on the field
+        // without the Normal Summon.
+        obs.cards = [hand(&[MIRAGE]), graveyard(&[STYGIAN_PATROL, BEETLE, ARCHFIEND])].concat();
+        let mut choices = vec![activate(STYGIAN_PATROL, Location::Graveyard, 0)];
+        choices.extend(summons(&[MIRAGE]));
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, choices)), (ChoiceKind::Activate, Some(STYGIAN_PATROL)));
+
+        // A small Tuner beside a non-Tuner of ours is Summoned for the
+        // Synchro Summon, whatever stays in hand.
+        let field = |code: u32| card(0, Location::MonsterZone, 0, code, true);
+        obs.cards = [hand(&[MIRAGE, AVENGER]), vec![field(GUARDIAN), card(0, Location::Extra, 0, CATASTOR, false)]].concat();
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[MIRAGE, AVENGER]))), (ChoiceKind::NormalSummon, Some(AVENGER)));
+
+        // Guardian under a stronger monster goes face-down.
+        obs.cards = hand(&[GUARDIAN]);
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[GUARDIAN]))), (ChoiceKind::NormalSummon, Some(GUARDIAN)));
+        obs.cards.push(card(1, Location::MonsterZone, 0, 1, true));
+        assert_eq!(chosen(&obs, &decide(DecisionKind::Idle, None, summons(&[GUARDIAN]))), (ChoiceKind::SetMonster, Some(GUARDIAN)));
+
+        // Launcher is given for two monsters, not for one.
+        let revive = decide(DecisionKind::Idle, None, vec![activate(LAUNCHER, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+        let launcher = card(0, Location::SpellTrapZone, 0, LAUNCHER, true);
+        obs.cards = [graveyard(&[BEETLE]), vec![launcher.clone()]].concat();
+        assert_eq!(chosen(&obs, &revive).0, ChoiceKind::EndTurn);
+        obs.cards = [graveyard(&[BEETLE, ARCHFIEND]), vec![launcher]].concat();
+        assert_eq!(chosen(&obs, &revive), (ChoiceKind::Activate, Some(LAUNCHER)));
+
+        // Archfiend's search, the Normal Summon spent: Infernity Force can be
+        // Set at once, a monster would stay in hand.  With nothing of the
+        // kind left in the Deck the effect is declined.
+        let ask = |kind: ChoiceKind| Choice { kind, ..activate(ARCHFIEND, Location::MonsterZone, 0) };
+        let search = decide(DecisionKind::YesNo, Some(ARCHFIEND), vec![ask(ChoiceKind::Yes), ask(ChoiceKind::No)]);
+        obs.summon_used = true;
+        obs.cards = [vec![field(ARCHFIEND)], graveyard(&[LAUNCHER, INFERNITY_FORCE])].concat();
+        let mut policy = crate::registry::create("infernity", db.clone()).unwrap();
+        assert_eq!(search.choices[policy.choose(&obs, &search)].kind, ChoiceKind::Yes);
+        let pick = select_one(Hint::AddToHand, vec![toggle(Location::Deck, 0, MIRAGE), toggle(Location::Deck, 1, INFERNITY_FORCE)]);
+        assert_eq!(pick.choices[policy.choose(&obs, &pick)].code(), Some(INFERNITY_FORCE));
+        obs.cards = [vec![field(ARCHFIEND)], graveyard(&[LAUNCHER, INFERNITY_FORCE, INFERNITY_FORCE])].concat();
+        assert_eq!(chosen(&obs, &search).0, ChoiceKind::No);
+    }
 }

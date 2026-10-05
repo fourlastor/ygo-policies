@@ -60,6 +60,44 @@ impl Infernity {
             .count()
     }
 
+    /// Another monster stays in hand after this turn's Normal Summon: the
+    /// hand is not empty this turn.  Plaguespreader Zombie in the Graveyard
+    /// returns one card to the Deck.
+    fn monster_stays(ctx: &Ctx) -> bool {
+        let monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
+        let returned = usize::from(ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, PLAGUESPREADER)));
+        monsters > 1 + returned
+    }
+
+    /// A copy of one of our cards is still in the Deck (`copies`: how many the list plays).
+    fn in_deck(ctx: &Ctx, code: u32, copies: usize) -> bool {
+        let seen = [Location::Hand, Location::MonsterZone, Location::SpellTrapZone, Location::Graveyard, Location::Banished]
+            .into_iter()
+            .flat_map(|location| ctx.pile(ctx.me, location))
+            .filter(|c| ctx.is(c, code))
+            .count();
+        seen < copies
+    }
+
+    /// What Archfiend's effect should add to the hand: a card that leaves it
+    /// again this turn, or nothing.
+    fn fetch(ctx: &Ctx) -> Option<u32> {
+        let graveyard = Self::graveyard_infernities(ctx);
+        let summon = !ctx.obs.summon_used;
+        [
+            (LAUNCHER, 1, true),
+            (MIRAGE, 3, summon && graveyard >= 2),
+            (BEETLE, 3, summon),
+            (NECROMANCER, 3, summon && graveyard >= 1),
+            (ARCHFIEND, 3, summon),
+            (INFERNITY_FORCE, 2, true),
+            (GUARDIAN, 3, summon),
+        ]
+        .into_iter()
+        .find(|(code, copies, playable)| *playable && Self::in_deck(ctx, *code, *copies))
+        .map(|(code, ..)| code)
+    }
+
     fn opp_face_up_threat(ctx: &Ctx) -> i32 {
         ctx.monsters(ctx.opp).iter().filter(|c| c.position.face_up).map(|c| ctx.threat(c)).sum()
     }
@@ -118,15 +156,19 @@ impl Strategy for Infernity {
             if let Some(i) = t.activate_from(LAUNCHER, Location::Hand) {
                 return t.pick(i);
             }
+            // Stygian Street Patrol in the Graveyard puts a Fiend from the hand
+            // on the field: one card less in hand, and no Normal Summon spent.
+            if let Some(i) = t.activate_from(STYGIAN_PATROL, Location::Graveyard) {
+                return t.pick(i);
+            }
             if let Some(i) = t.activate(FOOLISH_BURIAL) {
                 return t.pick(i);
             }
-            let spare_infernity = ctx
-                .hand()
-                .iter()
-                .filter(|c| c.code.map_or(false, |k| Self::infernity_monster(&ctx, k)))
-                .count()
-                > usize::from(t.has(ChoiceKind::NormalSummon));
+            // Launcher sends an Infernity monster to the Graveyard whenever the
+            // Normal Summon has another monster to take.
+            let infernities = ctx.hand().iter().filter(|c| c.code.map_or(false, |k| Self::infernity_monster(&ctx, k))).count();
+            let monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
+            let spare_infernity = infernities >= 1 && monsters > usize::from(t.has(ChoiceKind::NormalSummon));
             if spare_infernity {
                 if let Some(i) = t.activate_from(LAUNCHER, Location::SpellTrapZone) {
                     return t.pick(i);
@@ -158,6 +200,10 @@ impl Strategy for Infernity {
             if needs_graveyard && Self::graveyard_infernities(&ctx) == 0 {
                 continue;
             }
+            // Launcher is one card for two monsters: not for one.
+            if code == LAUNCHER && Self::graveyard_infernities(&ctx) < 2 {
+                continue;
+            }
             if let Some(i) = t.activate_from(code, location) {
                 return t.pick(i);
             }
@@ -169,13 +215,37 @@ impl Strategy for Infernity {
         let ctx = t.ctx;
         let code = ctx.canonical(choice.code()?);
         let graveyard = Self::graveyard_infernities(&ctx);
+        // No effect of ours works with a card in hand, and the small monsters
+        // have nothing else: face-up only when this Summon empties the hand
+        // and something follows.
+        let stays = Self::monster_stays(&ctx);
+        // Mirage brings two Infernity monsters back.
+        let mirage_up = !stays && graveyard >= 2;
+        // A small Tuner makes a Synchro Monster with a non-Tuner of ours
+        // (whatever stays in hand), or with what Launcher, Necromancer or
+        // Mirage bring back once the hand is empty.
+        let reviver = [LAUNCHER, NECROMANCER, MIRAGE].iter().any(|code| ctx.face_up_on_field(ctx.me, *code));
+        let partner = crate::tactics::synchro_with_tuner(self, &ctx, ctx.data(code).level).is_some();
+        let small_tuner = matches!(code, AVENGER | PLAGUESPREADER | GLOW_UP_BULB);
+        let tuner_up = partner || (!stays && reviver && graveyard >= 1);
+        // Guardian in Attack Position takes the damage of every attack: under
+        // a stronger monster it goes face-down, unless a Tuner of ours waits.
+        let tuner_waits = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner());
+        let guardian_down = ctx.opp_best_attack() > 1200 && !tuner_waits;
         Some(match (choice.kind, code) {
-            (ChoiceKind::NormalSummon, MIRAGE) if graveyard >= 2 => Some(2600.0),
+            (ChoiceKind::NormalSummon, MIRAGE) if mirage_up => Some(2600.0),
             (ChoiceKind::NormalSummon, BEETLE) => Some(2300.0),
             (ChoiceKind::NormalSummon, NECROMANCER) if graveyard >= 1 => Some(2100.0),
+            // The Synchro Summon is there to make: before a plain attacker.
+            (ChoiceKind::NormalSummon, _) if small_tuner && partner => Some(2000.0),
             (ChoiceKind::NormalSummon, ARCHFIEND | DARK_GREPHER | STYGIAN_PATROL) => Some(1800.0),
-            (ChoiceKind::NormalSummon, MIRAGE) => Some(1000.0),
+            (ChoiceKind::SetMonster, GUARDIAN) if guardian_down => Some(1200.0),
+            (ChoiceKind::NormalSummon, GUARDIAN) if guardian_down => None,
             (ChoiceKind::NormalSummon, GUARDIAN) => Some(1200.0),
+            (ChoiceKind::SetMonster, MIRAGE) if !mirage_up => Some(1000.0),
+            (ChoiceKind::NormalSummon, MIRAGE) => None,
+            (ChoiceKind::SetMonster, _) if small_tuner && !tuner_up => Some(500.0),
+            (ChoiceKind::NormalSummon, _) if small_tuner && !tuner_up => None,
             (ChoiceKind::NormalSummon, _) => Some(500.0),
             _ => return None,
         })
@@ -204,16 +274,9 @@ impl Strategy for Infernity {
                 Response::new(75.0)
             }
             DIVINE_WRATH => Response::no(),
-            DUST_TORNADO => {
-                let backrow = ctx.spell_traps(ctx.opp);
-                let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(crate::model::Phase::End);
-                let target = ctx.set_backrow(ctx.opp).first().copied().or_else(|| backrow.first().copied());
-                match target {
-                    Some(target) if end_of_their_turn || (ctx.my_turn() && ctx.main1()) => {
-                        Response::targeting(25.0, vec![target.at])
-                    }
-                    _ => Response::no(),
-                }
+            // Its search, with nothing to fetch that leaves the hand again: the hand stays empty.
+            ARCHFIEND if choice.at().map_or(false, |at| at.location == Location::MonsterZone) && Self::fetch(&ctx).is_none() => {
+                Response::no()
             }
             ARCHFIEND => Response::new(60.0),
             AVENGER => Response::new(40.0),
@@ -222,6 +285,16 @@ impl Strategy for Infernity {
             | FORBIDDEN_CHALICE => Response::no(),
             _ => return None,
         })
+    }
+
+    fn yes_no(&self, t: &Turn) -> Option<bool> {
+        let ctx = t.ctx;
+        // Archfiend's search on the field (not its Special Summon from the hand).
+        let on_field = t.decision.choices.iter().any(|c| c.kind == ChoiceKind::Yes && c.at().map_or(false, |at| at.location == Location::MonsterZone));
+        if on_field && t.decision.subject.map(|c| ctx.canonical(c)) == Some(ARCHFIEND) {
+            return Some(Self::fetch(&ctx).is_some());
+        }
+        None
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
@@ -239,6 +312,22 @@ impl Strategy for Infernity {
             }
             // Dumps from the hand: every card we can lose is progress.
             Some(LAUNCHER) | Some(DARK_GREPHER) if member.at.location == Location::Hand => return Some(-worth),
+            // Patrol's Fiend from the hand: the one whose effect follows.
+            Some(STYGIAN_PATROL) if member.at.location == Location::Hand => {
+                let graveyard = Self::graveyard_infernities(&ctx);
+                return Some(match code {
+                    Some(MIRAGE) if graveyard >= 2 => 2600.0,
+                    Some(ARCHFIEND) => 2400.0,
+                    Some(NECROMANCER) if graveyard >= 1 => 2100.0,
+                    Some(STYGIAN_PATROL) => 1600.0,
+                    Some(GUARDIAN) => 1300.0,
+                    _ => worth / 10.0,
+                });
+            }
+            // Archfiend's search: a card that leaves the hand again this turn.
+            Some(ARCHFIEND) if member.at.location == Location::Deck => {
+                return Some(if code.is_some() && code == Self::fetch(&ctx) { 5000.0 } else { worth / 10.0 });
+            }
             _ => {}
         }
         if t.decision.hint == Hint::SynchroMaterial {

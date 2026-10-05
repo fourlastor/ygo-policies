@@ -218,6 +218,9 @@ instead of waiting for a floor of Life Points.
 [What a search on top of a pilot became](benchmarks/search-rules.md) for
 Blackwing and Monarch: the rules it gave them, three that every deck now
 shares, and the ones that did not hold.
+[What a recorded run of the game showed](benchmarks/game-run-rules.md):
+Quick-Play Spells that were never Set, the order of attacks and of the
+answers to them, and an Infernity pilot that kept cards in its hand.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.
