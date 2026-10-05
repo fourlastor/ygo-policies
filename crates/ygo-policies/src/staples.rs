@@ -644,6 +644,43 @@ fn judgment<S: Strategy + ?Sized>(s: &S, t: &Turn, spent: Option<CardRef>) -> Re
     if worth { Response::new(score) } else { Response::no() }
 }
 
+/// Answers that stop one attacker.
+const ONE_ATTACKER: &[u32] = &[
+    DIMENSIONAL_PRISON,
+    SAKURETSU_ARMOR,
+    BOOK_OF_MOON,
+    COMPULSORY_EVACUATION_DEVICE,
+    ENEMY_CONTROLLER,
+    MAGIC_CYLINDER,
+    DRAINING_SHIELD,
+];
+
+/// Stronger monsters of theirs can still attack this turn, as many as we
+/// have answers for one attacker: this attack is let through, the answers
+/// wait for those.  Not when this one ends the duel either way.
+fn stronger_to_come(t: &Turn, attacker: &CardView, target: Option<&CardView>, code: u32) -> bool {
+    let ctx = t.ctx;
+    let damage = match target {
+        None => attacker.attack,
+        Some(ours) if ours.position.attack => attacker.attack - ours.attack,
+        Some(_) => 0,
+    };
+    if damage >= ctx.my_lp() || (code == MAGIC_CYLINDER && attacker.attack >= ctx.opp_lp()) {
+        return false;
+    }
+    let answers = t
+        .choices()
+        .filter(|(_, c)| c.kind == ChoiceKind::Activate && c.code().map_or(false, |k| ONE_ATTACKER.contains(&ctx.canonical(k))))
+        .count();
+    let destroys = code == SAKURETSU_ARMOR;
+    let stronger = ctx
+        .monsters(ctx.opp)
+        .into_iter()
+        .filter(|c| c.at != attacker.at && ctx.can_attack(c) && c.attack > attacker.attack && ctx.reaches(c, code, true, destroys))
+        .count();
+    stronger >= answers.max(1)
+}
+
 fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option<Response> {
     let ctx = t.ctx;
     let choice = t.choice(index);
@@ -658,6 +695,13 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
         if choice.at().map_or(false, |at| destroys(&ctx, link, at)) {
             if let Some(response) = before_it_goes(&ctx, code, link.source) {
                 return Some(response);
+            }
+        }
+    }
+    if ONE_ATTACKER.contains(&code) {
+        if let Some((attacker, target)) = incoming {
+            if stronger_to_come(t, attacker, target, code) {
+                return Some(Response::no());
             }
         }
     }
@@ -817,7 +861,10 @@ fn chain_response<S: Strategy + ?Sized>(s: &S, t: &Turn, index: usize) -> Option
             let backrow = ctx.set_backrow(opp);
             let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
             let before_our_attack = ctx.my_turn() && ctx.main1();
-            if !key.is_empty() && (end_of_their_turn || before_our_attack) {
+            // As for Typhoon: a face-up Spell or Trap their deck runs on
+            // goes at the first chance.
+            let first_chance = ctx.phase().map_or(true, |p| !p.is_battle());
+            if !key.is_empty() && first_chance {
                 Response::targeting(25.0, refs(&key))
             } else if !backrow.is_empty() && (end_of_their_turn || before_our_attack) {
                 Response::targeting(20.0, refs(&backrow))

@@ -378,7 +378,14 @@ pub fn plan_attack<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<(usize, Opti
     }
     let targets = ctx.monsters(ctx.opp);
     if targets.is_empty() {
-        let (i, _) = attackers.iter().filter(|(_, v)| v.attack > 0).max_by_key(|(_, v)| v.attack)?;
+        // An attack that ends the duel goes first.  Otherwise the weakest:
+        // what the first hit brings out or sets off (a monster from their
+        // hand, a Trap), the stronger attackers are still there to meet.
+        let live = || attackers.iter().filter(|(_, v)| v.attack > 0);
+        let (i, _) = live()
+            .filter(|(_, v)| v.attack >= ctx.opp_lp())
+            .min_by_key(|(_, v)| v.attack)
+            .or_else(|| live().min_by_key(|(_, v)| v.attack))?;
         return Some((*i, None));
     }
     let mut scored: Vec<(f64, (usize, CardRef))> = Vec::new();

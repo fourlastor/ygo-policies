@@ -1423,4 +1423,74 @@ mod tests {
         obs.cards = vec![card(0, Location::Hand, 0, D_TIME, false)];
         assert_eq!(chosen("destiny-hero", &obs, &set(D_TIME)), ChoiceKind::EndTurn);
     }
+
+    /// Direct attacks go weakest first, and from the other side an answer
+    /// to one attacker waits for the strongest.
+    #[test]
+    fn the_weakest_attacks_first_and_the_answer_waits_for_the_strongest() {
+        use crate::cards::types;
+        use crate::staples::{DIMENSIONAL_PRISON, DUST_TORNADO};
+        const NECROVALLEY: u32 = 47355498;
+        let db: Arc<dyn crate::CardDatabase> = Arc::new(MemoryCards(
+            [
+                printed(DIMENSIONAL_PRISON, types::TRAP, 0),
+                printed(DUST_TORNADO, types::TRAP, 0),
+                printed(NECROVALLEY, types::SPELL | types::FIELD, 0),
+                creature(1, 4, 2800, 2400, 0),
+                creature(2, 4, 1700, 1300, 0),
+            ]
+            .into_iter()
+            .collect(),
+        ));
+        let chosen = |id: &str, obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create(id, db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].clone()
+        };
+        let attacking = Position { face_up: true, attack: true };
+
+        // 2800 and 1700 ATK on an open field: the 1700 attacks first, and
+        // whatever it brings out the 2800 can still meet.  When one attack
+        // ends the duel, that one goes.
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![monster(0, 0, Some(1), attacking, 2800, 2400), monster(0, 1, Some(2), attacking, 1700, 1300)];
+        let battle = decide(DecisionKind::Battle, None, vec![attack(1, 0, true), attack(2, 1, true), choice(ChoiceKind::EnterMain2)]);
+        assert_eq!(chosen("draconic-might", &obs, &battle).code(), Some(2));
+        obs.life_points = [8000, 2500];
+        assert_eq!(chosen("draconic-might", &obs, &battle).code(), Some(1));
+
+        // Their 1700 attacks first, their 2800 can still attack: Dimensional
+        // Prison waits for the 2800.
+        let window = |code: u32| {
+            decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(code, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)])
+        };
+        let mut obs = observation();
+        obs.turn = 4;
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![
+            card(0, Location::SpellTrapZone, 0, DIMENSIONAL_PRISON, false),
+            monster(1, 0, Some(2), attacking, 1700, 1300),
+            monster(1, 1, Some(1), attacking, 2800, 2400),
+        ];
+        let their = |sequence: u32| Some(CardRef { controller: 1, location: Location::MonsterZone, sequence });
+        obs.battle_attacker = their(0);
+        assert_eq!(chosen("fortune-lady", &obs, &window(DIMENSIONAL_PRISON)).kind, ChoiceKind::Pass);
+        obs.battle_attacker = their(1);
+        assert_eq!(chosen("fortune-lady", &obs, &window(DIMENSIONAL_PRISON)).code(), Some(DIMENSIONAL_PRISON));
+        // An attack that ends the duel is stopped, whoever follows.
+        obs.battle_attacker = their(0);
+        obs.life_points = [1500, 8000];
+        assert_eq!(chosen("fortune-lady", &obs, &window(DIMENSIONAL_PRISON)).code(), Some(DIMENSIONAL_PRISON));
+
+        // Dust Tornado takes a face-up Spell their deck runs on at the first
+        // chance, as Typhoon does.
+        let mut obs = observation();
+        obs.turn = 4;
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Standby);
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, DUST_TORNADO, false), card(1, Location::SpellTrapZone, 5, NECROVALLEY, true)];
+        assert_eq!(chosen("fortune-lady", &obs, &window(DUST_TORNADO)).code(), Some(DUST_TORNADO));
+    }
 }
