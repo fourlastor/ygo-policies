@@ -3294,4 +3294,98 @@ mod tests {
         obs.cards.push(card(0, Location::Hand, 0, CHARIOT, false));
         assert_eq!(policy.choose(&obs, &tag), 1, "with Chariot already in hand, resume the usual tag priorities");
     }
+
+    #[test]
+    fn harpie_waits_for_opposing_backrow_before_using_hunting_ground() {
+        const GROUND: u32 = 75782277;
+        for location in [Location::Hand, Location::SpellTrapZone] {
+            let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+            let mut obs = observation();
+            obs.cards = vec![card(0, location, 0, GROUND, false)];
+            let idle = decide(DecisionKind::Idle, None, vec![activate(GROUND, location, 0), choice(ChoiceKind::EndTurn)]);
+            assert_eq!(policy.choose(&obs, &idle), 1, "save the mandatory destruction effect for an opposing target");
+            obs.cards.push(CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) });
+            assert_eq!(policy.choose(&obs, &idle), 0, "an unknown set card is a public target; its identity is unnecessary");
+        }
+    }
+
+    #[test]
+    fn harpie_keeps_queen_as_a_monster_without_backrow_to_hunt() {
+        const QUEEN: u32 = 75064463;
+        let db = Arc::new(MemoryCards([creature(QUEEN, 4, 1900, 1200, 0x64)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, QUEEN, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(QUEEN, Location::Hand, 0),
+            from_hand(ChoiceKind::NormalSummon, QUEEN, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("harpie", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.push(CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) });
+        let mut policy = crate::registry::create("harpie", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn harpie_falcon_returns_set_backrow_before_an_attacker() {
+        const LADY: u32 = 91932350;
+        const PRISON: u32 = 70342110;
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(LADY), Position::FACE_UP_ATTACK, 1600, 1400),
+            card(0, Location::SpellTrapZone, 0, PRISON, false)];
+        let cost = select_one(Hint::ReturnToHand, vec![toggle(Location::MonsterZone, 0, LADY),
+            toggle(Location::SpellTrapZone, 0, PRISON)]);
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &cost), 1, "keep the other attacker for this Battle Phase");
+    }
+
+    #[test]
+    fn harpie_destroys_hunting_ground_before_its_own_live_backrow() {
+        const GROUND: u32 = 75782277;
+        const PARTY: u32 = 77778835;
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 5, GROUND, true), card(0, Location::SpellTrapZone, 0, PARTY, true)];
+        let trigger = decide(DecisionKind::Chain { forced: true, triggers: true }, None,
+            vec![activate(GROUND, Location::SpellTrapZone, 5)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let target = select_one(Hint::Destroy, vec![toggle(Location::SpellTrapZone, 0, PARTY),
+            toggle(Location::SpellTrapZone, 5, GROUND)]);
+        assert_eq!(policy.choose(&obs, &target), 1, "destroying Party would also destroy its revived Ladies");
+    }
+
+    #[test]
+    fn harpie_revives_a_single_lady_in_main_phase() {
+        const PARTY: u32 = 77778835;
+        const QUEEN: u32 = 75064463;
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, PARTY, false), card(0, Location::Graveyard, 0, QUEEN, true),
+            card(0, Location::Hand, 0, 75782277, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(PARTY, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "Party needs a discard");
+    }
+
+    #[test]
+    fn harpie_party_rebuilds_an_empty_field_or_revives_multiple_ladies() {
+        const PARTY: u32 = 77778835;
+        const QUEEN: u32 = 75064463;
+        const LADY: u32 = 91932350;
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Draw);
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, PARTY, false), card(0, Location::Graveyard, 0, QUEEN, true),
+            card(0, Location::Hand, 0, 75782277, false)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(PARTY, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0, "rebuild before an attack is declared");
+        obs.cards.push(monster(0, 0, Some(LADY), Position::FACE_UP_ATTACK, 1600, 1400));
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 1, "one revival can wait when we already have a defender");
+        obs.cards.push(card(0, Location::Graveyard, 1, LADY, true));
+        let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0, "a group revival is worth using in other windows too");
+    }
 }

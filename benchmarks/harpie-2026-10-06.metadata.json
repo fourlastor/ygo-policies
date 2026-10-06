@@ -1,0 +1,2895 @@
+{
+  "development": {
+    "arguments": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/final.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "1024",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/development.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "baseline": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M crates/ygo-policies/src/lib.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 1024,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "compare",
+    "planned_jobs": 13312,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 32480000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "heldout-original": {
+    "arguments": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/original",
+      "--games": "512",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "all",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/heldout-original.jsonl",
+      "--policies": "harpie",
+      "--seed": "33590000",
+      "--workers": "8"
+    },
+    "baseline": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "arcana": {
+        "bytes": 452,
+        "fnv1a64": "97a17826ce520c62",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Arcana Force Fortune.ydk"
+      },
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Burn Princess.ydk"
+      },
+      "countdown": {
+        "bytes": 462,
+        "fnv1a64": "3bfb6e508e7baaa2",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Claudi-oh's Countdown.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/12 Crystal Beast - Rainbow.ydk"
+      },
+      "destiny-hero": {
+        "bytes": 446,
+        "fnv1a64": "55370297d22ad7cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Destiny HEROes.ydk"
+      },
+      "draconic-might": {
+        "bytes": 399,
+        "fnv1a64": "e3a9de4aeea604d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Draconic Might.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Dragunity Flight.ydk"
+      },
+      "fortune-lady": {
+        "bytes": 448,
+        "fnv1a64": "43e38ab69d74c88c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Fortune Ladies.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Fight, Gladiators!.ydk"
+      },
+      "gravekeeper": {
+        "bytes": 451,
+        "fnv1a64": "3890321a93a1363f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Gravekeeper's Tomb.ydk"
+      },
+      "harpie": {
+        "bytes": 411,
+        "fnv1a64": "19d4109f7361537a",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Infernity Infinity.ydk"
+      },
+      "karakuri": {
+        "bytes": 565,
+        "fnv1a64": "e14879ae310fc57f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Karakuri Workshop.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Lightsworn Judgment.ydk"
+      },
+      "machina": {
+        "bytes": 456,
+        "fnv1a64": "a5c2530badfd80d0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Machina Gadgets.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/01 Morphtronic - Straight Up.ydk"
+      },
+      "ojama": {
+        "bytes": 491,
+        "fnv1a64": "4d45fd6908707fe6",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Ojama Brigade.ydk"
+      },
+      "pyramid": {
+        "bytes": 450,
+        "fnv1a64": "89ddbbe2782e53d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Pyramid of Light.ydk"
+      },
+      "quickdraw-plant": {
+        "bytes": 585,
+        "fnv1a64": "59906bb1d1bedf33",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Quickdraw Plants.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "six-samurai": {
+        "bytes": 588,
+        "fnv1a64": "ed5cf1ef3611b727",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Legendary Six Samurai.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/14 - Spellcaster's Command.ydk"
+      },
+      "tele-dad": {
+        "bytes": 575,
+        "fnv1a64": "6cc19f511ef7a5d3",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Tele-DAD.ydk"
+      },
+      "toon": {
+        "bytes": 449,
+        "fnv1a64": "ff69dff2956b1580",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Toon Kingdom.ydk"
+      },
+      "verdict": {
+        "bytes": 449,
+        "fnv1a64": "48dd1e9e53c33a28",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Claudi-oh's Verdict.ydk"
+      },
+      "watt": {
+        "bytes": 473,
+        "fnv1a64": "860d9ddb107bbc7c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/Watt Grid.ydk"
+      },
+      "x-saber": {
+        "bytes": 576,
+        "fnv1a64": "ee211670b36825c0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/original/X-Sabers.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 512,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "matchup",
+    "planned_jobs": 15360,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 33590000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "heldout-deck": {
+    "arguments": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "512",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "all",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/heldout-deck.jsonl",
+      "--policies": "harpie",
+      "--seed": "33590000",
+      "--workers": "8"
+    },
+    "baseline": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "arcana": {
+        "bytes": 452,
+        "fnv1a64": "97a17826ce520c62",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Arcana Force Fortune.ydk"
+      },
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "countdown": {
+        "bytes": 462,
+        "fnv1a64": "3bfb6e508e7baaa2",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Claudi-oh's Countdown.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "destiny-hero": {
+        "bytes": 446,
+        "fnv1a64": "55370297d22ad7cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Destiny HEROes.ydk"
+      },
+      "draconic-might": {
+        "bytes": 399,
+        "fnv1a64": "e3a9de4aeea604d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Draconic Might.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "fortune-lady": {
+        "bytes": 448,
+        "fnv1a64": "43e38ab69d74c88c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fortune Ladies.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "gravekeeper": {
+        "bytes": 451,
+        "fnv1a64": "3890321a93a1363f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Gravekeeper's Tomb.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "karakuri": {
+        "bytes": 565,
+        "fnv1a64": "e14879ae310fc57f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Karakuri Workshop.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "machina": {
+        "bytes": 456,
+        "fnv1a64": "a5c2530badfd80d0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Machina Gadgets.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "ojama": {
+        "bytes": 491,
+        "fnv1a64": "4d45fd6908707fe6",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Ojama Brigade.ydk"
+      },
+      "pyramid": {
+        "bytes": 450,
+        "fnv1a64": "89ddbbe2782e53d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Pyramid of Light.ydk"
+      },
+      "quickdraw-plant": {
+        "bytes": 585,
+        "fnv1a64": "59906bb1d1bedf33",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Quickdraw Plants.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "six-samurai": {
+        "bytes": 588,
+        "fnv1a64": "ed5cf1ef3611b727",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Legendary Six Samurai.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      },
+      "tele-dad": {
+        "bytes": 575,
+        "fnv1a64": "6cc19f511ef7a5d3",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Tele-DAD.ydk"
+      },
+      "toon": {
+        "bytes": 449,
+        "fnv1a64": "ff69dff2956b1580",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Toon Kingdom.ydk"
+      },
+      "verdict": {
+        "bytes": 449,
+        "fnv1a64": "48dd1e9e53c33a28",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Claudi-oh's Verdict.ydk"
+      },
+      "watt": {
+        "bytes": 473,
+        "fnv1a64": "860d9ddb107bbc7c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Watt Grid.ydk"
+      },
+      "x-saber": {
+        "bytes": 576,
+        "fnv1a64": "ee211670b36825c0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/X-Sabers.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 512,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "matchup",
+    "planned_jobs": 15360,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 33590000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "heldout-final": {
+    "arguments": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "512",
+      "--library": "/tmp/ygo-harpie.agx95xg0/final.so",
+      "--opponents": "all",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/heldout-final.jsonl",
+      "--policies": "harpie",
+      "--seed": "33590000",
+      "--workers": "8"
+    },
+    "baseline": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "candidate": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M crates/ygo-policies/src/lib.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "arcana": {
+        "bytes": 452,
+        "fnv1a64": "97a17826ce520c62",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Arcana Force Fortune.ydk"
+      },
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "countdown": {
+        "bytes": 462,
+        "fnv1a64": "3bfb6e508e7baaa2",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Claudi-oh's Countdown.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "destiny-hero": {
+        "bytes": 446,
+        "fnv1a64": "55370297d22ad7cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Destiny HEROes.ydk"
+      },
+      "draconic-might": {
+        "bytes": 399,
+        "fnv1a64": "e3a9de4aeea604d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Draconic Might.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "fortune-lady": {
+        "bytes": 448,
+        "fnv1a64": "43e38ab69d74c88c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fortune Ladies.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "gravekeeper": {
+        "bytes": 451,
+        "fnv1a64": "3890321a93a1363f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Gravekeeper's Tomb.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "karakuri": {
+        "bytes": 565,
+        "fnv1a64": "e14879ae310fc57f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Karakuri Workshop.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "machina": {
+        "bytes": 456,
+        "fnv1a64": "a5c2530badfd80d0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Machina Gadgets.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "ojama": {
+        "bytes": 491,
+        "fnv1a64": "4d45fd6908707fe6",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Ojama Brigade.ydk"
+      },
+      "pyramid": {
+        "bytes": 450,
+        "fnv1a64": "89ddbbe2782e53d1",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Pyramid of Light.ydk"
+      },
+      "quickdraw-plant": {
+        "bytes": 585,
+        "fnv1a64": "59906bb1d1bedf33",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Quickdraw Plants.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "six-samurai": {
+        "bytes": 588,
+        "fnv1a64": "ed5cf1ef3611b727",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Legendary Six Samurai.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      },
+      "tele-dad": {
+        "bytes": 575,
+        "fnv1a64": "6cc19f511ef7a5d3",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Tele-DAD.ydk"
+      },
+      "toon": {
+        "bytes": 449,
+        "fnv1a64": "ff69dff2956b1580",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Toon Kingdom.ydk"
+      },
+      "verdict": {
+        "bytes": 449,
+        "fnv1a64": "48dd1e9e53c33a28",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Claudi-oh's Verdict.ydk"
+      },
+      "watt": {
+        "bytes": 473,
+        "fnv1a64": "860d9ddb107bbc7c",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Watt Grid.ydk"
+      },
+      "x-saber": {
+        "bytes": 576,
+        "fnv1a64": "ee211670b36825c0",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/X-Sabers.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 512,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "matchup",
+    "planned_jobs": 15360,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 33590000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "discovery": {
+    "arguments": {
+      "--confirm": "32",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--final": "96",
+      "--foresight": "false",
+      "--games": "8",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/discovery.jsonl",
+      "--policies": "harpie",
+      "--record": "true",
+      "--seed": "31370000",
+      "--strict": "true",
+      "--workers": "16",
+      "--worlds": "8"
+    },
+    "baseline": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "search",
+    "planned_jobs": 104,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 31370000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "after-search": {
+    "arguments": {
+      "--confirm": "32",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--final": "96",
+      "--foresight": "false",
+      "--games": "8",
+      "--library": "/tmp/ygo-harpie.agx95xg0/final.so",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/after-search.jsonl",
+      "--policies": "harpie",
+      "--record": "true",
+      "--seed": "31370000",
+      "--strict": "true",
+      "--workers": "8",
+      "--worlds": "8"
+    },
+    "baseline": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "candidate": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M crates/ygo-policies/src/lib.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "search",
+    "planned_jobs": 104,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 31370000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "search-parity": {
+    "arguments": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/final.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "8",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/search-parity.jsonl",
+      "--policies": "harpie",
+      "--seed": "31370000",
+      "--workers": "4"
+    },
+    "baseline": {
+      "bytes": 53834656,
+      "fnv1a64": "dfae0744aa0b7a9e",
+      "path": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53848984,
+      "fnv1a64": "3135c0efdc72834c",
+      "path": "/tmp/ygo-harpie.agx95xg0/final.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "c87341547c94903230215ac37c66d48f14271e34",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/harpie.rs\n M crates/ygo-policies/src/lib.rs\n M \"decks/Harpie Sisters.ydk\"\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/tests/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fight, Gladiators!.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/tmp/ygo-harpie.agx95xg0/decks/selected/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "compare",
+    "planned_jobs": 104,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 31370000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "raw_results": {
+    "after-search": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/after-search.jsonl",
+      "sha256": "b82da8c2a4810ce681671135c5c710ae7207fb9dc20254518d5928a6166b738c"
+    },
+    "combined": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/combined.jsonl",
+      "sha256": "8349a49af1110f5e7dfd4740742a02c696aa53e8febdaad69ebeb8db73d9235f"
+    },
+    "deck-combined-duality": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-duality.jsonl",
+      "sha256": "66632f977e09d31f0da02fb91e358043bb8335205fdd470be2c60e5b53ec8eab"
+    },
+    "deck-combined-mst": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-mst.jsonl",
+      "sha256": "fe9c227f11e7b08836f048d23cbd3e768ecba027137f52ef7913c1745d0d6d43"
+    },
+    "deck-combined-owl": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-owl.jsonl",
+      "sha256": "89c70f1625a4dd761cad159acb3ef5dddc43be97a90cc7887f67a8ef392d58bb"
+    },
+    "deck-combined-recruiter": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-recruiter.jsonl",
+      "sha256": "404c0023b65c7e75a02d8ea6ded077e7e53803796df1fbe833879bfb5c4f741c"
+    },
+    "deck-combined-two-baby": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-two-baby.jsonl",
+      "sha256": "ac50e7e5484c87f996ea9150cfdb344b1bf3b540f42ceba44ba1ee356b39a2aa"
+    },
+    "deck-combined": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-combined.jsonl",
+      "sha256": "24904f882d37f5fa93f4f04b9c717a21589d5658df5a95327dbbb8e0e69cb295"
+    },
+    "deck-lady1": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-lady1.jsonl",
+      "sha256": "9974a765922681bb2e2577fe022b7598757dc7aaa7a434cbfdf8da0cfd5297fe"
+    },
+    "deck-legal": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-legal.jsonl",
+      "sha256": "332b38f8a677c9bd37456b6646d631b5d2ff55731c7a4a14eca94cb883710709"
+    },
+    "deck-less-ground": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-less-ground.jsonl",
+      "sha256": "c5a9243b9e921247f9c2b1d8054d8089e45680a2d8fab8a71b26c1c1fabbe808"
+    },
+    "deck-no-current": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-no-current.jsonl",
+      "sha256": "c9070970fc823a92f5fb2ae6c449d2c21ffe227502789ff947dad39ba09e3b87"
+    },
+    "deck-no-double": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-no-double.jsonl",
+      "sha256": "48845501e816390d31905ce54cfa1c195a9d118615dee72731aa3cbb4afb01c9"
+    },
+    "deck-no-girls": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-no-girls.jsonl",
+      "sha256": "e39bf836321e1655a9ea09f739c600948013e4fc067577aff71c51dcc19957ff"
+    },
+    "deck-no-pet": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-no-pet.jsonl",
+      "sha256": "23ef3f8b98dcc131385115ef019047a81879145095d4249c9cd8bc6003d1837f"
+    },
+    "deck-original": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-original.jsonl",
+      "sha256": "041cb662b93ebe229c918a40cd09e70a71c184d6705785af6372c9ce0375f884"
+    },
+    "deck-owl-girls": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-owl-girls.jsonl",
+      "sha256": "2ab5c877e5525680f21555fe76c346f3fd5e2d075f3b9e96ebb8a7c49d1729dc"
+    },
+    "deck-silpheed-girls": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-silpheed-girls.jsonl",
+      "sha256": "890cc728176983e772430eae3b34340abd35ddba5108a9845455b2d414dbd6c6"
+    },
+    "deck-third-party": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-third-party.jsonl",
+      "sha256": "10516e0e6e012247d9b025290c14f42832479633b18897cdd76535195664a6ce"
+    },
+    "deck-trap-girls": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/deck-trap-girls.jsonl",
+      "sha256": "f4028c8e8f2e9b0aed6917b36c69a68a54c3a82f551bc349702ea8ca1d5f0721"
+    },
+    "development": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/development.jsonl",
+      "sha256": "3bc9419135bc050027e0eddb8c4c7790ffb645a5c47bdbec3bb81a9541ec3f7b"
+    },
+    "discovery": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/discovery.jsonl",
+      "sha256": "6597f01e6e140c54b1e6b5525f5e25e8a0b5ae9a566da77c7b41e03d6071fc00"
+    },
+    "duality": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/duality.jsonl",
+      "sha256": "04f60fbc79c4488761dce13a70f7b45bec5e4d58a51beea544410eeeed23827d"
+    },
+    "egotist-lady": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/egotist-lady.jsonl",
+      "sha256": "81a68ab1617aee531460baccc9189fb5c86a052bb05f1998475ee73b1f7fd5df"
+    },
+    "falcon-backrow": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/falcon-backrow.jsonl",
+      "sha256": "aefff3a913bfc176db776fa67ea0f1a4b0259ae551bab41eaa8326fe209c9b6c"
+    },
+    "ground-ready": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/ground-ready.jsonl",
+      "sha256": "94850ce0f6c1438bec97fdbb85f5c7cbbf3f2cc24e416af5836e76c2a079e467"
+    },
+    "ground-self": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/ground-self.jsonl",
+      "sha256": "9b7576a5dff6ce3b8dce219440605fa06ac5351d04339d9f54305d62ce3cbb8b"
+    },
+    "ground": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/ground.jsonl",
+      "sha256": "80396fc8290a9718ec496e17e8b0a3096af145e4f3a43aab3bb117065092502d"
+    },
+    "heldout-deck": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/heldout-deck.jsonl",
+      "sha256": "60e2e3ef3bd644f1d82e42334e5ac2bcdd158a48c34e1e0426e859d4c4490047"
+    },
+    "heldout-final": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/heldout-final.jsonl",
+      "sha256": "7b60d37a36c237571c443f218042d6d6f00139d6fa5ca75565d577c50970bc65"
+    },
+    "heldout-original": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/heldout-original.jsonl",
+      "sha256": "aeb0bcde496c8bceaa156759f8290dee3d2222ab6c4bd92e92cac7be59bac6db"
+    },
+    "icarus-main": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/icarus-main.jsonl",
+      "sha256": "e103dbbd56ca9763aaccdfe3ca379ccb49af063fd1b227d2fe7dc2ca8fb6fde5"
+    },
+    "icarus-many": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/icarus-many.jsonl",
+      "sha256": "4427d4647f4a87ff4c9cf1855548376ee2bc86eecadb95e1b6afd95a1257b54d"
+    },
+    "icarus-pressure": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/icarus-pressure.jsonl",
+      "sha256": "53a7425970ac56962bf5ca37486c095b46ed296f05df4db8d938abb60d7da278"
+    },
+    "icarus": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/icarus.jsonl",
+      "sha256": "6a97565088ea9807d49f80a666b6ed80ac85186d9380eb0c9f580da8d1755878"
+    },
+    "lady-summon": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/lady-summon.jsonl",
+      "sha256": "49fdd9813a8271e92b4042e98765df2c1dd6a52fea501574dcae183528b2ddec"
+    },
+    "owl": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/owl.jsonl",
+      "sha256": "4a63491744e2f3ceb0b80b439c717d738b4921adfb17b050ff821fe1b058cb8f"
+    },
+    "party-any": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/party-any.jsonl",
+      "sha256": "15e64143d080dfd34af5cfde8078c9629148b524560d25cddd0ed39144616f10"
+    },
+    "party-flex": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/party-flex.jsonl",
+      "sha256": "ec6d036aed5cae24770bf22b8da2e9ffc7a7fad786e836f49149db95436db80e"
+    },
+    "party-main": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/party-main.jsonl",
+      "sha256": "1f24e00586cb1be1ecbec8f706ef4479ebdc2bc92508663b7cd3ceee66c5c542"
+    },
+    "party-one": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/party-one.jsonl",
+      "sha256": "d503f2974ceb2aa207fd2f7c61d6abd923f7ecfe1e57b88735e108bb2b5b911e"
+    },
+    "queen-body": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/queen-body.jsonl",
+      "sha256": "7a8c194845464073d276d92f94ecfe6a3cf99dd050eef38e150238dd766b89e2"
+    },
+    "queen": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/queen.jsonl",
+      "sha256": "6812ddc4c08618f7ad830aef8579b8bfcd849db6aa8b2f5500d49ab8e124b49b"
+    },
+    "ranking": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/ranking.jsonl",
+      "sha256": "84faafa07e13cc365b215b1c17db63d98e32eb83219ef025fcaf4f356c7094df"
+    },
+    "search-parity": {
+      "path": "/tmp/ygo-harpie.agx95xg0/results/search-parity.jsonl",
+      "sha256": "3d43cdbfd48d0bc6a9e1d9a831a4b584a4fe056d5ccc44e3319abb6492816eff"
+    }
+  },
+  "policy_source_sha256": "c8b0e6a331c11b5ff65c3351a2921c7569c4a59ca440ee31bef7088ce1494d94",
+  "deck_sha256": "9deff0fc124ba9cc216135d5184102b70459a1f29e08029017f46d0c5f287e2d",
+  "test_source_sha256": {
+    "crates/ygo-policies/src/lib.rs": "9f5b81ef03c2181feccd9b4227127c908302148a0168093e86635d20e1a713f1",
+    "crates/ygo-policies/tests/harpie_deck.rs": "298e86e5781e822b52e160a873ddf690a5d6bc7746c596521f6c442c33ea40ca"
+  },
+  "baseline_library_sha256": "82d4ff87fb574c6b9df17b3a0bea292050f5d567b4f8c7a8615f45b1dbef295a",
+  "candidate_library_sha256": "a023037dfe91a11d53973017de16e9e5b1899f8ec6512cd730347da00bcb22d4",
+  "benchmark_sha256": "a870586a8c90f3342833996b0d396b9c51874916d0cd19bbe6c23b12470143cb",
+  "previous_ranking_sha256": "6ada45bee29000ac3ec95dfe7fe41fbe892544917725db3d9201c4f9b2809ed8",
+  "deck_variant_lists": {
+    "original": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      27927359,
+      54415063,
+      76812113,
+      76812113,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475
+    ],
+    "legal": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835
+    ],
+    "lady1": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      91932350
+    ],
+    "no-girls": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      84834865,
+      84834865
+    ],
+    "no-pet": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      51962254
+    ],
+    "less-ground": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      98645731
+    ],
+    "no-current": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950
+    ],
+    "no-double": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      70342110
+    ],
+    "third-party": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      34100324,
+      34100324,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      77778835
+    ],
+    "owl-girls": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      51962254,
+      51962254
+    ],
+    "trap-girls": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110
+    ],
+    "silpheed-girls": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      43422537,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      73001017,
+      73001017
+    ],
+    "combined": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      52040216,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110
+    ],
+    "combined-owl": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      45778932,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110,
+      51962254
+    ],
+    "combined-mst": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110,
+      51962254,
+      5318639
+    ],
+    "combined-duality": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      6924874,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110,
+      51962254,
+      5318639,
+      98645731
+    ],
+    "combined-two-baby": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      6924874,
+      45547649,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110,
+      51962254,
+      5318639,
+      51962254
+    ],
+    "combined-recruiter": [
+      75064463,
+      75064463,
+      75064463,
+      91932350,
+      91932350,
+      80316585,
+      12206212,
+      6924874,
+      6924874,
+      45547649,
+      82199284,
+      82199284,
+      75782277,
+      75782277,
+      75782277,
+      90219263,
+      90219263,
+      12181376,
+      5318639,
+      14087893,
+      83764718,
+      98645731,
+      53567095,
+      53567095,
+      77778835,
+      29401950,
+      70342110,
+      44095762,
+      97077563,
+      56120475,
+      82199284,
+      45547649,
+      6924874,
+      77778835,
+      29401950,
+      70342110,
+      70342110,
+      51962254,
+      5318639,
+      84834865
+    ]
+  },
+  "screening_runs": {
+    "combined": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/combined.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/combined.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "deck-combined-duality": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined-duality",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-duality.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-combined-mst": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined-mst",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-mst.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-combined-owl": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined-owl",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-owl.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-combined-recruiter": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined-recruiter",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-recruiter.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-combined-two-baby": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined-two-baby",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined-two-baby.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-combined": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/combined",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-combined.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-lady1": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/lady1",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-lady1.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-legal": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/legal",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-legal.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-less-ground": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/less-ground",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-less-ground.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-no-current": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/no-current",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-no-current.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-no-double": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/no-double",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-no-double.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-no-girls": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/no-girls",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-no-girls.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-no-pet": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/no-pet",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-no-pet.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-original": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/original",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-original.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-owl-girls": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/owl-girls",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-owl-girls.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-silpheed-girls": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/silpheed-girls",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-silpheed-girls.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-third-party": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/third-party",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-third-party.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "deck-trap-girls": {
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/trap-girls",
+      "--games": "256",
+      "--library": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/deck-trap-girls.jsonl",
+      "--policies": "harpie",
+      "--seed": "30260000",
+      "--workers": "20"
+    },
+    "duality": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/duality.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/duality.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "egotist-lady": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/egotist-lady.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/egotist-lady.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "falcon-backrow": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/falcon-backrow.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/falcon-backrow.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "ground-ready": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/ground-ready.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/ground-ready.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "ground-self": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/ground-self.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/ground-self.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "ground": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/ground.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/ground.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "icarus-main": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/icarus-main.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/icarus-main.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "icarus-many": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/icarus-many.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/icarus-many.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "icarus-pressure": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/icarus-pressure.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/icarus-pressure.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "icarus": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/icarus.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/icarus.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "lady-summon": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/lady-summon.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/lady-summon.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "owl": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/owl.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/owl.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "party-any": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/party-any.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/party-any.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "party-flex": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/party-flex.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/party-flex.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "party-main": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/party-main.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/party-main.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "party-one": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/party-one.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/party-one.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "queen-body": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/queen-body.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/queen-body.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    },
+    "queen": {
+      "--baseline": "/tmp/ygo-harpie.agx95xg0/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-harpie.agx95xg0/queen.so",
+      "--decks": "/tmp/ygo-harpie.agx95xg0/decks/selected",
+      "--games": "256",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-harpie.agx95xg0/results/queen.jsonl",
+      "--policies": "harpie",
+      "--seed": "32480000",
+      "--workers": "12"
+    }
+  }
+}
