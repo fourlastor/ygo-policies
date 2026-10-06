@@ -1,0 +1,1566 @@
+{
+  "baseline_commit": "8401a8e0064672dc64feef08beea51c08a46ae38",
+  "development": {
+    "rock-block": {
+      "pairs": 12288,
+      "baseline": 0.5508626302083334,
+      "candidate": 0.6315511067708334,
+      "delta": 0.0806884765625,
+      "ci95": [
+        0.07379386614410464,
+        0.08758308698089536
+      ],
+      "improved": 1470,
+      "regressed": 479,
+      "identical": 2463,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "tele-dad": {
+      "pairs": 13312,
+      "baseline": 0.5447716346153846,
+      "candidate": 0.5727914663461539,
+      "delta": 0.028019831730769232,
+      "ci95": [
+        0.023557312038267005,
+        0.03248235142327146
+      ],
+      "improved": 651,
+      "regressed": 278,
+      "identical": 9915,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "heldout": {
+    "rock-block": {
+      "pairs": 15360,
+      "baseline": 0.5548177083333333,
+      "candidate": 0.6153645833333333,
+      "delta": 0.060546875,
+      "ci95": [
+        0.05458715464169629,
+        0.06650659535830371
+      ],
+      "improved": 1585,
+      "regressed": 654,
+      "identical": 2884,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "tele-dad": {
+      "pairs": 15360,
+      "baseline": 0.5541666666666667,
+      "candidate": 0.577734375,
+      "delta": 0.023567708333333333,
+      "ci95": [
+        0.019606773009488883,
+        0.027528643657177783
+      ],
+      "improved": 667,
+      "regressed": 305,
+      "identical": 11289,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "search": {
+    "before": {
+      "rock-block": {
+        "games": 96,
+        "pilot": 0.5104166666666666,
+        "search": 0.6979166666666666,
+        "gap": 0.1875,
+        "playouts": 229448,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "tele-dad": {
+        "games": 104,
+        "pilot": 0.49038461538461536,
+        "search": 0.7211538461538461,
+        "gap": 0.23076923076923078,
+        "playouts": 213360,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    },
+    "after": {
+      "rock-block": {
+        "games": 96,
+        "pilot": 0.5833333333333334,
+        "search": 0.7291666666666666,
+        "gap": 0.14583333333333326,
+        "playouts": 193776,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "tele-dad": {
+        "games": 104,
+        "pilot": 0.5865384615384616,
+        "search": 0.7596153846153846,
+        "gap": 0.17307692307692302,
+        "playouts": 214152,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    }
+  },
+  "screening": {
+    "screen1": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5771484375,
+        "delta": 0.023111979166666668,
+        "ci95": [
+          0.014856730537352246,
+          0.03136722779598109
+        ],
+        "improved": 120,
+        "regressed": 49,
+        "identical": 2121,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5420673076923077,
+        "delta": 0.001201923076923077,
+        "ci95": [
+          -0.0035832115562812695,
+          0.0059870577101274235
+        ],
+        "improved": 35,
+        "regressed": 31,
+        "identical": 2972,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen2": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5511067708333334,
+        "delta": -0.0029296875,
+        "ci95": [
+          -0.006913427644203706,
+          0.0010540526442037058
+        ],
+        "improved": 15,
+        "regressed": 24,
+        "identical": 2426,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5694110576923077,
+        "delta": 0.028545673076923076,
+        "ci95": [
+          0.019763617551841882,
+          0.03732772860200427
+        ],
+        "improved": 160,
+        "regressed": 65,
+        "identical": 2455,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen3": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5598958333333334,
+        "delta": 0.005859375,
+        "ci95": [
+          0.0019311728673078836,
+          0.009787577132692116
+        ],
+        "improved": 28,
+        "regressed": 10,
+        "identical": 2498,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5348557692307693,
+        "delta": -0.006009615384615385,
+        "ci95": [
+          -0.0158990165703969,
+          0.0038797858011661293
+        ],
+        "improved": 131,
+        "regressed": 151,
+        "identical": 2214,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen4": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5439453125,
+        "delta": -0.010091145833333334,
+        "ci95": [
+          -0.020933392972307032,
+          0.0007511013056403643
+        ],
+        "improved": 129,
+        "regressed": 160,
+        "identical": 1766,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5405649038461539,
+        "delta": -0.00030048076923076925,
+        "ci95": [
+          -0.0008894230769230614,
+          0.00028846153846152293
+        ],
+        "improved": 0,
+        "regressed": 1,
+        "identical": 3324,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen5": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5703125,
+        "delta": 0.016276041666666668,
+        "ci95": [
+          0.010892061438838654,
+          0.02166002189449468
+        ],
+        "improved": 61,
+        "regressed": 11,
+        "identical": 2810,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5411658653846154,
+        "delta": 0.00030048076923076925,
+        "ci95": [
+          -0.00028846153846153236,
+          0.0008894230769230709
+        ],
+        "improved": 1,
+        "regressed": 0,
+        "identical": 3280,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen6": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.55859375,
+        "delta": 0.004557291666666667,
+        "ci95": [
+          -0.0026038266005716593,
+          0.011718409933904994
+        ],
+        "improved": 70,
+        "regressed": 56,
+        "identical": 2570,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5009014423076923,
+        "delta": -0.039963942307692304,
+        "ci95": [
+          -0.05082009807877582,
+          -0.02910778653660879
+        ],
+        "improved": 106,
+        "regressed": 239,
+        "identical": 2088,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen7": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5582682291666666,
+        "delta": 0.004231770833333333,
+        "ci95": [
+          0.0010446597673140225,
+          0.007418881899352643
+        ],
+        "improved": 19,
+        "regressed": 6,
+        "identical": 2935,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5408653846153846,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen8": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5556640625,
+        "delta": 0.0016276041666666667,
+        "ci95": [
+          -0.0006724669086965375,
+          0.003927675242029871
+        ],
+        "improved": 9,
+        "regressed": 4,
+        "identical": 3027,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5408653846153846,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen9": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5543619791666666,
+        "delta": 0.0003255208333333333,
+        "ci95": [
+          -0.00031250000000000597,
+          0.0009635416666666727
+        ],
+        "improved": 1,
+        "regressed": 0,
+        "identical": 3060,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.54296875,
+        "delta": 0.0021033653846153845,
+        "ci95": [
+          -0.0007206228160143097,
+          0.004927353585245079
+        ],
+        "improved": 15,
+        "regressed": 8,
+        "identical": 2158,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen10": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5546875,
+        "delta": 0.0006510416666666666,
+        "ci95": [
+          -0.0011537006646805594,
+          0.0024557839980138925
+        ],
+        "improved": 5,
+        "regressed": 3,
+        "identical": 2985,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.53515625,
+        "delta": -0.005709134615384615,
+        "ci95": [
+          -0.011855736078659283,
+          0.0004374668478900534
+        ],
+        "improved": 45,
+        "regressed": 64,
+        "identical": 2850,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen11": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5771484375,
+        "delta": 0.023111979166666668,
+        "ci95": [
+          0.014906205366588213,
+          0.03131775296674512
+        ],
+        "improved": 119,
+        "regressed": 48,
+        "identical": 2114,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5694110576923077,
+        "delta": 0.028545673076923076,
+        "ci95": [
+          0.019763617551841882,
+          0.03732772860200427
+        ],
+        "improved": 160,
+        "regressed": 65,
+        "identical": 2452,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen12": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5712890625,
+        "delta": 0.017252604166666668,
+        "ci95": [
+          0.0062723040805796985,
+          0.028232904252753637
+        ],
+        "improved": 175,
+        "regressed": 122,
+        "identical": 1394,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5408653846153846,
+        "delta": 0.0,
+        "ci95": [
+          -0.0037253579467485727,
+          0.0037253579467485727
+        ],
+        "improved": 20,
+        "regressed": 20,
+        "identical": 3163,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen13": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5602213541666666,
+        "delta": 0.006184895833333333,
+        "ci95": [
+          0.0016330271720298856,
+          0.01073676449463678
+        ],
+        "improved": 35,
+        "regressed": 16,
+        "identical": 2869,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.54296875,
+        "delta": 0.0021033653846153845,
+        "ci95": [
+          -1.9212387680623937e-05,
+          0.004225943156911393
+        ],
+        "improved": 10,
+        "regressed": 3,
+        "identical": 3284,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen14": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5498046875,
+        "delta": -0.004231770833333333,
+        "ci95": [
+          -0.012427264479795357,
+          0.003963722813128691
+        ],
+        "improved": 76,
+        "regressed": 89,
+        "identical": 1734,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5411658653846154,
+        "delta": 0.00030048076923076925,
+        "ci95": [
+          -0.0010165925867104523,
+          0.0016175541251719908
+        ],
+        "improved": 3,
+        "regressed": 2,
+        "identical": 2967,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen15": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5569661458333334,
+        "delta": 0.0029296875,
+        "ci95": [
+          -0.0028125,
+          0.008671874999999999
+        ],
+        "improved": 45,
+        "regressed": 36,
+        "identical": 2369,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5525841346153846,
+        "delta": 0.01171875,
+        "ci95": [
+          0.005040507654166437,
+          0.018396992345833564
+        ],
+        "improved": 84,
+        "regressed": 45,
+        "identical": 2747,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen16": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5524088541666666,
+        "delta": -0.0016276041666666667,
+        "ci95": [
+          -0.005292899473890588,
+          0.0020376911405572545
+        ],
+        "improved": 14,
+        "regressed": 19,
+        "identical": 2736,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5471754807692307,
+        "delta": 0.006310096153846154,
+        "ci95": [
+          -0.0032399715307109833,
+          0.01586016383840329
+        ],
+        "improved": 142,
+        "regressed": 121,
+        "identical": 2080,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen17": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.5755208333333334,
+        "delta": 0.021484375,
+        "ci95": [
+          0.01502127010284088,
+          0.027947479897159122
+        ],
+        "improved": 85,
+        "regressed": 19,
+        "identical": 2167,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5408653846153846,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "combined": {
+      "rock-block": {
+        "pairs": 3072,
+        "baseline": 0.5540364583333334,
+        "candidate": 0.6305338541666666,
+        "delta": 0.07649739583333333,
+        "ci95": [
+          0.06267756651227119,
+          0.09031722515439547
+        ],
+        "improved": 361,
+        "regressed": 126,
+        "identical": 615,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 3328,
+        "baseline": 0.5408653846153846,
+        "candidate": 0.5679086538461539,
+        "delta": 0.027043269230769232,
+        "ci95": [
+          0.017444305853932328,
+          0.036642232607606136
+        ],
+        "improved": 179,
+        "regressed": 89,
+        "identical": 2328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    }
+  },
+  "matchups": [
+    {
+      "baseline": 0.826171875,
+      "candidate": 0.892578125,
+      "delta": 0.06640625,
+      "identical": 65,
+      "improved": 41,
+      "limits": 0,
+      "opponent": "arcana",
+      "paired_95_half_width": 0.02591606769452942,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.310546875,
+      "candidate": 0.3984375,
+      "delta": 0.087890625,
+      "identical": 96,
+      "improved": 72,
+      "limits": 0,
+      "opponent": "blackwing",
+      "paired_95_half_width": 0.03735726729371841,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 27
+    },
+    {
+      "baseline": 0.517578125,
+      "candidate": 0.646484375,
+      "delta": 0.12890625,
+      "identical": 97,
+      "improved": 83,
+      "limits": 0,
+      "opponent": "burn",
+      "paired_95_half_width": 0.0361481921290607,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.08984375,
+      "candidate": 0.119140625,
+      "delta": 0.029296875,
+      "identical": 15,
+      "improved": 25,
+      "limits": 0,
+      "opponent": "countdown",
+      "paired_95_half_width": 0.022526874720653296,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 10
+    },
+    {
+      "baseline": 0.732421875,
+      "candidate": 0.8046875,
+      "delta": 0.072265625,
+      "identical": 116,
+      "improved": 50,
+      "limits": 0,
+      "opponent": "crystal",
+      "paired_95_half_width": 0.0297620967644298,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 13
+    },
+    {
+      "baseline": 0.833984375,
+      "candidate": 0.875,
+      "delta": 0.041015625,
+      "identical": 93,
+      "improved": 42,
+      "limits": 0,
+      "opponent": "destiny-hero",
+      "paired_95_half_width": 0.030205889137311558,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 21
+    },
+    {
+      "baseline": 0.619140625,
+      "candidate": 0.6640625,
+      "delta": 0.044921875,
+      "identical": 111,
+      "improved": 54,
+      "limits": 0,
+      "opponent": "draconic-might",
+      "paired_95_half_width": 0.03511271681595048,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 31
+    },
+    {
+      "baseline": 0.58203125,
+      "candidate": 0.654296875,
+      "delta": 0.072265625,
+      "identical": 128,
+      "improved": 60,
+      "limits": 0,
+      "opponent": "dragunity",
+      "paired_95_half_width": 0.034343074809587544,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 23
+    },
+    {
+      "baseline": 0.802734375,
+      "candidate": 0.814453125,
+      "delta": 0.01171875,
+      "identical": 103,
+      "improved": 30,
+      "limits": 0,
+      "opponent": "fortune-lady",
+      "paired_95_half_width": 0.02814003236970383,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.70703125,
+      "candidate": 0.783203125,
+      "delta": 0.076171875,
+      "identical": 106,
+      "improved": 54,
+      "limits": 0,
+      "opponent": "gishki",
+      "paired_95_half_width": 0.031137158479705277,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.5625,
+      "candidate": 0.6484375,
+      "delta": 0.0859375,
+      "identical": 106,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "gladiator",
+      "paired_95_half_width": 0.03388957140604786,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.34375,
+      "candidate": 0.3515625,
+      "delta": 0.0078125,
+      "identical": 115,
+      "improved": 42,
+      "limits": 0,
+      "opponent": "gravekeeper",
+      "paired_95_half_width": 0.034266582608238894,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 38
+    },
+    {
+      "baseline": 0.306640625,
+      "candidate": 0.3515625,
+      "delta": 0.044921875,
+      "identical": 106,
+      "improved": 43,
+      "limits": 0,
+      "opponent": "harpie",
+      "paired_95_half_width": 0.030164085603235573,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 20
+    },
+    {
+      "baseline": 0.42578125,
+      "candidate": 0.474609375,
+      "delta": 0.048828125,
+      "identical": 104,
+      "improved": 51,
+      "limits": 0,
+      "opponent": "heroes",
+      "paired_95_half_width": 0.03335691870027242,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 26
+    },
+    {
+      "baseline": 0.515625,
+      "candidate": 0.646484375,
+      "delta": 0.130859375,
+      "identical": 83,
+      "improved": 95,
+      "limits": 0,
+      "opponent": "infernity",
+      "paired_95_half_width": 0.04095484937872163,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 28
+    },
+    {
+      "baseline": 0.681640625,
+      "candidate": 0.736328125,
+      "delta": 0.0546875,
+      "identical": 109,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "karakuri",
+      "paired_95_half_width": 0.03763604389525573,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 35
+    },
+    {
+      "baseline": 0.53515625,
+      "candidate": 0.607421875,
+      "delta": 0.072265625,
+      "identical": 93,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "lightsworn",
+      "paired_95_half_width": 0.034767991396298555,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.30078125,
+      "candidate": 0.376953125,
+      "delta": 0.076171875,
+      "identical": 114,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "machina",
+      "paired_95_half_width": 0.03512578231720629,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.27734375,
+      "candidate": 0.353515625,
+      "delta": 0.076171875,
+      "identical": 59,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "monarch",
+      "paired_95_half_width": 0.03512578231720629,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.697265625,
+      "candidate": 0.7578125,
+      "delta": 0.060546875,
+      "identical": 124,
+      "improved": 52,
+      "limits": 0,
+      "opponent": "morphtronic",
+      "paired_95_half_width": 0.03231586740099419,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 21
+    },
+    {
+      "baseline": 0.875,
+      "candidate": 0.904296875,
+      "delta": 0.029296875,
+      "identical": 105,
+      "improved": 22,
+      "limits": 0,
+      "opponent": "ojama",
+      "paired_95_half_width": 0.020478299968784405,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.81640625,
+      "candidate": 0.859375,
+      "delta": 0.04296875,
+      "identical": 66,
+      "improved": 40,
+      "limits": 0,
+      "opponent": "pyramid",
+      "paired_95_half_width": 0.028943850498844934,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 18
+    },
+    {
+      "baseline": 0.48828125,
+      "candidate": 0.5390625,
+      "delta": 0.05078125,
+      "identical": 96,
+      "improved": 52,
+      "limits": 0,
+      "opponent": "quickdraw-plant",
+      "paired_95_half_width": 0.03355450279872061,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 26
+    },
+    {
+      "baseline": 0.494140625,
+      "candidate": 0.568359375,
+      "delta": 0.07421875,
+      "identical": 113,
+      "improved": 62,
+      "limits": 0,
+      "opponent": "six-samurai",
+      "paired_95_half_width": 0.034947755045594615,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.791015625,
+      "candidate": 0.84375,
+      "delta": 0.052734375,
+      "identical": 98,
+      "improved": 41,
+      "limits": 0,
+      "opponent": "spellcaster",
+      "paired_95_half_width": 0.028047650068467905,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 14
+    },
+    {
+      "baseline": 0.544921875,
+      "candidate": 0.60546875,
+      "delta": 0.060546875,
+      "identical": 86,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "tele-dad",
+      "paired_95_half_width": 0.03617475958571278,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 30
+    },
+    {
+      "baseline": 0.78515625,
+      "candidate": 0.841796875,
+      "delta": 0.056640625,
+      "identical": 93,
+      "improved": 40,
+      "limits": 0,
+      "opponent": "toon",
+      "paired_95_half_width": 0.026920732595077972,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.125,
+      "candidate": 0.11328125,
+      "delta": -0.01171875,
+      "identical": 128,
+      "improved": 14,
+      "limits": 0,
+      "opponent": "verdict",
+      "paired_95_half_width": 0.022320327914399814,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 20
+    },
+    {
+      "baseline": 0.6015625,
+      "candidate": 0.689453125,
+      "delta": 0.087890625,
+      "identical": 53,
+      "improved": 73,
+      "limits": 0,
+      "opponent": "watt",
+      "paired_95_half_width": 0.03774826960286375,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 28
+    },
+    {
+      "baseline": 0.455078125,
+      "candidate": 0.5390625,
+      "delta": 0.083984375,
+      "identical": 103,
+      "improved": 73,
+      "limits": 0,
+      "opponent": "x-saber",
+      "paired_95_half_width": 0.038201382867104665,
+      "pairs": 512,
+      "policy": "rock-block",
+      "regressed": 30
+    },
+    {
+      "baseline": 0.89453125,
+      "candidate": 0.90625,
+      "delta": 0.01171875,
+      "identical": 353,
+      "improved": 14,
+      "limits": 0,
+      "opponent": "arcana",
+      "paired_95_half_width": 0.017944314087458158,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 8
+    },
+    {
+      "baseline": 0.37890625,
+      "candidate": 0.396484375,
+      "delta": 0.017578125,
+      "identical": 381,
+      "improved": 21,
+      "limits": 0,
+      "opponent": "blackwing",
+      "paired_95_half_width": 0.021959583368490392,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 12
+    },
+    {
+      "baseline": 0.78515625,
+      "candidate": 0.814453125,
+      "delta": 0.029296875,
+      "identical": 373,
+      "improved": 21,
+      "limits": 0,
+      "opponent": "burn",
+      "paired_95_half_width": 0.019748274133588255,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 6
+    },
+    {
+      "baseline": 0.10546875,
+      "candidate": 0.109375,
+      "delta": 0.00390625,
+      "identical": 417,
+      "improved": 7,
+      "limits": 0,
+      "opponent": "countdown",
+      "paired_95_half_width": 0.013269661543805761,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 5
+    },
+    {
+      "baseline": 0.603515625,
+      "candidate": 0.6484375,
+      "delta": 0.044921875,
+      "identical": 349,
+      "improved": 37,
+      "limits": 0,
+      "opponent": "crystal",
+      "paired_95_half_width": 0.027086406741063628,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 14
+    },
+    {
+      "baseline": 0.88671875,
+      "candidate": 0.880859375,
+      "delta": -0.005859375,
+      "identical": 357,
+      "improved": 13,
+      "limits": 0,
+      "opponent": "destiny-hero",
+      "paired_95_half_width": 0.020628990588544772,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.5546875,
+      "candidate": 0.576171875,
+      "delta": 0.021484375,
+      "identical": 396,
+      "improved": 18,
+      "limits": 0,
+      "opponent": "draconic-might",
+      "paired_95_half_width": 0.01906857157195406,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.44921875,
+      "candidate": 0.490234375,
+      "delta": 0.041015625,
+      "identical": 372,
+      "improved": 35,
+      "limits": 0,
+      "opponent": "dragunity",
+      "paired_95_half_width": 0.02658628725644869,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 14
+    },
+    {
+      "baseline": 0.693359375,
+      "candidate": 0.71875,
+      "delta": 0.025390625,
+      "identical": 365,
+      "improved": 23,
+      "limits": 0,
+      "opponent": "fortune-lady",
+      "paired_95_half_width": 0.021902046101253802,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 10
+    },
+    {
+      "baseline": 0.6015625,
+      "candidate": 0.65625,
+      "delta": 0.0546875,
+      "identical": 364,
+      "improved": 37,
+      "limits": 0,
+      "opponent": "gishki",
+      "paired_95_half_width": 0.025552776812419867,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 9
+    },
+    {
+      "baseline": 0.38671875,
+      "candidate": 0.423828125,
+      "delta": 0.037109375,
+      "identical": 382,
+      "improved": 27,
+      "limits": 0,
+      "opponent": "gladiator",
+      "paired_95_half_width": 0.02244013936199663,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 8
+    },
+    {
+      "baseline": 0.26953125,
+      "candidate": 0.291015625,
+      "delta": 0.021484375,
+      "identical": 336,
+      "improved": 27,
+      "limits": 0,
+      "opponent": "gravekeeper",
+      "paired_95_half_width": 0.025058099828203534,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.439453125,
+      "candidate": 0.46875,
+      "delta": 0.029296875,
+      "identical": 372,
+      "improved": 27,
+      "limits": 0,
+      "opponent": "harpie",
+      "paired_95_half_width": 0.023794809547301222,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 12
+    },
+    {
+      "baseline": 0.439453125,
+      "candidate": 0.466796875,
+      "delta": 0.02734375,
+      "identical": 373,
+      "improved": 22,
+      "limits": 0,
+      "opponent": "heroes",
+      "paired_95_half_width": 0.020853672470355338,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 8
+    },
+    {
+      "baseline": 0.373046875,
+      "candidate": 0.408203125,
+      "delta": 0.03515625,
+      "identical": 366,
+      "improved": 37,
+      "limits": 0,
+      "opponent": "infernity",
+      "paired_95_half_width": 0.02851260334196919,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.533203125,
+      "candidate": 0.580078125,
+      "delta": 0.046875,
+      "identical": 370,
+      "improved": 35,
+      "limits": 0,
+      "opponent": "karakuri",
+      "paired_95_half_width": 0.025669231788591537,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.416015625,
+      "candidate": 0.423828125,
+      "delta": 0.0078125,
+      "identical": 379,
+      "improved": 19,
+      "limits": 0,
+      "opponent": "lightsworn",
+      "paired_95_half_width": 0.022333172668823374,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.31640625,
+      "candidate": 0.326171875,
+      "delta": 0.009765625,
+      "identical": 389,
+      "improved": 16,
+      "limits": 0,
+      "opponent": "machina",
+      "paired_95_half_width": 0.019892962668913584,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.40625,
+      "candidate": 0.42578125,
+      "delta": 0.01953125,
+      "identical": 379,
+      "improved": 25,
+      "limits": 0,
+      "opponent": "monarch",
+      "paired_95_half_width": 0.024175627207532146,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.771484375,
+      "candidate": 0.791015625,
+      "delta": 0.01953125,
+      "identical": 381,
+      "improved": 13,
+      "limits": 0,
+      "opponent": "morphtronic",
+      "paired_95_half_width": 0.015233636814746368,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 3
+    },
+    {
+      "baseline": 0.95703125,
+      "candidate": 0.966796875,
+      "delta": 0.009765625,
+      "identical": 354,
+      "improved": 8,
+      "limits": 0,
+      "opponent": "ojama",
+      "paired_95_half_width": 0.012680633142610597,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 3
+    },
+    {
+      "baseline": 0.873046875,
+      "candidate": 0.88671875,
+      "delta": 0.013671875,
+      "identical": 372,
+      "improved": 14,
+      "limits": 0,
+      "opponent": "pyramid",
+      "paired_95_half_width": 0.017519770911154166,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.5234375,
+      "candidate": 0.548828125,
+      "delta": 0.025390625,
+      "identical": 359,
+      "improved": 27,
+      "limits": 0,
+      "opponent": "quickdraw-plant",
+      "paired_95_half_width": 0.02443696742327297,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 14
+    },
+    {
+      "baseline": 0.46875,
+      "candidate": 0.48828125,
+      "delta": 0.01953125,
+      "identical": 400,
+      "improved": 23,
+      "limits": 0,
+      "opponent": "rock-block",
+      "paired_95_half_width": 0.02292876085106301,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 13
+    },
+    {
+      "baseline": 0.388671875,
+      "candidate": 0.419921875,
+      "delta": 0.03125,
+      "identical": 387,
+      "improved": 26,
+      "limits": 0,
+      "opponent": "six-samurai",
+      "paired_95_half_width": 0.022830993864085675,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 10
+    },
+    {
+      "baseline": 0.861328125,
+      "candidate": 0.8828125,
+      "delta": 0.021484375,
+      "identical": 384,
+      "improved": 18,
+      "limits": 0,
+      "opponent": "spellcaster",
+      "paired_95_half_width": 0.01906857157195406,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.89453125,
+      "candidate": 0.91015625,
+      "delta": 0.015625,
+      "identical": 396,
+      "improved": 10,
+      "limits": 0,
+      "opponent": "toon",
+      "paired_95_half_width": 0.013204666892418226,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 2
+    },
+    {
+      "baseline": 0.138671875,
+      "candidate": 0.154296875,
+      "delta": 0.015625,
+      "identical": 415,
+      "improved": 12,
+      "limits": 0,
+      "opponent": "verdict",
+      "paired_95_half_width": 0.015267485203924541,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 4
+    },
+    {
+      "baseline": 0.734375,
+      "candidate": 0.755859375,
+      "delta": 0.021484375,
+      "identical": 369,
+      "improved": 22,
+      "limits": 0,
+      "opponent": "watt",
+      "paired_95_half_width": 0.02193344877622742,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.48046875,
+      "candidate": 0.515625,
+      "delta": 0.03515625,
+      "identical": 399,
+      "improved": 33,
+      "limits": 0,
+      "opponent": "x-saber",
+      "paired_95_half_width": 0.026372386996853642,
+      "pairs": 512,
+      "policy": "tele-dad",
+      "regressed": 15
+    }
+  ],
+  "search_standalone_pairs_reproduced": 200,
+  "unchanged_tournament_games": {
+    "games": 103936,
+    "identical": 103936,
+    "previous_raw_sha256": "84faafa07e13cc365b215b1c17db63d98e32eb83219ef025fcaf4f356c7094df",
+    "current_raw_sha256": "157ef0beb352cd14c6aee9a4008ec8d08fba83c5854603655da52cda386062fb"
+  },
+  "selected_screen_reproduced_in_development": 6400,
+  "workspace_tests_passed": 147,
+  "selected_screens": {
+    "rock-block": "combined",
+    "tele-dad": "screen11"
+  }
+}

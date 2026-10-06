@@ -233,9 +233,13 @@ impl Strategy for TeleDad {
                 let pick = self.teleport_pick(&ctx).map(|(c, _)| c);
                 Some(if pick == Some(code) { 5000.0 } else { worth })
             }
-            // DARKs sent from the Deck: Malicious can leave the Graveyard again.
+            // The two-copy Malicious engine needs its partner left in the Deck.
+            // Check only our visible zones; otherwise prefer Plaguespreader.
             (_, Hint::ToGraveyard) if member.at.location == Location::Deck => Some(match code {
-                MALICIOUS => 3000.0,
+                MALICIOUS if !ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, MALICIOUS))
+                    && !ctx.in_hand(MALICIOUS) && ctx.count_in(ctx.me, Location::MonsterZone, MALICIOUS) == 0
+                    && ctx.count_in(ctx.me, Location::Banished, MALICIOUS) == 0 => 3000.0,
+                MALICIOUS => -1000.0,
                 PLAGUESPREADER => 2500.0,
                 SPIRIT_REAPER | KREBONS => 2000.0,
                 _ => -worth,

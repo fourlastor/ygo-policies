@@ -1,8 +1,8 @@
 //! "Koa'ki Meiru - Rock Block": Skill Drain control.
 //!
-//! Skill Drain turns the deck's drawbacks off: Beast King Barbaros keeps 3000
-//! ATK without Tributes and the Koa'ki Meiru beaters skip their End Phase
-//! upkeep.  Around that, a trap-heavy shell (Solemn Warning, Bottomless Trap
+//! Skill Drain lets Beast King Barbaros keep 3000 ATK without Tributes.
+//! Koa'ki Meiru upkeep still needs another Rock in hand, even under Drain.
+//! Around that, a trap-heavy shell (Solemn Warning, Bottomless Trap
 //! Hole, Mirror Force, Torrential Tribute, Magic Jammer, Royal Oppression)
 //! and the on-board negations (Sandman vs Traps, Guardian vs monster effects,
 //! Rai-Oh vs Special Summons) keep the opponent from ever resolving a threat.
@@ -55,7 +55,7 @@ impl RockBlock {
     fn drain_beneficiaries(ctx: &Ctx) -> usize {
         ctx.monsters(ctx.me)
             .iter()
-            .filter(|c| c.position.face_up && [BARBAROS, GUARDIAN, SANDMAN].iter().any(|k| ctx.is(c, *k)))
+            .filter(|c| c.position.face_up && ctx.is(c, BARBAROS))
             .count()
     }
 
@@ -110,6 +110,15 @@ impl Strategy for RockBlock {
                 return t.pick(i);
             }
         }
+        // Turn an otherwise unbeatable attacker toward its weaker DEF.
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) {
+            let attack = ctx.monsters(ctx.me).iter().filter(|c| ctx.can_attack(c)).map(|c| c.attack).max().unwrap_or(0);
+            let target = ctx.monsters(ctx.opp).into_iter().filter(|c| c.position.face_up && c.position.attack
+                && c.attack >= attack && c.defense < attack).max_by_key(|c| c.attack);
+            if let Some(target) = target {
+                if let Some(i) = t.activate_from(AD_CHANGER, Location::Graveyard) { return t.pick_targeting(i, vec![target.at]); }
+            }
+        }
         // Mystic Box: trade our weakest body for their best monster.
         if let Some(i) = t.activate(MYSTIC_BOX) {
             let theirs = ctx.monsters(ctx.opp).into_iter().max_by_key(|c| ctx.threat(c));
@@ -123,7 +132,6 @@ impl Strategy for RockBlock {
                 }
             }
         }
-        // Barbaros' Tribute 3 summon clears the opponent's whole side.
         None
     }
 
@@ -133,23 +141,13 @@ impl Strategy for RockBlock {
         let data = ctx.data(code);
         let drained = Self::drained(&ctx);
         Some(match (choice.kind, code) {
-            (ChoiceKind::NormalSummon, BARBAROS) => {
-                let opp_cards = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
-                let fodder = ctx.monsters(ctx.me).len();
-                if fodder >= 3 && opp_cards >= 3 {
-                    Some(4000.0)
-                } else if fodder == 0 {
-                    Some(if drained { 3200.0 } else { 2400.0 })
-                } else {
-                    // The engine would ask to Tribute; never feed it our board.
-                    None
-                }
-            }
+            (ChoiceKind::NormalSummon, BARBAROS) => (ctx.free_monster_zones(ctx.me) > 0).then_some(if drained { 3200.0 } else { 2400.0 }),
             (ChoiceKind::NormalSummon, GUARDIAN | SANDMAN) => {
-                // Without Skill Drain they need a Rock to reveal every End Phase.
+                // Their upkeep cannot be disabled by Skill Drain. Keep a second Rock to reveal.
                 let rocks = ctx.hand().iter().filter(|c| ctx.view_data(c).race & races::ROCK != 0).count();
-                if drained || rocks >= 2 { Some(2000.0) } else { Some(1300.0) }
+                if rocks >= 2 { Some(2000.0) } else { None }
             }
+            (ChoiceKind::NormalSummon, GRAND_MOLE) if !drained && ctx.opp_best_attack() >= 1900 => Some(2600.0),
             (ChoiceKind::NormalSummon, RAI_OH) => Some(1950.0),
             (ChoiceKind::SetMonster, MORPHING_JAR) if ctx.hand_size(ctx.me) <= 2 => Some(1500.0),
             (ChoiceKind::SetMonster, MORPHING_JAR) => None,
@@ -204,14 +202,11 @@ impl Strategy for RockBlock {
                 }
                 _ => Response::no(),
             },
-            ROYAL_OPPRESSION if from_field && choice.at().and_then(|a| ctx.card(a)).map_or(false, |c| c.position.face_up) => {
-                // The "pay 800 to negate a Special Summon" effect.
-                if ctx.my_lp() > 2400 && !ctx.my_turn() { Response::new(45.0) } else { Response::no() }
-            }
-            ROYAL_OPPRESSION => {
-                let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
-                if end_of_their_turn { Response::new(15.0) } else { Response::no() }
-            }
+            // The negation and the free face-up activation share a card, not an effect.
+            ROYAL_OPPRESSION if choice.description == (ROYAL_OPPRESSION as u64) << 20
+                && ctx.my_lp() > 800 && (hostile.matches(|_| true) || Self::summoned(&ctx).is_some()) => Response::new(75.0),
+            ROYAL_OPPRESSION if choice.description == 0 && !ctx.my_turn() => Response::new(15.0),
+            ROYAL_OPPRESSION => Response::no(),
             NECRO_GARDNA => match incoming {
                 Some((attacker, target)) if ctx.attack_hurts(attacker, target) => Response::new(55.0),
                 _ => Response::no(),
@@ -228,6 +223,11 @@ impl Strategy for RockBlock {
             return Some(-(value(self, &ctx, member.code, None) as f64));
         }
         None
+    }
+
+    fn option(&self, t: &Turn) -> Option<usize> {
+        // Explicitly choose the no-tribute procedure, even with tribute fodder present.
+        t.choices().find(|(_, c)| c.description == (BARBAROS as u64) << 20).map(|(i, _)| i)
     }
 
     fn yes_no(&self, t: &Turn) -> Option<bool> {

@@ -3388,4 +3388,119 @@ mod tests {
         let mut policy = crate::registry::create("harpie", Arc::new(MemoryCards::default())).unwrap();
         assert_eq!(policy.choose(&obs, &window), 0, "a group revival is worth using in other windows too");
     }
+
+    #[test]
+    fn rock_block_summons_barbaros_beside_an_existing_monster_without_tributes() {
+        const BARBAROS: u32 = 78651105;
+        let db = Arc::new(MemoryCards([creature(BARBAROS, 8, 3000, 1200, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, BARBAROS, false),
+            monster(0, 0, Some(45041488), Position::FACE_UP_ATTACK, 1900, 1200)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, BARBAROS, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("rock-block", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        let options = decide(DecisionKind::Option, None, vec![
+            Choice { description: 1, ..choice(ChoiceKind::Option) },
+            Choice { description: (BARBAROS as u64) << 20, ..choice(ChoiceKind::Option) },
+            Choice { description: ((BARBAROS as u64) << 20) | 1, ..choice(ChoiceKind::Option) }]);
+        assert_eq!(policy.choose(&obs, &options), 1, "select the actual no-tribute procedure, regardless of option ordering");
+        for seq in 1..5 { obs.cards.push(monster(0, seq, Some(45041488), Position::FACE_UP_ATTACK, 1900, 1200)); }
+        let mut policy = crate::registry::create("rock-block", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "a full field cannot use the no-tribute summon");
+    }
+
+    #[test]
+    fn rock_block_still_preserves_rocks_for_upkeep_under_skill_drain() {
+        const GUARDIAN: u32 = 45041488;
+        const RAI_OH: u32 = 71564252;
+        const DRAIN: u32 = 82732705;
+        let mut guardian = creature(GUARDIAN, 4, 1900, 1200, 0x1d);
+        guardian.1.race = crate::cards::races::ROCK;
+        let db = Arc::new(MemoryCards([guardian, creature(RAI_OH, 4, 1900, 800, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, DRAIN, true), card(0, Location::Hand, 0, GUARDIAN, false),
+            card(0, Location::Hand, 1, RAI_OH, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, GUARDIAN, 0),
+            from_hand(ChoiceKind::NormalSummon, RAI_OH, 1), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("rock-block", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "Skill Drain does not switch off the upkeep cost");
+        obs.cards.push(card(0, Location::Hand, 2, GUARDIAN, false));
+        let mut policy = crate::registry::create("rock-block", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "the second Rock can pay upkeep after the summon");
+    }
+
+    #[test]
+    fn rock_block_oppression_negates_the_opponent_but_not_our_own_summon() {
+        const OPPRESSION: u32 = 93016201;
+        let mut obs = observation();
+        obs.life_points[0] = 900;
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, OPPRESSION, false),
+            monster(1, 0, Some(44508094), Position::FACE_UP_ATTACK, 2500, 2000)];
+        obs.event_cards = vec![(obs.cards[1].at, obs.cards[1].code)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![Choice { description: (OPPRESSION as u64) << 20, ..activate(OPPRESSION, Location::SpellTrapZone, 0) }, choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("rock-block", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0, "the opponent may summon during our turn, with Oppression still set");
+        obs.life_points[0] = 800;
+        let mut policy = crate::registry::create("rock-block", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 1, "leave Life Points after paying the cost");
+        obs.life_points[0] = 8000;
+        obs.cards[1].at.controller = 0;
+        obs.event_cards = vec![(obs.cards[1].at, obs.cards[1].code)];
+        for turn_player in [0, 1] {
+            obs.turn_player = Some(turn_player);
+            let mut policy = crate::registry::create("rock-block", Arc::new(MemoryCards::default())).unwrap();
+            assert_eq!(policy.choose(&obs, &window), 1, "never mistake a negation option for merely flipping Oppression face-up");
+        }
+    }
+
+    #[test]
+    fn tele_dad_mills_plaguespreader_instead_of_stranding_both_malicious() {
+        const MALICIOUS: u32 = 9411399;
+        const PLAGUE: u32 = 33420078;
+        let db = Arc::new(MemoryCards([creature(MALICIOUS, 6, 800, 800, 0),
+            creature(PLAGUE, 2, 400, 200, 0)].into_iter().collect()));
+        let send = select_one(Hint::ToGraveyard, vec![toggle(Location::Deck, 0, MALICIOUS), toggle(Location::Deck, 1, PLAGUE)]);
+        let mut obs = observation();
+        let mut policy = crate::registry::create("tele-dad", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &send), 0);
+        for location in [Location::Hand, Location::Graveyard, Location::MonsterZone, Location::Banished] {
+            obs.cards = vec![card(0, location, 0, MALICIOUS, true)];
+            let mut policy = crate::registry::create("tele-dad", db.clone()).unwrap();
+            assert_eq!(policy.choose(&obs, &send), 1, "another Malicious is already visible outside the Deck");
+        }
+    }
+
+    #[test]
+    fn rock_block_uses_grand_mole_against_large_monsters_unless_drained() {
+        const MOLE: u32 = 80344569;
+        const RAI: u32 = 71564252;
+        let db = Arc::new(MemoryCards([creature(MOLE, 3, 900, 300, 0), creature(RAI, 4, 1900, 800, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, MOLE, false), card(0, Location::Hand, 1, RAI, false),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2500, 2000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, MOLE, 0),
+            from_hand(ChoiceKind::NormalSummon, RAI, 1), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("rock-block", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.push(card(1, Location::SpellTrapZone, 0, 82732705, true));
+        let mut policy = crate::registry::create("rock-block", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "the bounce cannot resolve under Skill Drain");
+    }
+
+    #[test]
+    fn rock_block_ad_changer_exposes_weak_defense_before_battle() {
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1200),
+            monster(1, 0, Some(2), Position::FACE_UP_ATTACK, 2500, 1000),
+            card(0, Location::Graveyard, 0, 96146814, true)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(96146814, Location::Graveyard, 0),
+            choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("rock-block", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards[1].defense = 2500;
+        let mut policy = crate::registry::create("rock-block", Arc::new(MemoryCards::default())).unwrap();
+        assert_ne!(policy.choose(&obs, &idle), 0, "do not rotate an equally impenetrable defender");
+    }
+
 }
