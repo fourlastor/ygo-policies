@@ -10,8 +10,9 @@
 //! The Tuners on the field turn it all into Synchros: Debris Dragon revives a
 //! 500-ATK monster for a Dragon (Black Rose, Stardust, Scrap), Junk Synchron
 //! a Level 2 or lower one, Quickdraw Synchron stands in for Junk Synchron in
-//! Junk Destroyer.  Each Tuner is only brought out when it completes a
-//! Synchro the Extra Deck holds.
+//! Junk Destroyer, or combines with Level Eater for Junk Warrior. Small
+//! Tuners come out when their Levels suggest a useful Synchro, including
+//! Formula Synchron and Armory Arm as stepping stones.
 
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::cards::races;
@@ -78,9 +79,10 @@ impl QuickdrawPlant {
         }
     }
 
-    /// A Tuner at `level` would complete a Synchro worth having.
+    /// Level-based estimate of a useful Synchro, including the small setup
+    /// monsters. The engine still determines which summons are legal.
     fn tuner_pays(&self, ctx: &Ctx, level: u32) -> bool {
-        tactics::synchro_with_tuner(self, ctx, level).map_or(false, |worth| worth >= 2300)
+        tactics::synchro_with_tuner(self, ctx, level).map_or(false, |worth| worth >= 1700)
     }
 
     /// Spore's Level once it banishes the best other Plant from the Graveyard.
@@ -158,11 +160,19 @@ impl Strategy for QuickdrawPlant {
                 }
             }
         }
-        // Quickdraw Synchron: a Graveyard Plant as its cost, Junk Destroyer next.
+        // Quickdraw plus a Level 3 body makes Junk Destroyer. With Level Eater,
+        // reduce Quickdraw to Level 4 and revive Eater for Junk Warrior instead.
         let destroyer = tactics::synchro_worth(self, &ctx, 8).is_some()
             && ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && !ctx.view_data(c).is_tuner() && c.level == 3);
-        if destroyer {
+        let eater = ctx.pile(ctx.me, Location::Extra).iter().any(|c| ctx.is(c, JUNK_WARRIOR))
+            && zones >= 2 && (ctx.in_hand(LEVEL_EATER) || Self::in_graveyard(&ctx, LEVEL_EATER));
+        if destroyer || eater {
             if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(QUICKDRAW_SYNCHRON), Some(Location::Hand)) {
+                if eater && !destroyer && !Self::in_graveyard(&ctx, LEVEL_EATER) {
+                    if let Some(cost) = ctx.hand().into_iter().find(|c| ctx.is(c, LEVEL_EATER)) {
+                        return t.pick_targeting(i, vec![cost.at]);
+                    }
+                }
                 return t.pick(i);
             }
         }
@@ -184,7 +194,8 @@ impl Strategy for QuickdrawPlant {
             (ChoiceKind::NormalSummon, JUNK_SYNCHRON) if level2_in_graveyard => Some(2150.0),
             (ChoiceKind::NormalSummon, CARD_TROOPER) => Some(1700.0),
             (ChoiceKind::SetMonster, DANDYLION | SANGAN) => Some(1500.0),
-            // Better in the Graveyard than on the field.
+            (ChoiceKind::NormalSummon, GLOW_UP_BULB | SPORE | PLAGUESPREADER) if self.tuner_pays(&ctx, ctx.data(code).level) => Some(2200.0),
+            // Without a setup payoff, save these for Graveyard costs.
             (_, GLOW_UP_BULB | SPORE | LEVEL_EATER | PLAGUESPREADER) => None,
             _ => return None,
         })
@@ -230,6 +241,13 @@ impl Strategy for QuickdrawPlant {
         }
         let code = member.code.map(|c| ctx.canonical(c))?;
         let worth = value(self, &ctx, Some(code), None) as f64;
+        // Junk is already a Tuner. Its revival should supply the non-Tuner;
+        // negating a revived Tuner does not remove that card type.
+        if t.decision.hint == Hint::SpecialSummon && member.at.location == Location::Graveyard
+            && t.memory.last_activated.map(|c| ctx.canonical(c)) == Some(JUNK_SYNCHRON)
+            && !ctx.data(code).is_tuner() {
+            return Some(worth + 3000.0);
+        }
         match t.decision.hint {
             // Foolish Burial / costs sent from the hand: the Graveyard Plants.
             Hint::ToGraveyard | Hint::Discard if matches!(member.at.location, Location::Deck | Location::Hand) => {

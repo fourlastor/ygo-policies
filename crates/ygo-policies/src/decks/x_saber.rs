@@ -31,6 +31,7 @@ const COMMANDER_GOTTOMS: u32 = 53388413;
 const SABER_SLASH: u32 = 11052544;
 const EMERGENCY_CALL: u32 = 13504844;
 const SABER_HOLE: u32 = 44901281;
+const ONE_FOR_ONE: u32 = 2295440;
 const XX_SABER_GOTTOMS: u32 = 52352005;
 const HYUNLEI: u32 = 2203790;
 const SOUZA: u32 = 63612442;
@@ -87,6 +88,19 @@ impl Strategy for XSaber {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        // A set X-Saber can supply Faultroll's second face-up body.
+        if ctx.in_hand(FAULTROLL) && Self::x_sabers_up(&ctx) == 1 {
+            if let Some(i) = t.find_where(|c| {
+                c.kind == ChoiceKind::ChangePosition
+                    && t.view(c).map_or(false, |v| !v.position.face_up && Self::is_x_saber(&ctx, v))
+            }) {
+                return t.pick(i);
+            }
+        }
+        // Ragigura or Palomuro starts the engine without spending the Normal Summon.
+        if let Some(i) = t.activate(ONE_FOR_ONE) {
+            return t.pick(i);
+        }
         // Faultroll as soon as two X-Sabers stand, and its revival every turn.
         for code in [FAULTROLL, GARDESTRIKE] {
             if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(code), Some(Location::Hand)) {
@@ -142,7 +156,8 @@ impl Strategy for XSaber {
             (ChoiceKind::NormalSummon, PASHUUL | PALOMURO) => {
                 tactics::synchro_with_tuner(self, &ctx, ctx.data(code).level).map(|_| 2000.0)
             }
-            (ChoiceKind::SetMonster, PASHUUL) => None,
+            // Battle protection buys time until Pashuul can become Synchro material.
+            (ChoiceKind::SetMonster, PASHUUL) => Some(1600.0),
             (ChoiceKind::SetMonster, EMMERSBLADE) if ctx.opp_best_attack() > 1300 => Some(1500.0),
             _ => return None,
         })
@@ -181,11 +196,9 @@ impl Strategy for XSaber {
                 }
             }
             // Offered only on a Summon while we control a face-up X-Saber.
+            // Small engine monsters are worth stopping before their effects too.
             SABER_HOLE => match (t.hostile_top(), crate::staples::opponent_summoning(&ctx)) {
-                (crate::agent::Hostile::No, Some((card, code))) => {
-                    let data = ctx.data(code);
-                    if card.attack.max(data.attack) >= 1900 || data.is_extra() { Response::new(82.0) } else { Response::no() }
-                }
+                (crate::agent::Hostile::No, Some(_)) => Response::new(82.0),
                 _ => Response::no(),
             },
             // Once while face-up: stop an attack.
@@ -217,6 +230,11 @@ impl Strategy for XSaber {
         }
         let code = member.code.map(|c| ctx.canonical(c))?;
         let worth = value(self, &ctx, Some(code), None) as f64;
+        // With Faultroll already in hand, find a Normal Summonable partner.
+        if t.decision.hint == Hint::AddToHand && member.at.location == Location::Deck
+            && ctx.in_hand(FAULTROLL) && ctx.data(code).level <= 4 {
+            return Some(worth + 3000.0);
+        }
         match t.decision.hint {
             // Tributes (Souza, XX-Saber Gottoms, Galahad): the smallest Saber.
             Hint::Release | Hint::Tribute if member.at.location == Location::MonsterZone => {

@@ -2925,4 +2925,150 @@ mod tests {
         let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, 70095154, 0), from_hand(ChoiceKind::NormalSummon, 30230789, 1), choice(ChoiceKind::EndTurn)]);
         assert_eq!(policy.choose(&obs, &idle), 0);
     }
+
+    #[test]
+    fn quickdraw_discards_level_eater_for_its_junk_warrior_line() {
+        const QUICKDRAW: u32 = 20932152;
+        const EATER: u32 = 57421866;
+        const DANDY: u32 = 15341821;
+        const WARRIOR: u32 = 60800381;
+        let db = Arc::new(MemoryCards([creature(QUICKDRAW, 5, 700, 1400, 0),
+            creature(EATER, 1, 600, 0, 0), creature(DANDY, 3, 300, 300, 0),
+            creature(WARRIOR, 5, 2300, 1300, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, QUICKDRAW, false), card(0, Location::Hand, 1, EATER, false),
+            card(0, Location::Hand, 2, DANDY, false), card(0, Location::Extra, 0, WARRIOR, false)];
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, QUICKDRAW, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("quickdraw-plant", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &summon), 0);
+        let cost = select_one(Hint::ToGraveyard, vec![toggle(Location::Hand, 1, EATER), toggle(Location::Hand, 2, DANDY)]);
+        assert_eq!(policy.choose(&obs, &cost), 0, "the planned combo needs Eater, despite Dandylion's usual discard priority");
+        obs.cards.retain(|c| c.at.location != Location::Extra);
+        let mut policy = crate::registry::create("quickdraw-plant", db).unwrap();
+        assert_eq!(policy.choose(&obs, &summon), 1, "do not spend a card without the payoff in our Extra Deck");
+    }
+
+    #[test]
+    fn quickdraw_uses_hand_and_graveyard_tuners_for_small_synchros() {
+        use crate::cards::types;
+        const BULB: u32 = 67441435;
+        const TOKEN: u32 = 15341822;
+        const FORMULA: u32 = 50091196;
+        let mut bulb = creature(BULB, 1, 100, 100, 0);
+        bulb.1.kind |= types::TUNER;
+        let mut formula = creature(FORMULA, 2, 200, 1500, 0);
+        formula.1.kind |= types::SYNCHRO | types::TUNER;
+        let db = Arc::new(MemoryCards([bulb, formula, creature(TOKEN, 1, 0, 0, 0)].into_iter().collect()));
+        for location in [Location::Hand, Location::Graveyard] {
+            let action = if location == Location::Hand { from_hand(ChoiceKind::NormalSummon, BULB, 0) }
+                else { activate(BULB, location, 0) };
+            let idle = decide(DecisionKind::Idle, None, vec![action, choice(ChoiceKind::EndTurn)]);
+            let mut obs = observation();
+            obs.cards = vec![card(0, location, 0, BULB, false), card(0, Location::Extra, 0, FORMULA, false),
+                CardView { level: 1, ..monster(0, 0, Some(TOKEN), Position::FACE_UP_DEFENSE, 0, 0) }];
+            let mut policy = crate::registry::create("quickdraw-plant", db.clone()).unwrap();
+            assert_eq!(policy.choose(&obs, &idle), 0, "Formula is a useful draw and Synchro Tuner");
+            obs.cards.retain(|c| c.at.location != Location::Extra);
+            let mut policy = crate::registry::create("quickdraw-plant", db.clone()).unwrap();
+            assert_eq!(policy.choose(&obs, &idle), 1, "save the tuner without a Synchro payoff");
+        }
+    }
+
+    #[test]
+    fn quickdraw_junk_synchron_revives_a_non_tuner() {
+        use crate::cards::types;
+        const JUNK: u32 = 63977008;
+        const BULB: u32 = 67441435;
+        const DOPPEL: u32 = 53855409;
+        let mut bulb = creature(BULB, 1, 100, 100, 0);
+        bulb.1.kind |= types::TUNER;
+        let db = Arc::new(MemoryCards([bulb, creature(DOPPEL, 2, 800, 800, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Graveyard, 0, BULB, true), card(0, Location::Graveyard, 1, DOPPEL, true)];
+        let select = select_one(Hint::SpecialSummon, vec![toggle(Location::Graveyard, 0, BULB), toggle(Location::Graveyard, 1, DOPPEL)]);
+        let mut policy = crate::registry::create("quickdraw-plant", db).unwrap();
+        assert_eq!(policy.choose(&obs, &select), 0, "ordinary revivals keep their existing ranking");
+        let trigger = decide(DecisionKind::Chain { forced: true, triggers: true }, None, vec![activate(JUNK, Location::MonsterZone, 0)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        assert_eq!(policy.choose(&obs, &select), 1, "Junk is already a tuner; negating Bulb does not remove its tuner type");
+    }
+
+    #[test]
+    fn x_saber_uses_one_for_one_before_its_normal_summon() {
+        const ONE_FOR_ONE: u32 = 2295440;
+        const AIRBELLUM: u32 = 90508760;
+        let db = Arc::new(MemoryCards([creature(AIRBELLUM, 3, 1600, 200, 0x100d)].into_iter().collect()));
+        let mut policy = crate::registry::create("x-saber", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, ONE_FOR_ONE, false), card(0, Location::Hand, 1, AIRBELLUM, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(ONE_FOR_ONE, Location::Hand, 0),
+            from_hand(ChoiceKind::NormalSummon, AIRBELLUM, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn x_saber_flips_a_second_body_for_faultroll() {
+        const FAULTROLL: u32 = 51808422;
+        const EMMERSBLADE: u32 = 42737833;
+        const PASHUUL: u32 = 23093604;
+        let db = Arc::new(MemoryCards([creature(FAULTROLL, 6, 2400, 1800, 0x100d),
+            creature(EMMERSBLADE, 3, 1300, 800, 0x100d), creature(PASHUUL, 2, 100, 0, 0x100d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, FAULTROLL, false),
+            monster(0, 0, Some(EMMERSBLADE), Position::FACE_UP_ATTACK, 1300, 800),
+            monster(0, 1, Some(PASHUUL), Position::FACE_DOWN_DEFENSE, 100, 0),
+            monster(1, 0, None, Position::FACE_UP_ATTACK, 3000, 1000)];
+        let flip = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+            ..activate(PASHUUL, Location::MonsterZone, 1) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("x-saber", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &flip), 0);
+        obs.cards.retain(|c| c.at.location != Location::Hand);
+        let mut policy = crate::registry::create("x-saber", db).unwrap();
+        assert_eq!(policy.choose(&obs, &flip), 1, "do not expose a weak set monster without the Faultroll payoff");
+    }
+
+    #[test]
+    fn x_saber_searches_a_small_body_when_faultroll_is_already_in_hand() {
+        const FAULTROLL: u32 = 51808422;
+        const AIRBELLUM: u32 = 90508760;
+        let db = Arc::new(MemoryCards([creature(FAULTROLL, 6, 2400, 1800, 0x100d),
+            creature(AIRBELLUM, 3, 1600, 200, 0x100d)].into_iter().collect()));
+        let mut policy = crate::registry::create("x-saber", db).unwrap();
+        let search = select_one(Hint::AddToHand, vec![toggle(Location::Deck, 0, FAULTROLL), toggle(Location::Deck, 1, AIRBELLUM)]);
+        let mut obs = observation();
+        assert_eq!(policy.choose(&obs, &search), 0);
+        obs.cards.push(card(0, Location::Hand, 0, FAULTROLL, false));
+        assert_eq!(policy.choose(&obs, &search), 1);
+    }
+
+    #[test]
+    fn x_saber_sets_pashuul_without_a_synchro_play() {
+        let mut pashuul = creature(23093604, 2, 100, 0, 0x100d);
+        pashuul.1.kind |= crate::cards::types::TUNER;
+        let db = Arc::new(MemoryCards([pashuul].into_iter().collect()));
+        let mut policy = crate::registry::create("x-saber", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, 23093604, false), monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, 23093604, 0),
+            from_hand(ChoiceKind::SetMonster, 23093604, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn x_saber_negates_small_summons_with_saber_hole() {
+        const SABER_HOLE: u32 = 44901281;
+        const LONEFIRE: u32 = 48686504;
+        let db = Arc::new(MemoryCards([creature(LONEFIRE, 3, 500, 1400, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("x-saber", db).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        let summoned = monster(1, 0, Some(LONEFIRE), Position::FACE_UP_ATTACK, 500, 1400);
+        obs.event_cards = vec![(summoned.at, summoned.code)];
+        obs.cards = vec![summoned, card(0, Location::SpellTrapZone, 0, SABER_HOLE, false)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(SABER_HOLE, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(policy.choose(&obs, &window), 0, "small engine monsters are worth stopping too");
+        obs.event_cards.clear();
+        assert_eq!(policy.choose(&obs, &window), 1, "require an opposing summon event");
+    }
 }

@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Seventeen pilots have been through it. The other 14 are to follow, a few at a
+Nineteen pilots have been through it. The other 12 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
@@ -42,30 +42,30 @@ headroom; they are not hard ceilings.
 | Morphtronic | 2 | 36.5% | 47.9% | 11.5 | 37.34% → 43.67% (the 30 other decks, held out) | [crystal-morphtronic-rules.md](crystal-morphtronic-rules.md) |
 | Gishki | 2 | 39.6% | 50.0% | 10.4 | 39.90% → 49.81% (the 30 other decks, held out) | [gishki-karakuri-rules.md](gishki-karakuri-rules.md) |
 | Karakuri | 2 | 46.2% | 72.1% | 26.0 | 44.41% → 51.30% (the 30 other decks, held out) | [gishki-karakuri-rules.md](gishki-karakuri-rules.md) |
+| Quickdraw Plants | 2 | 60.6% | 79.8% | 19.2 | 51.32% → 56.70% (the 30 other decks, held out) | [quickdraw-xsaber-rules.md](quickdraw-xsaber-rules.md) |
+| X-Sabers | 2 | 61.5% | 80.8% | 19.2 | 52.04% → 59.15% (the 30 other decks, held out) | [quickdraw-xsaber-rules.md](quickdraw-xsaber-rules.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
 
 ## To do
 
-The 14 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
+The 12 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
 refreshed on 2026-10-06.
 Harpie remains in the ranking pool, but its illegal list must be replaced
 and remeasured before policy work.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 92.7% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 82.7% | strong |  |
-| 4 | Machina Gadgets | `machina` | 71.3% | strong |  |
-| 5 | Gravekeeper's Tomb | `gravekeeper` | 68.0% | mid |  |
-| 8 | Fusion Heroes | `heroes` | 62.3% | mid |  |
-| 9 | Legendary Six Samurai | `six-samurai` | 62.2% | mid |  |
-| 11 | Lightsworn Judgment | `lightsworn` | 58.3% | mid |  |
-| 12 | Tele-DAD | `tele-dad` | 57.9% | mid |  |
-| 13 | 06 Koaki Meiru - Rock Block | `rock-block` | 57.4% | mid |  |
-| 14 | Fight, Gladiators! | `gladiator` | 56.1% | mid |  |
-| 15 | Dragunity Flight | `dragunity` | 54.4% | mid |  |
-| 16 | X-Sabers | `x-saber` | 52.4% | mid |  |
-| 17 | Quickdraw Plants | `quickdraw-plant` | 51.6% | mid |  |
-| 20 | Harpie Sisters | `harpie` | 48.1% | weak | illegal list; defer policy work |
+| 1 | Claudi-oh's Countdown | `countdown` | 92.6% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 82.4% | strong |  |
+| 4 | Machina Gadgets | `machina` | 70.9% | strong |  |
+| 5 | Gravekeeper's Tomb | `gravekeeper` | 67.5% | mid |  |
+| 8 | Fusion Heroes | `heroes` | 61.6% | mid |  |
+| 9 | Legendary Six Samurai | `six-samurai` | 61.6% | mid |  |
+| 12 | Lightsworn Judgment | `lightsworn` | 57.7% | mid |  |
+| 13 | Tele-DAD | `tele-dad` | 57.5% | mid |  |
+| 15 | 06 Koaki Meiru - Rock Block | `rock-block` | 56.7% | mid |  |
+| 16 | Fight, Gladiators! | `gladiator` | 55.7% | mid |  |
+| 17 | Dragunity Flight | `dragunity` | 53.7% | mid |  |
+| 20 | Harpie Sisters | `harpie` | 47.4% | weak | illegal list; defer policy work |

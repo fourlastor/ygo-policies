@@ -1,0 +1,1563 @@
+{
+  "baseline_commit": "ae5aad66fcc02be59a40e79361a550b5502e822e",
+  "development": {
+    "quickdraw-plant": {
+      "pairs": 13312,
+      "baseline": 0.5150991586538461,
+      "candidate": 0.5775240384615384,
+      "delta": 0.062424879807692304,
+      "ci95": [
+        0.05611044199793186,
+        0.06873931761745275
+      ],
+      "improved": 1361,
+      "regressed": 530,
+      "identical": 5521,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "x-saber": {
+      "pairs": 13312,
+      "baseline": 0.4971454326923077,
+      "candidate": 0.5759465144230769,
+      "delta": 0.07880108173076923,
+      "ci95": [
+        0.07175449449526035,
+        0.08584766896627812
+      ],
+      "improved": 1711,
+      "regressed": 662,
+      "identical": 5233,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "heldout": {
+    "quickdraw-plant": {
+      "pairs": 15360,
+      "baseline": 0.5132161458333333,
+      "candidate": 0.5669921875,
+      "delta": 0.05377604166666667,
+      "ci95": [
+        0.048217265923305434,
+        0.059334817410027905
+      ],
+      "improved": 1384,
+      "regressed": 558,
+      "identical": 6258,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "x-saber": {
+      "pairs": 15360,
+      "baseline": 0.5203776041666667,
+      "candidate": 0.5915364583333333,
+      "delta": 0.07115885416666666,
+      "ci95": [
+        0.06506400588043977,
+        0.07725370245289355
+      ],
+      "improved": 1726,
+      "regressed": 633,
+      "identical": 6086,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "search": {
+    "before": {
+      "quickdraw-plant": {
+        "games": 104,
+        "pilot": 0.5673076923076923,
+        "search": 0.8269230769230769,
+        "gap": 0.2596153846153846,
+        "playouts": 233776,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "x-saber": {
+        "games": 104,
+        "pilot": 0.49038461538461536,
+        "search": 0.7980769230769231,
+        "gap": 0.30769230769230776,
+        "playouts": 162304,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    },
+    "after": {
+      "quickdraw-plant": {
+        "games": 104,
+        "pilot": 0.6057692307692307,
+        "search": 0.7980769230769231,
+        "gap": 0.1923076923076924,
+        "playouts": 241352,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "x-saber": {
+        "games": 104,
+        "pilot": 0.6153846153846154,
+        "search": 0.8076923076923077,
+        "gap": 0.1923076923076923,
+        "playouts": 165744,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    }
+  },
+  "screening": {
+    "screen1": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5327524038461539,
+        "delta": 0.022235576923076924,
+        "ci95": [
+          0.01454754986812264,
+          0.029923603978031208
+        ],
+        "improved": 123,
+        "regressed": 49,
+        "identical": 2475,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.4987980769230769,
+        "delta": 0.0015024038461538462,
+        "ci95": [
+          -0.0006207632446158112,
+          0.003625570936923504
+        ],
+        "improved": 9,
+        "regressed": 4,
+        "identical": 3208,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen2": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5234375,
+        "delta": 0.012920673076923076,
+        "ci95": [
+          0.005600453462069137,
+          0.020240892691777014
+        ],
+        "improved": 99,
+        "regressed": 56,
+        "identical": 2501,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5012019230769231,
+        "delta": 0.00390625,
+        "ci95": [
+          0.001481243793168855,
+          0.006331256206831145
+        ],
+        "improved": 15,
+        "regressed": 2,
+        "identical": 3268,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen3": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5126201923076923,
+        "delta": 0.0021033653846153845,
+        "ci95": [
+          -0.00017682122858435389,
+          0.004383551997815123
+        ],
+        "improved": 11,
+        "regressed": 4,
+        "identical": 3213,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.49789663461538464,
+        "delta": 0.0006009615384615385,
+        "ci95": [
+          -0.0027310373284563224,
+          0.003932960405379399
+        ],
+        "improved": 17,
+        "regressed": 15,
+        "identical": 2967,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen4": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5102163461538461,
+        "delta": -0.00030048076923076925,
+        "ci95": [
+          -0.011917979803290867,
+          0.011317018264829327
+        ],
+        "improved": 194,
+        "regressed": 195,
+        "identical": 1657,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.4969951923076923,
+        "delta": -0.00030048076923076925,
+        "ci95": [
+          -0.0008894230769230533,
+          0.0002884615384615148
+        ],
+        "improved": 0,
+        "regressed": 1,
+        "identical": 3265,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen5": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5135216346153846,
+        "delta": 0.0030048076923076925,
+        "ci95": [
+          0.0005078483565117272,
+          0.005501767028103658
+        ],
+        "improved": 14,
+        "regressed": 4,
+        "identical": 3188,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5015024038461539,
+        "delta": 0.004206730769230769,
+        "ci95": [
+          0.0007750964248334513,
+          0.007638365113628087
+        ],
+        "improved": 24,
+        "regressed": 10,
+        "identical": 3147,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen6": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5114182692307693,
+        "delta": 0.0009014423076923077,
+        "ci95": [
+          -0.004717470009694855,
+          0.006520354625079471
+        ],
+        "improved": 47,
+        "regressed": 44,
+        "identical": 2999,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.4987980769230769,
+        "delta": 0.0015024038461538462,
+        "ci95": [
+          -0.0035300186562233823,
+          0.006534826348531074
+        ],
+        "improved": 39,
+        "regressed": 34,
+        "identical": 2939,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen7": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5042067307692307,
+        "delta": -0.006310096153846154,
+        "ci95": [
+          -0.013251355989226957,
+          0.0006311636815346479
+        ],
+        "improved": 59,
+        "regressed": 80,
+        "identical": 2898,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5264423076923077,
+        "delta": 0.029146634615384616,
+        "ci95": [
+          0.01986733747595145,
+          0.03842593175481778
+        ],
+        "improved": 174,
+        "regressed": 77,
+        "identical": 2511,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen8": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5138221153846154,
+        "delta": 0.0033052884615384615,
+        "ci95": [
+          -7.65713858675663e-05,
+          0.006687148308944489
+        ],
+        "improved": 22,
+        "regressed": 11,
+        "identical": 2981,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5006009615384616,
+        "delta": 0.0033052884615384615,
+        "ci95": [
+          -7.6571385867565e-05,
+          0.0066871483089444884
+        ],
+        "improved": 22,
+        "regressed": 11,
+        "identical": 3045,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen9": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5414663461538461,
+        "delta": 0.030949519230769232,
+        "ci95": [
+          0.023364682228343377,
+          0.03853435623319509
+        ],
+        "improved": 136,
+        "regressed": 33,
+        "identical": 2752,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5006009615384616,
+        "delta": 0.0033052884615384615,
+        "ci95": [
+          -7.657138586756413e-05,
+          0.006687148308944487
+        ],
+        "improved": 22,
+        "regressed": 11,
+        "identical": 3104,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen10": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5105168269230769,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.4933894230769231,
+        "delta": -0.00390625,
+        "ci95": [
+          -0.008504812396848888,
+          0.0006923123968488884
+        ],
+        "improved": 24,
+        "regressed": 37,
+        "identical": 2831,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen11": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5105168269230769,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.4972956730769231,
+        "delta": 0.0,
+        "ci95": [
+          -0.004247561580580506,
+          0.004247561580580506
+        ],
+        "improved": 26,
+        "regressed": 26,
+        "identical": 2756,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen12": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5123197115384616,
+        "delta": 0.0018028846153846155,
+        "ci95": [
+          -0.004145719508798813,
+          0.007751488739568045
+        ],
+        "improved": 54,
+        "regressed": 48,
+        "identical": 2657,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5147235576923077,
+        "delta": 0.017427884615384616,
+        "ci95": [
+          0.009330281528078046,
+          0.025525487702691186
+        ],
+        "improved": 124,
+        "regressed": 66,
+        "identical": 2612,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "screen13": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5114182692307693,
+        "delta": 0.0009014423076923077,
+        "ci95": [
+          -0.001051911722605206,
+          0.0028547963379898216
+        ],
+        "improved": 7,
+        "regressed": 4,
+        "identical": 3288,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.52734375,
+        "delta": 0.030048076923076924,
+        "ci95": [
+          0.020387339658133535,
+          0.03970881418802032
+        ],
+        "improved": 186,
+        "regressed": 86,
+        "identical": 2331,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "combined": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5853365384615384,
+        "delta": 0.07481971153846154,
+        "ci95": [
+          0.062044803879813905,
+          0.08759461919710916
+        ],
+        "improved": 369,
+        "regressed": 120,
+        "identical": 1386,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5745192307692307,
+        "delta": 0.0772235576923077,
+        "ci95": [
+          0.06317108548656314,
+          0.09127602989805225
+        ],
+        "improved": 423,
+        "regressed": 166,
+        "identical": 1309,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "combined-materials": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5763221153846154,
+        "delta": 0.06580528846153846,
+        "ci95": [
+          0.05286551836524807,
+          0.07874505855782886
+        ],
+        "improved": 358,
+        "regressed": 139,
+        "identical": 1353,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5745192307692307,
+        "delta": 0.0772235576923077,
+        "ci95": [
+          0.06317108548656314,
+          0.09127602989805225
+        ],
+        "improved": 423,
+        "regressed": 166,
+        "identical": 1309,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "combined-legal": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5105168269230769,
+        "candidate": 0.5802283653846154,
+        "delta": 0.06971153846153846,
+        "ci95": [
+          0.05686273997714724,
+          0.08256033694592968
+        ],
+        "improved": 362,
+        "regressed": 130,
+        "identical": 1379,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.4972956730769231,
+        "candidate": 0.5745192307692307,
+        "delta": 0.0772235576923077,
+        "ci95": [
+          0.06317108548656314,
+          0.09127602989805225
+        ],
+        "improved": 423,
+        "regressed": 166,
+        "identical": 1309,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    }
+  },
+  "matchups": [
+    {
+      "baseline": 0.85546875,
+      "candidate": 0.888671875,
+      "delta": 0.033203125,
+      "identical": 143,
+      "improved": 32,
+      "limits": 0,
+      "opponent": "arcana",
+      "paired_95_half_width": 0.02611174663670997,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.294921875,
+      "candidate": 0.3828125,
+      "delta": 0.087890625,
+      "identical": 227,
+      "improved": 69,
+      "limits": 0,
+      "opponent": "blackwing",
+      "paired_95_half_width": 0.036158900765728905,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.6875,
+      "candidate": 0.736328125,
+      "delta": 0.048828125,
+      "identical": 217,
+      "improved": 40,
+      "limits": 0,
+      "opponent": "burn",
+      "paired_95_half_width": 0.028100768730744283,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.017578125,
+      "candidate": 0.01953125,
+      "delta": 0.001953125,
+      "identical": 162,
+      "improved": 6,
+      "limits": 0,
+      "opponent": "countdown",
+      "paired_95_half_width": 0.012707743025275846,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 5
+    },
+    {
+      "baseline": 0.62890625,
+      "candidate": 0.6796875,
+      "delta": 0.05078125,
+      "identical": 218,
+      "improved": 47,
+      "limits": 0,
+      "opponent": "crystal",
+      "paired_95_half_width": 0.03129013368920829,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 21
+    },
+    {
+      "baseline": 0.77734375,
+      "candidate": 0.87109375,
+      "delta": 0.09375,
+      "identical": 154,
+      "improved": 64,
+      "limits": 0,
+      "opponent": "destiny-hero",
+      "paired_95_half_width": 0.03329539079129731,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.494140625,
+      "candidate": 0.548828125,
+      "delta": 0.0546875,
+      "identical": 233,
+      "improved": 44,
+      "limits": 0,
+      "opponent": "draconic-might",
+      "paired_95_half_width": 0.029300332273175557,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.537109375,
+      "candidate": 0.5859375,
+      "delta": 0.048828125,
+      "identical": 221,
+      "improved": 48,
+      "limits": 0,
+      "opponent": "dragunity",
+      "paired_95_half_width": 0.03200913479161988,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 23
+    },
+    {
+      "baseline": 0.578125,
+      "candidate": 0.619140625,
+      "delta": 0.041015625,
+      "identical": 211,
+      "improved": 43,
+      "limits": 0,
+      "opponent": "fortune-lady",
+      "paired_95_half_width": 0.030688143914738814,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 22
+    },
+    {
+      "baseline": 0.646484375,
+      "candidate": 0.69140625,
+      "delta": 0.044921875,
+      "identical": 215,
+      "improved": 44,
+      "limits": 0,
+      "opponent": "gishki",
+      "paired_95_half_width": 0.03064699819942384,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 21
+    },
+    {
+      "baseline": 0.40625,
+      "candidate": 0.48828125,
+      "delta": 0.08203125,
+      "identical": 209,
+      "improved": 62,
+      "limits": 0,
+      "opponent": "gladiator",
+      "paired_95_half_width": 0.03396226868199846,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 20
+    },
+    {
+      "baseline": 0.212890625,
+      "candidate": 0.2265625,
+      "delta": 0.013671875,
+      "identical": 238,
+      "improved": 23,
+      "limits": 0,
+      "opponent": "gravekeeper",
+      "paired_95_half_width": 0.023900634259048505,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.5390625,
+      "candidate": 0.6328125,
+      "delta": 0.09375,
+      "identical": 213,
+      "improved": 60,
+      "limits": 0,
+      "opponent": "harpie",
+      "paired_95_half_width": 0.031482015413892235,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 12
+    },
+    {
+      "baseline": 0.474609375,
+      "candidate": 0.5390625,
+      "delta": 0.064453125,
+      "identical": 244,
+      "improved": 49,
+      "limits": 0,
+      "opponent": "heroes",
+      "paired_95_half_width": 0.030383856365831192,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.373046875,
+      "candidate": 0.4765625,
+      "delta": 0.103515625,
+      "identical": 181,
+      "improved": 75,
+      "limits": 0,
+      "opponent": "infernity",
+      "paired_95_half_width": 0.03665672246575955,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 22
+    },
+    {
+      "baseline": 0.40234375,
+      "candidate": 0.470703125,
+      "delta": 0.068359375,
+      "identical": 181,
+      "improved": 62,
+      "limits": 0,
+      "opponent": "karakuri",
+      "paired_95_half_width": 0.03566056306116401,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 27
+    },
+    {
+      "baseline": 0.431640625,
+      "candidate": 0.45703125,
+      "delta": 0.025390625,
+      "identical": 222,
+      "improved": 44,
+      "limits": 0,
+      "opponent": "lightsworn",
+      "paired_95_half_width": 0.033111853299096675,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 31
+    },
+    {
+      "baseline": 0.201171875,
+      "candidate": 0.240234375,
+      "delta": 0.0390625,
+      "identical": 236,
+      "improved": 44,
+      "limits": 0,
+      "opponent": "machina",
+      "paired_95_half_width": 0.0314163594187282,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.3515625,
+      "candidate": 0.419921875,
+      "delta": 0.068359375,
+      "identical": 175,
+      "improved": 68,
+      "limits": 0,
+      "opponent": "monarch",
+      "paired_95_half_width": 0.03805094463973584,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 33
+    },
+    {
+      "baseline": 0.677734375,
+      "candidate": 0.744140625,
+      "delta": 0.06640625,
+      "identical": 232,
+      "improved": 41,
+      "limits": 0,
+      "opponent": "morphtronic",
+      "paired_95_half_width": 0.02591606769452942,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.939453125,
+      "candidate": 0.935546875,
+      "delta": -0.00390625,
+      "identical": 202,
+      "improved": 11,
+      "limits": 0,
+      "opponent": "ojama",
+      "paired_95_half_width": 0.018769191448332126,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 13
+    },
+    {
+      "baseline": 0.751953125,
+      "candidate": 0.806640625,
+      "delta": 0.0546875,
+      "identical": 139,
+      "improved": 50,
+      "limits": 0,
+      "opponent": "pyramid",
+      "paired_95_half_width": 0.0321668789511118,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 22
+    },
+    {
+      "baseline": 0.44921875,
+      "candidate": 0.5078125,
+      "delta": 0.05859375,
+      "identical": 211,
+      "improved": 53,
+      "limits": 0,
+      "opponent": "rock-block",
+      "paired_95_half_width": 0.033016879188117916,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 23
+    },
+    {
+      "baseline": 0.392578125,
+      "candidate": 0.451171875,
+      "delta": 0.05859375,
+      "identical": 258,
+      "improved": 45,
+      "limits": 0,
+      "opponent": "six-samurai",
+      "paired_95_half_width": 0.02924350875790145,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.81640625,
+      "candidate": 0.87109375,
+      "delta": 0.0546875,
+      "identical": 205,
+      "improved": 35,
+      "limits": 0,
+      "opponent": "spellcaster",
+      "paired_95_half_width": 0.024376454338418736,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 7
+    },
+    {
+      "baseline": 0.37109375,
+      "candidate": 0.42578125,
+      "delta": 0.0546875,
+      "identical": 193,
+      "improved": 59,
+      "limits": 0,
+      "opponent": "tele-dad",
+      "paired_95_half_width": 0.036041726466152516,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 31
+    },
+    {
+      "baseline": 0.830078125,
+      "candidate": 0.869140625,
+      "delta": 0.0390625,
+      "identical": 228,
+      "improved": 28,
+      "limits": 0,
+      "opponent": "toon",
+      "paired_95_half_width": 0.022740374346700676,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 8
+    },
+    {
+      "baseline": 0.1328125,
+      "candidate": 0.173828125,
+      "delta": 0.041015625,
+      "identical": 269,
+      "improved": 32,
+      "limits": 0,
+      "opponent": "verdict",
+      "paired_95_half_width": 0.024874311146520476,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.62890625,
+      "candidate": 0.69921875,
+      "delta": 0.0703125,
+      "identical": 188,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "watt",
+      "paired_95_half_width": 0.03583745006948564,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 27
+    },
+    {
+      "baseline": 0.49609375,
+      "candidate": 0.55078125,
+      "delta": 0.0546875,
+      "identical": 233,
+      "improved": 43,
+      "limits": 0,
+      "opponent": "x-saber",
+      "paired_95_half_width": 0.028794843860704102,
+      "pairs": 512,
+      "policy": "quickdraw-plant",
+      "regressed": 15
+    },
+    {
+      "baseline": 0.888671875,
+      "candidate": 0.958984375,
+      "delta": 0.0703125,
+      "identical": 209,
+      "improved": 39,
+      "limits": 0,
+      "opponent": "arcana",
+      "paired_95_half_width": 0.024073394171469288,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 3
+    },
+    {
+      "baseline": 0.25390625,
+      "candidate": 0.38671875,
+      "delta": 0.1328125,
+      "identical": 166,
+      "improved": 91,
+      "limits": 0,
+      "opponent": "blackwing",
+      "paired_95_half_width": 0.039259128404733015,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 23
+    },
+    {
+      "baseline": 0.80859375,
+      "candidate": 0.84375,
+      "delta": 0.03515625,
+      "identical": 264,
+      "improved": 34,
+      "limits": 0,
+      "opponent": "burn",
+      "paired_95_half_width": 0.026923395667485545,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.03515625,
+      "candidate": 0.048828125,
+      "delta": 0.013671875,
+      "identical": 197,
+      "improved": 13,
+      "limits": 0,
+      "opponent": "countdown",
+      "paired_95_half_width": 0.016660610265628307,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 6
+    },
+    {
+      "baseline": 0.568359375,
+      "candidate": 0.673828125,
+      "delta": 0.10546875,
+      "identical": 178,
+      "improved": 79,
+      "limits": 0,
+      "opponent": "crystal",
+      "paired_95_half_width": 0.037992489689350144,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 25
+    },
+    {
+      "baseline": 0.896484375,
+      "candidate": 0.953125,
+      "delta": 0.056640625,
+      "identical": 191,
+      "improved": 31,
+      "limits": 0,
+      "opponent": "destiny-hero",
+      "paired_95_half_width": 0.021457583700179614,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 2
+    },
+    {
+      "baseline": 0.447265625,
+      "candidate": 0.521484375,
+      "delta": 0.07421875,
+      "identical": 244,
+      "improved": 57,
+      "limits": 0,
+      "opponent": "draconic-might",
+      "paired_95_half_width": 0.0327797710630514,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.4296875,
+      "candidate": 0.525390625,
+      "delta": 0.095703125,
+      "identical": 165,
+      "improved": 84,
+      "limits": 0,
+      "opponent": "dragunity",
+      "paired_95_half_width": 0.04096885175510858,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 35
+    },
+    {
+      "baseline": 0.623046875,
+      "candidate": 0.7109375,
+      "delta": 0.087890625,
+      "identical": 222,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "fortune-lady",
+      "paired_95_half_width": 0.032749574008473996,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.5078125,
+      "candidate": 0.6171875,
+      "delta": 0.109375,
+      "identical": 228,
+      "improved": 75,
+      "limits": 0,
+      "opponent": "gishki",
+      "paired_95_half_width": 0.03592057746298036,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.4140625,
+      "candidate": 0.51953125,
+      "delta": 0.10546875,
+      "identical": 171,
+      "improved": 87,
+      "limits": 0,
+      "opponent": "gladiator",
+      "paired_95_half_width": 0.0409678017428894,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 33
+    },
+    {
+      "baseline": 0.259765625,
+      "candidate": 0.380859375,
+      "delta": 0.12109375,
+      "identical": 173,
+      "improved": 81,
+      "limits": 0,
+      "opponent": "gravekeeper",
+      "paired_95_half_width": 0.036852178515289616,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.537109375,
+      "candidate": 0.65625,
+      "delta": 0.119140625,
+      "identical": 198,
+      "improved": 80,
+      "limits": 0,
+      "opponent": "harpie",
+      "paired_95_half_width": 0.03670050757315117,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.416015625,
+      "candidate": 0.4921875,
+      "delta": 0.076171875,
+      "identical": 214,
+      "improved": 59,
+      "limits": 0,
+      "opponent": "heroes",
+      "paired_95_half_width": 0.03341189653358672,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 20
+    },
+    {
+      "baseline": 0.357421875,
+      "candidate": 0.39453125,
+      "delta": 0.037109375,
+      "identical": 159,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "infernity",
+      "paired_95_half_width": 0.03875588676182522,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 42
+    },
+    {
+      "baseline": 0.521484375,
+      "candidate": 0.59375,
+      "delta": 0.072265625,
+      "identical": 167,
+      "improved": 77,
+      "limits": 0,
+      "opponent": "karakuri",
+      "paired_95_half_width": 0.04097165165613562,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 40
+    },
+    {
+      "baseline": 0.34375,
+      "candidate": 0.40625,
+      "delta": 0.0625,
+      "identical": 195,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "lightsworn",
+      "paired_95_half_width": 0.0367539952166232,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 31
+    },
+    {
+      "baseline": 0.236328125,
+      "candidate": 0.302734375,
+      "delta": 0.06640625,
+      "identical": 206,
+      "improved": 53,
+      "limits": 0,
+      "opponent": "machina",
+      "paired_95_half_width": 0.03200062225990932,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.365234375,
+      "candidate": 0.3984375,
+      "delta": 0.033203125,
+      "identical": 204,
+      "improved": 57,
+      "limits": 0,
+      "opponent": "monarch",
+      "paired_95_half_width": 0.037629566451446717,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 40
+    },
+    {
+      "baseline": 0.65234375,
+      "candidate": 0.69921875,
+      "delta": 0.046875,
+      "identical": 195,
+      "improved": 50,
+      "limits": 0,
+      "opponent": "morphtronic",
+      "paired_95_half_width": 0.033157292349631086,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 26
+    },
+    {
+      "baseline": 0.8671875,
+      "candidate": 0.923828125,
+      "delta": 0.056640625,
+      "identical": 217,
+      "improved": 40,
+      "limits": 0,
+      "opponent": "ojama",
+      "paired_95_half_width": 0.026920732595077972,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 11
+    },
+    {
+      "baseline": 0.798828125,
+      "candidate": 0.869140625,
+      "delta": 0.0703125,
+      "identical": 232,
+      "improved": 52,
+      "limits": 0,
+      "opponent": "pyramid",
+      "paired_95_half_width": 0.03100470940946018,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 16
+    },
+    {
+      "baseline": 0.505859375,
+      "candidate": 0.578125,
+      "delta": 0.072265625,
+      "identical": 188,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "quickdraw-plant",
+      "paired_95_half_width": 0.034767991396298555,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 24
+    },
+    {
+      "baseline": 0.474609375,
+      "candidate": 0.546875,
+      "delta": 0.072265625,
+      "identical": 200,
+      "improved": 63,
+      "limits": 0,
+      "opponent": "rock-block",
+      "paired_95_half_width": 0.035602613702443525,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 26
+    },
+    {
+      "baseline": 0.3046875,
+      "candidate": 0.388671875,
+      "delta": 0.083984375,
+      "identical": 198,
+      "improved": 62,
+      "limits": 0,
+      "opponent": "six-samurai",
+      "paired_95_half_width": 0.0337092692154741,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 19
+    },
+    {
+      "baseline": 0.767578125,
+      "candidate": 0.861328125,
+      "delta": 0.09375,
+      "identical": 201,
+      "improved": 61,
+      "limits": 0,
+      "opponent": "spellcaster",
+      "paired_95_half_width": 0.031945011079614796,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 13
+    },
+    {
+      "baseline": 0.423828125,
+      "candidate": 0.505859375,
+      "delta": 0.08203125,
+      "identical": 158,
+      "improved": 75,
+      "limits": 0,
+      "opponent": "tele-dad",
+      "paired_95_half_width": 0.039181620597652546,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 33
+    },
+    {
+      "baseline": 0.869140625,
+      "candidate": 0.8828125,
+      "delta": 0.013671875,
+      "identical": 284,
+      "improved": 20,
+      "limits": 0,
+      "opponent": "toon",
+      "paired_95_half_width": 0.021980468669168772,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 13
+    },
+    {
+      "baseline": 0.146484375,
+      "candidate": 0.19140625,
+      "delta": 0.044921875,
+      "identical": 226,
+      "improved": 35,
+      "limits": 0,
+      "opponent": "verdict",
+      "paired_95_half_width": 0.02597961803857032,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 12
+    },
+    {
+      "baseline": 0.890625,
+      "candidate": 0.9140625,
+      "delta": 0.0234375,
+      "identical": 236,
+      "improved": 25,
+      "limits": 0,
+      "opponent": "watt",
+      "paired_95_half_width": 0.023533649809863486,
+      "pairs": 512,
+      "policy": "x-saber",
+      "regressed": 13
+    }
+  ],
+  "unchanged_tournament_games": {
+    "games": 103936,
+    "identical": 103936,
+    "previous_raw_sha256": "0d99d34d51ed6cc102ee9390a26b75e1841386b0ee15a360be195a02b15cf7c8",
+    "current_raw_sha256": "9df487938c31ffd0779f9af2c94216510a86c57d5da8e4b283389993c5efae58"
+  },
+  "selected_screen_reproduced_in_development": 6656,
+  "combined_alternatives": {
+    "combined-materials": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5853365384615384,
+        "candidate": 0.5763221153846154,
+        "delta": -0.009014423076923076,
+        "ci95": [
+          -0.01572341852009054,
+          -0.0023054276337556136
+        ],
+        "improved": 50,
+        "regressed": 80,
+        "identical": 2472,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.5745192307692307,
+        "candidate": 0.5745192307692307,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "combined-legal": {
+      "quickdraw-plant": {
+        "pairs": 3328,
+        "baseline": 0.5853365384615384,
+        "candidate": 0.5802283653846154,
+        "delta": -0.005108173076923077,
+        "ci95": [
+          -0.011367250087083607,
+          0.0011509039332374517
+        ],
+        "improved": 48,
+        "regressed": 65,
+        "identical": 2526,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 3328,
+        "baseline": 0.5745192307692307,
+        "candidate": 0.5745192307692307,
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "improved": 0,
+        "regressed": 0,
+        "identical": 3328,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    }
+  },
+  "workspace_tests_passed": 122
+}
