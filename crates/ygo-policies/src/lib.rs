@@ -2784,4 +2784,145 @@ mod tests {
         let mut policy = crate::registry::create("morphtronic", db).unwrap();
         assert_eq!(idle.choices[policy.choose(&obs, &idle)].kind, ChoiceKind::ChangePosition);
     }
+    #[test]
+    fn gishki_searches_the_missing_ritual_piece() {
+        use crate::cards::types;
+        const OGRE: u32 = 57272170;
+        const MIRROR: u32 = 46159582;
+        const SHADOW: u32 = 29888389;
+        let mut ritual = creature(OGRE, 8, 2800, 2800, 0x3a);
+        ritual.1.kind |= types::RITUAL;
+        let db = Arc::new(MemoryCards([
+            ritual, printed(MIRROR, types::SPELL | types::RITUAL, 0),
+            creature(SHADOW, 4, 1200, 1000, 0x3a),
+        ].into_iter().collect()));
+        let mut policy = crate::registry::create("gishki", db).unwrap();
+        let mut obs = observation();
+        let search = select_one(Hint::AddToHand, vec![toggle(Location::Deck, 0, OGRE), toggle(Location::Deck, 1, MIRROR), toggle(Location::Deck, 2, SHADOW)]);
+        obs.cards = vec![card(0, Location::Hand, 0, OGRE, false)];
+        assert_eq!(policy.choose(&obs, &search), 1);
+        obs.cards = vec![card(0, Location::Hand, 0, MIRROR, false)];
+        assert_eq!(policy.choose(&obs, &search), 0);
+        obs.cards.push(card(0, Location::Hand, 1, OGRE, false));
+        assert_eq!(policy.choose(&obs, &search), 2);
+    }
+
+    #[test]
+    fn gishki_recovers_a_spare_ritual_monster() {
+        use crate::cards::types;
+        let mut ritual = creature(57272170, 8, 2800, 2800, 0x3a);
+        ritual.1.kind |= types::RITUAL;
+        let db = Arc::new(MemoryCards([ritual, printed(46159582, types::SPELL | types::RITUAL, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("gishki", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, 57272170, false), card(0, Location::Graveyard, 0, 46159582, true), card(0, Location::Graveyard, 1, 21496848, true)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(46159582, Location::Graveyard, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn gishki_flips_ariel_for_its_search() {
+        use crate::cards::types;
+        let mut ariel = creature(92784374, 4, 1000, 1800, 0x3a);
+        ariel.1.kind |= types::FLIP;
+        let mut policy = crate::registry::create("gishki", Arc::new(MemoryCards([ariel].into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(92784374), Position::FACE_DOWN_DEFENSE, 1000, 1800), monster(1, 0, None, Position::FACE_UP_ATTACK, 2400, 1000)];
+        let flip = Choice { kind: ChoiceKind::ChangePosition, ..activate(92784374, Location::MonsterZone, 0) };
+        let idle = decide(DecisionKind::Idle, None, vec![flip, choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards[0].position = Position::FACE_UP_DEFENSE;
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn karakuri_flips_sazank_only_with_an_enemy_target() {
+        let mut policy = crate::registry::create("karakuri", Arc::new(MemoryCards([creature(93724592, 3, 1200, 1200, 0x11)].into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(93724592), Position::FACE_DOWN_DEFENSE, 1200, 1200), monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let flip = Choice { kind: ChoiceKind::ChangePosition, ..activate(93724592, Location::MonsterZone, 0) };
+        let idle = decide(DecisionKind::Idle, None, vec![flip, choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards[1].position = Position::FACE_DOWN_DEFENSE;
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.pop();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn karakuri_normal_summons_the_tuner_for_a_shogun() {
+        use crate::cards::{types, races};
+        let mut cards = vec![creature(39118197, 4, 1800, 600, 0x11), creature(66625883, 3, 500, 1600, 0x11), creature(70271583, 4, 600, 1800, 0x11), creature(30230789, 2, 500, 1500, 0x11)];
+        for (_, card) in &mut cards { card.race = races::MACHINE; }
+        cards[1].1.kind |= types::TUNER;
+        cards[2].1.kind |= types::TUNER;
+        let mut policy = crate::registry::create("karakuri", Arc::new(MemoryCards(cards.into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        let mut body = monster(0, 0, Some(39118197), Position::FACE_UP_ATTACK, 1800, 600);
+        body.level = 4;
+        obs.cards = vec![body, card(0, Location::Hand, 0, 30230789, false), card(0, Location::Hand, 1, 66625883, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, 30230789, 0), from_hand(ChoiceKind::NormalSummon, 66625883, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.remove(0);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn gishki_uses_tetrogre_in_its_main_phase() {
+        let mut policy = crate::registry::create("gishki", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(21496848), Position::FACE_UP_ATTACK, 2600, 2100)];
+        let effect = activate(21496848, Location::MonsterZone, 0);
+        let idle = decide(DecisionKind::Idle, None, vec![effect.clone(), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.turn_player = Some(1);
+        let chain = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![effect, choice(ChoiceKind::Pass)]);
+        assert_eq!(policy.choose(&obs, &chain), 1);
+    }
+
+    #[test]
+    fn karakuri_position_targets_consider_the_resulting_position() {
+        let db = Arc::new(MemoryCards([creature(30230789, 2, 500, 1500, 0x11), creature(23874409, 7, 2600, 1900, 0x11)].into_iter().collect()));
+        let mut policy = crate::registry::create("karakuri", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(30230789), Position::FACE_UP_ATTACK, 500, 1500), monster(0, 1, Some(23874409), Position::FACE_UP_ATTACK, 2600, 1900), monster(1, 0, None, Position::FACE_UP_DEFENSE, 3300, 3200)];
+        let mut enemy = toggle(Location::MonsterZone, 0, 0);
+        enemy.card.as_mut().unwrap().at.controller = 1;
+        enemy.card.as_mut().unwrap().code = None;
+        let target = select_one(Hint::Other(528), vec![toggle(Location::MonsterZone, 0, 30230789), toggle(Location::MonsterZone, 1, 23874409), enemy]);
+        // Put the compulsory weak attacker in Defense, rather than strengthen their defender.
+        assert_eq!(policy.choose(&obs, &target), 0);
+        obs.cards[2].position = Position::FACE_UP_ATTACK;
+        obs.cards[2].defense = 1000;
+        assert_eq!(policy.choose(&obs, &target), 2);
+        // An unrevealed monster gets no score based on its hidden identity or stats.
+        obs.cards[2].position = Position::FACE_DOWN_DEFENSE;
+        obs.cards[2].attack = 0;
+        obs.cards[2].defense = 0;
+        obs.cards[1].position = Position::FACE_UP_DEFENSE;
+        assert_eq!(policy.choose(&obs, &target), 1);
+    }
+
+    #[test]
+    fn gishki_can_use_meditation_in_its_own_open_main_window() {
+        let mut policy = crate::registry::create("gishki", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, 46337945, false)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(46337945, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(policy.choose(&obs, &window), 0);
+        obs.turn_player = Some(1);
+        assert_eq!(policy.choose(&obs, &window), 1);
+        obs.phase = Some(Phase::End);
+        assert_eq!(policy.choose(&obs, &window), 0);
+    }
+
+    #[test]
+    fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
+        let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
+        let mut policy = crate::registry::create("karakuri", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, 70095154, false), card(0, Location::Hand, 1, 30230789, false), monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, 70095154, 0), from_hand(ChoiceKind::NormalSummon, 30230789, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
 }

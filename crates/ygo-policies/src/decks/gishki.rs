@@ -79,6 +79,15 @@ impl Strategy for Gishki {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        // Ariel's search does not need to wait for an opposing attack.
+        if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition
+            && t.view(c).map_or(false, |v| ctx.is(v, ARIEL) && !v.position.face_up)) {
+            return t.pick(i);
+        }
+        // Either draw a discard from their hand or load our Graveyard.
+        if let Some(i) = t.activate_from(TETROGRE, Location::MonsterZone) {
+            return t.pick(i);
+        }
         if let Some(i) = t.activate(PREPARATION) {
             return t.pick(i);
         }
@@ -88,17 +97,19 @@ impl Strategy for Gishki {
         }
         let ritual_monster_in_hand = Self::hand_has(&ctx, |c| Self::ritual_monster(&ctx, c));
         let ritual_spell_in_hand = Self::hand_has(&ctx, |c| Self::ritual_spell(&ctx, c));
-        // Aquamirror in the Graveyard: shuffle it back for a Ritual Monster.
-        if !ritual_monster_in_hand {
-            if let Some(i) = t.activate_from(AQUAMIRROR, Location::Graveyard) {
-                return t.pick(i);
-            }
+        // A spare Ritual Monster also funds Soul Ogre's discard or the next summon.
+        if let Some(i) = t.activate_from(AQUAMIRROR, Location::Graveyard) {
+            return t.pick(i);
         }
         // Shadow: trade itself for the Ritual Spell when we lack one.
         if ritual_monster_in_hand && !ritual_spell_in_hand {
             if let Some(i) = t.activate_from(SHADOW, Location::Hand) {
                 return t.pick(i);
             }
+        }
+        // Recover this turn's resources while they can still be used.
+        if let Some(i) = t.activate(MEDITATION) {
+            return t.pick(i);
         }
         if let Some(i) = t.activate(SALVAGE) {
             return t.pick(i);
@@ -171,7 +182,7 @@ impl Strategy for Gishki {
                     Response::no()
                 }
             }
-            // Tetrogre mills both players: not in this plan.
+            // Tetrogre is an Ignition effect; the Main Phase plan handles it.
             TETROGRE => Response::no(),
             _ => return None,
         })
@@ -181,6 +192,17 @@ impl Strategy for Gishki {
         let ctx = t.ctx;
         let code = member.code.map(|c| ctx.canonical(c));
         let mine = member.at.controller == ctx.me;
+        // Complete the ritual before collecting another expensive Ritual Monster.
+        if mine && member.at.location == Location::Deck && t.decision.hint == Hint::AddToHand {
+            let code = code?;
+            let monster = Self::hand_has(&ctx, |c| Self::ritual_monster(&ctx, c));
+            let mirror = ctx.in_hand(AQUAMIRROR);
+            let bonus = if code == AQUAMIRROR && !mirror && monster { 5000.0 }
+                else if Self::ritual_monster(&ctx, code) && !monster { 4000.0 }
+                else if code == SHADOW && mirror && monster { 3000.0 }
+                else { 0.0 };
+            return Some(value(self, &ctx, Some(code), None) as f64 + bonus);
+        }
         match t.decision.hint {
             // Ritual Tributes: prefer the opponent's monsters (Forbidden Arts),
             // then our spent or redundant pieces.

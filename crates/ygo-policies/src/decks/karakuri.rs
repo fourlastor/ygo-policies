@@ -81,6 +81,22 @@ impl Karakuri {
         })
     }
 
+    /// Value a forced position change using only the visible battle stats.
+    fn position_score(ctx: &Ctx, card: &CardView) -> i32 {
+        if card.at.controller == ctx.opp {
+            if !card.position.face_up { return -1000; }
+            let (before, after) = if card.position.attack { (card.attack, card.defense) } else { (card.defense, card.attack) };
+            return before - after + if before >= ctx.my_best_attack() && after < ctx.my_best_attack() { 3000 } else { 0 };
+        }
+        if !card.position.face_up {
+            return if ctx.is(card, SAZANK) && ctx.monsters(ctx.opp).iter().any(|c| c.position.face_up) { 6000 } else { -2000 };
+        }
+        if card.position.attack {
+            if Self::is_karakuri(ctx, card) && card.attack < ctx.opp_best_attack() { 3000 - card.attack }
+            else { -card.attack - 1000 }
+        } else if card.attack > ctx.opp_best_attack() { 3000 + card.attack } else { -3000 }
+    }
+
     /// Their face-up Attack Position monster that Burei should flip into a
     /// weaker Defense Position one for our attackers.
     fn burei_target<'a>(ctx: &Ctx<'a>) -> Option<&'a CardView> {
@@ -113,6 +129,17 @@ impl Strategy for Karakuri {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        if ctx.monsters(ctx.opp).iter().any(|c| c.position.face_up) {
+            // Sazank's removal is mandatory: do not flip it into only our monsters.
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition
+                && t.view(c).map_or(false, |v| ctx.is(v, SAZANK) && !v.position.face_up)) {
+                return t.pick(i);
+            }
+        }
+        // The normal summon would close Cyber Dragon's empty-field window.
+        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(CYBER_DRAGON), Some(Location::Hand)) {
+            return t.pick(i);
+        }
         for code in [SHOWDOWN_CASTLE, ANATOMY, MACHINA_ARMORED_UNIT] {
             if !ctx.face_up_on_field(ctx.me, code) {
                 if let Some(i) = t.activate_from(code, Location::Hand) {
@@ -193,7 +220,11 @@ impl Strategy for Karakuri {
         let code = ctx.canonical(choice.code()?);
         let blocked = ctx.opp_best_attack();
         Some(match (choice.kind, code) {
-            // The Merchant's search is worth more than any body.
+            // Complete a Shogun with the Machine already on the field.
+            (ChoiceKind::NormalSummon, SAIZAN | NISHIPACHI) if ctx.monsters(ctx.me).iter().any(|c|
+                c.position.face_up && Self::is_machine(&ctx, c) && !ctx.view_data(c).is_tuner()
+                && matches!(c.level + ctx.data(code).level, 7 | 8)) => Some(2400.0),
+            // Otherwise, prefer the Merchant's search over another body.
             (ChoiceKind::NormalSummon, MERCHANT) => Some(2200.0),
             (ChoiceKind::NormalSummon, BUSHI) if blocked < 1800 => Some(1900.0),
             (ChoiceKind::NormalSummon, KUICK) if blocked < 1700 => Some(1850.0),
@@ -254,6 +285,10 @@ impl Strategy for Karakuri {
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
         let ctx = t.ctx;
+        // HINTMSG_POSCHANGE: evaluate the resulting public battle position.
+        if t.decision.hint == Hint::Other(528) {
+            return ctx.card(member.at).map(|c| Self::position_score(&ctx, c) as f64);
+        }
         if member.at.controller != ctx.me {
             return None;
         }
