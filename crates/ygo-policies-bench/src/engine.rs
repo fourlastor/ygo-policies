@@ -19,6 +19,15 @@ pub struct PlayOptions {
     pub trace: bool,
     /// Starting Life Points of seat 0 (who goes first) and seat 1.
     pub life_points: [u32; 2],
+    /// Also write the duel as a record that `replay` plays again.
+    pub record: bool,
+}
+
+/// A record in the form `replay` reads, with the policies that played.
+fn record_json(recorded: &Recorded, names: [&str; 2]) -> serde_json::Value {
+    let mut record = recorded.to_json();
+    record["players"] = serde_json::json!(names);
+    record
 }
 
 /// Life Points of both players in a staged duel.
@@ -130,8 +139,10 @@ pub fn play(
     cards: &Path,
     run: PlayOptions,
 ) -> Result<serde_json::Value> {
-    let PlayOptions { seed, limit, trace, life_points } = run;
-    let mut duel = core.deal(&DuelOptions { life_points, ..DuelOptions::seeded(seed) }, decks)?;
+    let PlayOptions { seed, limit, trace, life_points, record } = run;
+    let options = DuelOptions { life_points, ..DuelOptions::seeded(seed) };
+    let mut duel = core.deal(&options, decks)?;
+    let mut recorded = record.then(|| Recorded::dealt(&options, decks));
     let mut seats = Vec::new();
     for p in 0..2 {
         seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
@@ -165,7 +176,7 @@ pub fn play(
                     .entry(u32::from_le_bytes(message[1..5].try_into().unwrap()))
                     .or_default() += 1;
             }
-            for seat in &seats {
+            for (p, seat) in seats.iter().enumerate() {
                 if let Some(answer) = seat.feed(message)? {
                     if response.is_some() {
                         return Err("Multiple answers in one engine batch".into());
@@ -176,7 +187,7 @@ pub fn play(
                     if trace {
                         traces.push(seat.last_answer()?);
                     }
-                    response = Some(answer);
+                    response = Some((p as u8, answer));
                 }
             }
         }
@@ -187,11 +198,18 @@ pub fn play(
                 State::Over(None) => return Err("Engine ended without MSG_WIN".into()),
                 _ => (None, None),
             };
-            return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
-                "limit": winner.is_none(), "digest": format!("{digest:016x}"), "trace": traces, "activations": activations}));
+            let mut row = serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
+                "limit": winner.is_none(), "digest": format!("{digest:016x}"), "trace": traces, "activations": activations});
+            if let Some(recorded) = &recorded {
+                row["record"] = record_json(recorded, names);
+            }
+            return Ok(row);
         }
-        if let Some(answer) = response {
+        if let Some((player, answer)) = response {
             duel.respond(&answer);
+            if let Some(recorded) = &mut recorded {
+                recorded.responses.push((player, answer));
+            }
             decisions += 1;
         } else if step.state == State::Awaiting {
             return Err("Engine awaiting with no policy answer".into());

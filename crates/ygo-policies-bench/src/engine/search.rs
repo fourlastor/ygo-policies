@@ -543,8 +543,11 @@ pub fn play_searching(
     if !core.has_snapshots() {
         return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
     }
-    let PlayOptions { seed, limit, life_points, .. } = run;
-    let mut duel = core.deal(&DuelOptions { life_points, ..DuelOptions::seeded(seed) }, decks)?;
+    let PlayOptions { seed, limit, life_points, record, .. } = run;
+    let options = DuelOptions { life_points, ..DuelOptions::seeded(seed) };
+    let mut duel = core.deal(&options, decks)?;
+    // The duel as it is played, the search's answers in the place of the pilot's.
+    let mut recorded = record.then(|| Recorded::dealt(&options, decks));
     let setup = Setup { policies, names, cards, seed, limit };
     let viewer = search.searcher as u8;
     let mut table = Table { seats: Vec::new(), logs: [Vec::new(), Vec::new()] };
@@ -596,11 +599,15 @@ pub fn play_searching(
                 _ => (None, None),
             };
             let mispredicted = predictions.iter().filter(|p| **p != winner.filter(|w| *w < 2)).count();
-            return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
+            let mut row = serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
                 "limit": winner.is_none(), "digest": format!("{digest:016x}"), "searched": searched, "in_chain": in_chain,
                 "facing_set": facing_set,
                 "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations, "examined": examined,
-                "predictions": predictions.len(), "mispredicted": mispredicted}));
+                "predictions": predictions.len(), "mispredicted": mispredicted});
+            if let Some(recorded) = &recorded {
+                row["record"] = record_json(recorded, names);
+            }
+            return Ok(row);
         }
         let Some((p, mut answer, message)) = response else {
             if step.state == State::Awaiting {
@@ -661,6 +668,10 @@ pub fn play_searching(
             digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
         }
         duel.respond(&answer);
+        if let Some(recorded) = &mut recorded {
+            // `decisions` is this answer's place among the record's responses.
+            recorded.responses.push((p as u8, answer));
+        }
         decisions += 1;
     }
 }

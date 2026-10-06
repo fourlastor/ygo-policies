@@ -175,6 +175,15 @@ This is the material for a pilot's rules: `seen` shows the positions where
 another answer won clearly more often, and `examined` how often the same
 choice came up without mattering.
 
+`--record true` adds a `record` to each duel of the row: all it takes to
+play that duel again, in the form [`replay`](#replaying-a-recorded-duel)
+reads: the seed, both Decks as they were dealt, and every answer with the
+player who gave it, as bytes.  The `decision` of a deviation and of an
+examined decision is the place of its answer in that record's `responses`,
+counted from 0: the answers before it are the duel up to that decision.
+Without the option a row is what it was.  `matchup`, `compare` and
+`round-robin` take the option too.
+
 ## Protocol and artifacts
 
 - Master Rule 1, 8000 LP (or `--lp`), five-card opening hands, one draw per turn
@@ -304,3 +313,17 @@ checkout's `vendor/`; a record from other versions stops with an error when an
 answer no longer fits the question.  `--input` also takes a `.json` file
 holding one duel's `replay` column (without `--recheck`: the bare replay does
 not say which policy played).
+
+It takes the rows of a run made with `--record true` too (a `.jsonl` file):
+`--duel` is then the row, counted from 0 (default the last), and `--which`
+the duel of that row: `search` (the default for a search row), `baseline`,
+`candidate` or `game`.  A record is `start_lp` (one number, or one for each
+player), `start_hand`, `draw_count`, `seed`, `flags`, `decks` and
+`responses`, as Beat Claudi-oh writes them, and `players`.
+
+```bash
+target/release/policy-bench search --policies monarch --opponents heroes \
+  --games 2 --record true --output monarch-search.jsonl
+# The searched duel of the first row, and where the pilot alone answers otherwise.
+target/release/policy-bench replay --input monarch-search.jsonl --duel 0 --recheck true
+```

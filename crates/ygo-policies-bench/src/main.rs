@@ -236,8 +236,13 @@ one-step search at each of its decisions (see the bench README).\n\
   --log true (write every decision examined: the situation, how each alternative did in\n\
   the first-stage worlds, the playouts it took and what was chosen)\n\
   --validate true (search nothing; check that snapshots and rebuilt seats replay the duel)\n\
+  --record true (also for matchup, compare and round-robin: write each duel as a record that\n\
+  replay plays again; a deviation's `decision` is its answer's place in the record's responses)\n\
 replay plays a duel from Beat Claudi-oh's database again (--input, and --duel ID, default\n\
 the last one) and tells it turn by turn with nothing hidden (to --output, else printed).\n\
+  --input also takes a .json file holding one record, or the .jsonl of a run made with\n\
+  --record true: --duel is then the row (the first is 0, default the last) and --which the\n\
+  duel of that row (search, baseline, candidate or game; default the searched one).\n\
   --recheck true also asks the policy that played, as --library has it now, at each of its\n\
   decisions, and says where it would answer otherwise."
     );
@@ -297,6 +302,8 @@ fn run() -> Result<()> {
             "--strict",
             "--foresight",
             "--log",
+            "--record",
+            "--which",
         ]
         .contains(&key.as_str())
         {
@@ -355,7 +362,7 @@ fn run() -> Result<()> {
     if mode == "replay" {
         // A duel from Beat Claudi-oh's log, played again and told.
         let duel = args.get("--duel").map(|v| v.parse().map_err(|_| "Invalid --duel".to_string())).transpose()?;
-        let record = replay::load(&required("--input")?, duel)?;
+        let record = replay::load(&required("--input")?, duel, args.get("--which").map(String::as_str))?;
         let mut core = Core::open(core_path.as_deref(), &cards, &scripts)?;
         // The policy that played, as it is built now, asked at each of its decisions.
         let library = match args.get("--recheck").map(String::as_str).unwrap_or("false") {
@@ -528,6 +535,7 @@ fn run() -> Result<()> {
     };
     let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
     let log = flag("--log", false)?;
+    let record = flag("--record", false)?;
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
     }
@@ -590,7 +598,7 @@ fn run() -> Result<()> {
                         let mut row = json!({"a": a, "b": b, "seed": seed, "seat": seat});
                         if mode == "search" {
                             let policies = [&candidate, &candidate];
-                            let options = PlayOptions { seed, limit, trace: false, life_points };
+                            let options = PlayOptions { seed, limit, trace: false, life_points, record };
                             row["baseline"] = scored(engine::play(&core, &decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
                             let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
@@ -613,7 +621,7 @@ fn run() -> Result<()> {
                                 [&baseline, library]
                             };
                             row[label] = scored(
-                                engine::play(&core, &decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points }),
+                                engine::play(&core, &decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points, record }),
                                 seat,
                             );
                         }

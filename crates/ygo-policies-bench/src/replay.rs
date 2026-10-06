@@ -45,9 +45,14 @@ pub struct Record {
 }
 
 /// Read a duel from Beat Claudi-oh's database (`duel`: its id, default the
-/// last one), or from a file holding the `replay` column's JSON.
-pub fn load(input: &Path, duel: Option<i64>) -> Result<Record> {
+/// last one), from a file holding the `replay` column's JSON, or from the
+/// rows of a `policy-bench` run made with `--record true` (`duel`: the row,
+/// the first being 0, default the last; `which`: the duel of that row).
+pub fn load(input: &Path, duel: Option<i64>, which: Option<&str>) -> Result<Record> {
     let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", input.display());
+    if input.extension().is_some_and(|e| e == "jsonl") {
+        return load_row(input, duel, which);
+    }
     let (title, text, policy) = if input.extension().is_some_and(|e| e == "json") {
         (input.display().to_string(), std::fs::read_to_string(input).map_err(|e| failed(&e))?, None)
     } else {
@@ -68,6 +73,45 @@ pub fn load(input: &Path, duel: Option<i64>) -> Result<Record> {
     let replay: Value = serde_json::from_str(&text).map_err(|e| failed(&e))?;
     let recorded = Recorded::from_json(&replay).map_err(|e| failed(&e))?;
     let name = |index: usize| replay["players"][index].as_str().map_or_else(|| format!("Player {}", index + 1), str::to_owned);
+    Ok(Record { recorded, players: [name(0), name(1)], title, policy })
+}
+
+/// A duel of one row of a run made with `--record true`.  A search row holds
+/// two: the pilot's own (`baseline`) and the searched one (`search`).
+fn load_row(input: &Path, row: Option<i64>, which: Option<&str>) -> Result<Record> {
+    let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", input.display());
+    let text = std::fs::read_to_string(input).map_err(|e| failed(&e))?;
+    let lines: Vec<&str> = text.lines().filter(|line| !line.trim().is_empty()).collect();
+    let index = match row {
+        Some(row) => usize::try_from(row).ok().filter(|row| *row < lines.len()).ok_or_else(|| failed(&format!("no row {row}: it has {} rows", lines.len())))?,
+        None => lines.len().checked_sub(1).ok_or_else(|| failed(&"no rows"))?,
+    };
+    let row: Value = serde_json::from_str(lines[index]).map_err(|e| failed(&e))?;
+    let which = match which {
+        Some(which) => which,
+        None => ["search", "game", "candidate"].into_iter().find(|key| row[*key].is_object()).ok_or_else(|| failed(&"no duel in this row"))?,
+    };
+    let played = &row[which];
+    if !played["record"].is_object() {
+        return Err(failed(&format!("row {index} has no record of its {which} duel: was the run made with --record true?")));
+    }
+    let recorded = Recorded::from_json(&played["record"]).map_err(|e| failed(&e))?;
+    let name = |index: usize| played["record"]["players"][index].as_str().map_or_else(|| format!("Player {}", index + 1), str::to_owned);
+    // The row's own policy and its seat: the one that searched, in a search row.
+    let seat = row["seat"].as_u64().unwrap_or(0) as u8;
+    let policy = row["a"].as_str().map(|policy| (policy.to_owned(), seat));
+    let ending = match played["winner"].as_u64() {
+        Some(winner) if winner < 2 => format!("won by {}", name(winner as usize)),
+        Some(_) => "a draw".to_owned(),
+        None => "stopped at the decision limit".to_owned(),
+    };
+    let title = format!(
+        "row {index}, the {which} duel: {} against {}, seed {}, {} turns, {ending}",
+        name(0),
+        name(1),
+        row["seed"],
+        played["turns"]
+    );
     Ok(Record { recorded, players: [name(0), name(1)], title, policy })
 }
 
