@@ -3,6 +3,9 @@
 Native OCGCore benchmarks for any registered policy and its deck. This crate builds
 the pinned `vendor/ocgcore` and its Lua submodule; `vendor/CardScripts` and
 `vendor/BabelCdb` supply scripts and printed card data. A C++17 compiler is required.
+`vendor/ocgcore` is the [fourlastor fork](https://github.com/fourlastor/ygopro-core)
+of `edo9300/ygopro-core`: the same engine at `400a541`, plus arena snapshots and
+a hidden-card swap, which the [search](#a-search-on-top-of-a-pilot) is built on.
 The regular policy libraries remain engine-independent.
 
 ```bash
@@ -93,7 +96,7 @@ is a floor on what a better pilot of the same deck would gain.
 
 ```bash
 target/release/policy-bench search --policies monarch --opponents existing \
-  --games 64 --workers 20 --core /path/to/libocgcore.so --output monarch-search.jsonl
+  --games 64 --workers 20 --output monarch-search.jsonl
 ```
 
 At a decision of the searching seat the duel is snapshotted.  Every
@@ -115,9 +118,8 @@ Blackwing's decisions, no alternative can be ahead and none is tried.
 
 What it cannot do, and what it knows that a player would not:
 
-- It needs `--core`: an OCGCore with arena snapshots and a hidden-card swap
-  (the `ygo` repository's build of its `ygopro-core` fork).  The pinned
-  engine has neither.
+- It needs an engine with arena snapshots and a hidden-card swap.  The
+  built-in one has both; an engine given as `--core` must have them too.
 - Cards cannot be dealt again while a chain is open: those decisions are the
   pilot's.
 - The other player's face-down monsters cannot be dealt again, so a world

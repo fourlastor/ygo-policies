@@ -13,8 +13,8 @@
 //! decision taken while one is on the field to the pilot.
 //!
 //! This needs an engine with arena snapshots and a hidden-card swap
-//! (`OCG_DuelCreateSnapshot`, `YGO_DuelSwapHiddenCards`): the `ygo`
-//! repository's build of its OCGCore fork, given as `--core`.
+//! (`OCG_DuelCreateSnapshot`, `OCG_DuelSwapHiddenCards`).  The built-in engine
+//! has both; an engine given as `--core` must have them too.
 use super::*;
 
 /// What the search needs beyond the public OCGCore API.
@@ -28,12 +28,26 @@ pub(super) struct Extensions {
 }
 
 impl Extensions {
+    /// Those of the engine this binary is built with.
+    pub(super) fn built_in() -> Self {
+        Self {
+            snapshot: OCG_DuelCreateSnapshot,
+            restore: OCG_DuelRestoreSnapshot,
+            discard: OCG_DuelDestroySnapshot,
+            swap: OCG_DuelSwapHiddenCards,
+            count: OCG_DuelQueryCount,
+            card: OCG_DuelQuery,
+        }
+    }
+
+    /// Those of an engine given as `--core`, if it has them.  The swap was
+    /// `YGO_DuelSwapHiddenCards` before it moved into the engine's fork.
     pub(super) unsafe fn load(library: &Library) -> Option<Self> {
         Some(Self {
             snapshot: symbol(library, b"OCG_DuelCreateSnapshot").ok()?,
             restore: symbol(library, b"OCG_DuelRestoreSnapshot").ok()?,
             discard: symbol(library, b"OCG_DuelDestroySnapshot").ok()?,
-            swap: symbol(library, b"YGO_DuelSwapHiddenCards").ok()?,
+            swap: symbol(library, b"OCG_DuelSwapHiddenCards").or_else(|_| symbol(library, b"YGO_DuelSwapHiddenCards")).ok()?,
             count: symbol(library, b"OCG_DuelQueryCount").ok()?,
             card: symbol(library, b"OCG_DuelQuery").ok()?,
         })
@@ -609,7 +623,7 @@ impl Core {
         search: SearchOptions,
     ) -> Result<serde_json::Value> {
         if self.extensions.is_none() {
-            return Err("search needs --core: an OCGCore build with arena snapshots and the hidden-card swap".into());
+            return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
         }
         let PlayOptions { seed, limit, life_points, .. } = run;
         self.resources.errors.clear();

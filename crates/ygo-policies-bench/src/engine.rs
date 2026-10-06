@@ -182,6 +182,13 @@ extern "C" {
     fn OCG_DuelSetResponse(duel: Handle, response: *const u8, length: u32);
     fn OCG_DuelQueryLocation(duel: Handle, length: *mut u32, query: *const Query) -> *const u8;
     fn OCG_LoadScript(duel: Handle, bytes: *const u8, length: u32, name: *const c_char) -> i32;
+    fn OCG_DuelQueryCount(duel: Handle, team: u8, location: u32) -> u32;
+    fn OCG_DuelQuery(duel: Handle, length: *mut u32, query: *const Query) -> *const u8;
+    // The fork's additions: arena snapshots and the hidden-card swap.
+    fn OCG_DuelCreateSnapshot(duel: Handle, out: *mut Handle) -> i32;
+    fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
+    fn OCG_DuelDestroySnapshot(snapshot: Handle);
+    fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
 }
 
 struct Resources {
@@ -228,7 +235,8 @@ unsafe fn symbol<T: Copy>(library: &Library, name: &[u8]) -> Result<T> {
 
 pub struct Core {
     _library: Option<Library>,
-    /// Snapshots and the hidden-card swap, when `--core` has them.
+    /// Snapshots and the hidden-card swap: the built-in engine has them, an
+    /// engine given as `--core` may not.
     extensions: Option<search::Extensions>,
     resources: Box<Resources>,
     create: unsafe extern "C" fn(*mut Handle, *const Options) -> i32,
@@ -334,7 +342,10 @@ impl Core {
                 messages: api!(OCG_DuelGetMessage),
                 respond: api!(OCG_DuelSetResponse),
                 query: api!(OCG_DuelQueryLocation),
-                extensions: library.as_ref().and_then(|library| search::Extensions::load(library)),
+                extensions: match &library {
+                    Some(library) => search::Extensions::load(library),
+                    None => Some(search::Extensions::built_in()),
+                },
                 _library: library,
             })
         }

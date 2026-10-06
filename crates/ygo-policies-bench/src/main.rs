@@ -201,7 +201,7 @@ fn help() {
     println!(
         "policy-bench <matchup|round-robin|compare|search|rank|knowledge|probe|replay> [OPTIONS]\n\
   matchup --policies arcana --opponents blackwing,monarch\n\
-  search --policies monarch --opponents existing --core libocgcore.so\n\
+  search --policies monarch --opponents existing\n\
   round-robin --policies all --games 256 --markdown DECK-TIER-LIST.md\n\
   compare --policies arcana --opponents existing --baseline old.so --candidate new.so\n\
   rank --input tournament.jsonl --markdown DECK-TIER-LIST.md\n\
@@ -225,8 +225,8 @@ shows as the policies' card facts (crates/ygo-policies/src/knowledge/pool.rs):\n
   --output PATH (the staged attacks this build's tactics call wrong)\n\
 probe writes what the engine did, monster by monster, as JSON lines (--output).\n\
 search plays each game twice on the same seed: the pilot alone, and the pilot with a\n\
-one-step search at each of its decisions (see the bench README).  It needs --core with\n\
-arena snapshots.  --worlds 8 --confirm 32 --final 96 (worlds tried after each stage)\n\
+one-step search at each of its decisions (see the bench README).\n\
+  --worlds 8 --confirm 32 --final 96 (worlds tried after each stage)\n\
   --z 1.645 (how far ahead of the pilot's answer an alternative must be)\n\
   --strict false (also search while the other player has a face-down monster, which\n\
   the worlds cannot deal again: the search then sees what it is)\n\
@@ -528,8 +528,8 @@ fn run() -> Result<()> {
     };
     let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
     let log = flag("--log", false)?;
-    if mode == "search" && (core_path.is_none() || stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
-        return Err("search needs --core, and --worlds <= --confirm <= --final".into());
+    if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
+        return Err("search needs --worlds <= --confirm <= --final".into());
     }
     if let Some(first) = first {
         if mode != "matchup" && mode != "round-robin" || jobs.iter().any(|j| j.a != first && j.b != first) {

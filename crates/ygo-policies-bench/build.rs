@@ -49,6 +49,8 @@ fn main() {
     let core = [
         "card.cpp",
         "duel.cpp",
+        "duel_arena.cpp",
+        "duel_swap.cpp",
         "effect.cpp",
         "field.cpp",
         "interpreter.cpp",
