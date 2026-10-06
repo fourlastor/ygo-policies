@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Twenty-four pilots have been through it. The other 7 are to follow, a few at a
+Twenty-six pilots have been through it. The other 5 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
@@ -17,10 +17,10 @@ and reading it and measuring each rule it suggests takes a few hours more.
 
 The first five pilots were searched against 12 reference decks. The later
 rounds use the current 13, excluding a pilot's self-match: Burn, Spellcaster,
-Crystal, Morphtronic, Gishki, Dragunity, Gladiators, and Rock Block face 12.
+Crystal, Morphtronic, Gishki, Dragunity, Gladiators, Rock Block, Lightsworn, and Heroes face 12.
 The first five entries show searches before their latest rules; the other
 entries show follow-up searches after their rules (104 games each, 96 for
-Burn, Spellcaster, Crystal, Morphtronic, Gishki, Dragunity, Gladiators, and Rock Block).
+Burn, Spellcaster, Crystal, Morphtronic, Gishki, Dragunity, Gladiators, Rock Block, Lightsworn, and Heroes).
 Search gaps estimate remaining headroom; they are not hard ceilings.
 
 | Deck | Searches | Last search: alone | With the search | Gap | Win rate before → after its rules | Record |
@@ -49,21 +49,21 @@ Search gaps estimate remaining headroom; they are not hard ceilings.
 | Harpie Sisters | 2 | 57.7% | 70.2% | 12.5 | 57.60% → 61.58% (legal list, the 30 other decks, held out) | [harpie-rules.md](harpie-rules.md) |
 | Rock Block | 2 | 58.3% | 72.9% | 14.6 | 55.48% → 61.54% (the 30 other decks, held out) | [rock-tele-rules.md](rock-tele-rules.md) |
 | Tele-DAD | 2 | 58.7% | 76.0% | 17.3 | 55.42% → 57.77% (the 30 other decks, held out) | [rock-tele-rules.md](rock-tele-rules.md) |
+| Lightsworn Judgment | 2 | 68.8% | 84.4% | 15.6 | 56.19% → 63.95% (the 30 other decks, held out) | [lightsworn-heroes-rules.md](lightsworn-heroes-rules.md) |
+| Fusion Heroes | 2 | 71.9% | 81.2% | 9.4 | 59.40% → 68.15% (the 30 other decks, held out) | [lightsworn-heroes-rules.md](lightsworn-heroes-rules.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
 
 ## To do
 
-The 7 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
+The 5 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
 refreshed on 2026-10-06.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 92.0% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 81.7% | strong |  |
-| 3 | Machina Gadgets | `machina` | 69.4% | strong |  |
-| 5 | Gravekeeper's Tomb | `gravekeeper` | 66.2% | mid |  |
-| 11 | Legendary Six Samurai | `six-samurai` | 60.5% | mid |  |
-| 13 | Fusion Heroes | `heroes` | 60.0% | mid |  |
-| 17 | Lightsworn Judgment | `lightsworn` | 56.1% | mid |  |
+| 1 | Claudi-oh's Countdown | `countdown` | 91.9% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 81.4% | strong |  |
+| 3 | Machina Gadgets | `machina` | 69.0% | strong |  |
+| 6 | Gravekeeper's Tomb | `gravekeeper` | 65.8% | mid |  |
+| 12 | Legendary Six Samurai | `six-samurai` | 60.0% | mid |  |

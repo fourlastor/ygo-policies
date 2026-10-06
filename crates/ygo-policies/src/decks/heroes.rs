@@ -107,7 +107,7 @@ impl Heroes {
             GREAT_TORNADO => 2800.0 + opp_face_up.iter().map(|c| c.attack.max(c.defense)).sum::<i32>() as f64 / 4.0,
             // Leaving the field destroys the opponent's monsters: they cannot
             // afford to remove it, and it attacks without fear.
-            ABSOLUTE_ZERO => 2900.0 + 500.0 * Self::water_on_field(ctx) as f64 + 150.0 * ctx.monsters(ctx.opp).len() as f64,
+            ABSOLUTE_ZERO => 3500.0 + 500.0 * Self::water_on_field(ctx) as f64 + 150.0 * ctx.monsters(ctx.opp).len() as f64,
             THE_SHINING => 2600.0 + 300.0 * Self::banished_heroes(ctx) as f64,
             GAIA => 2200.0 + opp_best / 2.0,
             DRACO_EQUISTE => 3200.0,
@@ -119,6 +119,9 @@ impl Heroes {
 
     /// Worth spending two cards on a Fusion now?
     fn want_fusion(ctx: &Ctx) -> bool {
+        // Preserve a winning Fusion instead of repeatedly spending it as material.
+        if ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is(crate::cards::types::FUSION))
+            && ctx.my_best_attack() > ctx.opp_best_attack() { return false; }
         match ctx.phase() {
             Some(Phase::Main1) => true,
             // After battle, only to put a wall up.
@@ -191,6 +194,8 @@ impl Strategy for Heroes {
                 return t.pick(i);
             }
         }
+        // Take the summon trigger before a Fusion can consume Stratos from hand.
+        if let Some(i) = t.find(ChoiceKind::NormalSummon, Some(STRATOS), Some(Location::Hand)) { return t.pick(i); }
         // Super Polymerization as removal: fuse their best monster away.
         if let Some(target) = Self::super_poly_target(&ctx) {
             if let Some(i) = t.activate(SUPER_POLYMERIZATION) {

@@ -3503,4 +3503,182 @@ mod tests {
         assert_ne!(policy.choose(&obs, &idle), 0, "do not rotate an equally impenetrable defender");
     }
 
+
+    #[test]
+    fn lightsworn_revives_wulf_as_an_attacker_instead_of_valuing_it_as_a_discard() {
+        const WULF: u32 = 58996430;
+        const LUMINA: u32 = 95503687;
+        let db = Arc::new(MemoryCards([creature(WULF, 4, 2100, 300, 0x38), creature(LUMINA, 3, 1000, 1000, 0x38)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Graveyard, 0, WULF, true), card(0, Location::Graveyard, 1, LUMINA, true)];
+        let revive = select_one(Hint::SpecialSummon, vec![toggle(Location::Graveyard, 0, WULF), toggle(Location::Graveyard, 1, LUMINA)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &revive), 0);
+        obs.cards = vec![card(0, Location::Hand, 0, WULF, false), card(0, Location::Hand, 1, LUMINA, false)];
+        let discard = select_one(Hint::Discard, vec![toggle(Location::Hand, 0, WULF), toggle(Location::Hand, 1, LUMINA)]);
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &discard), 0, "Wulf is still the cheaper hand discard");
+    }
+
+    #[test]
+    fn lightsworn_revives_plaguespreader_only_with_a_hand_card_and_synchro_route() {
+        const PLAGUE: u32 = 33420078;
+        const JAIN: u32 = 96235275;
+        const GAIA: u32 = 97204936;
+        let mut plague = creature(PLAGUE, 2, 400, 200, 0);
+        plague.1.kind |= crate::cards::types::TUNER;
+        let mut gaia = creature(GAIA, 6, 2600, 800, 0);
+        gaia.1.kind |= crate::cards::types::SYNCHRO;
+        let db = Arc::new(MemoryCards([plague, gaia, creature(JAIN, 4, 1800, 1200, 0x38)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(JAIN), Position::FACE_UP_ATTACK, 1800, 1200),
+            card(0, Location::Graveyard, 0, PLAGUE, true), card(0, Location::Extra, 0, GAIA, false), card(0, Location::Hand, 0, 1, false)];
+        obs.cards[0].level = 4;
+        obs.pile_sizes = vec![(0, Location::Deck, 20)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(PLAGUE, Location::Graveyard, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "the revival needs a card to return to the Deck");
+        obs.cards.pop();
+        obs.cards.push(card(0, Location::Hand, 0, 1, false));
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not revive without a useful Synchro route");
+    }
+
+    #[test]
+    fn lightsworn_summons_judgment_dragon_before_adding_more_millers() {
+        const JD: u32 = 57774843;
+        const LYLA: u32 = 22624373;
+        let db = Arc::new(MemoryCards([creature(JD, 8, 3000, 2600, 0), creature(LYLA, 4, 1700, 200, 0x38)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, LYLA, false), card(0, Location::Hand, 1, JD, false)];
+        obs.pile_sizes = vec![(0, Location::Deck, 30)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, LYLA, 0),
+            from_hand(ChoiceKind::SpecialSummon, JD, 1), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.pile_sizes = vec![(0, Location::Deck, 1)];
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 2, "early sequencing must still respect the deck-out budget");
+    }
+
+    #[test]
+    fn heroes_summons_stratos_before_spending_it_as_fusion_material() {
+        const STRATOS: u32 = 40044918;
+        let db = Arc::new(MemoryCards([creature(STRATOS, 4, 1800, 300, 0x3008)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, STRATOS, false), card(0, Location::Hand, 1, 27847700, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(27847700, Location::Hand, 1),
+            from_hand(ChoiceKind::NormalSummon, STRATOS, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("heroes", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "resolve Stratos before using the Fusion spell");
+    }
+
+    #[test]
+    fn heroes_values_absolute_zeros_leaving_field_effect_when_choosing_a_fusion() {
+        const ZERO: u32 = 40854197;
+        const GAIA: u32 = 16304628;
+        let db = Arc::new(MemoryCards([creature(ZERO, 8, 2500, 2000, 0x3008), creature(GAIA, 6, 2200, 2600, 0x3008)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2500, 2000)];
+        let fusion = select_one(Hint::SpecialSummon, vec![toggle(Location::Extra, 0, GAIA), toggle(Location::Extra, 1, ZERO)]);
+        let mut policy = crate::registry::create("heroes", db).unwrap();
+        assert_eq!(policy.choose(&obs, &fusion), 1);
+    }
+
+    #[test]
+    fn lightsworn_flips_ryko_for_removal_but_preserves_its_deck_budget() {
+        const RYKO: u32 = 21502796;
+        let mut ryko = creature(RYKO, 2, 200, 100, 0x38);
+        ryko.1.kind |= crate::cards::types::FLIP;
+        let mut art = ryko.clone();
+        art.0 += 1;
+        art.1.code = art.0;
+        art.1.alias = RYKO;
+        let db = Arc::new(MemoryCards([ryko, art].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(RYKO + 1), Position::FACE_DOWN_DEFENSE, 200, 100),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2500, 2000)];
+        obs.pile_sizes = vec![(0, Location::Deck, 20)];
+        let idle = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition, ..activate(RYKO + 1, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "recognize alternate passcodes too");
+        obs.pile_sizes = vec![(0, Location::Deck, 3)];
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not initiate another three-card mill near deck-out");
+        obs.pile_sizes = vec![(0, Location::Deck, 20)];
+        obs.cards.pop();
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "leave Ryko set when there is no opposing target");
+    }
+
+    #[test]
+    fn heroes_preserves_a_winning_fusion_but_fuses_when_it_is_outmatched() {
+        const TORNADO: u32 = 3642509;
+        let mut tornado = creature(TORNADO, 8, 2800, 2200, 0x3008);
+        tornado.1.kind |= crate::cards::types::FUSION;
+        let db = Arc::new(MemoryCards([tornado].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(TORNADO), Position::FACE_UP_ATTACK, 2800, 2200),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(45906428, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("heroes", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not spend another Fusion just to replace a winning body");
+        obs.cards[1].attack = 3000;
+        let mut policy = crate::registry::create("heroes", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "an opposing larger monster still justifies another Fusion");
+    }
+
+    #[test]
+    fn lightsworn_uses_compulsory_on_an_extra_deck_monster_before_it_attacks() {
+        const STARDUST: u32 = 44508094;
+        const CED: u32 = 94192409;
+        let mut stardust = creature(STARDUST, 8, 2500, 2000, 0);
+        stardust.1.kind |= crate::cards::types::SYNCHRO;
+        let db = Arc::new(MemoryCards([stardust, creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, CED, false),
+            monster(1, 0, Some(STARDUST), Position::FACE_UP_ATTACK, 2500, 2000)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(CED, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0);
+        obs.cards[1].code = Some(1);
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 1, "keep the trap instead of returning a reusable Normal Summon without a threat");
+    }
+
+    #[test]
+    fn lightsworn_judgment_dragon_accepts_two_turns_of_deck_but_not_one() {
+        const JD: u32 = 57774843;
+        let db = Arc::new(MemoryCards([creature(JD, 8, 3000, 2600, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, JD, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, JD, 0), choice(ChoiceKind::EndTurn)]);
+        obs.pile_sizes = vec![(0, Location::Deck, 11)];
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.pile_sizes = vec![(0, Location::Deck, 10)];
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "a nonlethal summon still needs two safe turns of Deck");
+    }
+
+    #[test]
+    fn lightsworn_uses_judgment_wipe_for_a_lone_threat_without_spending_a_better_board() {
+        const JD: u32 = 57774843;
+        let db = Arc::new(MemoryCards([creature(JD, 8, 3000, 2600, 0), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(JD), Position::FACE_UP_ATTACK, 3000, 2600),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        obs.pile_sizes = vec![(0, Location::Deck, 20)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(JD, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("lightsworn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.push(monster(0, 1, Some(1), Position::FACE_UP_ATTACK, 1900, 1000));
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not sacrifice an equally valuable ally for the wipe");
+    }
 }

@@ -1,0 +1,1293 @@
+{
+  "heldout": {
+    "arguments": {
+      "--baseline": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-lightsworn-heroes.2acwhlo7/heldout.so",
+      "--games": "512",
+      "--opponents": "all",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/heldout.jsonl",
+      "--policies": "lightsworn,heroes",
+      "--seed": "40350000",
+      "--workers": "8"
+    },
+    "baseline": {
+      "bytes": 53874952,
+      "fnv1a64": "bbe2946ef088d765",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53947280,
+      "fnv1a64": "299ef0146f7b2e95",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/heldout.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/heroes.rs\n M crates/ygo-policies/src/decks/lightsworn.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "arcana": {
+        "bytes": 452,
+        "fnv1a64": "97a17826ce520c62",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Arcana Force Fortune.ydk"
+      },
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "countdown": {
+        "bytes": 462,
+        "fnv1a64": "3bfb6e508e7baaa2",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Claudi-oh's Countdown.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "destiny-hero": {
+        "bytes": 446,
+        "fnv1a64": "55370297d22ad7cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Destiny HEROes.ydk"
+      },
+      "draconic-might": {
+        "bytes": 399,
+        "fnv1a64": "e3a9de4aeea604d1",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Draconic Might.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "fortune-lady": {
+        "bytes": 448,
+        "fnv1a64": "43e38ab69d74c88c",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fortune Ladies.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "gravekeeper": {
+        "bytes": 451,
+        "fnv1a64": "3890321a93a1363f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Gravekeeper's Tomb.ydk"
+      },
+      "harpie": {
+        "bytes": 444,
+        "fnv1a64": "58e9d34ffc61f28f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Harpie Sisters.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "karakuri": {
+        "bytes": 565,
+        "fnv1a64": "e14879ae310fc57f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Karakuri Workshop.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "machina": {
+        "bytes": 456,
+        "fnv1a64": "a5c2530badfd80d0",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Machina Gadgets.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "ojama": {
+        "bytes": 491,
+        "fnv1a64": "4d45fd6908707fe6",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Ojama Brigade.ydk"
+      },
+      "pyramid": {
+        "bytes": 450,
+        "fnv1a64": "89ddbbe2782e53d1",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Pyramid of Light.ydk"
+      },
+      "quickdraw-plant": {
+        "bytes": 585,
+        "fnv1a64": "59906bb1d1bedf33",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Quickdraw Plants.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "six-samurai": {
+        "bytes": 588,
+        "fnv1a64": "ed5cf1ef3611b727",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Legendary Six Samurai.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      },
+      "tele-dad": {
+        "bytes": 575,
+        "fnv1a64": "6cc19f511ef7a5d3",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Tele-DAD.ydk"
+      },
+      "toon": {
+        "bytes": 449,
+        "fnv1a64": "ff69dff2956b1580",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Toon Kingdom.ydk"
+      },
+      "verdict": {
+        "bytes": 449,
+        "fnv1a64": "48dd1e9e53c33a28",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Claudi-oh's Verdict.ydk"
+      },
+      "watt": {
+        "bytes": 473,
+        "fnv1a64": "860d9ddb107bbc7c",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Watt Grid.ydk"
+      },
+      "x-saber": {
+        "bytes": 576,
+        "fnv1a64": "ee211670b36825c0",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/X-Sabers.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 512,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "compare",
+    "planned_jobs": 30720,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 40350000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "development": {
+    "arguments": {
+      "--baseline": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-lightsworn-heroes.2acwhlo7/development.so",
+      "--games": "1024",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/development.jsonl",
+      "--policies": "lightsworn,heroes",
+      "--seed": "39240000",
+      "--workers": "16"
+    },
+    "baseline": {
+      "bytes": 53874952,
+      "fnv1a64": "bbe2946ef088d765",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53947280,
+      "fnv1a64": "299ef0146f7b2e95",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/development.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/heroes.rs\n M crates/ygo-policies/src/decks/lightsworn.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 1024,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "compare",
+    "planned_jobs": 24576,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 39240000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "discovery": {
+    "arguments": {
+      "--confirm": "32",
+      "--final": "96",
+      "--foresight": "false",
+      "--games": "8",
+      "--library": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/discovery.jsonl",
+      "--policies": "lightsworn,heroes",
+      "--record": "true",
+      "--seed": "38130000",
+      "--strict": "true",
+      "--workers": "20",
+      "--worlds": "8"
+    },
+    "baseline": {
+      "bytes": 53874952,
+      "fnv1a64": "bbe2946ef088d765",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53874952,
+      "fnv1a64": "bbe2946ef088d765",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "search",
+    "planned_jobs": 192,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 38130000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "after-search-lightsworn": {
+    "arguments": {
+      "--confirm": "32",
+      "--final": "96",
+      "--foresight": "false",
+      "--games": "8",
+      "--library": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-lightsworn.so",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/after-search-lightsworn.jsonl",
+      "--policies": "lightsworn",
+      "--record": "true",
+      "--seed": "38130000",
+      "--strict": "true",
+      "--workers": "8",
+      "--worlds": "8"
+    },
+    "baseline": {
+      "bytes": 53940056,
+      "fnv1a64": "ed23f76c52ff6b72",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-lightsworn.so"
+    },
+    "candidate": {
+      "bytes": 53940056,
+      "fnv1a64": "ed23f76c52ff6b72",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-lightsworn.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/heroes.rs\n M crates/ygo-policies/src/decks/lightsworn.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "search",
+    "planned_jobs": 96,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 38130000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "after-search-heroes": {
+    "arguments": {
+      "--confirm": "32",
+      "--final": "96",
+      "--foresight": "false",
+      "--games": "8",
+      "--library": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-heroes.so",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/after-search-heroes.jsonl",
+      "--policies": "heroes",
+      "--record": "true",
+      "--seed": "38130000",
+      "--strict": "true",
+      "--workers": "8",
+      "--worlds": "8"
+    },
+    "baseline": {
+      "bytes": 53881704,
+      "fnv1a64": "53ffdb8e248ebb7a",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-heroes.so"
+    },
+    "candidate": {
+      "bytes": 53881704,
+      "fnv1a64": "53ffdb8e248ebb7a",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-heroes.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/heroes.rs\n M crates/ygo-policies/src/decks/lightsworn.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "search",
+    "planned_jobs": 96,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 38130000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "search-parity": {
+    "arguments": {
+      "--baseline": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so",
+      "--candidate": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-parity.so",
+      "--games": "8",
+      "--opponents": "existing",
+      "--output": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/search-parity.jsonl",
+      "--policies": "lightsworn,heroes",
+      "--seed": "38130000",
+      "--workers": "2"
+    },
+    "baseline": {
+      "bytes": 53874952,
+      "fnv1a64": "bbe2946ef088d765",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/baseline/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 53947280,
+      "fnv1a64": "299ef0146f7b2e95",
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-parity.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "arcana": "Arcana Force Fortune",
+      "blackwing": "Blackwing Assassin",
+      "burn": "Burn Princess",
+      "countdown": "Claudi-oh's Countdown",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "fortune-lady": "Fortune Ladies",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "harpie": "Harpie Sisters",
+      "heroes": "Fusion Heroes",
+      "infernity": "Infernity Infinity",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "ojama": "Ojama Brigade",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "verdict": "Claudi-oh's Verdict",
+      "watt": "Watt Grid",
+      "x-saber": "X-Sabers"
+    },
+    "checkout": {
+      "commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies/src/decks/heroes.rs\n M crates/ygo-policies/src/decks/lightsworn.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "1c49ef72b17126393399bdde44eb9077d882ff84",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blackwing": {
+        "bytes": 441,
+        "fnv1a64": "c42cefa917f0fe29",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Blackwing Assassin.ydk"
+      },
+      "burn": {
+        "bytes": 377,
+        "fnv1a64": "01d21f688bf8d9bb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Burn Princess.ydk"
+      },
+      "crystal": {
+        "bytes": 371,
+        "fnv1a64": "8b15b8152d5f0b78",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/12 Crystal Beast - Rainbow.ydk"
+      },
+      "dragunity": {
+        "bytes": 697,
+        "fnv1a64": "659bcf43734aad31",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Dragunity Flight.ydk"
+      },
+      "gishki": {
+        "bytes": 378,
+        "fnv1a64": "b3dd2d4a99d8115d",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Undersea Ceremony.ydk"
+      },
+      "gladiator": {
+        "bytes": 691,
+        "fnv1a64": "0a5871ee4c4b9dc5",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fight, Gladiators!.ydk"
+      },
+      "heroes": {
+        "bytes": 687,
+        "fnv1a64": "c2b55a2dfe7d61cb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Fusion Heroes.ydk"
+      },
+      "infernity": {
+        "bytes": 698,
+        "fnv1a64": "c46d52d7c30a1baf",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Infernity Infinity.ydk"
+      },
+      "lightsworn": {
+        "bytes": 647,
+        "fnv1a64": "e2395cbe4f1b277f",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Lightsworn Judgment.ydk"
+      },
+      "monarch": {
+        "bytes": 553,
+        "fnv1a64": "159b78af82b00ea4",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/Emperor, Arise!.ydk"
+      },
+      "morphtronic": {
+        "bytes": 401,
+        "fnv1a64": "40f0ef7cd1439b75",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/01 Morphtronic - Straight Up.ydk"
+      },
+      "rock-block": {
+        "bytes": 509,
+        "fnv1a64": "6da6ce06586bdf63",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/06 Koaki Meiru - Rock Block.ydk"
+      },
+      "spellcaster": {
+        "bytes": 366,
+        "fnv1a64": "053a1fc8b65e4acb",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/14 - Spellcaster's Command.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 8,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "compare",
+    "planned_jobs": 192,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule1 (0xD0700)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 38130000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  },
+  "search_libraries": {
+    "lightsworn": {
+      "improved_policy": "lightsworn",
+      "opponent_commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "library": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-lightsworn.so",
+      "library_sha256": "5463fdc86b3360d3802a51f3661967ed74cbc836c8810682b6248967cd2ebff9",
+      "policy_sources": {
+        "crates/ygo-policies/src/decks/lightsworn.rs": "ef16635dbe310ca47e822aadbb60f94ba1ab5bc8442ec5e4b11f96a0642cd41a",
+        "crates/ygo-policies/src/decks/heroes.rs": "4fceb6ea038e0e09e70909d7717c841dce7c77ffc60ff8e944caa331e2e5ee10"
+      }
+    },
+    "heroes": {
+      "improved_policy": "heroes",
+      "opponent_commit": "26d9e3dcde24cb18845201e350ad7f96ad8c901c",
+      "library": "/tmp/ygo-lightsworn-heroes.2acwhlo7/search-heroes.so",
+      "library_sha256": "00398f98bb60f30debb22f8416cc31277b4494808140f487d772518e2c3d6572",
+      "policy_sources": {
+        "crates/ygo-policies/src/decks/lightsworn.rs": "1a7d7764cf85f277ffce2e937d6d55b7935f19f66a5f75d564b13dca7817d2cf",
+        "crates/ygo-policies/src/decks/heroes.rs": "3fd9510b635dd7d601eebdc53c3424fd6a02fafc4572d91a3e0a41076fa3f0c4"
+      }
+    }
+  },
+  "benchmark_binary_sha256": "a870586a8c90f3342833996b0d396b9c51874916d0cd19bbe6c23b12470143cb",
+  "raw_results": {
+    "after-search-heroes": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/after-search-heroes.jsonl",
+      "sha256": "e8a76e50d7aaab7966306dbe9dac87c43d30cb1fa5b19842f8f55531eef2762d"
+    },
+    "after-search-lightsworn": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/after-search-lightsworn.jsonl",
+      "sha256": "789f34d3448e751b6993c7fe56bba98f6d61207871ec3fddfae79d3ce8c770cd"
+    },
+    "combined": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/combined.jsonl",
+      "sha256": "836ec7c5f9436dd6d197dfb1e116d37e4b7058518a981830280ffac7ec27d800"
+    },
+    "development": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/development.jsonl",
+      "sha256": "c42874459f0d7c695d055d088c26ce36e1308aa1e7298530efbaaa7cd427d48c"
+    },
+    "discovery": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/discovery.jsonl",
+      "sha256": "a8aa8aaef1b8a799446edae4a02df455cb9dc599b992eeff9032ef866b8232b2"
+    },
+    "heldout": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/heldout.jsonl",
+      "sha256": "b06771e60420a77f13b8d6fbb2b9c686ff6205e52125372dcf6f077d92cac0ce"
+    },
+    "ranking": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/ranking.jsonl",
+      "sha256": "8bd8ef3b2628b65d0cb253218d70c37962679fde0fc6b2f292b931eefc394582"
+    },
+    "screen1": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen1.jsonl",
+      "sha256": "004d425c2f4a327cafc7fafbc402f747e80e38471aecd199b5431408abfabc1e"
+    },
+    "screen10": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen10.jsonl",
+      "sha256": "c6e19521b645565da24549c8fa7eabbf9b41e0e3cc04036fba6cdaada83da836"
+    },
+    "screen11": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen11.jsonl",
+      "sha256": "731775013a17c28d01c819726dc90db582f22ff5d36bdc4ad8eb52cfda4c6843"
+    },
+    "screen12": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen12.jsonl",
+      "sha256": "a34455afb451e82b8edf7f774ed8f2ff065fa30237777f2ab1eaf2b0382d100b"
+    },
+    "screen13": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen13.jsonl",
+      "sha256": "b7c8f5c359cfa607d93f00f776e46c73ac4c18c249741418e4a87fbf77fa0402"
+    },
+    "screen2": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen2.jsonl",
+      "sha256": "07f54dbd135e4026108c3015a1a94c8fbfc36017fd7475315622933fa58b7cac"
+    },
+    "screen3": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen3.jsonl",
+      "sha256": "bc512b9e8d56548e9fe152f1fb53449c1b282eab262a120c192b040dc9f2b597"
+    },
+    "screen4": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen4.jsonl",
+      "sha256": "c6d768767c8ddb37e7062ee94b52915b21bd809e25047c4b354c08a2d12647ab"
+    },
+    "screen5": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen5.jsonl",
+      "sha256": "d1d1c73431b0781f6d032b509866145f13d111f925b0f136459ad2818cdb3c1e"
+    },
+    "screen6": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen6.jsonl",
+      "sha256": "a0df1260f2460e594257e6ac8922f940197e7732b7f9c6c7107d43ba800179da"
+    },
+    "screen7": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen7.jsonl",
+      "sha256": "cfceb8c9e9464ae793d501b5abe8fff8a8d7e2095ec680642dfa141e4fbfe49a"
+    },
+    "screen8": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen8.jsonl",
+      "sha256": "9c7421cf82d32395e0d503be4587c93448dfe0a5b773f5438c8b637de70c81d4"
+    },
+    "screen9": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/screen9.jsonl",
+      "sha256": "1e8d3a28b212c0cdc72b1cc976df21b3832c61f22f05615e1ec562f3d0c53e1d"
+    },
+    "search-parity": {
+      "path": "/tmp/ygo-lightsworn-heroes.2acwhlo7/results/search-parity.jsonl",
+      "sha256": "ecafdddae63536ed5f135cfed7ed5d8986e10dc85d2a13cf98915e4c08fa0fb3"
+    }
+  },
+  "policy_sources": {
+    "crates/ygo-policies/src/decks/lightsworn.rs": "ef16635dbe310ca47e822aadbb60f94ba1ab5bc8442ec5e4b11f96a0642cd41a",
+    "crates/ygo-policies/src/decks/heroes.rs": "3fd9510b635dd7d601eebdc53c3424fd6a02fafc4572d91a3e0a41076fa3f0c4"
+  },
+  "candidate_library_sha256": "71541e85ee40b6f65f922e374deea2450983f8a7a23f062887539094246e111f",
+  "baseline_library_sha256": "05a99664042e3244f6897e059f83bfdb06eb6bfceede8d9c62bfaa15931a0e17"
+}

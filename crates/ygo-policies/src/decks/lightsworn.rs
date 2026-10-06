@@ -153,7 +153,7 @@ impl Lightsworn {
             .map(|c| c.attack.max(1000))
             .sum::<i32>()
             + 700 * ctx.set_backrow(ctx.me).len() as i32;
-        ctx.my_lp() > 1500 && theirs >= 2500 && theirs > ours + 1000
+        ctx.my_lp() > 1500 && theirs >= 1800 && theirs > ours + 500
     }
 
     /// Honest is only ever offered in the Damage Step.
@@ -203,6 +203,10 @@ impl Strategy for Lightsworn {
                 return t.pick(i);
             }
         }
+        // Summon before adding millers or spending the Normal Summon; keep the Deck budget.
+        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(JUDGMENT_DRAGON), Some(Location::Hand)) {
+            if self.special_summon(t, t.choice(i)) == Some(true) { return t.pick(i); }
+        }
         // About to deck out: bounce our own biggest miller with Compulsory Evacuation Device.
         if Self::spare(&ctx) < Self::pending_mill(&ctx) {
             if let Some(miller) = Self::biggest_miller(&ctx) {
@@ -210,6 +214,11 @@ impl Strategy for Lightsworn {
                     return t.pick_targeting(i, vec![miller.at]);
                 }
             }
+        }
+        // Use the Flip removal now when the opponent supplies a target.
+        if Self::can_mill(&ctx, 3) && (!ctx.monsters(ctx.opp).is_empty() || !ctx.spell_traps(ctx.opp).is_empty()) {
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition && c.code().map(|k| ctx.canonical(k)) == Some(RYKO)
+                && c.at().and_then(|a| ctx.card(a)).map_or(false, |v| !v.position.face_up)) { return t.pick(i); }
         }
         // Mill / draw engine, within the Deck budget.
         if Self::can_mill(&ctx, 4) {
@@ -253,6 +262,10 @@ impl Strategy for Lightsworn {
                     return t.pick_targeting(i, vec![best.at]);
                 }
             }
+        }
+        // Plaguespreader turns a spent hand card into a Synchro alongside our millers.
+        if ctx.hand_size(ctx.me) > 0 && crate::tactics::synchro_with_tuner(self, &ctx, 2).is_some() {
+            if let Some(i) = t.activate_from(PLAGUESPREADER, Location::Graveyard) { return t.pick(i); }
         }
         if let Some(i) = t.activate_from(GLOW_UP_BULB, Location::Graveyard) {
             if Self::can_mill(&ctx, 1) {
@@ -308,12 +321,11 @@ impl Strategy for Lightsworn {
         match code {
             // Black Rose Dragon wipes our own board too.
             BLACK_ROSE_DRAGON => Some(Self::wipe_pays(&ctx)),
-            // Judgment Dragon mills 4 every End Phase: only if the Deck can pay,
-            // or when its wipe is needed now and the next draw is still safe.
-            // Judgment Dragon adds 4 to every End Phase: the Deck must last.
+            // Keep two turns of Deck after adding its four-card End Phase mill,
+            // or one safe draw when its wipe is needed immediately.
             JUDGMENT_DRAGON => Some(
                 Self::lethal_with(&ctx, 3000)
-                    || Self::turns_left(&ctx, 4) >= 3
+                    || Self::turns_left(&ctx, 4) >= 2
                     || (Self::wipe_pays(&ctx) && Self::turns_left(&ctx, 4) >= 1),
             ),
             _ => None,
@@ -352,6 +364,16 @@ impl Strategy for Lightsworn {
         let code = ctx.canonical(choice.code()?);
         let incoming = ctx.incoming_attack();
         let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
+        // Returning an Extra Deck monster removes it before it can use more effects.
+        if code == COMPULSORY_EVACUATION {
+            let target = ctx.monsters(ctx.opp).into_iter()
+                .filter(|c| c.position.face_up && ctx.view_data(c).is_extra()
+                    && ctx.reaches(c, COMPULSORY_EVACUATION, true, false))
+                .max_by_key(|c| ctx.threat(c));
+            if let Some(target) = target {
+                return Some(Response::targeting(75.0, vec![target.at]));
+            }
+        }
         Some(match code {
             HONEST => Response::new(Self::honest(&ctx)),
             NECRO_GARDNA => match incoming {
@@ -396,6 +418,10 @@ impl Strategy for Lightsworn {
             return None;
         }
         let code = member.code.map(|c| ctx.canonical(c));
+        // Wulf is cheap to discard, but its 2100 ATK makes it a useful revival.
+        if t.decision.hint == crate::model::Hint::SpecialSummon && member.at.location == Location::Graveyard && code == Some(WULF) {
+            return Some(2500.0);
+        }
         // Low on Deck: Tribute / Synchro Material our millers first.
         if Self::low(&ctx)
             && member.at.location == Location::MonsterZone
