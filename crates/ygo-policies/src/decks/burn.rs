@@ -1,4 +1,4 @@
-//! "Burn Princess": burn + lifegain, no beatdown.
+//! "Burn Princess": burn + lifegain, backed by replacement blockers.
 //!
 //! Fire Princess turns every life point gain into 500 damage and Spell
 //! Absorption turns every Spell into a gain, so the engine is set up first
@@ -161,9 +161,9 @@ impl Strategy for Burn {
                 code if burn(code) > 0 => burn(code) + Self::engine_bonus(&ctx, code == GOBLIN_THIEF),
                 _ => continue,
             };
-            // Cannons are easy to destroy: cash them in once they are worth two burns.
-            let big_finisher = matches!(code, WAVE_MOTION_CANNON if from_field) && damage >= 2000;
-            if damage >= opp_lp || big_finisher {
+            // Keep Cannon charging until it can finish; taking 2000 early
+            // spends the deck's main source of sustained damage.
+            if damage >= opp_lp {
                 return t.pick(i);
             }
         }
@@ -227,6 +227,9 @@ impl Strategy for Burn {
         let code = choice.code()?;
         Some(match (choice.kind, code) {
             (ChoiceKind::NormalSummon, FIRE_PRINCESS) if Self::princess_welcome(&ctx) => Some(3000.0),
+            // Take a free attack instead of always setting the recruiter.
+            (ChoiceKind::NormalSummon, UFO_TURTLE)
+                if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.opp_best_attack() < 1400 => Some(2200.0),
             (ChoiceKind::SetMonster, UFO_TURTLE) => Some(2000.0),
             (ChoiceKind::SetMonster, FIRE_PRINCESS) => Some(1000.0),
             (ChoiceKind::NormalSummon, UFO_TURTLE) if ctx.opp_best_attack() < 1400 => Some(1500.0),
@@ -291,10 +294,18 @@ impl Strategy for Burn {
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
-        // UFO Turtle: bring out Fire Princess before anything else.
+        // UFO Turtle must recruit in Attack Position. Under pressure, chain
+        // another recruiter before exposing Fire Princess to the next hit.
         let ctx = t.ctx;
         if member.at.controller == ctx.me && t.decision.hint.is_gain() {
             let code = member.code?;
+            if t.memory.last_activated == Some(UFO_TURTLE) && member.at.location == Location::Deck
+                && !ctx.my_turn() && ctx.phase().map_or(false, |p| p.is_battle())
+                && ctx.monsters(ctx.opp).iter().filter(|c| c.position.face_up && c.position.attack).count() > ctx.monsters(ctx.me).len()
+                && code == UFO_TURTLE
+            {
+                return Some(5000.0);
+            }
             return Some(value(self, &ctx, Some(code), None) as f64);
         }
         None

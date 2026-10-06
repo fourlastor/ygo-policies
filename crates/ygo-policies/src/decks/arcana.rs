@@ -42,6 +42,15 @@ const SKULL_DICE: u32 = 126218;
 pub struct Arcana;
 
 impl Arcana {
+    /// Face-down and hand cards do not yet include Solidarity in their ATK.
+    fn solidarity_bonus(ctx: &Ctx) -> i32 {
+        let monsters: Vec<_> = ctx.graveyard(ctx.me).into_iter().filter(|c| ctx.view_data(c).is_monster()).collect();
+        if monsters.is_empty() || monsters.iter().any(|c| ctx.view_data(c).race != races::FAIRY) {
+            return 0;
+        }
+        800 * ctx.spell_traps(ctx.me).iter().filter(|c| c.position.face_up && ctx.is(c, SOLIDARITY)).count() as i32
+    }
+
     /// Value of the granted effect, separate from the monster's body. The
     /// Fool wants tails; the Rulers have useful effects on both sides.
     fn effect_value(ctx: &Ctx, code: u32, coin: Coin) -> Option<i32> {
@@ -128,9 +137,10 @@ impl Strategy for Arcana {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
-        // Every monster in the deck is a Fairy: Solidarity is +800 for all.
+        // Set Fairies need Solidarity ready too, or the flip rule sees only
+        // their printed ATK and never brings them out against a larger board.
         if !ctx.face_up_on_field(ctx.me, SOLIDARITY) {
-            let fairies = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).race & races::FAIRY != 0);
+            let fairies = ctx.monsters(ctx.me).iter().any(|c| ctx.view_data(c).race & races::FAIRY != 0);
             if fairies {
                 if let Some(i) = t.activate_from(SOLIDARITY, Location::Hand) {
                     return t.pick(i);
@@ -157,7 +167,7 @@ impl Strategy for Arcana {
                     && c.at().and_then(|at| ctx.card(at)).map_or(false, |card| {
                         let data = ctx.view_data(card);
                         !card.position.face_up && !ctx.is(card, THE_FOOL) && self.allow_reposition(t, card)
-                            && data.attack > 0 && (opp_empty || data.attack > threat)
+                            && data.attack > 0 && (opp_empty || data.attack + Self::solidarity_bonus(&ctx) > threat)
                     })
             });
             if let Some(i) = flip {
@@ -187,6 +197,9 @@ impl Strategy for Arcana {
             // face-up summon a tolerable risk (75% heads instead of 50%).
             (ChoiceKind::NormalSummon, THE_CHARIOT) if !ctx.face_up_on_field(ctx.me, SECOND_COIN_TOSS) => None,
             (ChoiceKind::SetMonster, THE_CHARIOT) => Some(1200.0),
+            (ChoiceKind::NormalSummon, _) if ctx.data(code).level <= 4 && Self::solidarity_bonus(&ctx) > 0
+                && ctx.data(code).attack + Self::solidarity_bonus(&ctx) > ctx.opp_best_attack() =>
+                Some((value(self, &ctx, Some(code), None) + Self::solidarity_bonus(&ctx)) as f64),
             _ => return None,
         })
     }
@@ -198,11 +211,14 @@ impl Strategy for Arcana {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         let ctx = t.ctx;
         Some(match ctx.canonical(choice.code().unwrap_or(0)) {
-            // A Ruler costs three of our monsters: worth it for small ones.
+            // Spend three small bodies, or break a board the bodies cannot beat.
+            // Face-down monsters are legal costs too; do not price a stalled
+            // 4800-ATK total as though those bodies could attack together.
             LIGHT_RULER | DARK_RULER => {
                 let mut ours: Vec<i32> = ctx.monsters(ctx.me).iter().map(|c| value(self, &ctx, None, Some(c))).collect();
                 ours.sort_unstable();
-                ours.len() >= 3 && ours.iter().take(3).sum::<i32>() <= 4500
+                ours.len() >= 3 && (ours.iter().take(3).sum::<i32>() <= 4500
+                    || (ctx.opp_best_attack() >= ctx.my_best_attack() && ctx.opp_best_attack() < 4000))
             }
             _ => return None,
         })

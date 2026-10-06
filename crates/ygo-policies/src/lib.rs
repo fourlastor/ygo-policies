@@ -2219,4 +2219,130 @@ mod tests {
         obs.phase = Some(Phase::Main2);
         assert_eq!(chosen(&obs), (ChoiceKind::SetMonster, Some(FLY)), "a summon after battle cannot finish this turn");
     }
+
+    #[test]
+    fn arcana_sets_up_solidarity_for_hidden_fairies_and_counts_its_boost() {
+        use crate::cards::{races, types};
+        const EMPEROR: u32 = 61175706;
+        const SOLIDARITY: u32 = 86780027;
+        let mut fairy = creature(EMPEROR, 4, 1400, 1400, 0x5);
+        fairy.1.race = races::FAIRY;
+        let db = Arc::new(MemoryCards([fairy, creature(1, 4, 1900, 1000, 0),
+            printed(SOLIDARITY, types::SPELL | types::CONTINUOUS, 0)].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("arcana", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(EMPEROR), Position::FACE_DOWN_DEFENSE, 1400, 1400),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000),
+            card(0, Location::Hand, 0, SOLIDARITY, false), card(0, Location::Graveyard, 0, EMPEROR, true)];
+        let setup = decide(DecisionKind::Idle, None, vec![activate(SOLIDARITY, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &setup), ChoiceKind::Activate, "a set Fairy still needs the boost when it flips");
+        obs.cards[2] = card(0, Location::SpellTrapZone, 0, SOLIDARITY, true);
+        let flip = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+            ..activate(EMPEROR, Location::MonsterZone, 0) }, choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &flip), ChoiceKind::ChangePosition, "2200 ATK beats 1900");
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, EMPEROR, 0),
+            from_hand(ChoiceKind::NormalSummon, EMPEROR, 0), choice(ChoiceKind::EndTurn)]);
+        obs.cards[0] = card(0, Location::Hand, 0, EMPEROR, false);
+        assert_eq!(chosen(&obs, &summon), ChoiceKind::NormalSummon);
+        obs.cards.pop();
+        assert_eq!(chosen(&obs, &summon), ChoiceKind::SetMonster, "an empty graveyard does not enable Solidarity");
+        obs.cards.push(card(0, Location::Graveyard, 0, EMPEROR, true));
+        obs.cards.push(card(0, Location::Graveyard, 1, 1, true));
+        assert_eq!(chosen(&obs, &summon), ChoiceKind::SetMonster, "a second original race disables the boost");
+    }
+
+    #[test]
+    fn arcana_ruler_can_replace_an_outclassed_board() {
+        const LOVERS: u32 = 97574404;
+        const RULER: u32 = 69831560;
+        let db = Arc::new(MemoryCards([creature(LOVERS, 4, 1600, 1600, 0x5),
+            creature(RULER, 10, 4000, 4000, 0x5), creature(1, 4, 2000, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = (0..3).map(|i| monster(0, i, Some(LOVERS), Position::FACE_DOWN_DEFENSE, 1600, 1600)).collect();
+        obs.cards.push(monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2000, 1000));
+        obs.cards.push(card(0, Location::Hand, 0, RULER, false));
+        let decision = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, RULER, 0), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("arcana", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, &decision)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::SpecialSummon, "the three sets cost 4800 but cannot break this board");
+        obs.cards[3].attack = 4500;
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn, "4000 ATK would not solve the stall");
+        obs.cards[3].attack = 1500;
+        for c in &mut obs.cards[..3] { c.position = Position::FACE_UP_ATTACK; }
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn, "keep three attackers that already beat the opponent");
+    }
+
+    #[test]
+    fn burn_cannon_waits_past_two_standbys_but_takes_lethal() {
+        use crate::cards::types;
+        const CANNON: u32 = 38992735;
+        let db = Arc::new(MemoryCards([printed(CANNON, types::SPELL | types::CONTINUOUS, 0)].into_iter().collect()));
+        for lethal in [false, true] {
+            let mut policy = crate::registry::create("burn", db.clone()).unwrap();
+            let mut obs = observation();
+            obs.cards = vec![card(0, Location::SpellTrapZone, 0, CANNON, true)];
+            let decision = decide(DecisionKind::Idle, None, vec![activate(CANNON, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+            assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::EndTurn);
+            obs.turn = 5;
+            if lethal { obs.life_points[1] = 2000; }
+            assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind,
+                if lethal { ChoiceKind::Activate } else { ChoiceKind::EndTurn });
+            if !lethal {
+                obs.turn = 9;
+                assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::EndTurn);
+                obs.turn = 17;
+                assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::Activate);
+            }
+        }
+    }
+
+    #[test]
+    fn burn_turtle_recruits_another_blocker_before_exposing_princess() {
+        const TURTLE: u32 = 60806437;
+        const PRINCESS: u32 = 64752646;
+        let db = Arc::new(MemoryCards([creature(TURTLE, 4, 1400, 1200, 0),
+            creature(PRINCESS, 4, 1300, 1500, 0), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("burn", db).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Damage);
+        obs.cards = vec![card(0, Location::Graveyard, 0, TURTLE, true),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000),
+            monster(1, 1, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let trigger = decide(DecisionKind::YesNo, Some(TURTLE), vec![Choice { kind: ChoiceKind::Yes,
+            ..activate(TURTLE, Location::Graveyard, 0) }, choice(ChoiceKind::No)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let recruit = select_one(Hint::SpecialSummon, vec![toggle(Location::Deck, 0, PRINCESS), toggle(Location::Deck, 1, TURTLE)]);
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(TURTLE));
+        obs.turn_player = Some(0);
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(PRINCESS));
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::End);
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(PRINCESS));
+    }
+
+    #[test]
+    fn burn_turtle_attacks_when_clear_and_sets_when_outclassed() {
+        const TURTLE: u32 = 60806437;
+        let db = Arc::new(MemoryCards([creature(TURTLE, 4, 1400, 1200, 0), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let decision = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, TURTLE, 0),
+            from_hand(ChoiceKind::NormalSummon, TURTLE, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("burn", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, &decision)].kind
+        };
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, TURTLE, false)];
+        assert_eq!(chosen(&obs), ChoiceKind::NormalSummon);
+        obs.phase = Some(Phase::Main2);
+        assert_eq!(chosen(&obs), ChoiceKind::SetMonster);
+        obs.phase = Some(Phase::Main1);
+        obs.cards.push(monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000));
+        assert_eq!(chosen(&obs), ChoiceKind::SetMonster);
+    }
 }
