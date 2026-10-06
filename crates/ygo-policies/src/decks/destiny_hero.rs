@@ -42,7 +42,7 @@ const D_SHIELD: u32 = 62868900;
 const DESTINY_SIGNAL: u32 = 35464895;
 const SET_DESTINY_HERO: u16 = 0xc008;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct DestinyHero;
 
 impl DestinyHero {

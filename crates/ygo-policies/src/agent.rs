@@ -17,6 +17,11 @@ use crate::{staples, tactics};
 pub trait Policy: Send {
     /// Return an index into `decision.choices`.
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize;
+
+    /// An independent copy, including memory and random state, when supported.
+    fn fork(&self) -> Option<Box<dyn Policy>> {
+        None
+    }
 }
 
 /// Seeded tie-breaking.  Equally scored choices are taken at random rather
@@ -24,7 +29,7 @@ pub trait Policy: Send {
 /// "the first face-down card is always the one destroyed", a guess cannot be.
 /// The generator is part of the agent's state, so an agent rebuilt from the
 /// same seed and message stream makes the same choices.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct TieBreak(Cell<u64>);
 
 impl TieBreak {
@@ -67,7 +72,7 @@ impl TieBreak {
 }
 
 /// Per-agent memory that survives between prompts.
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Memory {
     /// Cards the next target prompt should pick (set when we activate/attack),
     /// with the card each slot held then: once another card sits there, the
@@ -317,6 +322,7 @@ pub trait Strategy: Send {
     }
 }
 
+#[derive(Clone)]
 pub struct Agent<S> {
     pub strategy: S,
     db: Arc<dyn CardDatabase>,

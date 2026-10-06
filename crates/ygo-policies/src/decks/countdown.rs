@@ -83,7 +83,7 @@ const FACE_DOWN: i32 = 1000;
 /// Life Points kept for what is not a cost of ours.
 const RESERVE: i32 = 1000;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Countdown {
     /// The turn Final Countdown was activated: the other copies are spare cards.
     started: Cell<Option<u32>>,

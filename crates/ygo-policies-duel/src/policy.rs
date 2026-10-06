@@ -17,11 +17,14 @@ pub struct PolicyLibrary {
     _library: Library,
     create: unsafe extern "C" fn(*const c_char, *const c_char, i32, u64) -> Handle,
     destroy: unsafe extern "C" fn(Handle),
+    fork: Option<unsafe extern "C" fn(Handle) -> Handle>,
     feed: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
     feed_buffer: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
+    update_pair: Option<unsafe extern "C" fn(Handle, Handle, *const u8, usize) -> i32>,
     response: unsafe extern "C" fn(Handle, *mut usize) -> *const u8,
     error: unsafe extern "C" fn() -> *const c_char,
     answer: unsafe extern "C" fn(Handle) -> *const c_char,
+    search_view: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
     /// Policy id to the name of its deck list.
     pub catalog: HashMap<String, String>,
 }
@@ -52,11 +55,14 @@ impl PolicyLibrary {
             Ok(Self {
                 create: symbol(&library, b"ygo_policy_create_seeded")?,
                 destroy: symbol(&library, b"ygo_policy_destroy")?,
+                fork: symbol(&library, b"ygo_policy_clone").ok(),
                 feed: symbol(&library, b"ygo_policy_feed")?,
                 feed_buffer: symbol(&library, b"ygo_policy_feed_buffer")?,
+                update_pair: symbol(&library, b"ygo_policy_feed_update_pair").ok(),
                 response: symbol(&library, b"ygo_policy_response")?,
                 error: symbol(&library, b"ygo_policy_last_error")?,
                 answer: symbol(&library, b"ygo_policy_last_answer_json")?,
+                search_view: symbol(&library, b"ygo_policy_search_view_json").ok(),
                 catalog,
                 _library: library,
             })
@@ -76,6 +82,11 @@ impl PolicyLibrary {
             library: self,
             handle,
         })
+    }
+
+    /// Older policy libraries are still usable through history replay.
+    pub fn can_fork(&self) -> bool {
+        self.fork.is_some()
     }
 
     fn last_error(&self) -> String {
@@ -98,6 +109,16 @@ pub struct LibrarySeat<'a> {
 }
 
 impl LibrarySeat<'_> {
+    /// An independent copy with the same library lifetime as this seat.
+    pub fn fork(&self) -> Result<Self> {
+        let fork = self.library.fork.ok_or("policy library has no copy API")?;
+        let handle = unsafe { fork(self.handle) };
+        if handle.is_null() {
+            return Err(self.library.last_error());
+        }
+        Ok(Self { library: self.library, handle })
+    }
+
     /// Feed one message (id first).  When it asks this seat to decide, the
     /// response bytes for the engine come back.
     pub fn feed(&self, message: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -114,6 +135,22 @@ impl LibrarySeat<'_> {
         }
     }
 
+    /// Apply a field update to both seats; older or different libraries use
+    /// their ordinary feed API, preserving paired-library comparisons.
+    pub fn feed_update_pair(&self, other: &Self, message: &[u8]) -> Result<()> {
+        if std::ptr::eq(self.library, other.library) {
+            if let Some(feed) = self.library.update_pair {
+                return match unsafe { feed(self.handle, other.handle, message.as_ptr(), message.len()) } {
+                    0 => Ok(()),
+                    _ => Err(self.library.last_error()),
+                };
+            }
+        }
+        self.feed(message)?;
+        other.feed(message)?;
+        Ok(())
+    }
+
     /// Feed several messages at once, each behind its length as OCGCore
     /// writes them; answers along the way are dropped.
     pub fn feed_buffer(&self, buffer: &[u8]) -> Result<()> {
@@ -128,8 +165,18 @@ impl LibrarySeat<'_> {
     /// The last decision this seat answered, as `policy-bench --trace`
     /// writes one: what it observed, the choices it had and the one it took.
     pub fn last_answer(&self) -> Result<serde_json::Value> {
+        self.read_json(self.library.answer)
+    }
+
+    /// Alternatives and a small situation summary, or JSON null for a decision
+    /// search does not support. Older libraries supply the full answer instead.
+    pub fn search_view(&self) -> Result<serde_json::Value> {
+        self.read_json(self.library.search_view.unwrap_or(self.library.answer))
+    }
+
+    fn read_json(&self, read: unsafe extern "C" fn(Handle) -> *const c_char) -> Result<serde_json::Value> {
         unsafe {
-            let answer = (self.library.answer)(self.handle);
+            let answer = read(self.handle);
             if answer.is_null() {
                 return Err(self.library.last_error());
             }

@@ -42,7 +42,7 @@ fn burn(code: u32) -> i32 {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Burn {
     /// Turn in which each face-up Wave-Motion Cannon (by zone) was activated.
     cannons: Vec<(u32, u32)>,

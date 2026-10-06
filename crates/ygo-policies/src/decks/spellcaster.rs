@@ -54,7 +54,7 @@ const MAGICIANS_CIRCLE: u32 = 50755;
 const TOWER_OF_BABEL: u32 = 94256039;
 const MAGIC_CYLINDER: u32 = 62279055;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Spellcaster;
 
 impl Spellcaster {

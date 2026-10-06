@@ -43,7 +43,7 @@ const DANGEROUS_SPELLS: &[u32] = &[
     14087893, // Book of Moon
 ];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct RockBlock;
 
 impl RockBlock {

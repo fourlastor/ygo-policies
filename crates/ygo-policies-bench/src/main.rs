@@ -576,6 +576,8 @@ fn run() -> Result<()> {
     let cursor = std::sync::atomic::AtomicUsize::new(0);
     let (tx, rx) = std::sync::mpsc::channel();
     let mut results = Vec::new();
+    let mut completed = 0;
+    let mut search_scores = [0.0; 2];
     std::thread::scope(|scope| -> Result<()> {
         for _ in 0..workers {
             let tx = tx.clone();
@@ -639,31 +641,38 @@ fn run() -> Result<()> {
         for result in rx {
             let result = result?;
             writeln!(file, "{result}").map_err(|e| e.to_string())?;
-            results.push(result);
+            completed += 1;
             if mode == "search" {
-                if results.len() % 16 == 0 || results.len() == jobs.len() {
-                    let rate = |label: &str| 100.0 * results.iter().filter_map(|r| r[label]["score"].as_f64()).sum::<f64>() / results.len() as f64;
+                for (sum, label) in search_scores.iter_mut().zip(["baseline", "search"]) {
+                    *sum += result[label]["score"].as_f64().unwrap_or(0.0);
+                }
+                if completed % 16 == 0 || completed == jobs.len() {
+                    let rate = |index: usize| 100.0 * search_scores[index] / completed as f64;
                     eprintln!(
                         "{}/{} games, {:.0} s: pilot {:.1}%, searching {:.1}%",
-                        results.len(),
+                        completed,
                         jobs.len(),
                         started.elapsed().as_secs_f64(),
-                        rate("baseline"),
-                        rate("search")
+                        rate(0),
+                        rate(1)
                     );
                 }
-            } else if results.len() % games.max(128) == 0 || results.len() == jobs.len() {
-                eprintln!(
-                    "{}/{} {}",
-                    results.len(),
-                    jobs.len(),
-                    if mode == "compare" { "pairs" } else { "games" }
-                );
+                // Already written in full; search needs only running totals.
+            } else {
+                results.push(result);
+                if completed % games.max(128) == 0 || completed == jobs.len() {
+                    eprintln!(
+                        "{}/{} {}",
+                        completed,
+                        jobs.len(),
+                        if mode == "compare" { "pairs" } else { "games" }
+                    );
+                }
             }
         }
         Ok(())
     })?;
-    if results.len() != jobs.len() {
+    if completed != jobs.len() {
         return Err("Incomplete run".into());
     }
     if mode == "search" {

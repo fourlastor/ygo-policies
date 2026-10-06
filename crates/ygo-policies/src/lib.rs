@@ -29,6 +29,21 @@ pub mod registry {
     use crate::cards::CardDatabase;
     use crate::decks;
 
+    // Opt the built-in policies into copying without requiring custom Policy
+    // or Strategy implementations to implement Clone. Immutable card data is shared.
+    #[derive(Clone)]
+    struct Forkable<P>(P);
+
+    impl<P: Policy + Clone + 'static> Policy for Forkable<P> {
+        fn choose(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision) -> usize {
+            self.0.choose(obs, decision)
+        }
+
+        fn fork(&self) -> Option<Box<dyn Policy>> {
+            Some(Box::new(self.clone()))
+        }
+    }
+
     /// A deck policy: stable id, the deck list it was written for, and a constructor.
     pub struct Entry {
         pub id: &'static str,
@@ -42,7 +57,7 @@ pub mod registry {
             Entry {
                 id: $id,
                 deck: decks::$module::DECK,
-                build: |db, seed| Box::new(Agent::seeded(decks::$module::$strategy::default(), db, seed)),
+                build: |db, seed| Box::new(Forkable(Agent::seeded(decks::$module::$strategy::default(), db, seed))),
             }
         };
     }

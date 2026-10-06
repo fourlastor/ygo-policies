@@ -38,7 +38,7 @@ const SET_CRYSTAL_BEAST: u16 = 0x1034;
 /// `HINTMSG_TOFIELD`: place a card in a zone (here: a Crystal Beast in the Spell & Trap Zone).
 const HINT_TO_FIELD: u64 = 527;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Crystal;
 
 impl Crystal {

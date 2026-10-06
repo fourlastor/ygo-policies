@@ -68,7 +68,7 @@ const REDIRECT: u64 = 1;
 const LEVEL_UPS: [(u32, u32); 4] =
     [(ARMED_DRAGON_LV3, ARMED_DRAGON_LV5), (ARMED_DRAGON_LV5, ARMED_DRAGON_LV7), (HORUS_LV4, HORUS_LV6), (HORUS_LV6, HORUS_LV8)];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct DraconicMight {
     /// Turn of our last Red-Eyes Darkness Metal Dragon Special Summon from
     /// the hand, and of its last effect: both once per turn.

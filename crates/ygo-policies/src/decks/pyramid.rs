@@ -37,7 +37,7 @@ const PYRAMID_OF_LIGHT: u32 = 53569894;
 const PHARAOHS_TREASURE: u32 = 63571750;
 const CURSE_OF_ANUBIS: u32 = 66742250;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Pyramid;
 
 impl Pyramid {

@@ -159,9 +159,7 @@ pub fn play(
         for sent in &step.messages {
             let message = &sent.bytes;
             if sent.refresh {
-                for seat in &seats {
-                    seat.feed(message)?;
-                }
+                seats[0].feed_update_pair(&seats[1], message)?;
                 continue;
             }
             let id = message[0];

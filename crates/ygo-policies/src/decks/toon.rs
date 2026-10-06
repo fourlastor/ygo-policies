@@ -38,7 +38,7 @@ const TOON_DEFENSE: u32 = 43509019;
 const SHEEP_TOKEN: u32 = 73915052;
 const SET_TOON: u16 = 0x62;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Toon;
 
 impl Toon {

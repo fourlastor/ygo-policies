@@ -46,7 +46,7 @@ const MIST_WURM: u32 = 27315304;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SET_DRAGUNITY: u16 = 0x29;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Dragunity;
 
 impl Dragunity {

@@ -28,7 +28,7 @@ const CARD_TROOPER: u32 = 85087012;
 const LIMITER_REMOVAL: u32 = 23171610;
 const CHIMERATECH_FORTRESS_DRAGON: u32 = 79229522;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Machina;
 
 impl Machina {

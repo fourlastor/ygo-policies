@@ -36,9 +36,18 @@ YgoPolicy *ygo_policy_create(const char *policy_id, const char *cards_cdb_path, 
 YgoPolicy *ygo_policy_create_seeded(const char *policy_id, const char *cards_cdb_path, int32_t seat,
                                     uint64_t seed);
 
+/* Independent copy, including pending response, policy memory and RNG. NULL on
+   failure; destroy the copy with ygo_policy_destroy. Optional in older libraries. */
+YgoPolicy *ygo_policy_clone(const YgoPolicy *policy);
+
 /* One message (message id byte + body).  1: this seat must answer (see
    ygo_policy_response); 0: nothing to answer; -1: error. */
 int32_t ygo_policy_feed(YgoPolicy *policy, const uint8_t *message, size_t length);
+
+/* Decode one MSG_UPDATE_DATA/CARD for two distinct handles of this library.
+   0 on success, -1 on error. Optional in older libraries. */
+int32_t ygo_policy_feed_update_pair(YgoPolicy *first, YgoPolicy *second,
+                                  const uint8_t *message, size_t length);
 
 /* A whole OCG_DuelGetMessage buffer (u32 length + message, repeated). */
 int32_t ygo_policy_feed_buffer(YgoPolicy *policy, const uint8_t *buffer, size_t length);
@@ -53,6 +62,11 @@ int32_t ygo_policy_seat(const YgoPolicy *policy);
    ({"observation", "decision", "choice", "responses"}); valid until the next call. */
 const char *ygo_policy_observation_json(YgoPolicy *policy);
 const char *ygo_policy_last_answer_json(YgoPolicy *policy);
+
+/* Compact search view: {decision, choice, responses, situation}, without the
+   full observation. JSON null unless Idle, Battle, YesNo, Position or an optional
+   Chain. NULL on error; valid until the next call. Optional in older libraries. */
+const char *ygo_policy_search_view_json(YgoPolicy *policy);
 
 void ygo_policy_destroy(YgoPolicy *policy);
 

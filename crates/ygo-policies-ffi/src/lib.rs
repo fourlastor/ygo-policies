@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::json;
 use ygo_policies::cards::CardDatabase;
+use ygo_policies::model::{DecisionKind, Location};
 use ygo_policies::registry;
 use ygo_policies_ocgcore::{Seat, SqliteCards};
 
@@ -117,6 +118,20 @@ pub unsafe extern "C" fn ygo_policy_create_seeded(
     })
 }
 
+/// Independently copy a seat, preserving policy memory and random state.
+/// # Safety
+/// `policy` is a live handle and is not mutated concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoPolicy {
+    guarded(std::ptr::null_mut(), || {
+        let policy = policy.as_ref().ok_or("policy is NULL")?;
+        let seat = policy.seat.fork().ok_or("policy does not support copying")?;
+        Ok(Box::into_raw(Box::new(YgoPolicy {
+            seat, response: policy.response.clone(), json: policy.json.clone(),
+        })))
+    })
+}
+
 /// # Safety
 /// `policy` comes from `ygo_policy_create`; `message` points to `length` bytes.
 #[no_mangle]
@@ -128,6 +143,20 @@ pub unsafe extern "C" fn ygo_policy_feed(policy: *mut YgoPolicy, message: *const
             policy.response = response;
             1
         }))
+    })
+}
+
+/// Decode a card update once and apply it through each seat's visibility boundary.
+/// # Safety
+/// Both handles are live, distinct, and from this library. `message` holds `length` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_feed_update_pair(first: *mut YgoPolicy, second: *mut YgoPolicy, message: *const u8, length: usize) -> i32 {
+    guarded(-1, || {
+        if first == second { return Err("update pair requires distinct handles".into()); }
+        let (first, second) = (handle(first)?, handle(second)?);
+        Seat::feed_update_pair(&mut first.seat, &mut second.seat, bytes(message, length)?)
+            .map_err(|e| e.to_string())?;
+        Ok(0)
     })
 }
 
@@ -189,6 +218,49 @@ pub unsafe extern "C" fn ygo_policy_last_answer_json(policy: *mut YgoPolicy) -> 
                 "responses": answer.responses,
                 "picks": answer.picks,
             }),
+        };
+        Ok(store_json(policy, value))
+    })
+}
+
+/// Compact alternatives and situation for search, without serializing the full
+/// observation. Unsupported decision kinds return JSON null.
+/// # Safety
+/// `policy` comes from `ygo_policy_create`.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_search_view_json(policy: *mut YgoPolicy) -> *const c_char {
+    guarded(std::ptr::null(), || {
+        let policy = handle(policy)?;
+        let value = match policy.seat.last_answer() {
+            Some(answer) if matches!(answer.decision.kind,
+                DecisionKind::Idle | DecisionKind::Battle | DecisionKind::YesNo
+                | DecisionKind::Position | DecisionKind::Chain { forced: false, .. }) => {
+                let observation = &answer.observation;
+                let me = observation.me;
+                let count = |mine: bool, location: Location, face_down: bool| {
+                    observation.cards.iter().filter(|card| {
+                        (card.at.controller == me) == mine && card.at.location == location
+                            && (!face_down || !card.position.face_up)
+                    }).count()
+                };
+                let life = |player: usize| u64::try_from(observation.life_points[player]).unwrap_or(0);
+                json!({
+                    "decision": answer.decision,
+                    "choice": answer.choice,
+                    "responses": answer.responses,
+                    "situation": {
+                        "phase": observation.phase,
+                        "own_turn": observation.turn_player == Some(me),
+                        "life": [life(me as usize), life(1 - me as usize)],
+                        "monsters": [count(true, Location::MonsterZone, false), count(false, Location::MonsterZone, false)],
+                        "backrow": [count(true, Location::SpellTrapZone, false), count(false, Location::SpellTrapZone, false)],
+                        "set_backrow": [count(true, Location::SpellTrapZone, true), count(false, Location::SpellTrapZone, true)],
+                        "hand": [count(true, Location::Hand, false), count(false, Location::Hand, false)],
+                        "attack": observation.battle_attacker.is_some(),
+                    },
+                })
+            }
+            _ => serde_json::Value::Null,
         };
         Ok(store_json(policy, value))
     })

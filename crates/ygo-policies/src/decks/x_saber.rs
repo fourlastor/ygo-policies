@@ -38,7 +38,7 @@ const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SET_X_SABER: u16 = 0x100d;
 const SET_SABER: u16 = 0xd;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct XSaber;
 
 impl XSaber {

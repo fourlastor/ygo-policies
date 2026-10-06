@@ -125,6 +125,16 @@ dropped; one far ahead after `--confirm` is taken there.  The pilot's answer
 is tried first: where it wins every first-stage world, as in about half of a
 Blackwing's decisions, no alternative can be ahead and none is tried.
 
+Within a decision, hidden-card inventory and each world's exact swap sequence
+are cached. Each world's policy histories are replayed once per stage, then
+copied independently for its alternatives, preserving policy memory and random
+state. Field updates are decoded once for both seats and filtered separately
+for each viewer. Search reads compact decision data; full observations are
+serialized only when a diagnostic record needs them. Completed search rows are
+written immediately and released, with running totals used for progress.
+Older policy libraries remain usable through history replay, separate update
+feeds and full answer JSON when these optional APIs are absent.
+
 What it cannot do, and what it knows that a player would not:
 
 - It needs an engine with arena snapshots and a hidden-card swap.  The

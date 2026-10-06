@@ -40,7 +40,7 @@ const BLACK_ROSE: u32 = 73580471;
 const MIST_WURM: u32 = 27315304;
 const SET_INFERNITY: u16 = 0xb;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Infernity;
 
 impl Infernity {

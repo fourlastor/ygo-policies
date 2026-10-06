@@ -31,7 +31,7 @@ const BLACK_WINGED_DRAGON: u32 = 9012916;
 const SET_BLACKWING: u16 = 0x33;
 const KALUT_BONUS: i32 = 1400;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Blackwing;
 
 impl Blackwing {

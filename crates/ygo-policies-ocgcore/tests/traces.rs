@@ -194,3 +194,47 @@ fn projection_matches_ocgcore_snapshots() {
         replay(&trace);
     }
 }
+
+#[test]
+fn all_registered_policies_fork_with_independent_history_and_random_state() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/monarch-Emperor,_Arise!-9100.json.gz");
+    let mut text = String::new();
+    flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap()).read_to_string(&mut text).unwrap();
+    let trace: Value = serde_json::from_str(&text).unwrap();
+    let messages: Vec<Vec<u8>> = trace["steps"].as_array().unwrap().iter()
+        .flat_map(|step| step["messages"].as_array().unwrap())
+        .map(|message| base64(message.as_str().unwrap())).collect();
+    for entry in registry::POLICIES {
+        for viewer in 0..2u8 {
+            let db = Arc::new(MemoryCards::default());
+            let mut seat = Seat::new(registry::create_seeded(entry.id, db.clone(), 9161).unwrap(), db, Some(viewer));
+            let mut checkpoint = None;
+            let mut suffix = Vec::new();
+            for (index, raw) in messages.iter().enumerate() {
+                let mut raw = raw.clone();
+                if raw[0] == 4 { raw[1] = viewer; }
+                let answer = seat.feed(&raw).unwrap();
+                if checkpoint.is_some() {
+                    suffix.push((raw, answer));
+                } else if index > messages.len() / 3 && answer.is_some() {
+                    let copy = seat.fork().expect(entry.id);
+                    assert_eq!(copy.observation(), seat.observation());
+                    assert_eq!(copy.last_answer().unwrap().responses, seat.last_answer().unwrap().responses);
+                    checkpoint = Some(copy);
+                }
+            }
+            let checkpoint = checkpoint.expect("a decision to copy");
+            assert!(!suffix.is_empty());
+            // The original ran ahead; two copies of the earlier checkpoint must
+            // independently reproduce its continuation, including random choices.
+            for _ in 0..2 {
+                let mut copy = checkpoint.fork().unwrap();
+                for (raw, expected) in &suffix {
+                    assert_eq!(&copy.feed(raw).unwrap(), expected, "{} viewer {viewer}", entry.id);
+                }
+                assert_eq!(copy.observation(), seat.observation());
+            }
+        }
+    }
+}

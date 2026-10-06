@@ -38,7 +38,7 @@ const REVERSAL_OF_FATE: u32 = 36690018;
 const ARCANA_CALL: u32 = 99189322;
 const SKULL_DICE: u32 = 126218;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Arcana;
 
 impl Arcana {

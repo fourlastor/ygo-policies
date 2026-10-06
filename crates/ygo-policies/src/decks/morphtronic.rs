@@ -36,7 +36,7 @@ const BIND: u32 = 85101228;
 const POWER_TOOL_DRAGON: u32 = 2403771;
 const SET_MORPHTRONIC: u16 = 0x26;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Morphtronic;
 
 impl Morphtronic {

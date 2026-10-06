@@ -47,7 +47,7 @@ const RED_DRAGON_ARCHFIEND: u32 = 70902743;
 const CATASTOR: u32 = 26593852;
 const ARMORY_ARM: u32 = 29071332;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct TeleDad;
 
 impl TeleDad {

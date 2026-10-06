@@ -27,7 +27,7 @@ const GOBLIN_ATTACK_FORCE: u32 = 78658564;
 const CHAINSAW_INSECT: u32 = 77252217;
 const SKILL_DRAIN: u32 = 82732705;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Verdict;
 
 impl Verdict {

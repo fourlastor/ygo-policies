@@ -49,7 +49,7 @@ const GLORIOUS_ILLUSION: u32 = 61962135;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SET_LIGHTSWORN: u16 = 0x38;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Lightsworn;
 
 impl Lightsworn {

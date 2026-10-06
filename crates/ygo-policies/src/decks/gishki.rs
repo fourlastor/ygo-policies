@@ -38,7 +38,7 @@ const MEDITATION: u32 = 46337945;
 const TRAP_STUN: u32 = 59616123;
 const SET_GISHKI: u16 = 0x3a;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Gishki;
 
 impl Gishki {

@@ -234,6 +234,14 @@ struct Table<'a> {
 }
 
 impl Table<'_> {
+    fn update(&mut self, message: &[u8]) -> Result<()> {
+        for log in &mut self.logs {
+            log.extend_from_slice(&(message.len() as u32).to_le_bytes());
+            log.extend_from_slice(message);
+        }
+        self.seats[0].feed_update_pair(&self.seats[1], message)
+    }
+
     fn feed(&mut self, player: usize, message: &[u8]) -> Result<Option<Vec<u8>>> {
         self.logs[player].extend_from_slice(&(message.len() as u32).to_le_bytes());
         self.logs[player].extend_from_slice(message);
@@ -277,13 +285,12 @@ fn hidden(duel: &Duel, viewer: u8) -> Result<Vec<Slot>> {
     Ok(slots)
 }
 
-/// Deal again what `viewer` cannot see: its own Deck in another order,
-/// and the other player's hidden cards among their Deck, hand and Set
-/// cards (a Set card stays a Spell or Trap).  Not possible in a chain.
-fn redeal(duel: &mut Duel, viewer: u8, seed: u64) -> Result<()> {
-    let slots = hidden(duel, viewer)?;
+/// Exact exchanges for a root inventory and world seed. Planning consumes
+/// the same random numbers and keeps the original exchange order.
+fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64) -> Result<Vec<(Slot, Slot)>> {
     let mut rng = SplitMix(seed);
-    let permute = |duel: &mut Duel, group: &[usize], wanted: &[usize]| -> Result<()> {
+    let mut swaps = Vec::new();
+    let mut permute = |group: &[usize], wanted: &[usize]| -> Result<()> {
         let mut current = group.to_vec();
         for destination in 0..group.len() {
             let source = current.iter().position(|slot| *slot == wanted[destination]).ok_or("Lost a hidden card")?;
@@ -291,9 +298,7 @@ fn redeal(duel: &mut Duel, viewer: u8, seed: u64) -> Result<()> {
                 continue;
             }
             let (a, b) = (slots[group[destination]], slots[group[source]]);
-            if !duel.swap(a.controller, (a.location, a.sequence), (b.location, b.sequence))? {
-                return Err(format!("The engine refused to swap {:x}:{} and {:x}:{}", a.location, a.sequence, b.location, b.sequence));
-            }
+            swaps.push((a, b));
             current.swap(destination, source);
         }
         Ok(())
@@ -301,7 +306,7 @@ fn redeal(duel: &mut Duel, viewer: u8, seed: u64) -> Result<()> {
     let own: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller == viewer).collect();
     let mut wanted = own.clone();
     rng.shuffle(&mut wanted);
-    permute(duel, &own, &wanted)?;
+    permute(&own, &wanted)?;
 
     let theirs: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller != viewer).collect();
     let set: Vec<usize> = theirs.iter().copied().filter(|i| slots[*i].location == 8).collect();
@@ -319,39 +324,83 @@ fn redeal(duel: &mut Duel, viewer: u8, seed: u64) -> Result<()> {
     rng.shuffle(&mut rest);
     let destinations: Vec<usize> = set.iter().copied().chain(theirs.iter().copied().filter(|i| slots[*i].location != 8)).collect();
     let sources: Vec<usize> = backrow.into_iter().chain(rest).collect();
-    permute(duel, &destinations, &sources)
+    permute(&destinations, &sources)?;
+    Ok(swaps)
 }
+
+/// Cached only for one root decision. The snapshot after inventory queries
+/// preserves their native query-buffer/allocation effects on every branch.
+#[derive(Default)]
+struct HiddenWorlds {
+    inventory: Option<Result<(Vec<Slot>, Snapshot)>>,
+    plans: HashMap<u64, Result<Vec<(Slot, Slot)>>>,
+}
+
+impl HiddenWorlds {
+    fn restore(&mut self, duel: &mut Duel, root: &Snapshot, viewer: u8, seed: u64) -> Result<()> {
+        if self.inventory.is_none() {
+            duel.restore(root)?;
+            self.inventory = Some(hidden(duel, viewer).and_then(|slots| Ok((slots, duel.snapshot()?))));
+        }
+        let (slots, queried) = self.inventory.as_ref().unwrap().as_ref().map_err(Clone::clone)?;
+        duel.restore(queried)?;
+        let swaps = self.plans.entry(seed).or_insert_with(|| swap_plan(duel, slots, viewer, seed));
+        for &(a, b) in swaps.as_ref().map_err(Clone::clone)? {
+            if !duel.swap(a.controller, (a.location, a.sequence), (b.location, b.sequence))? {
+                return Err(format!("The engine refused to swap {:x}:{} and {:x}:{}", a.location, a.sequence, b.location, b.sequence));
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Reconstructed policy state, scoped to one root decision and search stage.
+type PolicyWorlds<'a> = HashMap<Option<(u8, u64)>, Vec<LibrarySeat<'a>>>;
 
 /// Play a duel on from `snapshot` with `response` to its pending
 /// question, in the world as it is or in one dealt again for `viewer`.
-/// Both seats are built again from what the live ones were fed.
+/// Both seats copy the world's reconstructed history when the library supports it.
 /// Returns the winner, if the duel ends before the decision limit.
-fn playout(
+fn playout<'a>(
     duel: &mut Duel,
     snapshot: &Snapshot,
-    setup: &Setup,
+    setup: &Setup<'a>,
     logs: &[Vec<u8>; 2],
+    prepared: &mut PolicyWorlds<'a>,
+    hidden: &mut HiddenWorlds,
     world: Option<(u8, u64)>,
     response: &[u8],
     mut decisions: usize,
 ) -> Result<Option<u8>> {
-    duel.restore(snapshot)?;
     if let Some((viewer, seed)) = world {
-        redeal(duel, viewer, seed)?;
+        hidden.restore(duel, snapshot, viewer, seed)?;
+    } else {
+        duel.restore(snapshot)?;
     }
-    let mut seats = Vec::new();
-    for p in 0..2 {
-        // A dealt world also breaks ties its own way: the search must not
-        // learn from a playout which of two equal choices the other
-        // player's policy is about to make in the duel.
-        let ties = match world {
-            Some((_, seed)) => seed.rotate_left(17) ^ p as u64,
-            None => setup.seed + p as u64,
+    // A world has its own policy tie seed. Rebuild that history once, then
+    // copy its complete seats for each alternative, never the live seats.
+    let rebuild = || -> Result<Vec<LibrarySeat<'a>>> {
+        let mut seats = Vec::new();
+        for p in 0..2 {
+            let ties = match world {
+                Some((_, seed)) => seed.rotate_left(17) ^ p as u64,
+                None => setup.seed + p as u64,
+            };
+            let seat = setup.policies[p].seat(setup.names[p], setup.cards, p as i32, ties)?;
+            seat.feed_buffer(&logs[p])?;
+            seats.push(seat);
+        }
+        Ok(seats)
+    };
+    let seats = if setup.policies.iter().all(|library| library.can_fork()) {
+        let prepared = match prepared.entry(world) {
+            std::collections::hash_map::Entry::Occupied(entry) => entry.into_mut(),
+            std::collections::hash_map::Entry::Vacant(entry) => entry.insert(rebuild()?),
         };
-        let seat = setup.policies[p].seat(setup.names[p], setup.cards, p as i32, ties)?;
-        seat.feed_buffer(&logs[p])?;
-        seats.push(seat);
-    }
+        prepared.iter().map(LibrarySeat::fork).collect::<Result<Vec<_>>>()?
+    } else {
+        rebuild()?
+    };
     duel.respond(response);
     decisions += 1;
     loop {
@@ -360,6 +409,10 @@ fn playout(
         for sent in &step.messages {
             if !sent.refresh && sent.bytes[0] == msg::RETRY {
                 return Err("Engine rejected response (MSG_RETRY)".into());
+            }
+            if sent.refresh {
+                seats[0].feed_update_pair(&seats[1], &sent.bytes)?;
+                continue;
             }
             for seat in &seats {
                 let given = seat.feed(&sent.bytes)?;
@@ -403,6 +456,7 @@ fn decide(
 ) -> Result<(usize, serde_json::Value)> {
     let before = counts[0];
     let snapshot = duel.snapshot()?;
+    let mut hidden = HiddenWorlds::default();
     let mut candidates: Vec<Candidate> = (0..decision.responses.len()).map(|index| Candidate { index, payoffs: vec![] }).collect();
     let mut alive: Vec<usize> = (1..candidates.len()).collect();
     let mut seen = serde_json::Value::Null;
@@ -410,6 +464,8 @@ fn decide(
     let mut done = 0;
     let mut won_everywhere = false;
     for (stage, total) in search.stages.iter().copied().enumerate() {
+        // Only this stage needs these worlds; bound retained policy state.
+        let mut prepared = PolicyWorlds::new();
         // The pilot's answer goes first.  Where it wins every first-stage
         // world no alternative can be ahead of it, so none is tried: the
         // answer is the one the full stage would keep.
@@ -422,7 +478,7 @@ fn decide(
                 let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
                 for index in indices {
                     counts[0] += 1;
-                    let played = playout(duel, &snapshot, setup, logs, Some((viewer, seed)), &decision.responses[index], decisions);
+                    let played = playout(duel, &snapshot, setup, logs, &mut prepared, &mut hidden, Some((viewer, seed)), &decision.responses[index], decisions);
                     candidates[index].payoffs.push(match played {
                         Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
                         Ok(None) => Some(0.0),
@@ -514,9 +570,10 @@ fn foresee(
 ) -> Result<usize> {
     let snapshot = duel.snapshot()?;
     let mut chosen = 0;
+    let mut prepared = PolicyWorlds::new();
     for index in 0..decision.responses.len() {
         counts[0] += 1;
-        match playout(duel, &snapshot, setup, logs, None, &decision.responses[index], decisions) {
+        match playout(duel, &snapshot, setup, logs, &mut prepared, &mut HiddenWorlds::default(), None, &decision.responses[index], decisions) {
             Ok(Some(winner)) if winner == viewer => {
                 chosen = index;
                 break;
@@ -571,9 +628,7 @@ pub fn play_searching(
         for sent in &step.messages {
             let message = &sent.bytes;
             if sent.refresh {
-                for p in 0..2 {
-                    table.feed(p, message)?;
-                }
+                table.update(message)?;
                 continue;
             }
             match message[0] {
@@ -620,10 +675,10 @@ pub fn play_searching(
                 // The pilot's own answer, played out in the world as it is.
                 counts[0] += 1;
                 let snapshot = duel.snapshot()?;
-                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, None, &answer, decisions)?);
+                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, &mut PolicyWorlds::new(), &mut HiddenWorlds::default(), None, &answer, decisions)?);
                 duel.restore(&snapshot)?;
             } else if let Some((described, decision)) = {
-                let described = table.seats[p].last_answer()?;
+                let described = table.seats[p].search_view()?;
                 listed(&described, &answer).map(|decision| (described, decision))
             } {
                 if search.foresight {
@@ -646,11 +701,12 @@ pub fn play_searching(
                         if let Some(record) = examined.last_mut() {
                             record["decision"] = serde_json::json!(decisions);
                             record["turn"] = serde_json::json!(turns);
-                            record["situation"] = situation(&described, viewer);
+                            record["situation"] = described.get("situation").cloned()
+                                .unwrap_or_else(|| situation(&described, viewer));
                             if index != 0 {
-                                // Where the pilot's answer was left: all the seat saw and
+                                // Where the pilot's answer was changed: all the seat saw and
                                 // every choice it had, for whoever writes the pilot's rules.
-                                record["seen"] = described.clone();
+                                record["seen"] = table.seats[p].last_answer()?;
                             }
                         }
                     }

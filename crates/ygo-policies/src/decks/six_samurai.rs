@@ -46,7 +46,7 @@ const SET_SIX_SAMURAI: u16 = 0x3d;
 /// Union: "equip this card" (the other option Special Summons it back).
 const UNION_EQUIP: u64 = 1068;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SixSamurai;
 
 impl SixSamurai {

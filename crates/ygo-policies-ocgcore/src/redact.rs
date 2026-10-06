@@ -156,7 +156,10 @@ pub fn redact(message: &[u8], viewer: Option<u8>) -> Result<Option<Cow<'_, [u8]>
 
 /// Whether `viewer` may see a card's identity and stats.
 pub fn visible(record: &RawRecord, owner: u8, loc: u8, viewer: Option<u8>) -> bool {
-    let position = record.position().unwrap_or(0);
+    visible_at(record.position().unwrap_or(0), record.is_public(), owner, loc, viewer)
+}
+
+fn visible_at(position: u32, public: bool, owner: u8, loc: u8, viewer: Option<u8>) -> bool {
     let face_up = position & position::FACEUP != 0;
     if viewer == Some(owner) {
         return loc != location::DECK;
@@ -164,9 +167,29 @@ pub fn visible(record: &RawRecord, owner: u8, loc: u8, viewer: Option<u8>) -> bo
     match loc {
         location::GRAVE | location::OVERLAY => true,
         location::MZONE | location::SZONE | location::REMOVED => face_up,
-        location::HAND | location::EXTRA => record.is_public() || (loc == location::EXTRA && face_up),
+        location::HAND | location::EXTRA => public || (loc == location::EXTRA && face_up),
         _ => false,
     }
+}
+
+/// Filter a decoded update with the same visibility rules as the wire path.
+/// No encoded intermediate buffer is needed before applying it to a projection.
+pub fn filter_update(message: &mut crate::Message, viewer: Option<u8>) -> Result<()> {
+    let hide = |card: &mut Option<crate::query::Query>, owner, loc| {
+        if let Some(card) = card {
+            if !visible_at(card.position.unwrap_or(0), card.is_public.unwrap_or(false), owner, loc, viewer) {
+                *card = crate::query::Query { position: card.position, ..Default::default() };
+            }
+        }
+    };
+    match message {
+        crate::Message::UpdateData { player, location, cards } => {
+            for card in cards { hide(card, *player, *location); }
+        }
+        crate::Message::UpdateCard { player, location, card, .. } => hide(card, *player, *location),
+        _ => return Err(error("expected a card update")),
+    }
+    Ok(())
 }
 
 fn write_visible(record: Option<&RawRecord>, owner: u8, loc: u8, _sequence: usize, viewer: Option<u8>, out: &mut Vec<u8>) {
@@ -224,6 +247,46 @@ mod tests {
 
     fn code_at(message: &[u8], at: usize) -> u32 {
         u32::from_le_bytes(message[at..at + 4].try_into().unwrap())
+    }
+
+    #[test]
+    fn typed_updates_match_wire_redaction_for_every_visibility_case() {
+        for owner in 0..2 {
+            for viewer in [None, Some(0), Some(1)] {
+                for loc in [location::DECK, location::HAND, location::MZONE, location::SZONE,
+                            location::GRAVE, location::REMOVED, location::EXTRA, location::OVERLAY] {
+                    for pos in [0, position::FACEUP_ATTACK, position::FACEDOWN_DEFENSE] {
+                        for public in [0u8, 1] {
+                            let mut record = Vec::new();
+                            for (flag, value) in [(query::CODE, 12345), (query::POSITION, pos), (query::ATTACK, 1800),
+                                                   (query::DEFENSE, 1000), (query::LEVEL, 4), (query::RANK, 0)] {
+                                record.extend_from_slice(&8u16.to_le_bytes());
+                                record.extend_from_slice(&flag.to_le_bytes());
+                                record.extend_from_slice(&value.to_le_bytes());
+                            }
+                            record.extend_from_slice(&5u16.to_le_bytes());
+                            record.extend_from_slice(&query::IS_PUBLIC.to_le_bytes());
+                            record.push(public);
+                            record.extend_from_slice(&4u16.to_le_bytes());
+                            record.extend_from_slice(&query::END.to_le_bytes());
+                            let mut location_update = vec![msg::UPDATE_DATA, owner, loc];
+                            location_update.extend_from_slice(&((record.len() + 2) as u32).to_le_bytes());
+                            location_update.extend_from_slice(&record);
+                            location_update.extend_from_slice(&0u16.to_le_bytes()); // empty slot
+                            let mut card_update = vec![msg::UPDATE_CARD, owner, loc, 2];
+                            card_update.extend_from_slice(&record);
+                            for bytes in [location_update, card_update] {
+                                let wire = redact(&bytes, viewer).unwrap().unwrap();
+                                let expected = crate::message::parse(&wire).unwrap();
+                                let mut typed = crate::message::parse(&bytes).unwrap();
+                                filter_update(&mut typed, viewer).unwrap();
+                                assert_eq!(typed, expected, "owner {owner}, viewer {viewer:?}, loc {loc}, pos {pos}, public {public}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]

@@ -37,7 +37,7 @@ const BLACK_ROSE: u32 = 73580471;
 const RED_DRAGON_ARCHFIEND: u32 = 70902743;
 const SET_GLADIATOR_BEAST: u16 = 0x1019;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Gladiator;
 
 impl Gladiator {

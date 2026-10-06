@@ -62,7 +62,7 @@ const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SET_ELEMENTAL_HERO: u16 = 0x3008;
 const SET_HERO: u16 = 0x8;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Heroes;
 
 impl Heroes {

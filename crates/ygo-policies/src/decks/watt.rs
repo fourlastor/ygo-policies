@@ -46,7 +46,7 @@ const SET_WATT: u16 = 0xe;
 /// Watts that attack directly on their own.
 const DIRECT: [u32; 4] = [WATTGIRAFFE, WATTPHEASANT, WATTCHIMERA, WATTHYDRA];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Watt;
 
 impl Watt {

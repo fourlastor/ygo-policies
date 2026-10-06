@@ -34,7 +34,7 @@ const ONE_FOR_ONE: u32 = 2295440;
 
 const MONARCHS: [u32; 4] = [CAIUS, RAIZA, MOBIUS, THESTALOS];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Monarch;
 
 impl Monarch {

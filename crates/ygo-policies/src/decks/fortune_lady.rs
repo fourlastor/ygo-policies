@@ -35,7 +35,7 @@ const SET_FORTUNE_LADY: u16 = 0x31;
 /// System string of the "Monster" answer when a card type is called.
 const DECLARE_MONSTER: u64 = 70;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct FortuneLady;
 
 impl FortuneLady {

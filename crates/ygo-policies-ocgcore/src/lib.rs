@@ -45,6 +45,7 @@ pub use projection::Projection;
 pub use wire::{ProtocolError, Result};
 
 /// The last decision this seat answered.
+#[derive(Clone)]
 pub struct Answered {
     pub observation: Observation,
     pub decision: Decision,
@@ -75,6 +76,19 @@ impl Seat {
         Seat { policy, db, projection: Projection::new(seat), selection_hint: 0, answered: None, awaiting: false }
     }
 
+    /// Copy this seat independently, including the pending answer and RNG.
+    /// A custom policy may decline to support copying.
+    pub fn fork(&self) -> Option<Self> {
+        Some(Self {
+            policy: self.policy.fork()?,
+            db: self.db.clone(),
+            projection: self.projection.clone(),
+            selection_hint: self.selection_hint,
+            answered: self.answered.clone(),
+            awaiting: self.awaiting,
+        })
+    }
+
     pub fn seat(&self) -> Option<u8> {
         self.projection.seat
     }
@@ -97,10 +111,28 @@ impl Seat {
         self.answered.as_ref()
     }
 
+    fn apply_update(&mut self, mut update: Message) -> Result<()> {
+        self.awaiting = false;
+        redact::filter_update(&mut update, self.projection.seat)?;
+        self.projection.apply(&update);
+        Ok(())
+    }
+
+    /// Decode one field update once, then filter it independently for both seats.
+    pub fn feed_update_pair(first: &mut Self, second: &mut Self, bytes: &[u8]) -> Result<()> {
+        let update = message::parse(bytes)?;
+        first.apply_update(update.clone())?;
+        second.apply_update(update)
+    }
+
     /// Feed one engine message (message id byte + body).  Returns the
     /// response when the message asks this seat to decide.
     pub fn feed(&mut self, message: &[u8]) -> Result<Option<Vec<u8>>> {
         let awaiting = std::mem::take(&mut self.awaiting);
+        if matches!(message.first(), Some(&wire::msg::UPDATE_DATA) | Some(&wire::msg::UPDATE_CARD)) {
+            self.apply_update(message::parse(message)?)?;
+            return Ok(None);
+        }
         let Some(visible) = redact::redact(message, self.projection.seat)? else { return Ok(None) };
         let parsed = message::parse(&visible)?;
         self.projection.apply(&parsed);

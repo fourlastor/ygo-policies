@@ -41,7 +41,7 @@ const SET_HARPIE: u16 = 0x64;
 /// Cards whose name is "Harpie Lady" on the field and in the Graveyard.
 const LADIES: [u32; 6] = [HARPIE_LADY, HARPIE_QUEEN, HARPIE_LADY_1, HARPIE_LADY_2, HARPIE_LADY_3, CYBER_HARPIE_LADY];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Harpie;
 
 impl Harpie {

@@ -38,7 +38,7 @@ const RAIGEKI_BREAK: u32 = 4178474;
 const PHARAOHS_TREASURE: u32 = 63571750;
 const SET_GRAVEKEEPER: u16 = 0x2e;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Gravekeeper;
 
 impl Gravekeeper {

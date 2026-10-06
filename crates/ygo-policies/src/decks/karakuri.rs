@@ -45,7 +45,7 @@ const BUREIDO: u32 = 66976526;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const SET_KARAKURI: u16 = 0x11;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Karakuri;
 
 impl Karakuri {

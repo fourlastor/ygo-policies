@@ -50,7 +50,7 @@ const UNION_EQUIP: u64 = 1068;
 
 const TRIO: [u32; 3] = [OJAMA_GREEN, OJAMA_YELLOW, OJAMA_BLACK];
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Ojama;
 
 impl Ojama {

@@ -52,7 +52,7 @@ const RED_DRAGON_ARCHFIEND: u32 = 70902743;
 const MAGICAL_ANDROID: u32 = 43385557;
 const COLOSSAL_FIGHTER: u32 = 23693634;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct QuickdrawPlant;
 
 impl QuickdrawPlant {
