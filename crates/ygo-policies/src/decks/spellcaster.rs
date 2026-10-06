@@ -132,6 +132,19 @@ impl Strategy for Spellcaster {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        // Flip effects are useful even when the body would lose in battle.
+        if let Some(i) = t.find_where(|c| {
+            c.kind == ChoiceKind::ChangePosition
+                && t.view(c).map_or(false, |v| !v.position.face_up)
+                && match c.code().map(|code| ctx.canonical(code)) {
+                    Some(CRYSTAL_SEER) => true,
+                    Some(OLD_VINDICTIVE) => !ctx.monsters(ctx.opp).is_empty(),
+                    Some(MANDRAGOLA) => Self::counter_target(&ctx).is_some(),
+                    _ => false,
+                }
+        }) {
+            return t.pick(i);
+        }
         // The Citadel collects every counter and pays for everything.
         if !ctx.face_up_on_field(ctx.me, CITADEL) {
             if let Some(i) = t.activate_from(CITADEL, Location::Hand) {
@@ -265,14 +278,31 @@ impl Strategy for Spellcaster {
                 }
             }
         }
+        // Unite trades every other Spellcaster attack for one 3000-ATK hit.
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.attack_locks().is_empty() {
+            if let Some(i) = t.activate(MAGICIANS_UNITE) {
+                let attackers: Vec<_> = ctx.monsters(ctx.me).into_iter()
+                    .filter(|c| ctx.can_attack(c) && ctx.view_data(c).race & crate::cards::races::SPELLCASTER != 0)
+                    .collect();
+                let total: i32 = attackers.iter().map(|c| c.attack).sum();
+                if let Some(best) = attackers.iter().max_by_key(|c| c.attack) {
+                    let threat = ctx.opp_best_attack();
+                    if (best.attack <= threat && threat < 3000) || (ctx.monsters(ctx.opp).is_empty() && total < 3000) {
+                        return t.pick_targeting(i, vec![best.at]);
+                    }
+                }
+            }
+        }
         // Equips on our best attacker before battle.
         if ctx.main1() {
             let attacker = ctx.monsters(ctx.me).into_iter().filter(|c| ctx.can_attack(c)).max_by_key(|c| c.attack);
             if let Some(attacker) = attacker {
                 let best = ctx.opp_best_attack();
-                if attacker.attack <= best && attacker.attack + 700 > best {
-                    for code in [NUZZLER, MAGE_POWER] {
-                        if let Some(i) = t.activate(code) {
+                for code in [NUZZLER, MAGE_POWER] {
+                    if let Some(i) = t.activate(code) {
+                        let entering = (t.choice(i).at().map(|a| a.location) == Some(Location::Hand)) as i32;
+                        let bonus = if code == MAGE_POWER { 500 * (ctx.spell_traps(ctx.me).len() as i32 + entering) } else { 700 };
+                        if attacker.attack + bonus > best {
                             return t.pick_targeting(i, vec![attacker.at]);
                         }
                     }

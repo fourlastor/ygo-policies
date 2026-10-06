@@ -2345,4 +2345,220 @@ mod tests {
         obs.cards.push(monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000));
         assert_eq!(chosen(&obs), ChoiceKind::SetMonster);
     }
+
+    #[test]
+    fn spellcaster_flips_for_draw_removal_and_useful_counters() {
+        use crate::cards::types;
+        const SEER: u32 = 82099401;
+        const VINDICTIVE: u32 = 45141844;
+        const MANDRAGOLA: u32 = 7802006;
+        const CITADEL: u32 = 39910367;
+        let db = Arc::new(MemoryCards([printed(SEER, types::MONSTER | types::EFFECT | types::FLIP, 0),
+            printed(VINDICTIVE, types::MONSTER | types::EFFECT | types::FLIP, 0),
+            printed(MANDRAGOLA, types::MONSTER | types::EFFECT | types::FLIP, 0),
+            printed(CITADEL, types::SPELL | types::FIELD, 0)].into_iter().collect()));
+        for (code, needs_target) in [(SEER, false), (VINDICTIVE, true), (MANDRAGOLA, true)] {
+            let mut obs = observation();
+            obs.cards = vec![monster(0, 0, Some(code), Position::FACE_DOWN_DEFENSE, 400, 400)];
+            let flip = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+                ..activate(code, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+            let chosen = |obs: &Observation| {
+                let mut policy = crate::registry::create("spellcaster", db.clone()).unwrap();
+                flip.choices[policy.choose(obs, &flip)].kind
+            };
+            assert_eq!(chosen(&obs), if needs_target { ChoiceKind::EndTurn } else { ChoiceKind::ChangePosition });
+            if code == VINDICTIVE {
+                obs.cards.push(monster(1, 0, None, Position::FACE_DOWN_DEFENSE, 0, 0));
+            } else if code == MANDRAGOLA {
+                obs.cards.push(card(0, Location::SpellTrapZone, 5, CITADEL, true));
+            }
+            assert_eq!(chosen(&obs), ChoiceKind::ChangePosition);
+            obs.phase = Some(Phase::Main2);
+            assert_eq!(chosen(&obs), ChoiceKind::ChangePosition, "the effect still helps after battle");
+        }
+    }
+
+    #[test]
+    fn spellcaster_equips_attackers_even_when_they_already_win() {
+        use crate::cards::types;
+        const NUZZLER: u32 = 99597615;
+        let db = Arc::new(MemoryCards([creature(1, 4, 1800, 1000, 0),
+            printed(NUZZLER, types::SPELL | types::EQUIP, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1000),
+            card(0, Location::Hand, 0, NUZZLER, false)];
+        let equip = decide(DecisionKind::Idle, None, vec![activate(NUZZLER, Location::Hand, 0),
+            choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("spellcaster", db.clone()).unwrap();
+            equip.choices[policy.choose(obs, &equip)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "700 more direct damage is useful");
+        obs.cards.push(monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1500, 1000));
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "increase damage over a weaker attacker");
+        obs.cards[2].attack = 2500;
+        assert_ne!(chosen(&obs), ChoiceKind::Activate, "the boost does not win this battle");
+        obs.cards[2].attack = 1500;
+        obs.phase = Some(Phase::Main2);
+        assert_ne!(chosen(&obs), ChoiceKind::Activate, "save it until the next attack opportunity");
+    }
+
+    #[test]
+    fn pyramid_keeps_sphinx_face_up_through_open_main_phase_windows() {
+        const GUARDIAN: u32 = 40659562;
+        let db = Arc::new(MemoryCards([creature(GUARDIAN, 5, 1700, 2400, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(GUARDIAN), Position::FACE_UP_ATTACK, 1700, 2400)];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(GUARDIAN, Location::MonsterZone, 0), choice(ChoiceKind::Pass)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("pyramid", db.clone()).unwrap();
+            window.choices[policy.choose(obs, &window)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Pass, "no EnterBattle option in a chain window does not mean battle is over");
+        obs.phase = Some(Phase::Main2);
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "reset for next turn after attacking");
+        obs.phase = Some(Phase::Main1);
+        obs.cards[0].can_attack = false;
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "no attack is being sacrificed");
+    }
+
+    #[test]
+    fn pyramid_turtle_recruits_reaper_in_defense_against_large_attackers() {
+        const TURTLE: u32 = 77044671;
+        const REAPER: u32 = 23205979;
+        const MUMMY: u32 = 70821187;
+        let db = Arc::new(MemoryCards([creature(TURTLE, 4, 1200, 1400, 0),
+            creature(REAPER, 3, 300, 200, 0), creature(MUMMY, 4, 1800, 1500, 0),
+            creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("pyramid", db).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Damage);
+        obs.cards = vec![card(0, Location::Graveyard, 0, TURTLE, true),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let trigger = decide(DecisionKind::YesNo, Some(TURTLE), vec![Choice { kind: ChoiceKind::Yes,
+            ..activate(TURTLE, Location::Graveyard, 0) }, choice(ChoiceKind::No)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let recruit = select_one(Hint::SpecialSummon, vec![toggle(Location::Deck, 0, MUMMY), toggle(Location::Deck, 1, REAPER)]);
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(REAPER));
+        let position = decide(DecisionKind::Position, Some(REAPER), vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)),
+            choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))]);
+        assert_eq!(position.choices[policy.choose(&obs, &position)].kind, ChoiceKind::Position(Position::FACE_UP_DEFENSE));
+        obs.turn_player = Some(0);
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(MUMMY));
+        obs.turn_player = Some(1);
+        obs.cards[1].attack = 1700;
+        assert_eq!(recruit.choices[policy.choose(&obs, &recruit)].code(), Some(MUMMY));
+    }
+
+    #[test]
+    fn pyramid_does_not_tribute_its_large_sphinxes_for_weaker_ones() {
+        const ANDRO: u32 = 15013468;
+        const GUARDIAN: u32 = 40659562;
+        const HIERACO: u32 = 82260502;
+        const TURTLE: u32 = 77044671;
+        let db = Arc::new(MemoryCards([creature(ANDRO, 10, 3000, 2500, 0),
+            creature(GUARDIAN, 5, 1700, 2400, 0), creature(HIERACO, 6, 2400, 1200, 0),
+            creature(TURTLE, 4, 1200, 1400, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(ANDRO), Position::FACE_UP_ATTACK, 3000, 2500),
+            card(0, Location::Hand, 0, GUARDIAN, false), card(0, Location::Hand, 1, HIERACO, false)];
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, GUARDIAN, 0),
+            from_hand(ChoiceKind::NormalSummon, HIERACO, 1), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("pyramid", db.clone()).unwrap();
+            summon.choices[policy.choose(obs, &summon)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn);
+        obs.cards.push(monster(0, 1, Some(TURTLE), Position::FACE_UP_DEFENSE, 1200, 1400));
+        assert_eq!(chosen(&obs), ChoiceKind::SetMonster, "a smaller tribute makes the summon worthwhile");
+    }
+
+    #[test]
+    fn spellcaster_unites_to_break_a_wall_without_reducing_open_field_damage() {
+        use crate::cards::{races, types};
+        const UNITE: u32 = 36045450;
+        let mut body = creature(1, 4, 1800, 1000, 0);
+        body.1.race = races::SPELLCASTER;
+        let db = Arc::new(MemoryCards([body, printed(UNITE, types::SPELL, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1000),
+            monster(0, 1, Some(1), Position::FACE_UP_ATTACK, 1600, 1000),
+            card(0, Location::Hand, 0, UNITE, false),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2800, 1000)];
+        let unite = decide(DecisionKind::Idle, None, vec![activate(UNITE, Location::Hand, 0),
+            choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("spellcaster", db.clone()).unwrap();
+            unite.choices[policy.choose(obs, &unite)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Activate);
+        obs.cards[3].attack = 3300;
+        assert_ne!(chosen(&obs), ChoiceKind::Activate, "3000 still cannot beat their monster");
+        obs.cards.pop();
+        assert_ne!(chosen(&obs), ChoiceKind::Activate, "keep 3400 direct damage rather than limit it to 3000");
+        obs.cards[1].attack = 800;
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "3000 improves on 2600 direct damage");
+        obs.phase = Some(Phase::Main2);
+        assert_ne!(chosen(&obs), ChoiceKind::Activate);
+    }
+
+    #[test]
+    fn pyramid_energy_selects_attack_to_win_battle_and_defense_to_save_a_blocker() {
+        use crate::cards::types;
+        const ENERGY: u32 = 76754619;
+        let db = Arc::new(MemoryCards([creature(1, 4, 1800, 1700, 0),
+            printed(ENERGY, types::SPELL | types::QUICKPLAY, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.phase = Some(Phase::Damage);
+        obs.cards = vec![monster(0, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1700),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000),
+            card(0, Location::SpellTrapZone, 0, ENERGY, false)];
+        obs.battle_attacker = Some(obs.cards[0].at);
+        obs.battle_target = Some(obs.cards[1].at);
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(ENERGY, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        let option = decide(DecisionKind::Option, None, vec![Choice { description: (ENERGY as u64) << 4,
+            ..choice(ChoiceKind::Option) }, Choice { description: ((ENERGY as u64) << 4) | 1,
+            ..choice(ChoiceKind::Option) }]);
+        let answer = |obs: &Observation| {
+            let mut policy = crate::registry::create("pyramid", db.clone()).unwrap();
+            let kind = window.choices[policy.choose(obs, &window)].kind;
+            (kind, policy.choose(obs, &option))
+        };
+        assert_eq!(answer(&obs), (ChoiceKind::Activate, 0));
+        obs.cards[1].attack = 2000;
+        assert_eq!(answer(&obs).0, ChoiceKind::Pass, "do not spend Energy just to trade");
+        obs.cards[1].attack = 1900;
+        obs.turn_player = Some(1);
+        obs.cards[0].position = Position::FACE_UP_DEFENSE;
+        obs.battle_attacker = Some(obs.cards[1].at);
+        obs.battle_target = Some(obs.cards[0].at);
+        assert_eq!(answer(&obs), (ChoiceKind::Activate, 1));
+    }
+
+    #[test]
+    fn spellcaster_counts_mage_power_from_hand_and_from_its_set_zone() {
+        use crate::cards::types;
+        const MAGE: u32 = 83746708;
+        const CITADEL: u32 = 39910367;
+        let db = Arc::new(MemoryCards([creature(1, 4, 1800, 1000, 0),
+            printed(MAGE, types::SPELL | types::EQUIP, 0), printed(CITADEL, types::SPELL | types::FIELD, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1000),
+            card(0, Location::Hand, 0, MAGE, false), card(0, Location::SpellTrapZone, 5, CITADEL, true),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2700, 1000)];
+        let chosen = |obs: &Observation, location| {
+            let mut policy = crate::registry::create("spellcaster", db.clone()).unwrap();
+            let decision = decide(DecisionKind::Idle, None, vec![activate(MAGE, location, 0),
+                choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+            decision.choices[policy.choose(obs, &decision)].kind
+        };
+        assert_eq!(chosen(&obs, Location::Hand), ChoiceKind::Activate, "Citadel plus the entering equip give 1000 ATK");
+        obs.cards[1] = card(0, Location::SpellTrapZone, 0, MAGE, false);
+        assert_eq!(chosen(&obs, Location::SpellTrapZone), ChoiceKind::Activate);
+        obs.cards[3].attack = 2800;
+        assert_ne!(chosen(&obs, Location::SpellTrapZone), ChoiceKind::Activate, "do not count a set equip twice");
+    }
 }

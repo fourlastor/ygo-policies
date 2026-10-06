@@ -125,8 +125,23 @@ impl Strategy for Pyramid {
                 return t.pick(i);
             }
         }
-        // After the attacks, turn the flip monsters face-down again.
-        if !ctx.main1() || !t.has(ChoiceKind::EnterBattle) {
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.attack_locks().is_empty() {
+            if let Some(i) = t.activate(PYRAMID_ENERGY) {
+                let attackers: Vec<_> = ctx.monsters(ctx.me).into_iter().filter(|c| ctx.can_attack(c)).collect();
+                let total: i32 = attackers.iter().map(|c| c.attack).sum();
+                let crosses = attackers.iter().any(|a| ctx.monsters(ctx.opp).iter().any(|d| {
+                    d.position.face_up && a.attack <= ctx.battle_stat(d) && a.attack + 200 > ctx.battle_stat(d)
+                }));
+                if crosses || (ctx.monsters(ctx.opp).is_empty() && total > 0 && total + 200 * attackers.len() as i32 >= ctx.opp_lp()) {
+                    return t.pick(i);
+                }
+            }
+        }
+        // Open Main Phase chain windows omit EnterBattle even before battle.
+        // Preserve the attack, then reset these monsters in Main Phase 2.
+        if !ctx.main1() || !ctx.monsters(ctx.me).iter().any(|c| {
+            ctx.can_attack(c) && matches!(c.code, Some(GUARDIAN_SPHINX | DES_LACOODA))
+        }) {
             if let Some(i) = Self::flip_down(t) {
                 return t.pick(i);
             }
@@ -139,6 +154,9 @@ impl Strategy for Pyramid {
         let code = ctx.canonical(choice.code()?);
         let fodder = ctx.monsters(ctx.me).len();
         Some(match (choice.kind, code) {
+            // Keep a larger Sphinx unless a cheaper tribute is available.
+            (_, GUARDIAN_SPHINX | HIERACOSPHINX)
+                if ctx.monsters(ctx.me).iter().map(|c| crate::agent::value(self, &ctx, None, Some(c))).min().unwrap_or(0) >= 2300 => None,
             // The Level 10 Sphinxes come out through the Pyramid only.
             (_, ANDRO_SPHINX | SPHINX_TELEIA | THEINEN) => None,
             // Guardian Sphinx goes down face-down: its Flip Summon is the bounce.
@@ -180,6 +198,10 @@ impl Strategy for Pyramid {
                 }
                 _ => Response::no(),
             },
+            PYRAMID_ENERGY if ctx.battle_attacker().zip(ctx.battle_target()).map_or(false, |(a, d)| {
+                a.at.controller == ctx.me && d.position.face_up && a.attack <= ctx.battle_stat(d)
+                    && a.attack + 200 > ctx.battle_stat(d)
+            }) => Response::new(40.0),
             // +500 DEF saves a defender that would lose.
             PYRAMID_ENERGY => match incoming {
                 Some((attacker, Some(target))) if !target.position.attack && target.defense <= attacker.attack && target.defense + 500 > attacker.attack => {
@@ -195,12 +217,20 @@ impl Strategy for Pyramid {
     }
 
     fn option(&self, t: &Turn) -> Option<usize> {
-        // Pyramid Energy: +500 DEF (the second option) is the defensive one.
-        (t.memory.last_activated.map(|c| t.ctx.canonical(c)) == Some(PYRAMID_ENERGY)).then_some(1)
+        // Our attacks use +200 ATK; opposing attacks use +500 DEF.
+        (t.memory.last_activated.map(|c| t.ctx.canonical(c)) == Some(PYRAMID_ENERGY)).then_some(if t.ctx.my_turn() { 0 } else { 1 })
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
         let ctx = t.ctx;
+        // Mummy would fall to the same attacker; Reaper survives battle.
+        if t.memory.last_activated == Some(PYRAMID_TURTLE)
+            && member.at.controller == ctx.me
+            && member.at.location == Location::Deck && t.decision.hint.is_gain()
+            && !ctx.my_turn() && ctx.opp_best_attack() > 1800 && member.code == Some(SPIRIT_REAPER)
+        {
+            return Some(5000.0);
+        }
         // Pharaoh's Treasure: take back the best card in the Graveyard.
         if member.at.controller == ctx.me && member.at.location == Location::Graveyard && t.decision.hint.is_gain() {
             return member.code.map(|c| crate::agent::value(self, &ctx, Some(ctx.canonical(c)), None) as f64);
@@ -211,6 +241,7 @@ impl Strategy for Pyramid {
     fn position(&self, t: &Turn, code: u32) -> Option<Position> {
         let ctx = t.ctx;
         match ctx.canonical(code) {
+            SPIRIT_REAPER if !ctx.my_turn() => Some(Position::FACE_UP_DEFENSE),
             ANDRO_SPHINX | SPHINX_TELEIA | THEINEN | HIERACOSPHINX | END_OF_ANUBIS => Some(Position::FACE_UP_ATTACK),
             _ => None,
         }
