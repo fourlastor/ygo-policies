@@ -14,7 +14,7 @@
 use crate::agent::{Outcome, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{CardView, Choice, ChoiceKind, Location, Phase, Position};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Phase, Position};
 use crate::tactics;
 
 pub const DECK: &str = "Watt Grid";
@@ -108,6 +108,13 @@ impl Strategy for Watt {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        // A direct attacker can get past a larger monster from Attack Position.
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) {
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition && t.view(c).map_or(false, |v|
+                !v.position.attack && Self::direct(&ctx, v))) {
+                return t.pick(i);
+            }
+        }
         if !ctx.face_up_on_field(ctx.me, WATTCASTLE) {
             if let Some(i) = t.activate_from(WATTCASTLE, Location::Hand) {
                 return t.pick(i);
@@ -148,6 +155,12 @@ impl Strategy for Watt {
                     return t.pick_targeting(i, vec![holder.at]);
                 }
             }
+            // Cash in a smaller graveyard-based bonus for a permanent 1000.
+            if ctx.graveyard(ctx.me).iter().filter(|c| Self::is_thunder(&ctx, c)).count() < 10 {
+                if let (Some(holder), Some(i)) = (holder, t.activate_from(WATTCUBE, Location::SpellTrapZone)) {
+                    return t.pick_targeting(i, vec![holder.at]);
+                }
+            }
             // Wattkey: every Watt goes around their monsters this turn.
             if !ctx.monsters(ctx.opp).is_empty() {
                 let stuck: i32 = Self::attackers(&ctx).iter().filter(|c| !Self::direct(&ctx, c)).map(|c| c.attack).sum();
@@ -166,6 +179,19 @@ impl Strategy for Watt {
         let code = ctx.canonical(choice.code()?);
         let blocked = !ctx.monsters(ctx.opp).is_empty();
         let pressure = ctx.opp_best_attack() >= 1500;
+        // Prefer replacement blockers under pressure, unless the next direct
+        // attacker supplies this turn's remaining lethal damage.
+        let direct_damage: i32 = Self::attackers(&ctx).iter().filter(|c| Self::direct(&ctx, c)).map(|c| c.attack.max(0)).sum();
+        let finish = ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.attack_locks().is_empty()
+            && t.choices().any(|(_, c)| c.kind == ChoiceKind::NormalSummon && c.code().map_or(false, |k|
+                DIRECT.contains(&ctx.canonical(k)) && direct_damage + ctx.data(k).attack >= ctx.opp_lp()));
+        if pressure && !finish && choice.kind == ChoiceKind::SetMonster {
+            match code {
+                WATTDRAGONFLY => return Some(Some(2500.0)),
+                WATTLEMUR => return Some(Some(2400.0)),
+                _ => {},
+            }
+        }
         Some(match (choice.kind, code) {
             (ChoiceKind::NormalSummon, WATTGIRAFFE) => Some(1700.0 + if blocked { 500.0 } else { 0.0 }),
             (ChoiceKind::NormalSummon, WATTPHEASANT) => Some(1600.0 + if blocked { 500.0 } else { 0.0 }),
@@ -175,7 +201,6 @@ impl Strategy for Watt {
             (ChoiceKind::SetMonster, WATTLEMUR) if pressure => Some(1500.0),
             (ChoiceKind::SetMonster, WATTDRAGONFLY) if pressure => Some(1450.0),
             (ChoiceKind::SetMonster, WATTFOX) if pressure => Some(1300.0),
-            (ChoiceKind::SetMonster, WATTMOLE | WATTKID | WATTBERYX | WATTKIWI) => None,
             _ => return None,
         })
     }
@@ -196,11 +221,13 @@ impl Strategy for Watt {
     }
 
     fn battle(&mut self, t: &mut Turn) -> Option<usize> {
-        if let Some((i, target)) = tactics::plan_attack(self, t) {
-            return t.pick_targeting(i, target.into_iter().collect());
+        // Take the direct hit (and its effect) before considering monster
+        // battles. Keep the target empty for the engine's direct-attack prompt.
+        if let Some(i) = tactics::direct_attack(t) {
+            return t.pick_targeting(i, Vec::new());
         }
-        let i = tactics::direct_attack(t)?;
-        t.pick_targeting(i, Vec::new())
+        let (i, target) = tactics::plan_attack(self, t)?;
+        t.pick_targeting(i, target.into_iter().collect())
     }
 
     fn attack_outcome(&self, ctx: &Ctx, attacker: &CardView, target: &CardView) -> Option<Outcome> {
@@ -240,6 +267,23 @@ impl Strategy for Watt {
         })
     }
 
+    fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
+        let ctx = t.ctx;
+        if member.at.controller != ctx.me || member.at.location != Location::Deck
+            || t.decision.hint != Hint::SpecialSummon
+            || t.memory.last_activated.map(|c| ctx.canonical(c)) != Some(WATTDRAGONFLY) {
+            return None;
+        }
+        let code = ctx.canonical(member.code?);
+        // Prefer replacement blockers when outnumbered by opposing attackers.
+        let danger = !ctx.my_turn() && ctx.phase().map_or(false, |p| p != Phase::Main2 && p != Phase::End)
+            && ctx.monsters(ctx.opp).iter().filter(|c| c.position.face_up && c.position.attack).count() > ctx.monsters(ctx.me).len();
+        if danger {
+            return Some(match code { WATTDRAGONFLY => 5000.0, WATTLEMUR => 4000.0, WATTFOX => 3000.0, _ => 0.0 });
+        }
+        None
+    }
+
     fn yes_no(&self, t: &Turn) -> Option<bool> {
         tactics::attack_directly(t)
     }
@@ -247,6 +291,9 @@ impl Strategy for Watt {
     fn position(&self, t: &Turn, code: u32) -> Option<Position> {
         let ctx = t.ctx;
         let code = ctx.canonical(code);
+        if !ctx.my_turn() && ctx.data(code).in_set(SET_WATT) {
+            return Some(Position::FACE_UP_DEFENSE);
+        }
         // Direct attackers attack whatever is in the way.
         (DIRECT.contains(&code) && ctx.my_turn()).then_some(Position::FACE_UP_ATTACK)
     }

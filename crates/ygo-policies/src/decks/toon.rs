@@ -1,19 +1,20 @@
 //! "Toon Kingdom": Pegasus's Toons, which attack around the opponent's monsters.
 //!
 //! Toon World (1000 LP) is the whole deck: Toon Table of Contents finds it,
-//! and every Toon is destroyed if it leaves.  While it is up, the Toons
+//! and the Toon monsters are destroyed if it is destroyed. While it is up, the Toons
 //! attack directly unless the opponent has a Toon of their own.  The small
 //! ones are Normal Summoned (Toon Gemini Elf discards, Toon Masked Sorcerer
 //! draws); the big ones come out of the hand by Tributing (Toon Summoned
 //! Skull and Toon Dark Magician Girl one monster, Blue-Eyes Toon Dragon and
 //! Manga Ryu-Ran two), and Scapegoat's sheep are the fodder.  No Toon
-//! attacks the turn it arrives.  Relinquished steals a monster's stats,
+//! attacks the turn it arrives, except a Special Summoned Toon Dark Magician
+//! Girl. Relinquished steals a monster's stats,
 //! Toon Cannon Soldier Tributes for 500 damage, Toon Defense turns an attack
 //! on a small Toon into a direct one.
 
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::ctx::Ctx;
-use crate::model::{CardView, Choice, ChoiceKind, Location, Phase, Position};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Phase, Position};
 use crate::tactics;
 
 pub const DECK: &str = "Toon Kingdom";
@@ -49,6 +50,11 @@ impl Toon {
     fn is_toon(ctx: &Ctx, card: &CardView) -> bool {
         let d = ctx.view_data(card);
         d.is_monster() && d.in_set(SET_TOON)
+    }
+
+    fn should_redirect(ctx: &Ctx) -> bool {
+        ctx.incoming_attack().map_or(false, |(attacker, target)| target.map_or(false, |target|
+            Self::is_toon(ctx, target) && ctx.attack_hurts(attacker, Some(target)) && attacker.attack + 1000 < ctx.my_lp()))
     }
 
     /// Tributes a Toon's Special Summon from the hand needs.
@@ -189,25 +195,42 @@ impl Strategy for Toon {
                     _ => Response::no(),
                 }
             }
-            // Face-down, the Continuous Trap goes up ahead of their attacks;
+            // Face-down, the Continuous Trap goes up before their attacks;
             // face-up, it turns an attack on a small Toon into a direct one.
             TOON_DEFENSE if t.view(choice).map_or(false, |v| !v.position.face_up) => {
-                let end_of_their_turn = !ctx.my_turn() && ctx.phase() == Some(Phase::End);
-                if end_of_their_turn || (ctx.my_turn() && ctx.main1()) { Response::new(10.0) } else { Response::no() }
+                let protect = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && c.level <= 4 && Self::is_toon(&ctx, c));
+                if protect && !ctx.phase().map_or(false, |p| p.is_damage_step()) { Response::new(10.0) } else { Response::no() }
             }
-            TOON_DEFENSE => match incoming {
-                Some((attacker, Some(target)))
-                    if Self::is_toon(&ctx, target) && ctx.attack_hurts(attacker, Some(target)) && attacker.attack + 1000 < ctx.my_lp() =>
-                {
-                    Response::new(45.0)
-                }
-                _ => Response::no(),
-            },
+            TOON_DEFENSE => if Self::should_redirect(&ctx) { Response::new(45.0) } else { Response::no() },
             _ => return None,
         })
     }
 
+    fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
+        let ctx = t.ctx;
+        let code = ctx.canonical(member.code?);
+        if member.at.controller != ctx.me || member.at.location != Location::Deck
+            || t.decision.hint != Hint::AddToHand
+            || t.memory.last_activated.map(|c| ctx.canonical(c)) != Some(TOON_TABLE_OF_CONTENTS) {
+            return None;
+        }
+        let have_world = Self::world_up(&ctx) || ctx.in_hand(TOON_WORLD);
+        Some(match code {
+            TOON_WORLD if !have_world => 6000.0,
+            TOON_WORLD => -1000.0,
+            TOON_DARK_MAGICIAN_GIRL if !ctx.in_hand(code) && self.fodder_cost(&ctx, 1).map_or(false, |v| v < 1500) => 5500.0,
+            BLUE_EYES_TOON_DRAGON if !ctx.in_hand(code) && self.fodder_cost(&ctx, 2).map_or(false, |v| v < 2500) => 4800.0,
+            TOON_SUMMONED_SKULL if !ctx.in_hand(code) && self.fodder_cost(&ctx, 1).map_or(false, |v| v < 2000) => 4600.0,
+            TOON_GEMINI_ELF => 4500.0,
+            TOON_MASKED_SORCERER => 4000.0,
+            _ => value(self, &ctx, Some(code), None) as f64,
+        } - if ctx.in_hand(code) { 1500.0 } else { 0.0 })
+    }
+
     fn yes_no(&self, t: &Turn) -> Option<bool> {
+        if t.decision.subject.map(|c| t.ctx.canonical(c)) == Some(TOON_DEFENSE) {
+            return Some(Self::should_redirect(&t.ctx));
+        }
         tactics::attack_directly(t)
     }
 

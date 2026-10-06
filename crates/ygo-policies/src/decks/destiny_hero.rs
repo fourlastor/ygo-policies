@@ -55,6 +55,14 @@ impl DestinyHero {
         ctx.in_hand(DOGMA) || ctx.in_hand(PLASMA)
     }
 
+    fn lone_doom_target<'a>(ctx: &Ctx<'a>) -> Option<&'a CardView> {
+        let theirs = ctx.monsters(ctx.opp);
+        if theirs.len() != 1 { return None; }
+        let target = theirs[0];
+        (ctx.threat(target) >= 1000 && ctx.threat(target) > ctx.my_best_attack()
+            && ctx.reaches(target, DOOM_LORD, true, false)).then_some(target)
+    }
+
     /// How much a Destiny HERO wants to be in the Graveyard (as a discard).
     fn discard_priority(ctx: &Ctx, code: u32) -> i32 {
         match code {
@@ -122,8 +130,9 @@ impl Strategy for DestinyHero {
         if let Some(i) = t.activate_from(DIAMOND_DUDE, Location::MonsterZone) {
             return t.pick(i);
         }
-        // Bodies for Dogma: Malicious from the Graveyard, Over Destiny, D - Spirit.
-        let want_bodies = (Self::finisher_in_hand(&ctx) && Self::bodies_missing(&ctx) > 0) || ctx.monsters(ctx.me).is_empty();
+        // Bodies for Dogma, or a Tribute for Dasher. Over Destiny is still
+        // reserved for a finisher because its summon dies in the End Phase.
+        let want_bodies = (Self::finisher_in_hand(&ctx) && Self::bodies_missing(&ctx) > 0) || ctx.monsters(ctx.me).is_empty() || ctx.in_hand(DASHER);
         if want_bodies && ctx.free_monster_zones(ctx.me) > 0 {
             if let Some(i) = t.activate_from(MALICIOUS, Location::Graveyard) {
                 return t.pick(i);
@@ -149,15 +158,22 @@ impl Strategy for DestinyHero {
                 return t.pick_targeting(i, vec![best.at]);
             }
         }
+        // Expose Doom Lord to remove a lone monster that our board cannot beat.
+        if ctx.main1() && Self::lone_doom_target(&ctx).is_some() {
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition && c.code().map(|k| ctx.canonical(k)) == Some(DOOM_LORD)
+                && c.at().and_then(|at| ctx.card(at)).map_or(false, |c| !c.position.face_up || !c.position.attack)) {
+                return t.pick(i);
+            }
+        }
         // Doom Lord banishes a monster we cannot beat (no attacks this turn).
         if let Some(i) = t.activate_from(DOOM_LORD, Location::MonsterZone) {
             let best = ctx.monsters(ctx.opp).into_iter().max_by_key(|c| ctx.threat(c));
-            if let Some(best) = best.filter(|c| ctx.threat(c) >= 2000 && ctx.threat(c) > ctx.my_best_attack()) {
+            if let Some(best) = best.filter(|c| (ctx.threat(c) >= 2000 || Self::lone_doom_target(&ctx).is_some()) && ctx.threat(c) > ctx.my_best_attack()) {
                 return t.pick_targeting(i, vec![best.at]);
             }
         }
-        // Dunker: a Destiny HERO from the hand for the last 500.
-        if ctx.opp_lp() <= 500 {
+        // Dunker also sends Malicious and Dasher where their effects work.
+        if ctx.opp_lp() <= 500 || ctx.in_hand(MALICIOUS) || ctx.in_hand(DASHER) {
             if let Some(i) = t.activate_from(DUNKER, Location::MonsterZone) {
                 return t.pick(i);
             }
@@ -169,14 +185,17 @@ impl Strategy for DestinyHero {
         let ctx = t.ctx;
         let code = ctx.canonical(choice.code()?);
         Some(match (choice.kind, code) {
+            (ChoiceKind::NormalSummon, DOOM_LORD) if Self::lone_doom_target(&ctx).is_some() => Some(2200.0),
+            (ChoiceKind::SetMonster, DOOM_LORD) if Self::lone_doom_target(&ctx).is_some() => None,
             (ChoiceKind::NormalSummon, DIAMOND_DUDE) => Some(2000.0),
-            // Face-up, Defender hands the opponent a card every turn.
-            (ChoiceKind::SetMonster, DEFENDER) if ctx.opp_best_attack() >= 2000 && ctx.monsters(ctx.me).is_empty() => Some(700.0),
-            (_, DEFENDER) => None,
-            // A third body when Dogma is waiting.
+            // A third body when Dogma is waiting, including Defender.
             (ChoiceKind::NormalSummon | ChoiceKind::SetMonster, _) if Self::finisher_in_hand(&ctx) && Self::bodies_missing(&ctx) == 1 && ctx.data(code).level <= 4 => {
                 Some(1900.0)
             }
+            // Defender buys time against monsters our attackers cannot beat.
+            (ChoiceKind::SetMonster, DEFENDER) if ctx.opp_best_attack() > ctx.my_best_attack() && ctx.opp_best_attack() < 2700 => Some(2300.0),
+            // Face-up, Defender hands the opponent a card every turn.
+            (_, DEFENDER) => None,
             (ChoiceKind::NormalSummon, BLADE_MASTER | DREAD_SERVANT) => None,
             _ => return None,
         })
@@ -217,16 +236,22 @@ impl Strategy for DestinyHero {
             },
             // A monster of ours died in battle: a small Destiny HERO replaces it.
             DESTINY_SIGNAL => Response::new(30.0),
-            // +500 on an attacker that then wins.
+            // Equip an attacker for lasting damage, or turn an incoming
+            // battle into a win with the extra 500 ATK.
             D_CHAIN => {
+                if let Some((attacker, Some(target))) = incoming {
+                    if Self::is_dhero(&ctx, target) && target.position.attack
+                        && target.attack <= attacker.attack && target.attack + 500 > attacker.attack {
+                        return Some(Response::targeting(55.0, vec![target.at]));
+                    }
+                }
                 if !(ctx.my_turn() && ctx.main1()) {
                     return Some(Response::no());
                 }
-                let best = ctx.opp_best_attack();
                 let holder = ctx
                     .monsters(ctx.me)
                     .into_iter()
-                    .filter(|c| Self::is_dhero(&ctx, c) && ctx.can_attack(c) && c.attack <= best && c.attack + 500 > best)
+                    .filter(|c| Self::is_dhero(&ctx, c) && ctx.can_attack(c))
                     .max_by_key(|c| c.attack);
                 match holder {
                     Some(holder) => Response::targeting(25.0, vec![holder.at]),

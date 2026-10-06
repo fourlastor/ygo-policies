@@ -1,0 +1,4659 @@
+{
+  "failures": 0,
+  "games": 119040,
+  "limits": 0,
+  "matrix": {
+    "arcana": {
+      "arcana": {
+        "games": 0,
+        "rate": null
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.46875
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0078125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.484375
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.06640625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.13671875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.21875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.08203125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.171875
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.02734375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.2265625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.6640625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.109375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.109375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.46875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.01171875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.671875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.0546875
+      }
+    },
+    "blackwing": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "blackwing": {
+        "games": 0,
+        "rate": null
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.94140625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.05078125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.9609375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.53125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.72265625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.765625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.71484375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.53515625
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.55859375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.46484375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.82421875
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.44140625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.4140625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.296875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.8125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.96484375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.8984375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.94140625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.94921875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.71484375
+      }
+    },
+    "burn": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.53125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.05859375
+      },
+      "burn": {
+        "games": 0,
+        "rate": null
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.5390625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.37890625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.6171875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.10546875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.09765625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.1875
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.08203125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.24609375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.28515625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.171875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.1171875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.1015625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.2265625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.55078125
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.56640625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.234375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.3359375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.10546875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.23046875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.4375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.17578125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.458984375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.12109375
+      }
+    },
+    "countdown": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.9921875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.94921875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.4609375
+      },
+      "countdown": {
+        "games": 0,
+        "rate": null
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.9921875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.99609375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.94140625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.91015625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.89453125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.9140625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.9921875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.98828125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.98046875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.99609375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.984375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.94140625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.890625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.94921875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.99609375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.94140625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.9453125
+      }
+    },
+    "crystal": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.515625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.62109375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0078125
+      },
+      "crystal": {
+        "games": 0,
+        "rate": null
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.1953125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.26953125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.42578125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.296875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.3828125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.2265625
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.2578125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.50390625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.20703125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.17578125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.18359375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.43359375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.23828125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.2109375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.59765625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.30078125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.44921875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.578125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.3203125
+      }
+    },
+    "destiny-hero": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.0390625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.3828125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.00390625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "destiny-hero": {
+        "games": 0,
+        "rate": null
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.0859375
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.01953125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.13671875
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.1015625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.03125
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.65625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.46875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.16015625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.37890625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.09375
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.546875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.54296875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.078125
+      }
+    },
+    "draconic-might": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.93359375
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.46875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.8046875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.9140625
+      },
+      "draconic-might": {
+        "games": 0,
+        "rate": null
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.47265625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.71484375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.578125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.39453125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.7734375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.703125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.41796875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.26953125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.44140625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.86328125
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.1875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.96484375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.47265625
+      }
+    },
+    "dragunity": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.86328125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.27734375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.89453125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.73046875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.52734375
+      },
+      "dragunity": {
+        "games": 0,
+        "rate": null
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.7265625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.48828125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.32421875
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.59375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.453125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.58203125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.3515625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.25
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.2421875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9296875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.87109375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.4296875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.4375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.40234375
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.9296875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.06640625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.5625
+      }
+    },
+    "fortune-lady": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.78125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.90234375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.57421875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.28515625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.375
+      },
+      "fortune-lady": {
+        "games": 0,
+        "rate": null
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.2109375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.36328125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.30078125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.2890625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.3984375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.16015625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.25390625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.5390625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.8046875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.71484375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.40625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.26171875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.31640625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.0703125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.828125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.43359375
+      }
+    },
+    "gishki": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.234375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.8125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.05859375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.2734375
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "gishki": {
+        "games": 0,
+        "rate": null
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.359375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.19140625
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.51953125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.15234375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.2265625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.390625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.18359375
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.21875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.09765625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.578125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.81640625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.6640625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.21484375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.3046875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.7421875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.75
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.8671875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.390625
+      }
+    },
+    "gladiator": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.91796875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.28515625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.08984375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.703125
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.421875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.51171875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.640625
+      },
+      "gladiator": {
+        "games": 0,
+        "rate": null
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.50390625
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.60546875
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.35546875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.7109375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.27734375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.2109375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.90625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.5625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.4609375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.37890625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.96875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.53125
+      }
+    },
+    "gravekeeper": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.46484375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.10546875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.6171875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.98046875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.60546875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.67578125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.7890625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.80859375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.49609375
+      },
+      "gravekeeper": {
+        "games": 0,
+        "rate": null
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.640625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.609375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.8046875
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.6015625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.47265625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.390625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.80078125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.98046875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.91796875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.82421875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.51171875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.76171875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.96875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.203125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.75390625
+      }
+    },
+    "harpie": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.8359375
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.91796875
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0859375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.2265625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.40625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.63671875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.48046875
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.39453125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.359375
+      },
+      "harpie": {
+        "games": 0,
+        "rate": null
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.26171875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.6484375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.29296875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.65625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.80859375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.41796875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.49609375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.359375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.7890625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.96484375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.47265625
+      }
+    },
+    "heroes": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.44140625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0078125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.7734375
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.546875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.84765625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.64453125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.390625
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.73828125
+      },
+      "heroes": {
+        "games": 0,
+        "rate": null
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.41796875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.6640625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.51171875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.3515625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.45703125
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.78125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.93359375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.5625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.53515625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.5390625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.91796875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.87890625
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.25
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.62109375
+      }
+    },
+    "infernity": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.53515625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.75390625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.7421875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.7109375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.7734375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.58203125
+      },
+      "infernity": {
+        "games": 0,
+        "rate": null
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.72265625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.515625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.48828125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.40625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.75
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.52734375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.4296875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.9140625
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.8359375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.640625
+      }
+    },
+    "karakuri": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.828125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.17578125
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.71484375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.49609375
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.86328125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.296875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.41796875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.6015625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.609375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.2890625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.1953125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.3515625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.3359375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.27734375
+      },
+      "karakuri": {
+        "games": 0,
+        "rate": null
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.1875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.54296875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.8515625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.5390625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.2890625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.73046875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.43359375
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.796875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.890625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.4453125
+      }
+    },
+    "lightsworn": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.55859375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.828125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.79296875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.58203125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.6484375
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.81640625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.3984375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.48828125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.484375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "lightsworn": {
+        "games": 0,
+        "rate": null
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.33984375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.26171875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.76953125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.79296875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.671875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.59375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.44921875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.5
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.53515625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.796875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.1484375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.81640625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.66796875
+      }
+    },
+    "machina": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.97265625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.5859375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.8828125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.01171875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.82421875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.8984375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.73046875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.75
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.83984375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.78125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.72265625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.52734375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.6484375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.51171875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.8125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.66015625
+      },
+      "machina": {
+        "games": 0,
+        "rate": null
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.58984375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.96875
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.765625
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.68359375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.61328125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.93359375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.7890625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.7421875
+      }
+    },
+    "monarch": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.703125
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.8984375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.81640625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.96875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.55859375
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.7578125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.74609375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.90234375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.7890625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.609375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.54296875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.59375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.73828125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.41015625
+      },
+      "monarch": {
+        "games": 0,
+        "rate": null
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.96875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.93359375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.65234375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.67578125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.59765625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.98828125
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.61328125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.89453125
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.328125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.97265625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.62890625
+      }
+    },
+    "morphtronic": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.7734375
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.1875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.7734375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.01953125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.4609375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.421875
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.30078125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.19921875
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.34375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.21875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.25
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.45703125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.23046875
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "morphtronic": {
+        "games": 0,
+        "rate": null
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.78515625
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.61328125
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.32421875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.23046875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.2734375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.6640625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.1796875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.30078125
+      }
+    },
+    "ojama": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.3359375
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.03515625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.44921875
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.34375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.0703125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.1953125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.18359375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.01953125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.06640625
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.1484375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.20703125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.03125
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.21484375
+      },
+      "ojama": {
+        "games": 0,
+        "rate": null
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.26953125
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.0703125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.0703125
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.31640625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.5
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.05078125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.11328125
+      }
+    },
+    "pyramid": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.1015625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.43359375
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.00390625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.56640625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.53125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.13671875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.12890625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.28515625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.3359375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.09375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.08203125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.19140625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.30078125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.328125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.03125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.06640625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.38671875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.73046875
+      },
+      "pyramid": {
+        "games": 0,
+        "rate": null
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.19921875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.15234375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.1171875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.53515625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.15625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.78515625
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.74609375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.1484375
+      }
+    },
+    "quickdraw-plant": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.8359375
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.765625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.015625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.5703125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.59375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.6875
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.4375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.17578125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.58203125
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.4375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.4609375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.40625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.234375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.34765625
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.67578125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9296875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.80078125
+      },
+      "quickdraw-plant": {
+        "games": 0,
+        "rate": null
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.45703125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.40625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.85546875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.91796875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.140625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.7578125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.51171875
+      }
+    },
+    "rock-block": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.890625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.6640625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.05859375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.76171875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.83984375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.66796875
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.78515625
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.5390625
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.3125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.50390625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.46484375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.47265625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.7109375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.55078125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.31640625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.32421875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.76953125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.84765625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.54296875
+      },
+      "rock-block": {
+        "games": 0,
+        "rate": null
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.8359375
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.83984375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.1015625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.7421875
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.60546875
+      }
+    },
+    "six-samurai": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.890625
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.5078125
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.89453125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.109375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.7890625
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.5625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.73828125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.6953125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.62109375
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.48828125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.640625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.4609375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.5703125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.8359375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.5
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.40234375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.7265625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9296875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.8828125
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.59375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "six-samurai": {
+        "games": 0,
+        "rate": null
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.90625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.6015625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.8671875
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.24609375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.84765625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.67578125
+      }
+    },
+    "spellcaster": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.05859375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.76953125
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.05078125
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.40234375
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.62109375
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.2578125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.2109375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.08203125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.078125
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.26953125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.11328125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.01171875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.3359375
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.68359375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.46484375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.14453125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.09375
+      },
+      "spellcaster": {
+        "games": 0,
+        "rate": null
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.09765625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.6953125
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.83203125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.19921875
+      }
+    },
+    "tele-dad": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.875
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.90625
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.59765625
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.68359375
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.70703125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.23828125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.4453125
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.56640625
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.46484375
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.38671875
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.38671875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.8203125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.9375
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.84375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.6328125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.4921875
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.3984375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.90234375
+      },
+      "tele-dad": {
+        "games": 0,
+        "rate": null
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.8984375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.20703125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.84375
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.62109375
+      }
+    },
+    "toon": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.53125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.05078125
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.5625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.00390625
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.55078125
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.453125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.0703125
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.125
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.25
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.07421875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.03125
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.12109375
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.0859375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.203125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.203125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.06640625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.10546875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.22265625
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.5
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.21484375
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.08203125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.16015625
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.1328125
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.3046875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.1015625
+      },
+      "toon": {
+        "games": 0,
+        "rate": null
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.0078125
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.08984375
+      }
+    },
+    "verdict": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.98828125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.69140625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.82421875
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.95703125
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.8125
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.93359375
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.9296875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.796875
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.75
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.77734375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.8515625
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.62890625
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.671875
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.92578125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.94921875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.859375
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.8984375
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.75390625
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.9765625
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.79296875
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.9921875
+      },
+      "verdict": {
+        "games": 0,
+        "rate": null
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.953125
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.8359375
+      }
+    },
+    "watt": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.328125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.541015625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.05859375
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.421875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.45703125
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.03515625
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.0234375
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.171875
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.1328125
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.03125
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.0625
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.03515625
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.04296875
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.109375
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.18359375
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.2109375
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.02734375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.30078125
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.3671875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.25390625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.2421875
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.2578125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.15234375
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.16796875
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.15625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.30859375
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.046875
+      },
+      "watt": {
+        "games": 0,
+        "rate": null
+      },
+      "x-saber": {
+        "games": 256,
+        "rate": 0.078125
+      }
+    },
+    "x-saber": {
+      "arcana": {
+        "games": 256,
+        "rate": 0.9453125
+      },
+      "blackwing": {
+        "games": 256,
+        "rate": 0.28515625
+      },
+      "burn": {
+        "games": 256,
+        "rate": 0.87890625
+      },
+      "countdown": {
+        "games": 256,
+        "rate": 0.0546875
+      },
+      "crystal": {
+        "games": 256,
+        "rate": 0.6796875
+      },
+      "destiny-hero": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "draconic-might": {
+        "games": 256,
+        "rate": 0.52734375
+      },
+      "dragunity": {
+        "games": 256,
+        "rate": 0.4375
+      },
+      "fortune-lady": {
+        "games": 256,
+        "rate": 0.56640625
+      },
+      "gishki": {
+        "games": 256,
+        "rate": 0.609375
+      },
+      "gladiator": {
+        "games": 256,
+        "rate": 0.46875
+      },
+      "gravekeeper": {
+        "games": 256,
+        "rate": 0.24609375
+      },
+      "harpie": {
+        "games": 256,
+        "rate": 0.52734375
+      },
+      "heroes": {
+        "games": 256,
+        "rate": 0.37890625
+      },
+      "infernity": {
+        "games": 256,
+        "rate": 0.359375
+      },
+      "karakuri": {
+        "games": 256,
+        "rate": 0.5546875
+      },
+      "lightsworn": {
+        "games": 256,
+        "rate": 0.33203125
+      },
+      "machina": {
+        "games": 256,
+        "rate": 0.2578125
+      },
+      "monarch": {
+        "games": 256,
+        "rate": 0.37109375
+      },
+      "morphtronic": {
+        "games": 256,
+        "rate": 0.69921875
+      },
+      "ojama": {
+        "games": 256,
+        "rate": 0.88671875
+      },
+      "pyramid": {
+        "games": 256,
+        "rate": 0.8515625
+      },
+      "quickdraw-plant": {
+        "games": 256,
+        "rate": 0.48828125
+      },
+      "rock-block": {
+        "games": 256,
+        "rate": 0.39453125
+      },
+      "six-samurai": {
+        "games": 256,
+        "rate": 0.32421875
+      },
+      "spellcaster": {
+        "games": 256,
+        "rate": 0.80078125
+      },
+      "tele-dad": {
+        "games": 256,
+        "rate": 0.37890625
+      },
+      "toon": {
+        "games": 256,
+        "rate": 0.91015625
+      },
+      "verdict": {
+        "games": 256,
+        "rate": 0.1640625
+      },
+      "watt": {
+        "games": 256,
+        "rate": 0.921875
+      },
+      "x-saber": {
+        "games": 0,
+        "rate": null
+      }
+    }
+  },
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.9336251669040521,
+          0.9443210937268283
+        ],
+        "games": 7680,
+        "rate": 0.9391927083333333
+      },
+      "deck": "Claudi-oh's Countdown",
+      "elo": 2020.9808717128562,
+      "policy": "countdown",
+      "reference": {
+        "ci95": [
+          0.9078408732908128,
+          0.9265325254926109
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.9176682692307693,
+        "required_opponents": 13
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.832268694589507,
+          0.848640708852646
+        ],
+        "games": 7680,
+        "rate": 0.840625
+      },
+      "deck": "Claudi-oh's Verdict",
+      "elo": 1835.4096831042177,
+      "policy": "verdict",
+      "reference": {
+        "ci95": [
+          0.8465278824218462,
+          0.8701928644467923
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.8587740384615384,
+        "required_opponents": 13
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.7216164075624877,
+          0.7414332211544813
+        ],
+        "games": 7680,
+        "rate": 0.731640625
+      },
+      "deck": "Emperor, Arise!",
+      "elo": 1706.8805056826764,
+      "policy": "monarch",
+      "reference": {
+        "ci95": [
+          0.7582982133383048,
+          0.7878937622172634
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.7734375,
+        "required_opponents": 12
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.7202998182650521,
+          0.7401469457598596
+        ],
+        "games": 7680,
+        "rate": 0.7303385416666667
+      },
+      "deck": "Machina Gadgets",
+      "elo": 1705.5510646541636,
+      "policy": "machina",
+      "reference": {
+        "ci95": [
+          0.7148285152207257,
+          0.7449772570584847
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.7301682692307693,
+        "required_opponents": 13
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.6855796597666575,
+          0.7061514763879451
+        ],
+        "games": 7680,
+        "rate": 0.6959635416666666
+      },
+      "deck": "Gravekeeper's Tomb",
+      "elo": 1671.5529530515882,
+      "policy": "gravekeeper",
+      "reference": {
+        "ci95": [
+          0.6502639422616582,
+          0.6822848799872746
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.6664663461538461,
+        "required_opponents": 13
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.6721836103687885,
+          0.6929983059268313
+        ],
+        "games": 7680,
+        "rate": 0.6826822916666667
+      },
+      "deck": "Blackwing Assassin",
+      "elo": 1658.908604197803,
+      "policy": "blackwing",
+      "reference": {
+        "ci95": [
+          0.6514434739470172,
+          0.6847246824365887
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.6682942708333334,
+        "required_opponents": 12
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.6348043423834395,
+          0.6561959301885512
+        ],
+        "games": 7680,
+        "rate": 0.6455729166666667
+      },
+      "deck": "Infernity Infinity",
+      "elo": 1624.7034179480443,
+      "policy": "infernity",
+      "reference": {
+        "ci95": [
+          0.6333496957380854,
+          0.6670558908174772
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.650390625,
+        "required_opponents": 12
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.63087386672827,
+          0.6523178117675491
+        ],
+        "games": 7680,
+        "rate": 0.6416666666666667
+      },
+      "deck": "Legendary Six Samurai",
+      "elo": 1621.1840734746154,
+      "policy": "six-samurai",
+      "reference": {
+        "ci95": [
+          0.6135644580198115,
+          0.6463518597307082
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.6301081730769231,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.6279920096444203,
+          0.649473366528873
+        ],
+        "games": 7680,
+        "rate": 0.6388020833333333
+      },
+      "deck": "Fusion Heroes",
+      "elo": 1618.611707605563,
+      "policy": "heroes",
+      "reference": {
+        "ci95": [
+          0.6205354274576964,
+          0.6545112459470719
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.6376953125,
+        "required_opponents": 12
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.59854186895411,
+          0.6203590516478972
+        ],
+        "games": 7680,
+        "rate": 0.6095052083333333
+      },
+      "deck": "Draconic Might",
+      "elo": 1592.6678451714329,
+      "policy": "draconic-might",
+      "reference": {
+        "ci95": [
+          0.574548338179945,
+          0.6079333260144153
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.5913461538461539,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5899110765981939,
+          0.6118109370362361
+        ],
+        "games": 7680,
+        "rate": 0.6009114583333334
+      },
+      "deck": "Lightsworn Judgment",
+      "elo": 1585.166028862014,
+      "policy": "lightsworn",
+      "reference": {
+        "ci95": [
+          0.6205354274576964,
+          0.6545112459470719
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.6376953125,
+        "required_opponents": 12
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5862505920361785,
+          0.6081834004604914
+        ],
+        "games": 7680,
+        "rate": 0.597265625
+      },
+      "deck": "Tele-DAD",
+      "elo": 1581.9959807959012,
+      "policy": "tele-dad",
+      "reference": {
+        "ci95": [
+          0.5694147912190949,
+          0.6028623062275543
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.5862379807692307,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5811531084089869,
+          0.60312971178866
+        ],
+        "games": 7680,
+        "rate": 0.5921875
+      },
+      "deck": "06 Koaki Meiru - Rock Block",
+      "elo": 1577.5921036548505,
+      "policy": "rock-block",
+      "reference": {
+        "ci95": [
+          0.5798764582117791,
+          0.6145418759443099
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.5973307291666666,
+        "required_opponents": 12
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5636478876757234,
+          0.5857565456483576
+        ],
+        "games": 7680,
+        "rate": 0.5747395833333333
+      },
+      "deck": "Fight, Gladiators!",
+      "elo": 1562.5516248720737,
+      "policy": "gladiator",
+      "reference": {
+        "ci95": [
+          0.5125976985291465,
+          0.5478735559073629
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.5302734375,
+        "required_opponents": 12
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5526816594875112,
+          0.5748587104232896
+        ],
+        "games": 7680,
+        "rate": 0.5638020833333334
+      },
+      "deck": "Dragunity Flight",
+      "elo": 1553.1836563624724,
+      "policy": "dragunity",
+      "reference": {
+        "ci95": [
+          0.5302024975201388,
+          0.5653810982020856
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.5478515625,
+        "required_opponents": 12
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5295921418430056,
+          0.5518775230183834
+        ],
+        "games": 7680,
+        "rate": 0.5407552083333333
+      },
+      "deck": "X-Sabers",
+      "elo": 1533.554660041776,
+      "policy": "x-saber",
+      "reference": {
+        "ci95": [
+          0.4980364759422609,
+          0.5319769556686536
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.5150240384615384,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5241168051598063,
+          0.5464208279949426
+        ],
+        "games": 7680,
+        "rate": 0.5352864583333333
+      },
+      "deck": "Quickdraw Plants",
+      "elo": 1528.9128793567954,
+      "policy": "quickdraw-plant",
+      "reference": {
+        "ci95": [
+          0.5226932738526914,
+          0.556542185600123
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.5396634615384616,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.49038190027817224,
+          0.5127415373522966
+        ],
+        "games": 7680,
+        "rate": 0.5015625
+      },
+      "deck": "Harpie Sisters",
+      "elo": 1500.3460269334314,
+      "policy": "harpie",
+      "reference": {
+        "ci95": [
+          0.4305926404400769,
+          0.46436034892172223
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.44741586538461536,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.4433165070760244,
+          0.4655832287019748
+        ],
+        "games": 7680,
+        "rate": 0.4544270833333333
+      },
+      "deck": "Karakuri Workshop",
+      "elo": 1460.2863650831596,
+      "policy": "karakuri",
+      "reference": {
+        "ci95": [
+          0.3965410068901772,
+          0.4299813583987369
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.4131610576923077,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.431241282116337,
+          0.4534518120255307
+        ],
+        "games": 7680,
+        "rate": 0.44231770833333334
+      },
+      "deck": "Fortune Ladies",
+      "elo": 1449.9102859854079,
+      "policy": "fortune-lady",
+      "reference": {
+        "ci95": [
+          0.4004199293660284,
+          0.4339059281417235
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.4170673076923077,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.4080186000857806,
+          0.43008321606826394
+        ],
+        "games": 7680,
+        "rate": 0.41901041666666666
+      },
+      "deck": "Undersea Ceremony",
+      "elo": 1429.7800318143145,
+      "policy": "gishki",
+      "reference": {
+        "ci95": [
+          0.3583683583854871,
+          0.3925941099028669
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.3753255208333333,
+        "required_opponents": 12
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.3764039518667425,
+          0.3981879658011073
+        ],
+        "games": 7680,
+        "rate": 0.38723958333333336
+      },
+      "deck": "01 Morphtronic - Straight Up",
+      "elo": 1401.8901214063512,
+      "policy": "morphtronic",
+      "reference": {
+        "ci95": [
+          0.334230141285661,
+          0.3679651863280886
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.3509114583333333,
+        "required_opponents": 12
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.33837601389276545,
+          0.35969168182860384
+        ],
+        "games": 7680,
+        "rate": 0.3489583333333333
+      },
+      "deck": "12 Crystal Beast - Rainbow",
+      "elo": 1367.3344271549195,
+      "policy": "crystal",
+      "reference": {
+        "ci95": [
+          0.3127075435300619,
+          0.34592247174770796
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.3291015625,
+        "required_opponents": 12
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.27478164472155253,
+          0.2949648216813988
+        ],
+        "games": 7680,
+        "rate": 0.284765625
+      },
+      "deck": "Pyramid of Light",
+      "elo": 1305.936246788226,
+      "policy": "pyramid",
+      "reference": {
+        "ci95": [
+          0.24559205925721866,
+          0.2753935722325856
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.26021634615384615,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.25483719760368845,
+          0.2745648660723769
+        ],
+        "games": 7680,
+        "rate": 0.26458333333333334
+      },
+      "deck": "14 - Spellcaster's Command",
+      "elo": 1285.3975019047327,
+      "policy": "spellcaster",
+      "reference": {
+        "ci95": [
+          0.1952912450904427,
+          0.22405466661060197
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.20930989583333334,
+        "required_opponents": 12
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.23922178005615305,
+          0.2585554776114177
+        ],
+        "games": 7680,
+        "rate": 0.24876302083333332
+      },
+      "deck": "Burn Princess",
+      "elo": 1268.762006484218,
+      "policy": "burn",
+      "reference": {
+        "ci95": [
+          0.17883143164268045,
+          0.20670259585730522
+        ],
+        "games": 3072,
+        "opponents": 12,
+        "rate": 0.1923828125,
+        "required_opponents": 12
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.21285056437195585,
+          0.23143782387384035
+        ],
+        "games": 7680,
+        "rate": 0.22200520833333334
+      },
+      "deck": "Arcana Force Fortune",
+      "elo": 1239.3467118794242,
+      "policy": "arcana",
+      "reference": {
+        "ci95": [
+          0.20825913634325616,
+          0.23649237885482532
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.22205528846153846,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.19517233001605555,
+          0.2131965254793518
+        ],
+        "games": 7680,
+        "rate": 0.20403645833333334
+      },
+      "deck": "Toon Kingdom",
+      "elo": 1218.5152276627098,
+      "policy": "toon",
+      "reference": {
+        "ci95": [
+          0.19887841246849497,
+          0.2266645064986012
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.21243990384615385,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.19491632007893442,
+          0.21293196247806148
+        ],
+        "games": 7680,
+        "rate": 0.20377604166666666
+      },
+      "deck": "Destiny HEROes",
+      "elo": 1218.2060301891552,
+      "policy": "destiny-hero",
+      "reference": {
+        "ci95": [
+          0.1684733878010879,
+          0.19464159341530607
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.18118990384615385,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.17209182845798054,
+          0.18929531934579508
+        ],
+        "games": 7680,
+        "rate": 0.18053385416666667
+      },
+      "deck": "Watt Grid",
+      "elo": 1189.6492378251933,
+      "policy": "watt",
+      "reference": {
+        "ci95": [
+          0.1674525119062501,
+          0.19356152909737984
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.18013822115384615,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.16870765960600154,
+          0.18578189676382262
+        ],
+        "games": 7680,
+        "rate": 0.17708333333333334
+      },
+      "deck": "Ojama Brigade",
+      "elo": 1185.2321183399126,
+      "policy": "ojama",
+      "reference": {
+        "ci95": [
+          0.15943717901692347,
+          0.18506947460070347
+        ],
+        "games": 3328,
+        "opponents": 13,
+        "rate": 0.171875,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

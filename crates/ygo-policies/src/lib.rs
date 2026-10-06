@@ -1839,4 +1839,384 @@ mod tests {
         obs.cards = vec![card(0, Location::Hand, 0, ARMED_DRAGON_LV5, false), behemoth, their(0, 3, 2800)];
         assert_eq!(chosen(&obs, &summon).0, ChoiceKind::EndTurn);
     }
+    #[test]
+    fn ojama_blue_searches_an_engine_before_hurricane() {
+        use crate::cards::types;
+        const BLUE: u32 = 64627453;
+        const COUNTRY: u32 = 90011152;
+        const MAGIC: u32 = 24643836;
+        const HURRICANE: u32 = 8251996;
+        let db = Arc::new(MemoryCards([
+            creature(BLUE, 2, 0, 1000, 0xf),
+            printed(COUNTRY, types::SPELL | types::FIELD, 0xf),
+            printed(MAGIC, types::SPELL, 0xf),
+            printed(HURRICANE, types::SPELL, 0xf),
+        ].into_iter().collect()));
+        let mut policy = crate::registry::create("ojama", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Graveyard, 0, BLUE, true)];
+        let trigger = decide(DecisionKind::Chain { forced: true, triggers: true }, None,
+            vec![activate(BLUE, Location::Graveyard, 0)]);
+        policy.choose(&obs, &trigger);
+        let mut search = select_one(Hint::AddToHand, vec![
+            toggle(Location::Deck, 0, COUNTRY), toggle(Location::Deck, 1, MAGIC), toggle(Location::Deck, 2, HURRICANE),
+        ]);
+        search.minimum = 2;
+        search.maximum = 2;
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(COUNTRY));
+        // The first selected card is still in the deck during a sequential
+        // prompt. Its offered member must count toward the second choice.
+        let selected = search.choices.remove(0).card.unwrap();
+        search.selected.push(selected.at);
+        for c in &mut search.choices { c.members = vec![selected, c.card.unwrap()]; }
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(MAGIC));
+        // Once all three names are available, Hurricane is the payoff.
+        obs.cards.extend([12482652, 42941100, 79335209].into_iter().enumerate()
+            .map(|(i, code)| card(0, Location::Hand, i as u32, code, false)));
+        search.selected.clear();
+        for c in &mut search.choices { c.members.clear(); }
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(HURRICANE));
+    }
+
+    #[test]
+    fn ojama_country_revives_fusions_and_exposes_the_stat_swap() {
+        use crate::cards::types;
+        const COUNTRY: u32 = 90011152;
+        const BLUE: u32 = 64627453;
+        const GREEN: u32 = 12482652;
+        const KNIGHT: u32 = 40391316;
+        let db = Arc::new(MemoryCards([
+            creature(BLUE, 2, 0, 1000, 0xf), creature(GREEN, 2, 0, 1000, 0xf),
+            (KNIGHT, crate::cards::CardData { kind: types::MONSTER | types::FUSION, defense: 2500,
+                ..creature(KNIGHT, 5, 0, 2500, 0xf).1 }),
+            printed(COUNTRY, types::SPELL | types::FIELD, 0xf),
+        ].into_iter().collect()));
+        let mut policy = crate::registry::create("ojama", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 5, COUNTRY, true),
+            card(0, Location::Hand, 0, GREEN, false),
+            card(0, Location::Graveyard, 0, KNIGHT, true),
+            card(0, Location::Graveyard, 1, GREEN, true)];
+        let revive = decide(DecisionKind::Idle, None, vec![activate(COUNTRY, Location::SpellTrapZone, 5), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &revive), 0, "revive a fusion even with only one Ojama in hand");
+        let target = select_one(Hint::SpecialSummon, vec![toggle(Location::Graveyard, 1, GREEN), toggle(Location::Graveyard, 0, KNIGHT)]);
+        assert_eq!(target.choices[policy.choose(&obs, &target)].code(), Some(KNIGHT));
+        obs.cards = vec![card(0, Location::SpellTrapZone, 5, COUNTRY, true),
+            monster(0, 0, Some(BLUE), Position::FACE_DOWN_DEFENSE, 0, 1000)];
+        let flip = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+            ..activate(BLUE, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &flip), 0);
+        obs.cards.remove(0);
+        assert_eq!(policy.choose(&obs, &flip), 1, "without Country Blue stays face down");
+    }
+
+    #[test]
+    fn destiny_doom_lord_removes_a_lone_wall_without_turning_away_first() {
+        const DOOM: u32 = 41613948;
+        let db = Arc::new(MemoryCards([creature(DOOM, 3, 600, 800, 0xc008), creature(1, 4, 1800, 1000, 0)].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("destiny-hero", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, DOOM, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1800, 1000)];
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, DOOM, 0),
+            from_hand(ChoiceKind::NormalSummon, DOOM, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &summon), ChoiceKind::NormalSummon);
+        obs.cards.push(monster(1, 1, Some(1), Position::FACE_UP_ATTACK, 1800, 1000));
+        assert_eq!(chosen(&obs, &summon), ChoiceKind::SetMonster, "do not expose 600 ATK to a second attacker");
+        obs.cards.pop();
+        obs.cards[0] = monster(0, 0, Some(DOOM), Position::FACE_UP_ATTACK, 600, 800);
+        let effect = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+            ..activate(DOOM, Location::MonsterZone, 0) }, activate(DOOM, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &effect), ChoiceKind::Activate, "the effect requires Attack Position");
+        obs.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        let flip = decide(DecisionKind::Idle, None, vec![effect.choices[0].clone(), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &flip), ChoiceKind::ChangePosition);
+        obs.phase = Some(Phase::Main2);
+        assert_eq!(chosen(&obs, &flip), ChoiceKind::EndTurn);
+    }
+
+    #[test]
+    fn destiny_defender_stalls_and_can_complete_three_tributes() {
+        const DEFENDER: u32 = 54749427;
+        const DIAMOND: u32 = 13093792;
+        const DOGMA: u32 = 17132130;
+        let db = Arc::new(MemoryCards([creature(DEFENDER, 4, 100, 2700, 0xc008), creature(DIAMOND, 4, 1400, 1600, 0xc008),
+            creature(DOGMA, 8, 3400, 3400, 0xc008), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("destiny-hero", db.clone()).unwrap();
+            let c = &decision.choices[policy.choose(obs, decision)]; (c.kind, c.code())
+        };
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, DEFENDER, false), card(0, Location::Hand, 1, DIAMOND, false),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, DIAMOND, 1),
+            from_hand(ChoiceKind::SetMonster, DEFENDER, 0), from_hand(ChoiceKind::NormalSummon, DEFENDER, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &summon), (ChoiceKind::SetMonster, Some(DEFENDER)));
+        obs.cards[2].attack = 3000;
+        assert_ne!(chosen(&obs, &summon).1, Some(DEFENDER), "2700 DEF cannot hold this monster");
+        obs.cards = vec![card(0, Location::Hand, 0, DEFENDER, false), card(0, Location::Hand, 1, DOGMA, false),
+            monster(0, 0, Some(DIAMOND), Position::FACE_UP_ATTACK, 1400, 1600),
+            monster(0, 1, Some(DIAMOND), Position::FACE_UP_ATTACK, 1400, 1600)];
+        let third = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, DEFENDER, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &third), (ChoiceKind::NormalSummon, Some(DEFENDER)));
+    }
+
+    #[test]
+    fn destiny_uses_graveyard_setup_and_d_chain_with_a_payoff() {
+        use crate::cards::types;
+        const DUNKER: u32 = 93431862;
+        const MALICIOUS: u32 = 9411399;
+        const DASHER: u32 = 81866673;
+        const DIAMOND: u32 = 13093792;
+        const CHAIN: u32 = 43405287;
+        let db = Arc::new(MemoryCards([
+            creature(DUNKER, 4, 1200, 1700, 0xc008), creature(MALICIOUS, 6, 800, 800, 0xc008),
+            creature(DASHER, 6, 2100, 1000, 0xc008), creature(DIAMOND, 4, 1400, 1600, 0xc008),
+            creature(1, 4, 1700, 1000, 0), printed(CHAIN, types::TRAP | types::EQUIP, 0),
+        ].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("destiny-hero", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(DUNKER), Position::FACE_UP_ATTACK, 1200, 1700),
+            card(0, Location::Hand, 0, MALICIOUS, false)];
+        let burn = decide(DecisionKind::Idle, None, vec![activate(DUNKER, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &burn), ChoiceKind::Activate, "Malicious works from the graveyard even without lethal burn");
+        obs.cards[1].code = Some(DIAMOND);
+        assert_eq!(chosen(&obs, &burn), ChoiceKind::EndTurn, "do not burn a useful normal summon for 500");
+        obs.cards[1].code = Some(DASHER);
+        obs.cards.push(card(0, Location::Graveyard, 0, MALICIOUS, true));
+        let body = decide(DecisionKind::Idle, None, vec![activate(MALICIOUS, Location::Graveyard, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &body), ChoiceKind::Activate, "Dasher can use the tribute");
+        obs.cards[1].code = Some(DIAMOND);
+        assert_eq!(chosen(&obs, &body), ChoiceKind::EndTurn);
+
+        obs.cards = vec![monster(0, 0, Some(DIAMOND), Position::FACE_UP_ATTACK, 1400, 1600),
+            card(0, Location::SpellTrapZone, 0, CHAIN, false)];
+        let equip = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(CHAIN, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(chosen(&obs, &equip), ChoiceKind::Activate, "a permanent equip also improves direct attacks");
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Battle);
+        obs.cards.push(monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1700, 1000));
+        obs.battle_attacker = Some(obs.cards[2].at);
+        obs.battle_target = Some(obs.cards[0].at);
+        assert_eq!(chosen(&obs, &equip), ChoiceKind::Activate);
+        obs.cards[2].attack = 2000;
+        assert_eq!(chosen(&obs, &equip), ChoiceKind::Pass, "500 ATK does not save this battle");
+    }
+
+    #[test]
+    fn watt_cash_in_cube_only_when_the_permanent_bonus_is_larger() {
+        use crate::cards::{races, types};
+        const CUBE: u32 = 65612454;
+        const GIRAFFE: u32 = 402568;
+        let mut giraffe = creature(GIRAFFE, 4, 1200, 100, 0xe);
+        giraffe.1.race = races::THUNDER;
+        let db = Arc::new(MemoryCards([giraffe, printed(CUBE, types::SPELL | types::EQUIP, 0xe)].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("watt", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(GIRAFFE), Position::FACE_UP_ATTACK, 1300, 100),
+            card(0, Location::SpellTrapZone, 0, CUBE, true), card(0, Location::Graveyard, 0, GIRAFFE, true)];
+        let effect = decide(DecisionKind::Idle, None, vec![activate(CUBE, Location::SpellTrapZone, 0),
+            choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(chosen(&obs, &effect), ChoiceKind::Activate);
+        // Ten Thunder monsters already give 1000 ATK from the equip.
+        obs.cards.extend((1..10).map(|i| card(0, Location::Graveyard, i, GIRAFFE, true)));
+        assert_ne!(chosen(&obs, &effect), ChoiceKind::Activate);
+        obs.cards.truncate(3);
+        obs.phase = Some(Phase::Main2);
+        assert_ne!(chosen(&obs, &effect), ChoiceKind::Activate);
+    }
+
+    #[test]
+    fn watt_direct_attack_does_not_leave_a_monster_target_in_memory() {
+        const GIRAFFE: u32 = 402568;
+        let db = Arc::new(MemoryCards([creature(GIRAFFE, 4, 1200, 100, 0xe), creature(1, 4, 1000, 1000, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("watt", db).unwrap();
+        let mut obs = observation();
+        obs.phase = Some(Phase::Battle);
+        obs.cards = vec![monster(0, 0, Some(GIRAFFE), Position::FACE_UP_ATTACK, 1200, 100),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1000, 1000)];
+        let attack = decide(DecisionKind::Battle, None, vec![attack(GIRAFFE, 0, true), choice(ChoiceKind::EnterMain2)]);
+        assert_eq!(policy.choose(&obs, &attack), 0);
+        let direct = decide(DecisionKind::YesNo, None, [ChoiceKind::Yes, ChoiceKind::No].into_iter()
+            .map(|k| Choice { description: crate::tactics::ATTACK_DIRECTLY, ..choice(k) }).collect());
+        assert_eq!(direct.choices[policy.choose(&obs, &direct)].kind, ChoiceKind::Yes);
+    }
+
+    #[test]
+    fn toon_table_searches_world_once_then_playable_monsters() {
+        use crate::cards::types;
+        const TABLE: u32 = 89997728;
+        const WORLD: u32 = 15259703;
+        const ELF: u32 = 42386471;
+        const GIRL: u32 = 90960358;
+        const DRAGON: u32 = 53183600;
+        const SHEEP: u32 = 73915052;
+        let db = Arc::new(MemoryCards([printed(TABLE, types::SPELL, 0x62), printed(WORLD, types::SPELL | types::CONTINUOUS, 0x62),
+            creature(ELF, 4, 1900, 900, 0x62), creature(GIRL, 6, 2000, 1700, 0x62),
+            creature(DRAGON, 8, 3000, 2500, 0x62), creature(SHEEP, 1, 0, 0, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("toon", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, TABLE, false)];
+        let activation = decide(DecisionKind::Idle, None, vec![activate(TABLE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &activation), 0);
+        let search = select_one(Hint::AddToHand, [WORLD, ELF, GIRL, DRAGON].into_iter().enumerate()
+            .map(|(i, code)| toggle(Location::Deck, i as u32, code)).collect());
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(WORLD));
+        obs.cards.push(card(0, Location::Hand, 1, WORLD, false));
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(ELF), "do not collect redundant Worlds or two-tribute monsters");
+        obs.cards.push(monster(0, 0, Some(SHEEP), Position::FACE_UP_DEFENSE, 0, 0));
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(GIRL), "one cheap tribute enables the Girl");
+        obs.cards[2] = monster(0, 0, Some(ELF), Position::FACE_UP_ATTACK, 1900, 900);
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(ELF), "the existing attacker is not cheap tribute fodder");
+    }
+
+    #[test]
+    fn toon_defense_is_ready_early_but_declines_lethal_redirection() {
+        use crate::cards::types;
+        const DEFENSE: u32 = 43509019;
+        const ELF: u32 = 42386471;
+        let db = Arc::new(MemoryCards([printed(DEFENSE, types::TRAP | types::CONTINUOUS, 0x62),
+            creature(ELF, 4, 1900, 900, 0x62), creature(1, 4, 2300, 1000, 0)].into_iter().collect()));
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("toon", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].kind
+        };
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Draw);
+        obs.cards = vec![monster(0, 0, Some(ELF), Position::FACE_UP_ATTACK, 1900, 900),
+            card(0, Location::SpellTrapZone, 0, DEFENSE, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2300, 1000)];
+        let chain = decide(DecisionKind::Chain { forced: false, triggers: false }, None,
+            vec![activate(DEFENSE, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(chosen(&obs, &chain), ChoiceKind::Activate);
+        obs.cards[1].position.face_up = true;
+        obs.phase = Some(Phase::BattleStart);
+        obs.battle_attacker = Some(obs.cards[2].at);
+        obs.battle_target = Some(obs.cards[0].at);
+        let trigger = decide(DecisionKind::YesNo, Some(DEFENSE), vec![choice(ChoiceKind::Yes), choice(ChoiceKind::No)]);
+        assert_eq!(chosen(&obs, &trigger), ChoiceKind::Yes);
+        obs.life_points[0] = 1700;
+        assert_eq!(chosen(&obs, &trigger), ChoiceKind::No, "400 battle damage is survivable; 2300 direct damage is not");
+        assert_eq!(chosen(&obs, &chain), ChoiceKind::Pass, "the chain and yes/no prompts must use the same rule");
+        obs.life_points[0] = 8000;
+        obs.cards[2].attack = 1800;
+        assert_eq!(chosen(&obs, &trigger), ChoiceKind::No, "keep a battle the Toon wins");
+    }
+
+
+    #[test]
+    fn watt_sets_small_blockers_instead_of_ending_with_them_in_hand() {
+        for (code, level, atk, def) in [(32548609, 3, 0, 100), (27324313, 3, 1000, 500),
+            (5554990, 3, 300, 0), (24996659, 3, 600, 100)] {
+            let db = Arc::new(MemoryCards([creature(code, level, atk, def, 0xe), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+            let mut policy = crate::registry::create("watt", db).unwrap();
+            let mut obs = observation();
+            obs.cards = vec![card(0, Location::Hand, 0, code, false),
+                monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+            let decision = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, code, 0),
+                from_hand(ChoiceKind::SetMonster, code, 0), choice(ChoiceKind::EndTurn)]);
+            assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::SetMonster, "block with {code}");
+        }
+    }
+
+    #[test]
+    fn watt_turns_direct_attackers_toward_larger_blockers() {
+        for code in [402568, 81896771] {
+            let db = Arc::new(MemoryCards([creature(code, 4, 1200, 100, 0xe), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+            for position in [Position::FACE_UP_DEFENSE, Position::FACE_DOWN_DEFENSE] {
+                let mut policy = crate::registry::create("watt", db.clone()).unwrap();
+                let mut obs = observation();
+                obs.cards = vec![monster(0, 0, Some(code), position, 1200, 100),
+                    monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+                obs.cards[0].can_attack = false;
+                let decision = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition,
+                    ..activate(code, Location::MonsterZone, 0) }, choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+                assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::ChangePosition);
+                obs.phase = Some(Phase::Main2);
+                assert_ne!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::ChangePosition);
+            }
+        }
+    }
+
+    #[test]
+    fn watt_dragonfly_recruits_replacement_blockers_under_pressure() {
+        const FLY: u32 = 97885363;
+        const LEMUR: u32 = 45801022;
+        const GIRAFFE: u32 = 402568;
+        let db = Arc::new(MemoryCards([creature(FLY, 2, 900, 100, 0xe), creature(LEMUR, 2, 800, 100, 0xe),
+            creature(GIRAFFE, 4, 1200, 100, 0xe), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("watt", db).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::Damage);
+        obs.cards = vec![card(0, Location::Graveyard, 0, FLY, true),
+            monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000),
+            monster(1, 1, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let trigger = decide(DecisionKind::YesNo, Some(FLY), vec![Choice { kind: ChoiceKind::Yes,
+            ..activate(FLY, Location::Graveyard, 0) }, choice(ChoiceKind::No)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let search = select_one(Hint::SpecialSummon, [GIRAFFE, LEMUR, FLY].into_iter().enumerate()
+            .map(|(i, code)| toggle(Location::Deck, i as u32, code)).collect());
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(FLY));
+        let without_fly = select_one(Hint::SpecialSummon, [GIRAFFE, LEMUR].into_iter().enumerate()
+            .map(|(i, code)| toggle(Location::Deck, i as u32, code)).collect());
+        assert_eq!(without_fly.choices[policy.choose(&obs, &without_fly)].code(), Some(LEMUR));
+        obs.phase = Some(Phase::End);
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(GIRAFFE));
+        obs.phase = Some(Phase::Damage);
+        obs.turn_player = Some(0);
+        assert_eq!(search.choices[policy.choose(&obs, &search)].code(), Some(GIRAFFE));
+    }
+
+    #[test]
+    fn watt_summons_in_defense_on_the_opponents_turn() {
+        const GIRAFFE: u32 = 402568;
+        let db = Arc::new(MemoryCards([creature(GIRAFFE, 4, 1200, 100, 0xe)].into_iter().collect()));
+        let mut policy = crate::registry::create("watt", db).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        let decision = decide(DecisionKind::Position, Some(GIRAFFE), vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)),
+            choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))]);
+        assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::Position(Position::FACE_UP_DEFENSE));
+        obs.turn_player = Some(0);
+        assert_eq!(decision.choices[policy.choose(&obs, &decision)].kind, ChoiceKind::Position(Position::FACE_UP_ATTACK));
+    }
+
+    #[test]
+    fn watt_prefers_replacement_blockers_but_takes_lethal_direct_damage() {
+        const FLY: u32 = 97885363;
+        const LEMUR: u32 = 45801022;
+        const GIRAFFE: u32 = 402568;
+        let db = Arc::new(MemoryCards([creature(FLY, 2, 900, 100, 0xe), creature(LEMUR, 2, 800, 100, 0xe),
+            creature(GIRAFFE, 4, 1200, 100, 0xe), creature(1, 4, 1900, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, FLY, false), card(0, Location::Hand, 1, LEMUR, false),
+            card(0, Location::Hand, 2, GIRAFFE, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let mut choices: Vec<_> = [FLY, LEMUR, GIRAFFE].into_iter().enumerate().flat_map(|(i, code)|
+            [from_hand(ChoiceKind::NormalSummon, code, i as u32), from_hand(ChoiceKind::SetMonster, code, i as u32)]).collect();
+        choices.extend([choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let decision = decide(DecisionKind::Idle, None, choices);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("watt", db.clone()).unwrap();
+            let c = &decision.choices[policy.choose(obs, &decision)];
+            (c.kind, c.code())
+        };
+        assert_eq!(chosen(&obs), (ChoiceKind::SetMonster, Some(FLY)));
+        obs.life_points[1] = 1200;
+        assert_eq!(chosen(&obs), (ChoiceKind::NormalSummon, Some(GIRAFFE)));
+        obs.life_points[1] = 2200;
+        obs.cards.push(monster(0, 0, Some(GIRAFFE), Position::FACE_UP_ATTACK, 1000, 100));
+        assert_eq!(chosen(&obs), (ChoiceKind::NormalSummon, Some(GIRAFFE)), "count direct damage already on the board");
+        obs.phase = Some(Phase::Main2);
+        assert_eq!(chosen(&obs), (ChoiceKind::SetMonster, Some(FLY)), "a summon after battle cannot finish this turn");
+    }
 }

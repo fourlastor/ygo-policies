@@ -158,6 +158,14 @@ impl Strategy for Ojama {
                 return t.pick(i);
             }
         }
+        // Flip an Ojama before judging battles under Country's stat swap.
+        if ctx.main1() && Self::country_up(&ctx) {
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::ChangePosition
+                && c.code().map_or(false, |k| Self::is_ojama_monster(&ctx, ctx.canonical(k)))
+                && c.at().and_then(|at| ctx.card(at)).map_or(false, |c| !c.position.face_up)) {
+                return t.pick(i);
+            }
+        }
         // Ojama Country: an Ojama card from the hand revives one.  With
         // Ojamagic as the cost, it also searches the Trio.
         if let Some(i) = t.activate_from(OJAMA_COUNTRY, Location::SpellTrapZone) {
@@ -165,7 +173,8 @@ impl Strategy for Ojama {
             let missing = Self::missing_trio(&ctx);
             let revives_piece = ctx.graveyard(ctx.me).iter().any(|c| missing.iter().any(|k| ctx.is(c, *k)));
             let spare = Self::ojamas_in_hand(&ctx) >= 2;
-            if ojamagic || (revives_piece && spare) {
+            let revives_fusion = ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, OJAMA_KING) || ctx.is(c, OJAMA_KNIGHT));
+            if ojamagic || (revives_piece && spare) || revives_fusion || ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, OJAMA_BLUE)) {
                 return t.pick(i);
             }
         }
@@ -250,6 +259,7 @@ impl Strategy for Ojama {
         Some(match (choice.kind, code) {
             // Ojama Red brings the rest of the hand's Ojamas.
             (ChoiceKind::NormalSummon, OJAMA_RED) if ojamas >= 2 => Some(2500.0 + 300.0 * ojamas as f64),
+            (ChoiceKind::NormalSummon, _) if Self::country_up(&ctx) && Self::is_ojama_monster(&ctx, code) => Some(2100.0),
             (ChoiceKind::NormalSummon, ARMED_DRAGON_LV3) => Some(2000.0),
             (ChoiceKind::NormalSummon, X_HEAD_CANNON) => Some(1900.0),
             (ChoiceKind::NormalSummon, Y_DRAGON_HEAD | Z_METAL_TANK) if x_up => Some(1850.0),
@@ -295,15 +305,35 @@ impl Strategy for Ojama {
         }
         let code = member.code.map(|c| ctx.canonical(c))?;
         let worth = value(self, &ctx, Some(code), None) as f64;
+        // Blue finds a working engine: Country revives Blue, discarding
+        // Ojamagic to obtain the three Normal Ojamas. Hurricane alone does
+        // nothing until all three names can reach the field.
+        if t.memory.last_activated.map(|c| ctx.canonical(c)) == Some(OJAMA_BLUE)
+            && t.decision.hint == Hint::AddToHand && member.at.location == Location::Deck {
+            let have = |wanted| ctx.in_hand(wanted) || ctx.face_up_on_field(ctx.me, wanted)
+                || t.decision.choices.iter().flat_map(|c| &c.members).any(|m| {
+                    t.decision.selected.contains(&m.at) && m.code.map(|c| ctx.canonical(c)) == Some(wanted)
+                });
+            return Some(match code {
+                OJAMA_COUNTRY if !have(OJAMA_COUNTRY) => 6000.0,
+                OJAMAGIC if have(OJAMA_COUNTRY) && !have(OJAMAGIC) => 5500.0,
+                OJAMA_RED if Self::ojamas_in_hand(&ctx) >= 2 && !have(OJAMA_RED) => 5000.0,
+                DELTA_HURRICANE if TRIO.iter().all(|k| have(*k)) && !have(DELTA_HURRICANE) => 6500.0,
+                _ if have(code) => worth - 2000.0,
+                _ => worth,
+            });
+        }
         match t.memory.last_activated.map(|c| ctx.canonical(c)) {
             // Ojama Country's cost: Ojamagic searches the Trio on its way.
             Some(OJAMA_COUNTRY) if member.at.location == Location::Hand && t.decision.hint.is_cost() => {
                 return Some(if code == OJAMAGIC { 5000.0 } else { -worth });
             }
-            // Ojama Country revives a missing Trio piece first.
+            // Revive a fusion's attacker, a Hurricane piece, or Blue to
+            // search again. A stray Normal Ojama needs a concrete payoff.
             Some(OJAMA_COUNTRY) if member.at.location == Location::Graveyard => {
-                let missing = Self::missing_trio(&ctx).contains(&code);
-                return Some(worth + if missing { 2000.0 } else { 0.0 });
+                let missing = Self::missing_trio(&ctx).contains(&code) && ctx.in_hand(DELTA_HURRICANE);
+                let fusion = matches!(code, OJAMA_KING | OJAMA_KNIGHT);
+                return Some(worth + if fusion { 3000.0 } else if missing { 3000.0 } else if code == OJAMA_BLUE { 2500.0 } else { 0.0 });
             }
             // Armed Dragon LV5 / LV7: the cheapest monster that reaches the target.
             Some(ARMED_DRAGON_LV5 | ARMED_DRAGON_LV7) if member.at.location == Location::Hand && t.decision.hint.is_cost() => {
@@ -344,6 +374,7 @@ impl Strategy for Ojama {
             // 0 ATK walls, unless Ojama Country turns their DEF into ATK.
             OJAMA_KING | OJAMA_KNIGHT if Self::country_up(&ctx) => Some(Position::FACE_UP_ATTACK),
             OJAMA_KING | OJAMA_KNIGHT => Some(Position::FACE_UP_DEFENSE),
+            _ if Self::is_ojama_monster(&ctx, code) && Self::country_up(&ctx) && ctx.my_turn() && ctx.main1() => Some(Position::FACE_UP_ATTACK),
             _ if Self::is_ojama_monster(&ctx, code) => Some(Position::FACE_UP_DEFENSE),
             _ => None,
         }
