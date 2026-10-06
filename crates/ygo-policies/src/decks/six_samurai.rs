@@ -110,7 +110,7 @@ impl Strategy for SixSamurai {
         let ctx = t.ctx;
         // Counter collectors before the first summon.
         for code in [GATEWAY, UNITED] {
-            if !ctx.face_up_on_field(ctx.me, code) {
+            if code == UNITED || !ctx.face_up_on_field(ctx.me, code) {
                 if let Some(i) = t.activate_from(code, Location::Hand) {
                     return t.pick(i);
                 }
@@ -138,6 +138,29 @@ impl Strategy for SixSamurai {
         if united >= 2 {
             if let Some(i) = t.activate_from(UNITED, Location::SpellTrapZone) {
                 return t.pick(i);
+            }
+        }
+        // The engine offers Asceticism only with a matching Samurai in
+        // the Deck; use it to extend the board before spending removal.
+        if ctx.main1() {
+            if let Some(i) = t.activate(ASCETICISM) { return t.pick(i); }
+        }
+        // Bring back the missing Tuner, or a complete Shi En pair. These
+        // bodies are temporary, so require a visible Synchro route.
+        if ctx.main1() && !ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner()) {
+            let tuner = ctx.graveyard(ctx.me).into_iter().find(|c| ctx.is(c, KAGEMUSHA));
+            if let Some(tuner) = tuner {
+                if crate::tactics::synchro_with_tuner(self, &ctx, 2).is_some() {
+                    if let Some(i) = t.activate(RETURN_OF_THE_SIX) { return t.pick_targeting(i, vec![tuner.at]); }
+                }
+                let partner = ctx.graveyard(ctx.me).into_iter().filter(|c| Self::is_samurai(&ctx, c) && ctx.view_data(c).level == 3)
+                    .max_by_key(|c| value(self, &ctx, None, Some(c)));
+                if ctx.my_lp() > 4000 && ctx.free_monster_zones(ctx.me) >= 2
+                    && ctx.obs.pile(ctx.me, Location::Extra).any(|c| ctx.is(c, SHI_EN)) {
+                    if let Some(partner) = partner {
+                        if let Some(i) = t.activate(DOUBLE_EDGED_SWORD) { return t.pick_targeting(i, vec![tuner.at, partner.at]); }
+                    }
+                }
             }
         }
         // Removal paid with a spare Samurai.
@@ -209,6 +232,8 @@ impl Strategy for SixSamurai {
             // Kizan and Grandmaster summon themselves beside another Samurai:
             // the Normal Summon goes to one that cannot.
             (ChoiceKind::NormalSummon, KIZAN | GRANDMASTER) if samurai_up >= 1 => None,
+            (ChoiceKind::NormalSummon, KAGEMUSHA | SHIENS_SQUIRE)
+                if crate::tactics::synchro_with_tuner(self, &ctx, ctx.data(code).level).is_some() => Some(2500.0),
             (ChoiceKind::NormalSummon, SHIENS_SQUIRE) => None,
             _ => return None,
         })
@@ -290,10 +315,28 @@ impl Strategy for SixSamurai {
         }
         let code = member.code.map(|c| ctx.canonical(c))?;
         let worth = value(self, &ctx, Some(code), None) as f64;
+        // Kageki brings the missing Tuner instead of another attacker.
+        if t.decision.hint == Hint::SpecialSummon && member.at.location == Location::Hand
+            && code == KAGEMUSHA && ctx.face_up_on_field(ctx.me, KAGEKI)
+            && !ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner()) {
+            return Some(4000.0);
+        }
         match t.decision.hint {
-            // Searches: Kageki starts a turn; otherwise the best follow-up.
+            // Complete Kageki's Tuner pair before the Normal Summon; after
+            // it, prefer a Samurai that can Special Summon itself.
             Hint::AddToHand if member.at.location == Location::Deck || member.at.location == Location::Graveyard => {
-                let bonus = if code == KAGEKI && !ctx.in_hand(KAGEKI) { 1500.0 } else { 0.0 };
+                let normal = !ctx.my_turn() || !ctx.obs.summon_used;
+                let tuner = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner());
+                let level3 = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && c.level == 3 && Self::is_samurai(&ctx, c));
+                let bonus = match code {
+                    KAGEMUSHA if normal && !tuner && !ctx.in_hand(KAGEMUSHA) && (level3 || ctx.in_hand(KAGEKI)) => 2200.0,
+                    KAGEKI if normal && !ctx.in_hand(KAGEKI) => 1500.0,
+                    KIZAN if Self::samurai_up(&ctx) > 0 => 2500.0,
+                    GRANDMASTER if Self::samurai_up(&ctx) > 0 && !ctx.face_up_on_field(ctx.me, GRANDMASTER) && !ctx.in_hand(GRANDMASTER) => 2500.0,
+                    MIZUHO if ctx.in_hand(SHINAI) || ctx.face_up_on_field(ctx.me, SHINAI) => 1800.0,
+                    SHINAI if ctx.in_hand(MIZUHO) || ctx.face_up_on_field(ctx.me, MIZUHO) => 1800.0,
+                    _ => 0.0,
+                };
                 Some(worth + bonus)
             }
             // Tributes for Mizuho / Hand: Shinai returns a Samurai when Tributed.

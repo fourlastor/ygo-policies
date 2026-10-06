@@ -1,0 +1,2642 @@
+{
+  "baseline_commit": "de2bf4d57a91469fc74cd1340ccab0f6352ec14a",
+  "development": {
+    "six-samurai": {
+      "pairs": 13312,
+      "baseline": 0.5614483173076923,
+      "candidate": 0.6825420673076923,
+      "delta": 0.12109375,
+      "ci95": [
+        0.11414247739718625,
+        0.12804502260281375
+      ],
+      "improved": 2018,
+      "regressed": 406,
+      "identical": 3934,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "gravekeeper": {
+      "pairs": 13312,
+      "baseline": 0.6237980769230769,
+      "candidate": 0.6512920673076923,
+      "delta": 0.027493990384615384,
+      "ci95": [
+        0.022732072744280067,
+        0.0322559080249507
+      ],
+      "improved": 711,
+      "regressed": 345,
+      "identical": 8633,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "machina": {
+      "pairs": 13312,
+      "baseline": 0.6899789663461539,
+      "candidate": 0.7989783653846154,
+      "delta": 0.10899939903846154,
+      "ci95": [
+        0.10143854039899239,
+        0.11656025767793068
+      ],
+      "improved": 2123,
+      "regressed": 672,
+      "identical": 1852,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "heldout": {
+    "six-samurai": {
+      "pairs": 15360,
+      "baseline": 0.5950520833333334,
+      "candidate": 0.7082682291666667,
+      "delta": 0.11321614583333334,
+      "ci95": [
+        0.10698013581057714,
+        0.11945215585608954
+      ],
+      "improved": 2162,
+      "regressed": 423,
+      "identical": 4177,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "gravekeeper": {
+      "pairs": 15360,
+      "baseline": 0.6541341145833334,
+      "candidate": 0.6724609375,
+      "delta": 0.018326822916666666,
+      "ci95": [
+        0.01412137653095463,
+        0.0225322693023787
+      ],
+      "improved": 687,
+      "regressed": 405,
+      "identical": 9598,
+      "failures": 0,
+      "limits": 1,
+      "baseline_limits": 1,
+      "candidate_limits": 0
+    },
+    "machina": {
+      "pairs": 15360,
+      "baseline": 0.7036458333333333,
+      "candidate": 0.783984375,
+      "delta": 0.08033854166666667,
+      "ci95": [
+        0.07381569379865285,
+        0.08686138953468048
+      ],
+      "improved": 1973,
+      "regressed": 739,
+      "identical": 1998,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "search": {
+    "before": {
+      "six-samurai": {
+        "games": 104,
+        "pilot": 0.6538461538461539,
+        "search": 0.8269230769230769,
+        "gap": 0.17307692307692302,
+        "playouts": 198576,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "gravekeeper": {
+        "games": 104,
+        "pilot": 0.5673076923076923,
+        "search": 0.7596153846153846,
+        "gap": 0.1923076923076923,
+        "playouts": 226896,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "machina": {
+        "games": 104,
+        "pilot": 0.7019230769230769,
+        "search": 0.8942307692307693,
+        "gap": 0.1923076923076924,
+        "playouts": 184288,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    },
+    "after": {
+      "six-samurai": {
+        "games": 104,
+        "pilot": 0.7307692307692307,
+        "search": 0.9038461538461539,
+        "gap": 0.17307692307692313,
+        "playouts": 161472,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "gravekeeper": {
+        "games": 104,
+        "pilot": 0.6057692307692307,
+        "search": 0.7788461538461539,
+        "gap": 0.17307692307692313,
+        "playouts": 215672,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      },
+      "machina": {
+        "games": 104,
+        "pilot": 0.8173076923076923,
+        "search": 0.9230769230769231,
+        "gap": 0.10576923076923084,
+        "playouts": 165984,
+        "failed_playouts": 0,
+        "failures": 0,
+        "limits": 0
+      }
+    }
+  },
+  "screening": {
+    "screen01": {
+      "rules": {
+        "six-samurai": "kageki-tuner",
+        "gravekeeper": "assailant-flip",
+        "machina": "cyber-first"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5790264423076923,
+          "delta": 0.01953125,
+          "ci95": [
+            0.01376805778025433,
+            0.02529444221974567
+          ],
+          "improved": 81,
+          "regressed": 16,
+          "identical": 2935,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6234975961538461,
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "improved": 0,
+          "regressed": 0,
+          "identical": 3328,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7217548076923077,
+          "delta": 0.021634615384615384,
+          "ci95": [
+            0.012770879675093657,
+            0.03049835109413711
+          ],
+          "improved": 150,
+          "regressed": 78,
+          "identical": 2555,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen02": {
+      "rules": {
+        "six-samurai": "search-extender",
+        "gravekeeper": "spy-first",
+        "machina": "gearframe-first"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5715144230769231,
+          "delta": 0.01201923076923077,
+          "ci95": [
+            0.0056337664548342424,
+            0.018404695083627298
+          ],
+          "improved": 79,
+          "regressed": 39,
+          "identical": 2797,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6240985576923077,
+          "delta": 0.0006009615384615385,
+          "ci95": [
+            -0.005905064366021175,
+            0.007106987442944253
+          ],
+          "improved": 62,
+          "regressed": 60,
+          "identical": 2690,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7229567307692307,
+          "delta": 0.02283653846153846,
+          "ci95": [
+            0.013117272647226582,
+            0.032555804275850336
+          ],
+          "improved": 175,
+          "regressed": 99,
+          "identical": 2138,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen03": {
+      "rules": {
+        "six-samurai": "united-all",
+        "gravekeeper": "spy-assailant",
+        "machina": "discard-fortress"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5679086538461539,
+          "delta": 0.008413461538461538,
+          "ci95": [
+            0.004094438635047746,
+            0.01273248444187533
+          ],
+          "improved": 41,
+          "regressed": 13,
+          "identical": 3027,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6225961538461539,
+          "delta": -0.0009014423076923077,
+          "ci95": [
+            -0.00748693573546038,
+            0.005684051120075764
+          ],
+          "improved": 61,
+          "regressed": 64,
+          "identical": 2333,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7475961538461539,
+          "delta": 0.047475961538461536,
+          "ci95": [
+            0.03680005152341294,
+            0.058151871553510134
+          ],
+          "improved": 247,
+          "regressed": 89,
+          "identical": 1709,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen04": {
+      "rules": {
+        "six-samurai": "gateway-pool",
+        "gravekeeper": "tribute-aggressive",
+        "machina": "chimeratech-opponent"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5603966346153846,
+          "delta": 0.0009014423076923077,
+          "ci95": [
+            -0.00011832903991410883,
+            0.0019212136552987243
+          ],
+          "improved": 3,
+          "regressed": 0,
+          "identical": 3282,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6192908653846154,
+          "delta": -0.004206730769230769,
+          "ci95": [
+            -0.008199173858752403,
+            -0.00021428767970913584
+          ],
+          "improved": 16,
+          "regressed": 30,
+          "identical": 3134,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7064302884615384,
+          "delta": 0.006310096153846154,
+          "ci95": [
+            0.002637854532742399,
+            0.009982337774949909
+          ],
+          "improved": 30,
+          "regressed": 9,
+          "identical": 3132,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen05": {
+      "rules": {
+        "six-samurai": "tuner-normal",
+        "gravekeeper": "descendant-cheap",
+        "machina": "trooper"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.578125,
+          "delta": 0.018629807692307692,
+          "ci95": [
+            0.012714666796876016,
+            0.024544948587739368
+          ],
+          "improved": 82,
+          "regressed": 20,
+          "identical": 2733,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6060697115384616,
+          "delta": -0.017427884615384616,
+          "ci95": [
+            -0.026647471608494545,
+            -0.008208297622274686
+          ],
+          "improved": 94,
+          "regressed": 152,
+          "identical": 1905,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7049278846153846,
+          "delta": 0.004807692307692308,
+          "ci95": [
+            9.827855357251794e-05,
+            0.009517106061812098
+          ],
+          "improved": 40,
+          "regressed": 24,
+          "identical": 3033,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen06": {
+      "rules": {
+        "six-samurai": "shi-en",
+        "gravekeeper": "cannon-lethal",
+        "machina": "fortress-late"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5609975961538461,
+          "delta": 0.0015024038461538462,
+          "ci95": [
+            -5.518875803291038e-05,
+            0.003059996450340603
+          ],
+          "improved": 6,
+          "regressed": 1,
+          "identical": 3169,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6246995192307693,
+          "delta": 0.001201923076923077,
+          "ci95": [
+            -0.00046360695953938076,
+            0.0028674531133855347
+          ],
+          "improved": 6,
+          "regressed": 2,
+          "identical": 3208,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7408353365384616,
+          "delta": 0.04071514423076923,
+          "ci95": [
+            0.027338397204158708,
+            0.05409189125737976
+          ],
+          "improved": 329,
+          "regressed": 193,
+          "identical": 1006,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen07": {
+      "rules": {
+        "six-samurai": "united-one",
+        "gravekeeper": "raigeki-proactive",
+        "machina": "gearframe-score"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5618990384615384,
+          "delta": 0.002403846153846154,
+          "ci95": [
+            -0.0058421806298954455,
+            0.010649872937587753
+          ],
+          "improved": 102,
+          "regressed": 94,
+          "identical": 2243,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6225961538461539,
+          "delta": -0.0009014423076923077,
+          "ci95": [
+            -0.0030250021865866313,
+            0.0012221175712020156
+          ],
+          "improved": 5,
+          "regressed": 8,
+          "identical": 3225,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7010216346153846,
+          "delta": 0.0009014423076923077,
+          "ci95": [
+            -0.0010519117226052055,
+            0.0028547963379898207
+          ],
+          "improved": 7,
+          "regressed": 4,
+          "identical": 3301,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen08": {
+      "rules": {
+        "six-samurai": "asceticism",
+        "gravekeeper": "assailant-position",
+        "machina": "none"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5715144230769231,
+          "delta": 0.01201923076923077,
+          "ci95": [
+            0.006084347638294656,
+            0.017954113900166883
+          ],
+          "improved": 71,
+          "regressed": 31,
+          "identical": 2838,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6237980769230769,
+          "delta": 0.00030048076923076925,
+          "ci95": [
+            -0.0002884615384615265,
+            0.000889423076923065
+          ],
+          "improved": 1,
+          "regressed": 0,
+          "identical": 3307,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen09": {
+      "rules": {
+        "six-samurai": "search-combo",
+        "gravekeeper": "assailant-safe",
+        "machina": "normal-before-fortress"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.6135817307692307,
+          "delta": 0.054086538461538464,
+          "ci95": [
+            0.043947943733071745,
+            0.06422513319000518
+          ],
+          "improved": 243,
+          "regressed": 63,
+          "identical": 2052,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6237980769230769,
+          "delta": 0.00030048076923076925,
+          "ci95": [
+            -0.0010165925867104437,
+            0.0016175541251719822
+          ],
+          "improved": 3,
+          "regressed": 2,
+          "identical": 2980,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7372295673076923,
+          "delta": 0.037109375,
+          "ci95": [
+            0.022411114702128098,
+            0.0518076352978719
+          ],
+          "improved": 376,
+          "regressed": 252,
+          "identical": 646,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen10": {
+      "rules": {
+        "six-samurai": "free-first",
+        "gravekeeper": "compulsory",
+        "machina": "no-duality-lock"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5558894230769231,
+          "delta": -0.003605769230769231,
+          "ci95": [
+            -0.007137829546358941,
+            -7.370891517952116e-05
+          ],
+          "improved": 12,
+          "regressed": 24,
+          "identical": 2753,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6253004807692307,
+          "delta": 0.0018028846153846155,
+          "ci95": [
+            -0.0008306287739636643,
+            0.004436398004732896
+          ],
+          "improved": 13,
+          "regressed": 7,
+          "identical": 3165,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.6968149038461539,
+          "delta": -0.0033052884615384615,
+          "ci95": [
+            -0.009510096685708852,
+            0.0028995197626319282
+          ],
+          "improved": 50,
+          "regressed": 61,
+          "identical": 2874,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen11": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "descendant-duplicate",
+        "machina": "trooper-guard"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6246995192307693,
+          "delta": 0.001201923076923077,
+          "ci95": [
+            -0.002024073018801519,
+            0.004427919172647673
+          ],
+          "improved": 17,
+          "regressed": 13,
+          "identical": 3118,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        },
+        "machina": {
+          "pairs": 3328,
+          "baseline": 0.7001201923076923,
+          "candidate": 0.7052283653846154,
+          "delta": 0.005108173076923077,
+          "ci95": [
+            0.0008234785403176837,
+            0.00939286761352847
+          ],
+          "improved": 35,
+          "regressed": 18,
+          "identical": 3077,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen12": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "descendant-reaches",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6246995192307693,
+          "delta": 0.001201923076923077,
+          "ci95": [
+            2.456963839311821e-05,
+            0.0023792765154530358
+          ],
+          "improved": 4,
+          "regressed": 0,
+          "identical": 3310,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen13": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "assailant-reaches",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6234975961538461,
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "improved": 0,
+          "regressed": 0,
+          "identical": 3328,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen14": {
+      "rules": {
+        "six-samurai": "revive-tuner",
+        "gravekeeper": "none",
+        "machina": "none"
+      },
+      "results": {
+        "six-samurai": {
+          "pairs": 3328,
+          "baseline": 0.5594951923076923,
+          "candidate": 0.5709134615384616,
+          "delta": 0.01141826923076923,
+          "ci95": [
+            0.007271303831794936,
+            0.015565234629743525
+          ],
+          "improved": 44,
+          "regressed": 6,
+          "identical": 3040,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen15": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "tribute-after-summon",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6271033653846154,
+          "delta": 0.003605769230769231,
+          "ci95": [
+            0.0007227217938470991,
+            0.006488816667691363
+          ],
+          "improved": 18,
+          "regressed": 6,
+          "identical": 3196,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen16": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "visionary",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6458834134615384,
+          "delta": 0.022385817307692308,
+          "ci95": [
+            0.014404889836042883,
+            0.03036674477934173
+          ],
+          "improved": 130,
+          "regressed": 56,
+          "identical": 2531,
+          "failures": 0,
+          "limits": 1,
+          "baseline_limits": 0,
+          "candidate_limits": 1
+        }
+      }
+    },
+    "screen17": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "boosted-normal",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6283052884615384,
+          "delta": 0.004807692307692308,
+          "ci95": [
+            -0.002687665782114117,
+            0.012303050397498733
+          ],
+          "improved": 89,
+          "regressed": 73,
+          "identical": 2270,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen18": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "spy-empty",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6246995192307693,
+          "delta": 0.001201923076923077,
+          "ci95": [
+            -0.004569232122120316,
+            0.00697307827596647
+          ],
+          "improved": 50,
+          "regressed": 46,
+          "identical": 2822,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen19": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "treasure-live",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.62890625,
+          "delta": 0.005408653846153846,
+          "ci95": [
+            0.0006268755966537453,
+            0.010190432095653946
+          ],
+          "improved": 42,
+          "regressed": 24,
+          "identical": 2947,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    },
+    "screen20": {
+      "rules": {
+        "six-samurai": "none",
+        "gravekeeper": "visionary+treasure-live",
+        "machina": "none"
+      },
+      "results": {
+        "gravekeeper": {
+          "pairs": 3328,
+          "baseline": 0.6234975961538461,
+          "candidate": 0.6502403846153846,
+          "delta": 0.02674278846153846,
+          "ci95": [
+            0.017797663866401917,
+            0.035687913056675
+          ],
+          "improved": 161,
+          "regressed": 72,
+          "identical": 2252,
+          "failures": 0,
+          "limits": 0,
+          "baseline_limits": 0,
+          "candidate_limits": 0
+        }
+      }
+    }
+  },
+  "matchups": {
+    "six-samurai": {
+      "arcana": {
+        "pairs": 512,
+        "baseline": 0.869140625,
+        "candidate": 0.93359375,
+        "delta": 0.064453125,
+        "ci95": [
+          0.03455643138175358,
+          0.09434981861824643
+        ],
+        "improved": 48,
+        "regressed": 15,
+        "identical": 67,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "blackwing": {
+        "pairs": 512,
+        "baseline": 0.431640625,
+        "candidate": 0.611328125,
+        "delta": 0.1796875,
+        "ci95": [
+          0.14108843400124782,
+          0.21828656599875218
+        ],
+        "improved": 105,
+        "regressed": 13,
+        "identical": 166,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "burn": {
+        "pairs": 512,
+        "baseline": 0.8671875,
+        "candidate": 0.91015625,
+        "delta": 0.04296875,
+        "ci95": [
+          0.020938107217150618,
+          0.06499939278284939
+        ],
+        "improved": 28,
+        "regressed": 6,
+        "identical": 102,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "countdown": {
+        "pairs": 512,
+        "baseline": 0.107421875,
+        "candidate": 0.248046875,
+        "delta": 0.140625,
+        "ci95": [
+          0.104297953276792,
+          0.176952046723208
+        ],
+        "improved": 86,
+        "regressed": 14,
+        "identical": 66,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "crystal": {
+        "pairs": 512,
+        "baseline": 0.68359375,
+        "candidate": 0.81640625,
+        "delta": 0.1328125,
+        "ci95": [
+          0.09876084123762577,
+          0.16686415876237423
+        ],
+        "improved": 78,
+        "regressed": 10,
+        "identical": 136,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "destiny-hero": {
+        "pairs": 512,
+        "baseline": 0.8984375,
+        "candidate": 0.931640625,
+        "delta": 0.033203125,
+        "ci95": [
+          0.007659889612454236,
+          0.058746360387545764
+        ],
+        "improved": 31,
+        "regressed": 14,
+        "identical": 97,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "draconic-might": {
+        "pairs": 512,
+        "baseline": 0.525390625,
+        "candidate": 0.650390625,
+        "delta": 0.125,
+        "ci95": [
+          0.08946470980398404,
+          0.16053529019601598
+        ],
+        "improved": 79,
+        "regressed": 15,
+        "identical": 166,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "dragunity": {
+        "pairs": 512,
+        "baseline": 0.4765625,
+        "candidate": 0.5859375,
+        "delta": 0.109375,
+        "ci95": [
+          0.07345442253701964,
+          0.14529557746298036
+        ],
+        "improved": 75,
+        "regressed": 19,
+        "identical": 178,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "fortune-lady": {
+        "pairs": 512,
+        "baseline": 0.775390625,
+        "candidate": 0.87109375,
+        "delta": 0.095703125,
+        "ci95": [
+          0.06594488280534702,
+          0.12546136719465298
+        ],
+        "improved": 57,
+        "regressed": 8,
+        "identical": 139,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gishki": {
+        "pairs": 512,
+        "baseline": 0.5859375,
+        "candidate": 0.701171875,
+        "delta": 0.115234375,
+        "ci95": [
+          0.0817847336227395,
+          0.1486840163772605
+        ],
+        "improved": 71,
+        "regressed": 12,
+        "identical": 163,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gladiator": {
+        "pairs": 512,
+        "baseline": 0.552734375,
+        "candidate": 0.66015625,
+        "delta": 0.107421875,
+        "ci95": [
+          0.07166173039558546,
+          0.14318201960441454
+        ],
+        "improved": 74,
+        "regressed": 19,
+        "identical": 177,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gravekeeper": {
+        "pairs": 512,
+        "baseline": 0.478515625,
+        "candidate": 0.625,
+        "delta": 0.146484375,
+        "ci95": [
+          0.1074042580393543,
+          0.1855644919606457
+        ],
+        "improved": 95,
+        "regressed": 20,
+        "identical": 145,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "harpie": {
+        "pairs": 512,
+        "baseline": 0.501953125,
+        "candidate": 0.681640625,
+        "delta": 0.1796875,
+        "ci95": [
+          0.1414707306752669,
+          0.2179042693247331
+        ],
+        "improved": 104,
+        "regressed": 12,
+        "identical": 152,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "heroes": {
+        "pairs": 512,
+        "baseline": 0.373046875,
+        "candidate": 0.548828125,
+        "delta": 0.17578125,
+        "ci95": [
+          0.13555945863592594,
+          0.21600304136407406
+        ],
+        "improved": 108,
+        "regressed": 18,
+        "identical": 157,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "infernity": {
+        "pairs": 512,
+        "baseline": 0.54296875,
+        "candidate": 0.658203125,
+        "delta": 0.115234375,
+        "ci95": [
+          0.07765056343399487,
+          0.15281818656600513
+        ],
+        "improved": 81,
+        "regressed": 22,
+        "identical": 134,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "karakuri": {
+        "pairs": 512,
+        "baseline": 0.732421875,
+        "candidate": 0.85546875,
+        "delta": 0.123046875,
+        "ci95": [
+          0.08850729075153632,
+          0.15758645924846368
+        ],
+        "improved": 76,
+        "regressed": 13,
+        "identical": 120,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "lightsworn": {
+        "pairs": 512,
+        "baseline": 0.49609375,
+        "candidate": 0.623046875,
+        "delta": 0.126953125,
+        "ci95": [
+          0.09126362254428941,
+          0.1626426274557106
+        ],
+        "improved": 80,
+        "regressed": 15,
+        "identical": 167,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "machina": {
+        "pairs": 512,
+        "baseline": 0.34765625,
+        "candidate": 0.505859375,
+        "delta": 0.158203125,
+        "ci95": [
+          0.11798026414920429,
+          0.1984259858507957
+        ],
+        "improved": 102,
+        "regressed": 21,
+        "identical": 181,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "monarch": {
+        "pairs": 512,
+        "baseline": 0.359375,
+        "candidate": 0.498046875,
+        "delta": 0.138671875,
+        "ci95": [
+          0.09755210140731627,
+          0.17979164859268373
+        ],
+        "improved": 98,
+        "regressed": 27,
+        "identical": 153,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "morphtronic": {
+        "pairs": 512,
+        "baseline": 0.697265625,
+        "candidate": 0.83203125,
+        "delta": 0.134765625,
+        "ci95": [
+          0.10142590546491248,
+          0.16810534453508752
+        ],
+        "improved": 77,
+        "regressed": 8,
+        "identical": 152,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "ojama": {
+        "pairs": 512,
+        "baseline": 0.916015625,
+        "candidate": 0.953125,
+        "delta": 0.037109375,
+        "ci95": [
+          0.01672652584887941,
+          0.05749222415112059
+        ],
+        "improved": 24,
+        "regressed": 5,
+        "identical": 121,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "pyramid": {
+        "pairs": 512,
+        "baseline": 0.84765625,
+        "candidate": 0.923828125,
+        "delta": 0.076171875,
+        "ci95": [
+          0.04906853329937261,
+          0.10327521670062739
+        ],
+        "improved": 46,
+        "regressed": 7,
+        "identical": 104,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "quickdraw-plant": {
+        "pairs": 512,
+        "baseline": 0.5234375,
+        "candidate": 0.669921875,
+        "delta": 0.146484375,
+        "ci95": [
+          0.11053546632660029,
+          0.18243328367339973
+        ],
+        "improved": 87,
+        "regressed": 12,
+        "identical": 152,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "rock-block": {
+        "pairs": 512,
+        "baseline": 0.48046875,
+        "candidate": 0.578125,
+        "delta": 0.09765625,
+        "ci95": [
+          0.06028478345578689,
+          0.1350277165442131
+        ],
+        "improved": 75,
+        "regressed": 25,
+        "identical": 147,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "spellcaster": {
+        "pairs": 512,
+        "baseline": 0.875,
+        "candidate": 0.923828125,
+        "delta": 0.048828125,
+        "ci95": [
+          0.027226681035742252,
+          0.07042956896425775
+        ],
+        "improved": 29,
+        "regressed": 4,
+        "identical": 123,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 512,
+        "baseline": 0.537109375,
+        "candidate": 0.619140625,
+        "delta": 0.08203125,
+        "ci95": [
+          0.046795827353226675,
+          0.11726667264677332
+        ],
+        "improved": 65,
+        "regressed": 23,
+        "identical": 143,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "toon": {
+        "pairs": 512,
+        "baseline": 0.875,
+        "candidate": 0.923828125,
+        "delta": 0.048828125,
+        "ci95": [
+          0.026557318555303577,
+          0.07109893144469642
+        ],
+        "improved": 30,
+        "regressed": 5,
+        "identical": 128,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "verdict": {
+        "pairs": 512,
+        "baseline": 0.228515625,
+        "candidate": 0.3671875,
+        "delta": 0.138671875,
+        "ci95": [
+          0.10168802773669108,
+          0.17565572226330892
+        ],
+        "improved": 87,
+        "regressed": 16,
+        "identical": 179,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "watt": {
+        "pairs": 512,
+        "baseline": 0.681640625,
+        "candidate": 0.826171875,
+        "delta": 0.14453125,
+        "ci95": [
+          0.10831964550375271,
+          0.18074285449624727
+        ],
+        "improved": 87,
+        "regressed": 13,
+        "identical": 97,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 512,
+        "baseline": 0.583984375,
+        "candidate": 0.71484375,
+        "delta": 0.130859375,
+        "ci95": [
+          0.09611118549414019,
+          0.1656075645058598
+        ],
+        "improved": 79,
+        "regressed": 12,
+        "identical": 165,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "gravekeeper": {
+      "arcana": {
+        "pairs": 512,
+        "baseline": 0.96484375,
+        "candidate": 0.962890625,
+        "delta": -0.001953125,
+        "ci95": [
+          -0.015768086858529005,
+          0.011861836858529007
+        ],
+        "improved": 6,
+        "regressed": 7,
+        "identical": 304,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "blackwing": {
+        "pairs": 512,
+        "baseline": 0.470703125,
+        "candidate": 0.51953125,
+        "delta": 0.048828125,
+        "ci95": [
+          0.021254826958187676,
+          0.07640142304181233
+        ],
+        "improved": 39,
+        "regressed": 14,
+        "identical": 324,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "burn": {
+        "pairs": 512,
+        "baseline": 0.865234375,
+        "candidate": 0.853515625,
+        "delta": -0.01171875,
+        "ci95": [
+          -0.035932307220590876,
+          0.012494807220590879
+        ],
+        "improved": 17,
+        "regressed": 23,
+        "identical": 326,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "countdown": {
+        "pairs": 512,
+        "baseline": 0.09765625,
+        "candidate": 0.09765625,
+        "delta": 0.0,
+        "ci95": [
+          -0.016257242853739973,
+          0.016257242853739973
+        ],
+        "improved": 9,
+        "regressed": 9,
+        "identical": 183,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "crystal": {
+        "pairs": 512,
+        "baseline": 0.54296875,
+        "candidate": 0.578125,
+        "delta": 0.03515625,
+        "ci95": [
+          0.008232854332514455,
+          0.06207964566748554
+        ],
+        "improved": 34,
+        "regressed": 16,
+        "identical": 320,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "destiny-hero": {
+        "pairs": 512,
+        "baseline": 0.982421875,
+        "candidate": 0.986328125,
+        "delta": 0.00390625,
+        "ci95": [
+          -0.0054737607899012775,
+          0.013286260789901277
+        ],
+        "improved": 4,
+        "regressed": 2,
+        "identical": 293,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "draconic-might": {
+        "pairs": 512,
+        "baseline": 0.580078125,
+        "candidate": 0.650390625,
+        "delta": 0.0703125,
+        "ci95": [
+          0.04563670730166717,
+          0.09498829269833284
+        ],
+        "improved": 40,
+        "regressed": 4,
+        "identical": 346,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "dragunity": {
+        "pairs": 512,
+        "baseline": 0.56640625,
+        "candidate": 0.59375,
+        "delta": 0.02734375,
+        "ci95": [
+          0.0020368196449765605,
+          0.05265068035502344
+        ],
+        "improved": 29,
+        "regressed": 15,
+        "identical": 354,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "fortune-lady": {
+        "pairs": 512,
+        "baseline": 0.7578125,
+        "candidate": 0.806640625,
+        "delta": 0.048828125,
+        "ci95": [
+          0.022901546941295103,
+          0.0747547030587049
+        ],
+        "improved": 36,
+        "regressed": 11,
+        "identical": 324,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gishki": {
+        "pairs": 512,
+        "baseline": 0.689453125,
+        "candidate": 0.7265625,
+        "delta": 0.037109375,
+        "ci95": [
+          0.016018453306686033,
+          0.05820029669331397
+        ],
+        "improved": 25,
+        "regressed": 6,
+        "identical": 354,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gladiator": {
+        "pairs": 512,
+        "baseline": 0.46875,
+        "candidate": 0.482421875,
+        "delta": 0.013671875,
+        "ci95": [
+          -0.014721290107717704,
+          0.04206504010771771
+        ],
+        "improved": 31,
+        "regressed": 24,
+        "identical": 333,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "harpie": {
+        "pairs": 512,
+        "baseline": 0.39453125,
+        "candidate": 0.4453125,
+        "delta": 0.05078125,
+        "ci95": [
+          0.024600950484393164,
+          0.07696154951560684
+        ],
+        "improved": 37,
+        "regressed": 11,
+        "identical": 346,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "heroes": {
+        "pairs": 512,
+        "baseline": 0.515625,
+        "candidate": 0.537109375,
+        "delta": 0.021484375,
+        "ci95": [
+          -0.0017494161657077775,
+          0.04471816616570778
+        ],
+        "improved": 24,
+        "regressed": 13,
+        "identical": 334,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "infernity": {
+        "pairs": 512,
+        "baseline": 0.7197265625,
+        "candidate": 0.748046875,
+        "delta": 0.0283203125,
+        "ci95": [
+          0.004134159679404833,
+          0.052506465320595164
+        ],
+        "improved": 28,
+        "regressed": 13,
+        "identical": 267,
+        "failures": 0,
+        "limits": 1,
+        "baseline_limits": 1,
+        "candidate_limits": 0
+      },
+      "karakuri": {
+        "pairs": 512,
+        "baseline": 0.69921875,
+        "candidate": 0.732421875,
+        "delta": 0.033203125,
+        "ci95": [
+          0.004931424204957759,
+          0.06147482579504224
+        ],
+        "improved": 36,
+        "regressed": 19,
+        "identical": 319,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "lightsworn": {
+        "pairs": 512,
+        "baseline": 0.537109375,
+        "candidate": 0.55859375,
+        "delta": 0.021484375,
+        "ci95": [
+          0.00241580342804594,
+          0.04055294657195406
+        ],
+        "improved": 18,
+        "regressed": 7,
+        "identical": 355,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "machina": {
+        "pairs": 512,
+        "baseline": 0.49609375,
+        "candidate": 0.4765625,
+        "delta": -0.01953125,
+        "ci95": [
+          -0.04711130766880401,
+          0.00804880766880401
+        ],
+        "improved": 21,
+        "regressed": 31,
+        "identical": 337,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "monarch": {
+        "pairs": 512,
+        "baseline": 0.34765625,
+        "candidate": 0.380859375,
+        "delta": 0.033203125,
+        "ci95": [
+          0.0034140602125165703,
+          0.06299218978748343
+        ],
+        "improved": 39,
+        "regressed": 22,
+        "identical": 344,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "morphtronic": {
+        "pairs": 512,
+        "baseline": 0.7421875,
+        "candidate": 0.7421875,
+        "delta": 0.0,
+        "ci95": [
+          -0.018772247075775784,
+          0.018772247075775784
+        ],
+        "improved": 12,
+        "regressed": 12,
+        "identical": 355,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "ojama": {
+        "pairs": 512,
+        "baseline": 0.98046875,
+        "candidate": 0.98046875,
+        "delta": 0.0,
+        "ci95": [
+          -0.009386123537887892,
+          0.009386123537887892
+        ],
+        "improved": 3,
+        "regressed": 3,
+        "identical": 312,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "pyramid": {
+        "pairs": 512,
+        "baseline": 0.908203125,
+        "candidate": 0.931640625,
+        "delta": 0.0234375,
+        "ci95": [
+          0.005579695920999342,
+          0.04129530407900066
+        ],
+        "improved": 17,
+        "regressed": 5,
+        "identical": 287,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "quickdraw-plant": {
+        "pairs": 512,
+        "baseline": 0.779296875,
+        "candidate": 0.775390625,
+        "delta": -0.00390625,
+        "ci95": [
+          -0.027525047939719424,
+          0.019712547939719424
+        ],
+        "improved": 18,
+        "regressed": 20,
+        "identical": 336,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "rock-block": {
+        "pairs": 512,
+        "baseline": 0.671875,
+        "candidate": 0.662109375,
+        "delta": -0.009765625,
+        "ci95": [
+          -0.03817090797224111,
+          0.018639657972241108
+        ],
+        "improved": 25,
+        "regressed": 30,
+        "identical": 300,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "six-samurai": {
+        "pairs": 512,
+        "baseline": 0.517578125,
+        "candidate": 0.552734375,
+        "delta": 0.03515625,
+        "ci95": [
+          0.009346632460105097,
+          0.0609658675398949
+        ],
+        "improved": 32,
+        "regressed": 14,
+        "identical": 324,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "spellcaster": {
+        "pairs": 512,
+        "baseline": 0.8671875,
+        "candidate": 0.88671875,
+        "delta": 0.01953125,
+        "ci95": [
+          6.600193108452154e-05,
+          0.038996498068915475
+        ],
+        "improved": 18,
+        "regressed": 8,
+        "identical": 320,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 512,
+        "baseline": 0.724609375,
+        "candidate": 0.724609375,
+        "delta": 0.0,
+        "ci95": [
+          -0.022991213330552148,
+          0.022991213330552148
+        ],
+        "improved": 18,
+        "regressed": 18,
+        "identical": 314,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "toon": {
+        "pairs": 512,
+        "baseline": 0.9609375,
+        "candidate": 0.9765625,
+        "delta": 0.015625,
+        "ci95": [
+          0.004871844601355504,
+          0.026378155398644496
+        ],
+        "improved": 8,
+        "regressed": 0,
+        "identical": 319,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "verdict": {
+        "pairs": 512,
+        "baseline": 0.1875,
+        "candidate": 0.181640625,
+        "delta": -0.005859375,
+        "ci95": [
+          -0.029783995048876237,
+          0.018065245048876237
+        ],
+        "improved": 18,
+        "regressed": 21,
+        "identical": 339,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "watt": {
+        "pairs": 512,
+        "baseline": 0.939453125,
+        "candidate": 0.95703125,
+        "delta": 0.017578125,
+        "ci95": [
+          -0.0022744311741853956,
+          0.037430681174185396
+        ],
+        "improved": 18,
+        "regressed": 9,
+        "identical": 289,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 512,
+        "baseline": 0.6484375,
+        "candidate": 0.666015625,
+        "delta": 0.017578125,
+        "ci95": [
+          -0.008081608666869307,
+          0.04323785866686931
+        ],
+        "improved": 27,
+        "regressed": 18,
+        "identical": 340,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    },
+    "machina": {
+      "arcana": {
+        "pairs": 512,
+        "baseline": 0.94921875,
+        "candidate": 0.95703125,
+        "delta": 0.0078125,
+        "ci95": [
+          -0.012452526187670874,
+          0.028077526187670874
+        ],
+        "improved": 16,
+        "regressed": 12,
+        "identical": 55,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "blackwing": {
+        "pairs": 512,
+        "baseline": 0.62109375,
+        "candidate": 0.74609375,
+        "delta": 0.125,
+        "ci95": [
+          0.08267562475681386,
+          0.16732437524318614
+        ],
+        "improved": 97,
+        "regressed": 33,
+        "identical": 50,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "burn": {
+        "pairs": 512,
+        "baseline": 0.841796875,
+        "candidate": 0.921875,
+        "delta": 0.080078125,
+        "ci95": [
+          0.04997494816623704,
+          0.11018130183376296
+        ],
+        "improved": 53,
+        "regressed": 12,
+        "identical": 94,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "countdown": {
+        "pairs": 512,
+        "baseline": 0.009765625,
+        "candidate": 0.0078125,
+        "delta": -0.001953125,
+        "ci95": [
+          -0.012089882671174652,
+          0.008183632671174652
+        ],
+        "improved": 3,
+        "regressed": 4,
+        "identical": 33,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "crystal": {
+        "pairs": 512,
+        "baseline": 0.79296875,
+        "candidate": 0.87890625,
+        "delta": 0.0859375,
+        "ci95": [
+          0.053827730510622486,
+          0.11804726948937752
+        ],
+        "improved": 59,
+        "regressed": 15,
+        "identical": 82,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "destiny-hero": {
+        "pairs": 512,
+        "baseline": 0.916015625,
+        "candidate": 0.923828125,
+        "delta": 0.0078125,
+        "ci95": [
+          -0.018726823087611522,
+          0.03435182308761152
+        ],
+        "improved": 26,
+        "regressed": 22,
+        "identical": 63,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "draconic-might": {
+        "pairs": 512,
+        "baseline": 0.697265625,
+        "candidate": 0.765625,
+        "delta": 0.068359375,
+        "ci95": [
+          0.03353204548527943,
+          0.10318670451472056
+        ],
+        "improved": 60,
+        "regressed": 25,
+        "identical": 87,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "dragunity": {
+        "pairs": 512,
+        "baseline": 0.62109375,
+        "candidate": 0.80078125,
+        "delta": 0.1796875,
+        "ci95": [
+          0.13676565059611248,
+          0.22260934940388752
+        ],
+        "improved": 117,
+        "regressed": 25,
+        "identical": 72,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "fortune-lady": {
+        "pairs": 512,
+        "baseline": 0.8359375,
+        "candidate": 0.890625,
+        "delta": 0.0546875,
+        "ci95": [
+          0.022980376776671856,
+          0.08639462322332814
+        ],
+        "improved": 49,
+        "regressed": 21,
+        "identical": 77,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gishki": {
+        "pairs": 512,
+        "baseline": 0.732421875,
+        "candidate": 0.822265625,
+        "delta": 0.08984375,
+        "ci95": [
+          0.0527186575732782,
+          0.1269688424267218
+        ],
+        "improved": 72,
+        "regressed": 26,
+        "identical": 103,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gladiator": {
+        "pairs": 512,
+        "baseline": 0.73046875,
+        "candidate": 0.826171875,
+        "delta": 0.095703125,
+        "ci95": [
+          0.05509425434621428,
+          0.1363119956537857
+        ],
+        "improved": 83,
+        "regressed": 34,
+        "identical": 52,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "gravekeeper": {
+        "pairs": 512,
+        "baseline": 0.513671875,
+        "candidate": 0.666015625,
+        "delta": 0.15234375,
+        "ci95": [
+          0.10763761509698463,
+          0.19704988490301537
+        ],
+        "improved": 113,
+        "regressed": 35,
+        "identical": 60,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "harpie": {
+        "pairs": 512,
+        "baseline": 0.62890625,
+        "candidate": 0.73828125,
+        "delta": 0.109375,
+        "ci95": [
+          0.06707231288288217,
+          0.15167768711711782
+        ],
+        "improved": 92,
+        "regressed": 36,
+        "identical": 51,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "heroes": {
+        "pairs": 512,
+        "baseline": 0.603515625,
+        "candidate": 0.69140625,
+        "delta": 0.087890625,
+        "ci95": [
+          0.04369189483247769,
+          0.1320893551675223
+        ],
+        "improved": 91,
+        "regressed": 46,
+        "identical": 68,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "infernity": {
+        "pairs": 512,
+        "baseline": 0.55859375,
+        "candidate": 0.7109375,
+        "delta": 0.15234375,
+        "ci95": [
+          0.10863403502840455,
+          0.19605346497159545
+        ],
+        "improved": 110,
+        "regressed": 32,
+        "identical": 60,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "karakuri": {
+        "pairs": 512,
+        "baseline": 0.759765625,
+        "candidate": 0.876953125,
+        "delta": 0.1171875,
+        "ci95": [
+          0.07984520532869607,
+          0.15452979467130393
+        ],
+        "improved": 81,
+        "regressed": 21,
+        "identical": 63,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "lightsworn": {
+        "pairs": 512,
+        "baseline": 0.595703125,
+        "candidate": 0.712890625,
+        "delta": 0.1171875,
+        "ci95": [
+          0.07718734950263757,
+          0.15718765049736244
+        ],
+        "improved": 88,
+        "regressed": 28,
+        "identical": 55,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "monarch": {
+        "pairs": 512,
+        "baseline": 0.65625,
+        "candidate": 0.76953125,
+        "delta": 0.11328125,
+        "ci95": [
+          0.06935163688914561,
+          0.1572108631108544
+        ],
+        "improved": 98,
+        "regressed": 40,
+        "identical": 51,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "morphtronic": {
+        "pairs": 512,
+        "baseline": 0.845703125,
+        "candidate": 0.931640625,
+        "delta": 0.0859375,
+        "ci95": [
+          0.05620191349359094,
+          0.11567308650640906
+        ],
+        "improved": 54,
+        "regressed": 10,
+        "identical": 99,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "ojama": {
+        "pairs": 512,
+        "baseline": 0.97265625,
+        "candidate": 0.990234375,
+        "delta": 0.017578125,
+        "ci95": [
+          0.004960974775013711,
+          0.030195275224986287
+        ],
+        "improved": 10,
+        "regressed": 1,
+        "identical": 81,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "pyramid": {
+        "pairs": 512,
+        "baseline": 0.955078125,
+        "candidate": 0.95703125,
+        "delta": 0.001953125,
+        "ci95": [
+          -0.017957129635382287,
+          0.021863379635382287
+        ],
+        "improved": 14,
+        "regressed": 13,
+        "identical": 49,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "quickdraw-plant": {
+        "pairs": 512,
+        "baseline": 0.75390625,
+        "candidate": 0.8359375,
+        "delta": 0.08203125,
+        "ci95": [
+          0.04399048137488022,
+          0.12007201862511978
+        ],
+        "improved": 72,
+        "regressed": 30,
+        "identical": 71,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "rock-block": {
+        "pairs": 512,
+        "baseline": 0.609375,
+        "candidate": 0.732421875,
+        "delta": 0.123046875,
+        "ci95": [
+          0.0805065636995855,
+          0.1655871863004145
+        ],
+        "improved": 97,
+        "regressed": 34,
+        "identical": 66,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "six-samurai": {
+        "pairs": 512,
+        "baseline": 0.6875,
+        "candidate": 0.783203125,
+        "delta": 0.095703125,
+        "ci95": [
+          0.05809795422620104,
+          0.13330829577379896
+        ],
+        "improved": 75,
+        "regressed": 26,
+        "identical": 52,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "spellcaster": {
+        "pairs": 512,
+        "baseline": 0.93359375,
+        "candidate": 0.970703125,
+        "delta": 0.037109375,
+        "ci95": [
+          0.016018453306686033,
+          0.05820029669331397
+        ],
+        "improved": 25,
+        "regressed": 6,
+        "identical": 72,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "tele-dad": {
+        "pairs": 512,
+        "baseline": 0.64453125,
+        "candidate": 0.7421875,
+        "delta": 0.09765625,
+        "ci95": [
+          0.055485285933531504,
+          0.1398272140664685
+        ],
+        "improved": 88,
+        "regressed": 38,
+        "identical": 57,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "toon": {
+        "pairs": 512,
+        "baseline": 0.953125,
+        "candidate": 0.97265625,
+        "delta": 0.01953125,
+        "ci95": [
+          0.0008355434332972186,
+          0.03822695656670278
+        ],
+        "improved": 17,
+        "regressed": 7,
+        "identical": 101,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "verdict": {
+        "pairs": 512,
+        "baseline": 0.322265625,
+        "candidate": 0.408203125,
+        "delta": 0.0859375,
+        "ci95": [
+          0.046075241842338105,
+          0.1257997581576619
+        ],
+        "improved": 78,
+        "regressed": 34,
+        "identical": 79,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "watt": {
+        "pairs": 512,
+        "baseline": 0.6484375,
+        "candidate": 0.666015625,
+        "delta": 0.017578125,
+        "ci95": [
+          -0.022029721708648045,
+          0.057185971708648045
+        ],
+        "improved": 58,
+        "regressed": 49,
+        "identical": 25,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      },
+      "x-saber": {
+        "pairs": 512,
+        "baseline": 0.71875,
+        "candidate": 0.822265625,
+        "delta": 0.103515625,
+        "ci95": [
+          0.06606635025877103,
+          0.14096489974122897
+        ],
+        "improved": 77,
+        "regressed": 24,
+        "identical": 70,
+        "failures": 0,
+        "limits": 0,
+        "baseline_limits": 0,
+        "candidate_limits": 0
+      }
+    }
+  },
+  "combined": {
+    "six-samurai": {
+      "pairs": 3328,
+      "baseline": 0.5594951923076923,
+      "candidate": 0.6850961538461539,
+      "delta": 0.12560096153846154,
+      "ci95": [
+        0.11197028969599841,
+        0.13923163338092467
+      ],
+      "improved": 503,
+      "regressed": 85,
+      "identical": 1011,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "gravekeeper": {
+      "pairs": 3328,
+      "baseline": 0.6234975961538461,
+      "candidate": 0.6538461538461539,
+      "delta": 0.030348557692307692,
+      "ci95": [
+        0.021036377451928025,
+        0.03966073793268736
+      ],
+      "improved": 177,
+      "regressed": 76,
+      "identical": 2163,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    },
+    "machina": {
+      "pairs": 3328,
+      "baseline": 0.7001201923076923,
+      "candidate": 0.8037860576923077,
+      "delta": 0.10366586538461539,
+      "ci95": [
+        0.08861114037796645,
+        0.11872059039126433
+      ],
+      "improved": 517,
+      "regressed": 172,
+      "identical": 494,
+      "failures": 0,
+      "limits": 0,
+      "baseline_limits": 0,
+      "candidate_limits": 0
+    }
+  },
+  "search_standalone_pairs_reproduced": 312,
+  "unchanged_tournament_games": {
+    "games": 96768,
+    "identical": 96768,
+    "previous_raw_sha256": "8bd8ef3b2628b65d0cb253218d70c37962679fde0fc6b2f292b931eefc394582",
+    "current_raw_sha256": "816c8e5fee8cdd932e42fb720db8fbad8739732de0e68e1990a7726f8ebaa823"
+  },
+  "selected_screen_reproduced_in_development": 9984,
+  "screening_limit_draws": {
+    "screen16": {
+      "gravekeeper": 1
+    }
+  },
+  "workspace_tests_passed": 169
+}

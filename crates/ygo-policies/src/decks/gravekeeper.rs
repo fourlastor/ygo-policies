@@ -139,9 +139,10 @@ impl Strategy for Gravekeeper {
                 return t.pick(i);
             }
         }
-        // Royal Tribute: their hand's monsters for ours.
+        // Use our Normal Summon before Royal Tribute discards the last
+        // monster in our hand. Only their public hand size is consulted.
         let our_monsters = ctx.hand().iter().filter(|c| ctx.view_data(c).is_monster()).count();
-        if Self::valley_up(&ctx) && ctx.hand_size(ctx.opp) >= 3 && our_monsters <= 1 {
+        if Self::valley_up(&ctx) && ctx.hand_size(ctx.opp) >= 3 && our_monsters <= 1 && (our_monsters == 0 || ctx.obs.summon_used) {
             if let Some(i) = t.activate(ROYAL_TRIBUTE) {
                 return t.pick(i);
             }
@@ -152,6 +153,7 @@ impl Strategy for Gravekeeper {
                 .monsters(ctx.opp)
                 .into_iter()
                 .chain(ctx.spell_traps(ctx.opp))
+                .filter(|c| ctx.reaches(c, DESCENDANT, true, true))
                 .max_by_key(|c| ctx.threat(c))
                 .filter(|c| ctx.threat(c) >= 1500);
             let fodder = ctx
@@ -187,6 +189,8 @@ impl Strategy for Gravekeeper {
         let bonus = Self::bonus(&ctx) as f64;
         let revive = ctx.graveyard(ctx.me).iter().any(|c| Self::is_gravekeeper(&ctx, c) && ctx.view_data(c).attack >= 1500);
         Some(match (choice.kind, code) {
+            // Visionary can use one Gravekeeper instead of two Tributes.
+            (ChoiceKind::NormalSummon, VISIONARY) if ctx.monsters(ctx.me).iter().any(|c| Self::is_gravekeeper(&ctx, c)) => Some(2800.0),
             // Spy's Flip Summon is a second Gravekeeper.
             (ChoiceKind::SetMonster, SPY) => Some(2100.0),
             (ChoiceKind::SetMonster, GUARD) if !ctx.monsters(ctx.opp).is_empty() => Some(1700.0),
@@ -248,10 +252,16 @@ impl Strategy for Gravekeeper {
                     _ => Response::no(),
                 }
             }
-            PHARAOHS_TREASURE if end_of_their_turn => Response::new(10.0),
+            // Necrovalley would stop the later Graveyard recovery and can
+            // leave Treasure cycling through the Deck without a payoff.
+            PHARAOHS_TREASURE if end_of_their_turn && (!Self::valley_up(&ctx) || Self::face_up(&ctx, CHIEF)) => Response::new(10.0),
             PHARAOHS_TREASURE => Response::no(),
             _ => return None,
         })
+    }
+
+    fn option(&self, t: &Turn) -> Option<usize> {
+        t.choices().find(|(_, c)| c.description == ((VISIONARY as u64) << 4)).map(|(i, _)| i)
     }
 
     fn position(&self, t: &Turn, code: u32) -> Option<Position> {

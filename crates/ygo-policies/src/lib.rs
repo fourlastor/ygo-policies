@@ -3681,4 +3681,225 @@ mod tests {
         let mut policy = crate::registry::create("lightsworn", db).unwrap();
         assert_eq!(policy.choose(&obs, &idle), 1, "do not sacrifice an equally valuable ally for the wipe");
     }
+    #[test]
+    fn samurai_kageki_brings_a_tuner_before_another_attacker() {
+        const KAGEKI: u32 = 2511717;
+        const KAGEMUSHA: u32 = 1498130;
+        const ENISHI: u32 = 75116619;
+        let mut tuner = creature(KAGEMUSHA, 2, 400, 1800, 0x3d);
+        tuner.1.kind |= crate::cards::types::TUNER;
+        let db = Arc::new(MemoryCards([tuner, creature(KAGEKI, 3, 200, 2000, 0x3d), creature(ENISHI, 4, 1700, 700, 0x3d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(KAGEKI), Position::FACE_UP_ATTACK, 200, 2000)];
+        let summon = select_one(Hint::SpecialSummon, vec![toggle(Location::Hand, 0, ENISHI), toggle(Location::Hand, 1, KAGEMUSHA)]);
+        let mut policy = crate::registry::create("six-samurai", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &summon), 1);
+        obs.cards.push(monster(0, 1, Some(KAGEMUSHA), Position::FACE_UP_DEFENSE, 400, 1800));
+        let mut policy = crate::registry::create("six-samurai", db).unwrap();
+        assert_eq!(policy.choose(&obs, &summon), 0, "do not fill the board with redundant Tuners");
+    }
+
+    #[test]
+    fn machina_summons_cyber_dragon_before_filling_its_empty_field() {
+        const CYBER: u32 = 70095154;
+        const FORTRESS: u32 = 5556499;
+        const GEARFRAME: u32 = 42940404;
+        let db = Arc::new(MemoryCards([creature(CYBER, 5, 2100, 1600, 0), creature(FORTRESS, 7, 2500, 1600, 0), creature(GEARFRAME, 4, 1800, 0, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, CYBER, false), card(0, Location::Hand, 1, FORTRESS, false), card(0, Location::Hand, 2, GEARFRAME, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1900, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, FORTRESS, 1), from_hand(ChoiceKind::NormalSummon, GEARFRAME, 2), from_hand(ChoiceKind::SpecialSummon, CYBER, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("machina", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 2);
+    }
+
+    #[test]
+    fn machina_discards_fortress_before_spending_two_searching_machines() {
+        const FORTRESS: u32 = 5556499;
+        const GEARFRAME: u32 = 42940404;
+        const GADGET: u32 = 86445415;
+        let db = Arc::new(MemoryCards([creature(FORTRESS, 7, 2500, 1600, 0), creature(GEARFRAME, 4, 1800, 0, 0), creature(GADGET, 4, 1300, 1500, 0)].into_iter().collect()));
+        let obs = observation();
+        let mut discard = select_one(Hint::Discard, vec![toggle(Location::Hand, 0, GEARFRAME), toggle(Location::Hand, 1, GADGET), toggle(Location::Hand, 2, FORTRESS)]);
+        discard.kind = DecisionKind::SelectSum;
+        let mut policy = crate::registry::create("machina", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &discard), 2);
+        let search = select_one(Hint::AddToHand, vec![toggle(Location::Deck, 0, GEARFRAME), toggle(Location::Deck, 1, FORTRESS)]);
+        let mut policy = crate::registry::create("machina", db).unwrap();
+        assert_eq!(policy.choose(&obs, &search), 1, "cheap discard does not reduce Fortress search priority");
+    }
+
+    #[test]
+    fn samurai_activates_another_united_before_the_next_summon() {
+        const UNITED: u32 = 72345736;
+        const KAGEKI: u32 = 2511717;
+        let db = Arc::new(MemoryCards([creature(KAGEKI, 3, 200, 2000, 0x3d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, UNITED, true), card(0, Location::Hand, 0, UNITED, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, KAGEKI, 1), activate(UNITED, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("six-samurai", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn samurai_searches_a_tuner_or_a_free_summon_using_the_public_normal_summon_state() {
+        const KAGEKI: u32 = 2511717;
+        const KAGEMUSHA: u32 = 1498130;
+        const KIZAN: u32 = 49721904;
+        let mut tuner = creature(KAGEMUSHA, 2, 400, 1800, 0x3d);
+        tuner.1.kind |= crate::cards::types::TUNER;
+        let db = Arc::new(MemoryCards([tuner, creature(KAGEKI, 3, 200, 2000, 0x3d), creature(KIZAN, 4, 1800, 500, 0x3d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, KAGEKI, false)];
+        let search = select_one(Hint::AddToHand, vec![toggle(Location::Deck, 0, KAGEKI), toggle(Location::Deck, 1, KAGEMUSHA), toggle(Location::Deck, 2, KIZAN)]);
+        let mut policy = crate::registry::create("six-samurai", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &search), 1, "Kageki in hand can bring the missing Tuner");
+        obs.cards = vec![monster(0, 0, Some(KAGEKI), Position::FACE_UP_ATTACK, 200, 2000)];
+        obs.cards[0].level = 3;
+        obs.summon_used = true;
+        let mut policy = crate::registry::create("six-samurai", db).unwrap();
+        assert_eq!(policy.choose(&obs, &search), 2, "after the Normal Summon, take a Samurai that can Special Summon itself");
+    }
+
+    #[test]
+    fn samurai_normal_summons_a_tuner_only_when_it_connects_to_its_extra_deck() {
+        const KIZAN: u32 = 49721904;
+        const SQUIRE: u32 = 33883834;
+        const SHI_EN: u32 = 29981921;
+        let mut tuner = creature(SQUIRE, 1, 100, 100, 0x3d);
+        tuner.1.kind |= crate::cards::types::TUNER;
+        let mut shi_en = creature(SHI_EN, 5, 2500, 1400, 0x3d);
+        shi_en.1.kind |= crate::cards::types::SYNCHRO;
+        let db = Arc::new(MemoryCards([tuner, shi_en, creature(KIZAN, 4, 1800, 500, 0x3d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(KIZAN), Position::FACE_UP_ATTACK, 1800, 500), card(0, Location::Extra, 0, SHI_EN, false)];
+        obs.cards[0].level = 4;
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, SQUIRE, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("six-samurai", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        let mut policy = crate::registry::create("six-samurai", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not summon the fragile hand protector without a Synchro route");
+    }
+
+    #[test]
+    fn samurai_revives_kagemusha_to_make_a_synchro_instead_of_waiting_for_a_tuner() {
+        const KAGEMUSHA: u32 = 1498130;
+        const KAGEKI: u32 = 2511717;
+        const SHI_EN: u32 = 29981921;
+        const RETURN: u32 = 46874015;
+        const DOUBLE: u32 = 21007444;
+        let mut tuner = creature(KAGEMUSHA, 2, 400, 1800, 0x3d);
+        tuner.1.kind |= crate::cards::types::TUNER;
+        let mut shi_en = creature(SHI_EN, 5, 2500, 1400, 0x3d);
+        shi_en.1.kind |= crate::cards::types::SYNCHRO;
+        let db = Arc::new(MemoryCards([tuner, shi_en, creature(KAGEKI, 3, 200, 2000, 0x3d)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(KAGEKI), Position::FACE_UP_ATTACK, 200, 2000), card(0, Location::Graveyard, 0, KAGEMUSHA, true), card(0, Location::Extra, 0, SHI_EN, false)];
+        obs.cards[0].level = 3;
+        let revive = decide(DecisionKind::Idle, None, vec![activate(RETURN, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("six-samurai", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &revive), 0);
+        obs.cards[0] = card(0, Location::Graveyard, 1, KAGEKI, true);
+        let pair = decide(DecisionKind::Idle, None, vec![activate(DOUBLE, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("six-samurai", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &pair), 0);
+        obs.life_points[0] = 4000;
+        let mut policy = crate::registry::create("six-samurai", db).unwrap();
+        assert_eq!(policy.choose(&obs, &pair), 1, "keep the existing LP reserve for the two-body revival");
+    }
+
+    #[test]
+    fn gravekeeper_recognizes_visionarys_single_gravekeeper_tribute() {
+        const VISIONARY: u32 = 3825890;
+        const SPY: u32 = 24317029;
+        let db = Arc::new(MemoryCards([creature(VISIONARY, 8, 2000, 1800, 0x2e), creature(SPY, 4, 1200, 2000, 0x2e)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(SPY), Position::FACE_UP_ATTACK, 1200, 2000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, VISIONARY, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gravekeeper", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "one Gravekeeper pays the alternative Tribute procedure");
+        let options = decide(DecisionKind::Option, Some(VISIONARY), vec![Choice { description: 1, ..choice(ChoiceKind::Option) }, Choice { description: (VISIONARY as u64) << 4, ..choice(ChoiceKind::Option) }]);
+        assert_eq!(policy.choose(&obs, &options), 1, "use the one-Tribute procedure when both are offered");
+        obs.cards.clear();
+        let mut policy = crate::registry::create("gravekeeper", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn gravekeeper_deploys_its_last_hand_monster_before_royal_tribute() {
+        const VALLEY: u32 = 47355498;
+        const TRIBUTE: u32 = 72405967;
+        const SPEAR: u32 = 63695531;
+        let db = Arc::new(MemoryCards([creature(SPEAR, 4, 1500, 1000, 0x2e)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 5, VALLEY, true), card(0, Location::Hand, 0, SPEAR, false)];
+        obs.pile_sizes = vec![(1, Location::Hand, 5)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(TRIBUTE, Location::Hand, 1), from_hand(ChoiceKind::NormalSummon, SPEAR, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gravekeeper", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.summon_used = true;
+        obs.cards[1] = monster(0, 0, Some(SPEAR), Position::FACE_UP_ATTACK, 2000, 1500);
+        let idle = decide(DecisionKind::Idle, None, vec![activate(TRIBUTE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn gravekeeper_does_not_cycle_treasure_into_its_own_necrovalley_lock() {
+        const VALLEY: u32 = 47355498;
+        const TREASURE: u32 = 63571750;
+        const CHIEF: u32 = 62473983;
+        let db = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::End);
+        obs.chain_known = true;
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, TREASURE, false), card(0, Location::SpellTrapZone, 5, VALLEY, true)];
+        let chain = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(TREASURE, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("gravekeeper", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &chain), 1);
+        obs.cards.push(monster(0, 0, Some(CHIEF), Position::FACE_UP_ATTACK, 2400, 1700));
+        let mut policy = crate::registry::create("gravekeeper", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &chain), 0, "Chief exempts our Graveyard");
+        obs.cards.retain(|c| c.code != Some(CHIEF) && c.code != Some(VALLEY));
+        let mut policy = crate::registry::create("gravekeeper", db).unwrap();
+        assert_eq!(policy.choose(&obs, &chain), 0, "recovery remains available without Necrovalley");
+    }
+
+    #[test]
+    fn machina_keeps_its_own_machines_but_contact_fuses_with_the_opponents() {
+        const CYBER: u32 = 70095154;
+        const FORTRESS: u32 = 5556499;
+        const GEARFRAME: u32 = 42940404;
+        const CHIMERATECH: u32 = 79229522;
+        let mut entries = [creature(CYBER, 5, 2100, 1600, 0), creature(FORTRESS, 7, 2500, 1600, 0), creature(GEARFRAME, 4, 1800, 0, 0)];
+        for e in &mut entries { e.1.race = crate::cards::races::MACHINE; }
+        let db = Arc::new(MemoryCards(entries.into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(CYBER), Position::FACE_UP_ATTACK, 2100, 1600), monster(0, 1, Some(FORTRESS), Position::FACE_UP_ATTACK, 2500, 1600), monster(0, 2, Some(GEARFRAME), Position::FACE_UP_ATTACK, 1800, 0)];
+        let idle = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::SpecialSummon, ..activate(CHIMERATECH, Location::Extra, 0) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("machina", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "do not compress three useful attackers into one");
+        obs.cards.push(monster(1, 0, Some(FORTRESS), Position::FACE_UP_ATTACK, 2500, 1600));
+        let mut policy = crate::registry::create("machina", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn machina_uses_troopers_boost_with_a_battle_phase_and_a_deck_reserve() {
+        const TROOPER: u32 = 85087012;
+        let db = Arc::new(MemoryCards([creature(TROOPER, 3, 400, 400, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(TROOPER), Position::FACE_UP_ATTACK, 400, 400)];
+        obs.pile_sizes = vec![(0, Location::Deck, 7)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(TROOPER, Location::MonsterZone, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("machina", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.pile_sizes[0].2 = 6;
+        let mut policy = crate::registry::create("machina", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.pile_sizes[0].2 = 7;
+        let no_battle = decide(DecisionKind::Idle, None, vec![activate(TROOPER, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("machina", db).unwrap();
+        assert_eq!(policy.choose(&obs, &no_battle), 1);
+    }
 }

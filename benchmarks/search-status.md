@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Twenty-six pilots have been through it. The other 5 are to follow, a few at a
+Twenty-nine pilots have been through it. The other 2 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
@@ -51,19 +51,19 @@ Search gaps estimate remaining headroom; they are not hard ceilings.
 | Tele-DAD | 2 | 58.7% | 76.0% | 17.3 | 55.42% → 57.77% (the 30 other decks, held out) | [rock-tele-rules.md](rock-tele-rules.md) |
 | Lightsworn Judgment | 2 | 68.8% | 84.4% | 15.6 | 56.19% → 63.95% (the 30 other decks, held out) | [lightsworn-heroes-rules.md](lightsworn-heroes-rules.md) |
 | Fusion Heroes | 2 | 71.9% | 81.2% | 9.4 | 59.40% → 68.15% (the 30 other decks, held out) | [lightsworn-heroes-rules.md](lightsworn-heroes-rules.md) |
+| Legendary Six Samurai | 2 | 73.1% | 90.4% | 17.3 | 59.51% → 70.83% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
+| Gravekeeper's Tomb | 2 | 60.6% | 77.9% | 17.3 | 65.41% → 67.25% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
+| Machina Gadgets | 2 | 81.7% | 92.3% | 10.6 | 70.36% → 78.40% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
 
 ## To do
 
-The 5 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
-refreshed on 2026-10-06.
+The 2 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
+refreshed on 2026-10-07.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 91.9% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 81.4% | strong |  |
-| 3 | Machina Gadgets | `machina` | 69.0% | strong |  |
-| 6 | Gravekeeper's Tomb | `gravekeeper` | 65.8% | mid |  |
-| 12 | Legendary Six Samurai | `six-samurai` | 60.0% | mid |  |
+| 1 | Claudi-oh's Countdown | `countdown` | 91.4% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 80.8% | strong |  |

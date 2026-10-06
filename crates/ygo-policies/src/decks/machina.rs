@@ -64,10 +64,11 @@ impl Strategy for Machina {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
-        // Machina Fortress whenever its discard can be paid: a 2500 beater now
-        // is worth the two cards.
-        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(MACHINA_FORTRESS), None) {
-            return t.pick(i);
+        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(CYBER_DRAGON), Some(Location::Hand)) { return t.pick(i); }
+        // The shared summon order deploys a Gadget / Gearframe and resolves
+        // its search before paying Fortress's discard cost.
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.deck_size(ctx.me) > 6 {
+            if let Some(i) = t.activate_from(CARD_TROOPER, Location::MonsterZone) { return t.pick(i); }
         }
         // Limiter Removal: doubled Machines on an open field.
         if ctx.main1() && t.has(ChoiceKind::EnterBattle) && ctx.monsters(ctx.opp).is_empty() {
@@ -107,11 +108,11 @@ impl Strategy for Machina {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         let ctx = t.ctx;
         Some(match ctx.canonical(choice.code().unwrap_or(0)) {
-            // Cyber Dragon and Machines from either field: theirs first.
+            // Use contact Fusion to remove their Machines; keep our own
+            // board when it would only trade several attackers for one.
             CHIMERATECH_FORTRESS_DRAGON => {
                 let theirs = ctx.monsters(ctx.opp).iter().filter(|c| c.position.face_up && Self::is_machine(&ctx, c)).count();
-                let ours = ctx.monsters(ctx.me).iter().filter(|c| Self::is_machine(&ctx, c) && !ctx.is(c, CYBER_DRAGON)).count();
-                theirs >= 1 || ours >= 2
+                theirs >= 1
             }
             _ => return None,
         })
@@ -133,6 +134,11 @@ impl Strategy for Machina {
         let ctx = t.ctx;
         let mine = member.at.controller == ctx.me;
         let code = member.code.map(|c| ctx.canonical(c));
+        // Fortress can pay its own summon cost from the hand, then come
+        // straight back. Preserve the smaller Machines and their searches.
+        if mine && t.decision.hint == Hint::Discard && code == Some(MACHINA_FORTRESS) {
+            return Some(-100.0);
+        }
         match t.decision.hint {
             // Searches: Fortress for Gearframe.
             Hint::AddToHand if mine && member.at.location == Location::Deck => {
