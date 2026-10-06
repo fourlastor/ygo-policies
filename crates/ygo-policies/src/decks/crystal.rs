@@ -110,9 +110,10 @@ impl Strategy for Crystal {
         if let Some(i) = t.activate(RAINBOW_RUINS) {
             return t.pick(i);
         }
-        // Crystal Abundance: four stored Beasts for the opponent's whole field.
+        // Abundance clears the field and rebuilds ours from the Graveyard:
+        // two opposing cards already repay it with two summoned Beasts.
         let their_cards = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
-        if their_cards >= 3 && ctx.field_strength(ctx.opp) >= ctx.field_strength(ctx.me) {
+        if their_cards >= 2 {
             if let Some(i) = t.activate(CRYSTAL_ABUNDANCE) {
                 return t.pick(i);
             }
@@ -128,7 +129,8 @@ impl Strategy for Crystal {
             .into_iter()
             .find(|c| ctx.is(c, CRYSTAL_TREE))
             .map_or(0, |c| c.counters as usize);
-        if tree_counters >= 2 && Self::free_spell_zones(&ctx) >= tree_counters.min(2) {
+        // Tree sends itself as cost, freeing another zone for a Beast.
+        if tree_counters >= 1 && Self::free_spell_zones(&ctx) + 1 >= tree_counters {
             if let Some(i) = t.activate_from(CRYSTAL_TREE, Location::SpellTrapZone) {
                 return t.pick(i);
             }
@@ -160,7 +162,7 @@ impl Strategy for Crystal {
                 return t.pick(i);
             }
         }
-        // Crystal Release on an attacker that then wins its battle.
+        // Release also adds damage when the attacker already wins or attacks directly.
         if ctx.main1() {
             let target = ctx
                 .monsters(ctx.me)
@@ -168,7 +170,7 @@ impl Strategy for Crystal {
                 .filter(|c| c.position.face_up && ctx.can_attack(c) && c.code.map_or(false, |code| Self::is_beast(&ctx, code)))
                 .find(|c| {
                     let best = ctx.opp_best_attack();
-                    c.attack <= best && c.attack + 800 > best
+                    c.attack + 800 > best
                 });
             if let Some(target) = target {
                 if let Some(i) = t.activate(CRYSTAL_RELEASE) {
@@ -189,8 +191,9 @@ impl Strategy for Crystal {
             (ChoiceKind::NormalSummon, COBALT_EAGLE) => Some(1400.0),
             (ChoiceKind::SetMonster, EMERALD_TORTOISE) => Some(1300.0),
             (ChoiceKind::NormalSummon, AMETHYST_CAT) if ctx.monsters(ctx.opp).iter().any(|c| c.attack > 1200) => Some(1250.0),
-            // Ruby Carbuncle only works when Special Summoned.
-            (ChoiceKind::NormalSummon | ChoiceKind::SetMonster, RUBY_CARBUNCLE) => None,
+            // A spare Ruby still provides a body and can become a stored Beast.
+            (ChoiceKind::NormalSummon, RUBY_CARBUNCLE) => Some(900.0),
+            (ChoiceKind::SetMonster, RUBY_CARBUNCLE) => None,
             _ => return None,
         })
     }
@@ -198,8 +201,9 @@ impl Strategy for Crystal {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         let ctx = t.ctx;
         Some(match ctx.canonical(choice.code().unwrap_or(0)) {
-            // Only while Rainbow Ruins keeps it alive.
-            MALEFIC_RAINBOW_DRAGON => ctx.face_up_on_field(ctx.me, RAINBOW_RUINS),
+            // Either player's face-up Field Spell keeps Malefic alive.
+            MALEFIC_RAINBOW_DRAGON => ctx.spell_traps(ctx.me).into_iter().chain(ctx.spell_traps(ctx.opp))
+                .any(|c| c.at.sequence == 5 && c.position.face_up),
             // Hamon eats three stored Beasts: worth it for a 4000/4000 wall.
             HAMON => Self::stored(&ctx).len() >= 3 || ctx.opp_best_attack() >= 2500,
             _ => return None,
@@ -250,7 +254,9 @@ impl Strategy for Crystal {
             }
             // Summoned from the Deck / backrow: Ruby Carbuncle empties the backrow onto the field.
             Hint::SpecialSummon => {
-                let carbuncle = if code == RUBY_CARBUNCLE { 400.0 * Self::stored(&ctx).len() as f64 } else { 0.0 };
+                // Promise removes Ruby from the backrow before its effect resolves.
+                let companions = Self::stored(&ctx).iter().filter(|c| c.at != member.at).count();
+                let carbuncle = if code == RUBY_CARBUNCLE && companions >= 2 && ctx.free_monster_zones(ctx.me) >= 3 { 3000.0 } else { 0.0 };
                 Some(ctx.data(code).attack as f64 + carbuncle + if code == SAPPHIRE_PEGASUS { 600.0 } else { 0.0 })
             }
             _ => None,
@@ -262,4 +268,3 @@ impl Strategy for Crystal {
         Some(t.ctx.data(code).is_trap() && Self::free_spell_zones(&t.ctx) >= 2)
     }
 }
-

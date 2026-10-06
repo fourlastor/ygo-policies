@@ -58,6 +58,8 @@ impl Morphtronic {
         let attacking = ctx.my_turn() && ctx.main1();
         let threatened = ctx.opp_best_attack() > ctx.my_best_attack();
         Some(match code {
+            // Leave attacks available for the Equip Spells it fetches.
+            POWER_TOOL_DRAGON if attacking => Position::FACE_UP_ATTACK,
             RADION => Position::FACE_UP_ATTACK,
             // Direct attacks for everyone, if anyone can use them.
             BOARDEN if attacking && Self::attackers(ctx) >= 2 && !ctx.monsters(ctx.opp).is_empty() => Position::FACE_UP_ATTACK,
@@ -118,6 +120,15 @@ impl Strategy for Morphtronic {
             }
         });
         if let Some(i) = turn_pos {
+            // Equip before changing position so Cord removes their backrow.
+            // Power Tool has its own position rule but cannot carry Cord.
+            if t.view(t.choice(i)).map_or(false, |c| Self::is_morph(&ctx, c))
+                && !ctx.spell_traps(ctx.opp).is_empty() && !ctx.face_up_on_field(ctx.me, CORD)
+            {
+                if let Some(equip) = t.activate(CORD) {
+                    return t.pick_targeting(equip, t.choice(i).at().into_iter().collect());
+                }
+            }
             return t.pick(i);
         }
         // Effects that build the board.
@@ -172,11 +183,11 @@ impl Strategy for Morphtronic {
         let has_tuner = ctx.monsters(ctx.me).iter().any(|c| c.position.face_up && ctx.view_data(c).is_tuner());
         Some(match (choice.kind, code) {
             (ChoiceKind::NormalSummon, RADION) => Some(2000.0),
-            (ChoiceKind::NormalSummon, SCOPEN) if Self::level4_morph_in_hand(&ctx) => Some(1950.0),
+            (ChoiceKind::NormalSummon, SCOPEN) if Self::level4_morph_in_hand(&ctx) => Some(2150.0),
             (ChoiceKind::NormalSummon, BOOMBOXEN) => Some(1750.0 + if has_tuner { 100.0 } else { 0.0 }),
             (ChoiceKind::NormalSummon, SCOPEN | REMOTEN) => Some(1650.0),
             (ChoiceKind::NormalSummon, BOARDEN) => Some(1550.0),
-            (ChoiceKind::NormalSummon, CELFON) => Some(1300.0),
+            (ChoiceKind::NormalSummon, CELFON) => Some(2050.0),
             (ChoiceKind::NormalSummon, MAGNEN | CAMERAN) => Some(1200.0),
             // Face-down, a Morphtronic has neither effect.
             (ChoiceKind::SetMonster, _) if ctx.data(code).in_set(SET_MORPHTRONIC) => None,
@@ -203,7 +214,10 @@ impl Strategy for Morphtronic {
                     Response::no()
                 }
             }
-            CORD => Response::no(),
+            CORD => match ctx.spell_traps(ctx.opp).into_iter().max_by_key(|c| ctx.threat(c)) {
+                Some(target) => Response::targeting(40.0, vec![target.at]),
+                None => Response::no(),
+            },
             _ => return None,
         })
     }

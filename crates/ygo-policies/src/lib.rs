@@ -2561,4 +2561,227 @@ mod tests {
         obs.cards[3].attack = 2800;
         assert_ne!(chosen(&obs, Location::SpellTrapZone), ChoiceKind::Activate, "do not count a set equip twice");
     }
+
+    #[test]
+    fn crystal_recruits_ruby_for_two_companions_with_room_for_the_swarm() {
+        const PEGASUS: u32 = 7093411;
+        const RUBY: u32 = 32710364;
+        const TIGER: u32 = 95600067;
+        let db = Arc::new(MemoryCards([creature(PEGASUS, 4, 1800, 1200, 0x1034),
+            creature(RUBY, 3, 300, 300, 0x1034), creature(TIGER, 4, 1600, 1000, 0x1034)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, PEGASUS, true), card(0, Location::SpellTrapZone, 1, TIGER, true)];
+        let deck = select_one(Hint::SpecialSummon, vec![toggle(Location::Deck, 0, PEGASUS), toggle(Location::Deck, 1, RUBY)]);
+        let chosen = |obs: &Observation, decision: &Decision| {
+            let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, decision)].code()
+        };
+        assert_eq!(chosen(&obs, &deck), Some(RUBY), "Ruby can summon both stored Beasts");
+        obs.cards.extend((0..3).map(|i| monster(0, i, Some(TIGER), Position::FACE_UP_ATTACK, 1600, 1000)));
+        assert_eq!(chosen(&obs, &deck), Some(PEGASUS), "two free zones cannot hold Ruby and two companions");
+        obs.cards.truncate(2);
+        obs.cards[1].code = Some(RUBY);
+        let backrow = select_one(Hint::SpecialSummon, vec![toggle(Location::SpellTrapZone, 0, PEGASUS), toggle(Location::SpellTrapZone, 1, RUBY)]);
+        assert_eq!(chosen(&obs, &backrow), Some(PEGASUS), "Ruby cannot count itself among its companions");
+    }
+
+    #[test]
+    fn crystal_tree_spends_one_counter_and_counts_its_own_freed_zone() {
+        use crate::cards::types;
+        const TREE: u32 = 47408488;
+        const TIGER: u32 = 95600067;
+        let db = Arc::new(MemoryCards([printed(TREE, types::SPELL | types::CONTINUOUS, 0),
+            creature(TIGER, 4, 1600, 1000, 0x1034)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, TREE, true)];
+        obs.cards[0].counters = 1;
+        let spend = decide(DecisionKind::Idle, None, vec![activate(TREE, Location::SpellTrapZone, 0), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+            spend.choices[policy.choose(obs, &spend)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Activate);
+        obs.cards.extend((1..4).map(|i| card(0, Location::SpellTrapZone, i, TIGER, true)));
+        obs.cards[0].counters = 2;
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "one empty zone plus Tree's own zone fit two Beasts");
+        obs.cards[0].counters = 0;
+        let empty = decide(DecisionKind::Idle, None, vec![choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("crystal", db).unwrap();
+        assert_eq!(policy.choose(&obs, &empty), 0);
+    }
+
+    #[test]
+    fn crystal_abundance_clears_two_opposing_cards() {
+        use crate::cards::types;
+        const ABUNDANCE: u32 = 72881007;
+        const TIGER: u32 = 95600067;
+        let db = Arc::new(MemoryCards([printed(ABUNDANCE, types::SPELL, 0),
+            creature(TIGER, 4, 1600, 1000, 0x1034)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = (0..4).map(|i| card(0, Location::SpellTrapZone, i, TIGER, true)).collect();
+        obs.cards.extend([card(0, Location::Hand, 0, ABUNDANCE, false),
+            monster(1, 0, None, Position::FACE_DOWN_DEFENSE, 0, 0),
+            CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) }]);
+        let clear = decide(DecisionKind::Idle, None, vec![activate(ABUNDANCE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+            clear.choices[policy.choose(obs, &clear)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Activate, "their identities are unnecessary for a field-wide send");
+        obs.cards.pop();
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn, "preserve the four stored Beasts against a single card");
+    }
+
+    #[test]
+    fn crystal_release_adds_damage_on_an_open_field() {
+        use crate::cards::types;
+        const RELEASE: u32 = 10004783;
+        const PEGASUS: u32 = 7093411;
+        let db = Arc::new(MemoryCards([printed(RELEASE, types::SPELL | types::EQUIP, 0),
+            creature(PEGASUS, 4, 1800, 1200, 0x1034)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, RELEASE, false),
+            monster(0, 0, Some(PEGASUS), Position::FACE_UP_ATTACK, 1800, 1200)];
+        let equip = decide(DecisionKind::Idle, None, vec![activate(RELEASE, Location::Hand, 0),
+            choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+            equip.choices[policy.choose(obs, &equip)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Activate);
+        obs.cards.push(monster(1, 0, Some(PEGASUS), Position::FACE_UP_ATTACK, 2700, 1200));
+        assert_ne!(chosen(&obs), ChoiceKind::Activate, "the boost still cannot win this battle");
+        obs.cards.pop();
+        obs.phase = Some(Phase::Main2);
+        assert_ne!(chosen(&obs), ChoiceKind::Activate);
+    }
+
+    #[test]
+    fn crystal_uses_a_spare_ruby_but_prefers_pegasus() {
+        const RUBY: u32 = 32710364;
+        const PEGASUS: u32 = 7093411;
+        let db = Arc::new(MemoryCards([creature(RUBY, 3, 300, 300, 0x1034),
+            creature(PEGASUS, 4, 1800, 1200, 0x1034)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, RUBY, false)];
+        let mut summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, RUBY, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+        assert_eq!(summon.choices[policy.choose(&obs, &summon)].code(), Some(RUBY));
+        obs.cards.push(card(0, Location::Hand, 1, PEGASUS, false));
+        summon.choices.push(from_hand(ChoiceKind::NormalSummon, PEGASUS, 1));
+        let mut policy = crate::registry::create("crystal", db).unwrap();
+        assert_eq!(summon.choices[policy.choose(&obs, &summon)].code(), Some(PEGASUS));
+    }
+
+    #[test]
+    fn crystal_malefic_can_live_under_the_opponents_field_spell() {
+        use crate::cards::types;
+        const MALEFIC: u32 = 598988;
+        const FIELD: u32 = 1;
+        let db = Arc::new(MemoryCards([creature(MALEFIC, 10, 4000, 0, 0),
+            printed(FIELD, types::SPELL | types::FIELD, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, MALEFIC, false), card(1, Location::SpellTrapZone, 5, FIELD, true)];
+        let summon = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SpecialSummon, MALEFIC, 0), choice(ChoiceKind::EndTurn)]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("crystal", db.clone()).unwrap();
+            summon.choices[policy.choose(obs, &summon)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::SpecialSummon);
+        obs.cards[1].position.face_up = false;
+        obs.cards[1].code = None;
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn, "an unknown set Field Spell does not sustain Malefic");
+        obs.cards[1].position.face_up = true;
+        obs.cards[1].code = Some(FIELD);
+        obs.cards[1].at.sequence = 0;
+        assert_eq!(chosen(&obs), ChoiceKind::EndTurn, "a Spell in the ordinary backrow is insufficient");
+    }
+
+    #[test]
+    fn morphtronic_prioritizes_scopen_with_a_partner_then_celfon() {
+        const SCOPEN: u32 = 10591919;
+        const RADION: u32 = 55119278;
+        const CELFON: u32 = 93542102;
+        const REMOTEN: u32 = 57108202;
+        let db = Arc::new(MemoryCards([creature(SCOPEN, 3, 800, 1400, 0x26),
+            creature(RADION, 4, 1000, 900, 0x26), creature(CELFON, 1, 100, 100, 0x26),
+            creature(REMOTEN, 3, 300, 1200, 0x26)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = [SCOPEN, RADION, CELFON, REMOTEN].into_iter().enumerate()
+            .map(|(i, c)| card(0, Location::Hand, i as u32, c, false)).collect();
+        let make_decision = |obs: &Observation| decide(DecisionKind::Idle, None,
+            obs.cards.iter().map(|c| from_hand(ChoiceKind::NormalSummon, c.code.unwrap(), c.at.sequence))
+                .chain([choice(ChoiceKind::EndTurn)]).collect());
+        let chosen = |obs: &Observation| {
+            let decision = make_decision(obs);
+            let mut policy = crate::registry::create("morphtronic", db.clone()).unwrap();
+            decision.choices[policy.choose(obs, &decision)].code()
+        };
+        assert_eq!(chosen(&obs), Some(SCOPEN), "Scopen can bring Radion from hand");
+        obs.cards.remove(1);
+        assert_eq!(chosen(&obs), Some(CELFON), "without a Level 4 partner, prefer Celfon's recruitment");
+    }
+
+    #[test]
+    fn morphtronic_power_tool_starts_in_attack_to_use_its_equips() {
+        const POWER_TOOL: u32 = 2403771;
+        let db = Arc::new(MemoryCards([creature(POWER_TOOL, 7, 2300, 2500, 0), creature(1, 6, 2600, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 2600, 1000)];
+        let position = decide(DecisionKind::Position, Some(POWER_TOOL), vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)),
+            choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))]);
+        let chosen = |obs: &Observation| {
+            let mut policy = crate::registry::create("morphtronic", db.clone()).unwrap();
+            position.choices[policy.choose(obs, &position)].kind
+        };
+        assert_eq!(chosen(&obs), ChoiceKind::Position(Position::FACE_UP_ATTACK));
+        obs.turn_player = Some(1);
+        assert_eq!(chosen(&obs), ChoiceKind::Position(Position::FACE_UP_DEFENSE));
+    }
+
+    #[test]
+    fn morphtronic_equips_cord_before_changing_position_and_aims_at_enemy_backrow() {
+        use crate::cards::types;
+        const CORD: u32 = 70423794;
+        const BOOMBOXEN: u32 = 92720564;
+        let db = Arc::new(MemoryCards([printed(CORD, types::SPELL | types::EQUIP, 0),
+            creature(BOOMBOXEN, 4, 1200, 400, 0x26)].into_iter().collect()));
+        let mut obs = observation();
+        obs.phase = Some(Phase::Main2);
+        obs.cards = vec![monster(0, 0, Some(BOOMBOXEN), Position::FACE_UP_ATTACK, 1200, 400),
+            card(0, Location::Hand, 0, CORD, false), CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) }];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(CORD, Location::Hand, 0),
+            Choice { kind: ChoiceKind::ChangePosition, ..activate(BOOMBOXEN, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("morphtronic", db).unwrap();
+        assert_eq!(idle.choices[policy.choose(&obs, &idle)].code(), Some(CORD));
+        obs.cards[1] = card(0, Location::SpellTrapZone, 0, CORD, true);
+        let change = decide(DecisionKind::Idle, None, idle.choices[1..].to_vec());
+        assert_eq!(change.choices[policy.choose(&obs, &change)].kind, ChoiceKind::ChangePosition);
+        obs.cards[0].position = Position::FACE_UP_DEFENSE;
+        let trigger = decide(DecisionKind::Chain { forced: true, triggers: true }, None,
+            vec![activate(CORD, Location::SpellTrapZone, 0)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let target = select_one(Hint::Destroy, vec![toggle(Location::SpellTrapZone, 0, CORD), Choice {
+            card: Some(Member { at: obs.cards[2].at, code: None, value: 0, required: false }), ..choice(ChoiceKind::Toggle) }]);
+        assert_eq!(policy.choose(&obs, &target), 1, "target their unknown set card, not our own equip");
+    }
+
+    #[test]
+    fn morphtronic_does_not_plan_to_equip_cord_to_power_tool() {
+        use crate::cards::types;
+        const CORD: u32 = 70423794;
+        const POWER_TOOL: u32 = 2403771;
+        const RADION: u32 = 55119278;
+        let db = Arc::new(MemoryCards([printed(CORD, types::SPELL | types::EQUIP, 0),
+            creature(POWER_TOOL, 7, 2300, 2500, 0), creature(RADION, 4, 1000, 900, 0x26)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(POWER_TOOL), Position::FACE_UP_DEFENSE, 2300, 2500),
+            monster(0, 1, Some(RADION), Position::FACE_UP_ATTACK, 1800, 900),
+            card(0, Location::Hand, 0, CORD, false), CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) }];
+        // Cord can legally equip Radion, but only Power Tool can change position now.
+        let idle = decide(DecisionKind::Idle, None, vec![activate(CORD, Location::Hand, 0),
+            Choice { kind: ChoiceKind::ChangePosition, ..activate(POWER_TOOL, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("morphtronic", db).unwrap();
+        assert_eq!(idle.choices[policy.choose(&obs, &idle)].kind, ChoiceKind::ChangePosition);
+    }
 }

@@ -9,17 +9,19 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Thirteen pilots have been through it. The other 18 are to follow, a few at a
+Fifteen pilots have been through it. The other 16 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
 ## Done
 
 The first five pilots were searched against 12 reference decks. The later
-rounds use the current 13, excluding a pilot's self-match: Burn and Spellcaster face 12.
+rounds use the current 13, excluding a pilot's self-match: Burn, Spellcaster,
+Crystal, and Morphtronic face 12.
 The first five entries show searches before their latest rules; the other
 entries show follow-up searches after their rules (104 games each, 96 for
-Burn and Spellcaster). Search gaps estimate remaining headroom; they are not hard ceilings.
+Burn, Spellcaster, Crystal, and Morphtronic). Search gaps estimate remaining
+headroom; they are not hard ceilings.
 
 | Deck | Searches | Last search: alone | With the search | Gap | Win rate before → after its rules | Record |
 |---|---:|---:|---:|---:|---|---|
@@ -36,6 +38,8 @@ Burn and Spellcaster). Search gaps estimate remaining headroom; they are not har
 | Burn Princess | 2 | 28.1% | 35.4% | 7.3 | 24.83% → 31.52% (the 30 other decks, held out) | [arcana-burn-rules.md](arcana-burn-rules.md) |
 | Spellcaster's Command | 2 | 29.2% | 37.5% | 8.3 | 26.14% → 30.67% (the 30 other decks, held out) | [spellcaster-pyramid-rules.md](spellcaster-pyramid-rules.md) |
 | Pyramid of Light | 2 | 33.7% | 41.3% | 7.7 | 28.35% → 31.74% (the 30 other decks, held out) | [spellcaster-pyramid-rules.md](spellcaster-pyramid-rules.md) |
+| Crystal Beast | 2 | 31.2% | 42.7% | 11.5 | 32.02% → 41.20% (the 30 other decks, held out) | [crystal-morphtronic-rules.md](crystal-morphtronic-rules.md) |
+| Morphtronic | 2 | 36.5% | 47.9% | 11.5 | 37.34% → 43.67% (the 30 other decks, held out) | [crystal-morphtronic-rules.md](crystal-morphtronic-rules.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady has the widest gap
@@ -43,30 +47,28 @@ left and has only been searched once.
 
 ## To do
 
-The 18 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
-refreshed on 2026-10-06. Crystal Beasts and Gishki were in the recorded run
-of the game: their reported mistakes are checked
+The 16 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
+refreshed on 2026-10-06. Gishki was in the recorded run
+of the game: its reported mistakes are checked
 ([game-run-rules.md](game-run-rules.md)), a search is not run yet.
 Harpie remains in the ranking pool, but its illegal list must be replaced
 and remeasured before policy work.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 93.6% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 83.4% | strong |  |
-| 4 | Machina Gadgets | `machina` | 72.1% | strong |  |
-| 5 | Gravekeeper's Tomb | `gravekeeper` | 69.2% | strong |  |
-| 8 | Fusion Heroes | `heroes` | 63.3% | mid |  |
-| 9 | Legendary Six Samurai | `six-samurai` | 63.2% | mid |  |
-| 11 | Lightsworn Judgment | `lightsworn` | 59.1% | mid |  |
-| 12 | Tele-DAD | `tele-dad` | 58.9% | mid |  |
-| 13 | 06 Koaki Meiru - Rock Block | `rock-block` | 58.0% | mid |  |
-| 14 | Fight, Gladiators! | `gladiator` | 57.0% | mid |  |
-| 15 | Dragunity Flight | `dragunity` | 55.8% | mid |  |
-| 16 | X-Sabers | `x-saber` | 53.3% | mid |  |
-| 17 | Quickdraw Plants | `quickdraw-plant` | 52.4% | mid |  |
-| 18 | Harpie Sisters | `harpie` | 49.4% | weak | illegal list; defer policy work |
-| 19 | Karakuri Workshop | `karakuri` | 44.4% | weak |  |
-| 21 | Undersea Ceremony | `gishki` | 40.3% | weak | in the recorded run |
-| 22 | 01 Morphtronic - Straight Up | `morphtronic` | 37.6% | weak |  |
-| 23 | 12 Crystal Beast - Rainbow | `crystal` | 33.0% | weak | in the recorded run |
+| 1 | Claudi-oh's Countdown | `countdown` | 93.1% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 83.0% | strong |  |
+| 4 | Machina Gadgets | `machina` | 71.7% | strong |  |
+| 5 | Gravekeeper's Tomb | `gravekeeper` | 68.6% | strong |  |
+| 8 | Legendary Six Samurai | `six-samurai` | 62.8% | mid |  |
+| 9 | Fusion Heroes | `heroes` | 62.8% | mid |  |
+| 11 | Lightsworn Judgment | `lightsworn` | 58.8% | mid |  |
+| 12 | Tele-DAD | `tele-dad` | 58.3% | mid |  |
+| 13 | 06 Koaki Meiru - Rock Block | `rock-block` | 57.6% | mid |  |
+| 14 | Fight, Gladiators! | `gladiator` | 56.7% | mid |  |
+| 15 | Dragunity Flight | `dragunity` | 55.1% | mid |  |
+| 16 | X-Sabers | `x-saber` | 52.9% | mid |  |
+| 17 | Quickdraw Plants | `quickdraw-plant` | 52.0% | mid |  |
+| 18 | Harpie Sisters | `harpie` | 48.9% | weak | illegal list; defer policy work |
+| 20 | Karakuri Workshop | `karakuri` | 43.7% | weak |  |
+| 23 | Undersea Ceremony | `gishki` | 39.6% | weak | in the recorded run |
