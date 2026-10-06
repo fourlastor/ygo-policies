@@ -63,6 +63,11 @@ impl Gladiator {
         let graveyard_beasts = ctx.graveyard(ctx.me).iter().filter(|c| Self::is_beast(ctx, c)).count();
         let under_pressure = ctx.opp_best_attack() > 2100;
         match code {
+            // Darius revives the named Gyzarus material; Equeste recycles our negate.
+            DARIUS if ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, BESTIARI)) && ctx.free_monster_zones(ctx.me) >= 2
+                && ctx.pile(ctx.me, Location::Extra).iter().any(|c| ctx.is(c, GYZARUS)) => 3400.0,
+            EQUESTE if ctx.graveyard(ctx.me).iter().any(|c| ctx.is(c, WAR_CHARIOT))
+                && !ctx.in_hand(WAR_CHARIOT) => 3200.0,
             BESTIARI if opp_backrow > 0 => 3000.0,
             MURMILLO if opp_face_up > 0 => 2900.0 + ctx.opp_best_attack() as f64 / 10.0,
             HOPLOMUS if under_pressure => 2600.0,
@@ -115,15 +120,21 @@ impl Strategy for Gladiator {
                 return t.pick(i);
             }
         }
-        // Contact Fusions.
-        let opp_cards = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
-        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(HERAKLINOS), Some(Location::Extra)) {
-            return t.pick(i);
+        // Copy Bestiari when the name enables contact Fusion or Test Tiger.
+        if Self::control_beast(&ctx) || ctx.in_hand(TEST_TIGER) {
+            if let Some(i) = t.activate_from(PRISMA, Location::MonsterZone) {
+                return t.pick(i);
+            }
         }
+        // Resolve Gyzarus's removal before committing three bodies to Heraklinos.
+        let opp_cards = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
         if opp_cards >= 1 {
             if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(GYZARUS), Some(Location::Extra)) {
                 return t.pick(i);
             }
+        }
+        if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(HERAKLINOS), Some(Location::Extra)) {
+            return t.pick(i);
         }
         // Test Tiger: re-summon a Beast "by a Gladiator Beast effect".
         if let Some(i) = t.activate_from(TEST_TIGER, Location::MonsterZone) {
@@ -143,6 +154,9 @@ impl Strategy for Gladiator {
         let ctx = t.ctx;
         let code = ctx.canonical(choice.code()?);
         Some(match (choice.kind, code) {
+            // Even a small Beast is useful when Test Tiger can immediately tag it out.
+            (ChoiceKind::NormalSummon, _) if ctx.in_hand(TEST_TIGER) && !Self::control_beast(&ctx)
+                && ctx.data(code).in_set(SET_GLADIATOR_BEAST) => Some(2400.0 + ctx.data(code).attack as f64 / 10.0),
             (ChoiceKind::NormalSummon, LAQUARI) => Some(2100.0),
             (ChoiceKind::NormalSummon, DARIUS) => Some(2000.0),
             (ChoiceKind::NormalSummon, EQUESTE | BESTIARI) => Some(1900.0),
@@ -238,8 +252,29 @@ impl Strategy for Gladiator {
             return None;
         }
         let code = member.code.map(|c| ctx.canonical(c))?;
+        // Prisma reveals Gyzarus to send Bestiari and copy its name.
+        if member.at.location == Location::Extra && t.decision.hint == Hint::Confirm
+            && t.memory.last_activated.map(|c| ctx.canonical(c)) == Some(PRISMA) {
+            return Some(if code == GYZARUS { 4000.0 } else { 0.0 });
+        }
+        if member.at.location == Location::Graveyard && t.decision.hint == Hint::SpecialSummon && code == BESTIARI
+            && t.memory.last_activated.map(|c| ctx.canonical(c)) == Some(DARIUS)
+            && ctx.pile(ctx.me, Location::Extra).iter().any(|c| ctx.is(c, GYZARUS)) {
+            return Some(4000.0);
+        }
         let beast = ctx.data(code).in_set(SET_GLADIATOR_BEAST) && ctx.data(code).is_monster();
-        if beast && member.at.location == Location::Deck && matches!(t.decision.hint, Hint::SpecialSummon | Hint::AddToHand) {
+        // A hand search needs a playable Normal Summon, not a tag-only effect.
+        if beast && member.at.location == Location::Deck && t.decision.hint == Hint::AddToHand {
+            return Some(match code {
+                BESTIARI if Self::control_beast(&ctx) && !ctx.face_up_on_field(ctx.me, BESTIARI) => 3500.0,
+                LAQUARI => 2200.0,
+                DARIUS => 2000.0,
+                EQUESTE | BESTIARI => 1900.0,
+                HOPLOMUS => 1500.0,
+                _ => 900.0,
+            });
+        }
+        if beast && member.at.location == Location::Deck && t.decision.hint == Hint::SpecialSummon {
             return Some(Self::tag_in_score(&ctx, code));
         }
         if t.decision.hint == Hint::FusionMaterial {

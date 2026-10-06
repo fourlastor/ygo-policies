@@ -3071,4 +3071,227 @@ mod tests {
         obs.event_cards.clear();
         assert_eq!(policy.choose(&obs, &window), 1, "require an opposing summon event");
     }
+
+    #[test]
+    fn dragunity_uses_vajrayana_to_extend_with_phalanx() {
+        use crate::cards::types;
+        const PHALANX: u32 = 59755122;
+        const VAJRAYANA: u32 = 21249921;
+        const GAIA: u32 = 97204936;
+        let mut phalanx = creature(PHALANX, 2, 500, 1100, 0x29);
+        phalanx.1.kind |= types::TUNER;
+        let mut vajrayana = creature(VAJRAYANA, 6, 1900, 1200, 0x29);
+        vajrayana.1.kind |= types::SYNCHRO;
+        let mut gaia = creature(GAIA, 6, 2600, 800, 0);
+        gaia.1.kind |= types::SYNCHRO;
+        let db = Arc::new(MemoryCards([phalanx, vajrayana, gaia].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::MonsterZone, 0, PHALANX, true),
+            card(0, Location::Extra, 0, VAJRAYANA, false), card(0, Location::Extra, 1, GAIA, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![
+            Choice { kind: ChoiceKind::SpecialSummon, ..activate(VAJRAYANA, Location::Extra, 0) },
+            Choice { kind: ChoiceKind::SpecialSummon, ..activate(GAIA, Location::Extra, 1) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("dragunity", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards[0] = card(0, Location::Graveyard, 0, PHALANX, true);
+        let mut policy = crate::registry::create("dragunity", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "Phalanx can also be equipped from an earlier turn");
+        obs.cards.remove(0);
+        let mut policy = crate::registry::create("dragunity", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "without Phalanx, keep Gaia's higher immediate value");
+    }
+
+    #[test]
+    fn dragunity_discards_its_first_phalanx_for_the_equip_engine() {
+        const PHALANX: u32 = 59755122;
+        const JAVELIN: u32 = 80549379;
+        let db = Arc::new(MemoryCards([creature(PHALANX, 2, 500, 1100, 0x29),
+            creature(JAVELIN, 2, 1200, 800, 0x29)].into_iter().collect()));
+        let mut policy = crate::registry::create("dragunity", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, PHALANX, false), card(0, Location::Hand, 1, JAVELIN, false)];
+        let discard = select_one(Hint::Discard, vec![toggle(Location::Hand, 0, PHALANX), toggle(Location::Hand, 1, JAVELIN)]);
+        assert_eq!(policy.choose(&obs, &discard), 0);
+        obs.cards.push(card(0, Location::Graveyard, 0, PHALANX, true));
+        assert_eq!(policy.choose(&obs, &discard), 1, "once stocked, preserve the more useful hand card");
+    }
+
+    #[test]
+    fn dragunity_uses_ravine_with_one_card_left_to_discard() {
+        const RAVINE: u32 = 62265044;
+        let mut policy = crate::registry::create("dragunity", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 5, RAVINE, true), card(0, Location::Hand, 0, 59755122, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(RAVINE, Location::SpellTrapZone, 5), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn dragunity_draws_with_a_single_non_phalanx_tuner() {
+        const CONSONANCE: u32 = 39701395;
+        const AKLYS: u32 = 36870345;
+        let mut aklys = creature(AKLYS, 2, 1000, 800, 0x29);
+        aklys.1.kind |= crate::cards::types::TUNER;
+        let db = Arc::new(MemoryCards([aklys].into_iter().collect()));
+        let mut policy = crate::registry::create("dragunity", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, CONSONANCE, false), card(0, Location::Hand, 1, AKLYS, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(CONSONANCE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn dragunity_uses_icarus_only_with_two_opposing_cards() {
+        const ICARUS: u32 = 53567095;
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, ICARUS, false),
+            monster(0, 0, Some(28183605), Position::FACE_UP_ATTACK, 1700, 1200),
+            monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000),
+            CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) }];
+        for kind in [DecisionKind::Idle, DecisionKind::Chain { forced: false, triggers: false }] {
+            let fallback = if kind == DecisionKind::Idle { ChoiceKind::EndTurn } else { ChoiceKind::Pass };
+            let decision = decide(kind, None, vec![activate(ICARUS, Location::SpellTrapZone, 0), choice(fallback)]);
+            let mut policy = crate::registry::create("dragunity", Arc::new(MemoryCards::default())).unwrap();
+            assert_eq!(policy.choose(&obs, &decision), 0);
+            let mut one_target = obs.clone();
+            one_target.cards.pop();
+            assert_eq!(policy.choose(&one_target, &decision), 1, "do not pay to destroy one of our own cards");
+        }
+    }
+
+    #[test]
+    fn gladiator_hand_searches_differ_from_tag_in_choices() {
+        const LAQUARI: u32 = 78868776;
+        const MURMILLO: u32 = 5975022;
+        const BESTIARI: u32 = 41470137;
+        let db = Arc::new(MemoryCards([creature(LAQUARI, 4, 1800, 400, 0x1019),
+            creature(MURMILLO, 2, 800, 400, 0x1019), creature(BESTIARI, 4, 1500, 800, 0x1019),
+            creature(25924653, 4, 1700, 300, 0x1019)].into_iter().collect()));
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let choices = vec![toggle(Location::Deck, 0, LAQUARI), toggle(Location::Deck, 1, MURMILLO), toggle(Location::Deck, 2, BESTIARI)];
+        let hand = select_one(Hint::AddToHand, choices.clone());
+        assert_eq!(policy.choose(&obs, &hand), 0, "Laquari is playable from hand; Murmillo's removal needs a tag-in");
+        let tag = select_one(Hint::SpecialSummon, choices);
+        assert_eq!(policy.choose(&obs, &tag), 1, "a real tag-in can use Murmillo's removal");
+        obs.cards.push(monster(0, 0, Some(25924653), Position::FACE_UP_ATTACK, 1700, 300));
+        assert_eq!(policy.choose(&obs, &hand), 2, "Bestiari completes contact Fusion with our existing Gladiator");
+    }
+
+    #[test]
+    fn gladiator_uses_prisma_when_its_copied_name_enables_a_combo() {
+        const PRISMA: u32 = 89312388;
+        const EQUESTE: u32 = 57731460;
+        const TEST_TIGER: u32 = 92373006;
+        const GYZARUS: u32 = 48156348;
+        const HERAKLINOS: u32 = 27346636;
+        let db = Arc::new(MemoryCards([creature(PRISMA, 4, 1700, 1100, 0),
+            creature(EQUESTE, 4, 1600, 1200, 0x1019)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(PRISMA), Position::FACE_UP_ATTACK, 1700, 1100)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(PRISMA, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gladiator", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.push(monster(0, 1, Some(EQUESTE), Position::FACE_UP_ATTACK, 1600, 1200));
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        let reveal = select_one(Hint::Confirm, vec![toggle(Location::Extra, 0, GYZARUS), toggle(Location::Extra, 1, HERAKLINOS)]);
+        assert_eq!(policy.choose(&obs, &reveal), 0, "copy Bestiari by revealing Gyzarus");
+        obs.cards.pop();
+        obs.cards.push(card(0, Location::Hand, 0, TEST_TIGER, false));
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "the copied name also enables Test Tiger");
+    }
+
+    #[test]
+    fn gladiator_normal_summons_murmillo_to_enable_test_tiger() {
+        const MURMILLO: u32 = 5975022;
+        const TEST_TIGER: u32 = 92373006;
+        let db = Arc::new(MemoryCards([creature(MURMILLO, 2, 800, 400, 0x1019)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, MURMILLO, false), card(0, Location::Hand, 1, TEST_TIGER, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, MURMILLO, 0),
+            from_hand(ChoiceKind::SetMonster, MURMILLO, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gladiator", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        obs.cards.pop();
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        assert_ne!(policy.choose(&obs, &idle), 0, "keep the normal veto without a Test Tiger follow-up");
+    }
+
+    #[test]
+    fn gladiator_prefers_gyzarus_removal_when_both_contact_fusions_are_offered() {
+        let mut obs = observation();
+        obs.cards = vec![monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![
+            Choice { kind: ChoiceKind::SpecialSummon, ..activate(27346636, Location::Extra, 0) },
+            Choice { kind: ChoiceKind::SpecialSummon, ..activate(48156348, Location::Extra, 1) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gladiator", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.clear();
+        assert_eq!(policy.choose(&obs, &idle), 0, "Heraklinos remains the choice on an empty opposing field");
+    }
+
+    #[test]
+    fn dragunity_prefers_legionnaire_with_aklys_against_a_large_monster() {
+        const DUX: u32 = 28183605;
+        const LEGIONNAIRE: u32 = 54578613;
+        const AKLYS: u32 = 36870345;
+        let db = Arc::new(MemoryCards([creature(DUX, 4, 1500, 1000, 0x29),
+            creature(LEGIONNAIRE, 3, 1200, 800, 0x29), creature(AKLYS, 2, 1000, 800, 0x29)].into_iter().collect()));
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, DUX, false), card(0, Location::Hand, 1, LEGIONNAIRE, false),
+            card(0, Location::Graveyard, 0, AKLYS, true), monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, DUX, 0),
+            from_hand(ChoiceKind::NormalSummon, LEGIONNAIRE, 1), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("dragunity", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards.last_mut().unwrap().attack = 2000;
+        let mut policy = crate::registry::create("dragunity", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn gladiator_uses_darius_and_bestiari_to_prepare_gyzarus() {
+        const DARIUS: u32 = 25924653;
+        const BESTIARI: u32 = 41470137;
+        const MURMILLO: u32 = 5975022;
+        const LAQUARI: u32 = 78868776;
+        const GYZARUS: u32 = 48156348;
+        let db = Arc::new(MemoryCards([creature(DARIUS, 4, 1700, 300, 0x1019),
+            creature(BESTIARI, 4, 1500, 800, 0x1019), creature(MURMILLO, 2, 800, 400, 0x1019),
+            creature(LAQUARI, 4, 1800, 400, 0x1019)].into_iter().collect()));
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Graveyard, 0, BESTIARI, true), card(0, Location::Graveyard, 1, LAQUARI, true),
+            card(0, Location::Extra, 0, GYZARUS, false), monster(1, 0, None, Position::FACE_UP_ATTACK, 2500, 1000)];
+        let tag = select_one(Hint::SpecialSummon, vec![toggle(Location::Deck, 0, DARIUS), toggle(Location::Deck, 1, MURMILLO)]);
+        assert_eq!(policy.choose(&obs, &tag), 0);
+        obs.cards.push(monster(0, 0, Some(DARIUS), Position::FACE_UP_ATTACK, 1700, 300));
+        let trigger = decide(DecisionKind::Chain { forced: true, triggers: true }, None, vec![activate(DARIUS, Location::MonsterZone, 0)]);
+        assert_eq!(policy.choose(&obs, &trigger), 0);
+        let revive = select_one(Hint::SpecialSummon, vec![toggle(Location::Graveyard, 0, BESTIARI), toggle(Location::Graveyard, 1, LAQUARI)]);
+        assert_eq!(policy.choose(&obs, &revive), 0, "Darius plus Bestiari can contact fuse; Darius plus Laquari cannot");
+    }
+
+    #[test]
+    fn gladiator_tags_into_equeste_to_recover_war_chariot() {
+        const CHARIOT: u32 = 96216229;
+        const EQUESTE: u32 = 57731460;
+        const BESTIARI: u32 = 41470137;
+        let db = Arc::new(MemoryCards([creature(EQUESTE, 4, 1600, 1200, 0x1019),
+            creature(BESTIARI, 4, 1500, 800, 0x1019)].into_iter().collect()));
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Graveyard, 0, CHARIOT, true),
+            CardView { code: None, ..card(1, Location::SpellTrapZone, 0, 0, false) }];
+        let tag = select_one(Hint::SpecialSummon, vec![toggle(Location::Deck, 0, EQUESTE), toggle(Location::Deck, 1, BESTIARI)]);
+        assert_eq!(policy.choose(&obs, &tag), 0);
+        obs.cards.push(card(0, Location::Hand, 0, CHARIOT, false));
+        assert_eq!(policy.choose(&obs, &tag), 1, "with Chariot already in hand, resume the usual tag priorities");
+    }
 }

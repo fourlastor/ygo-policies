@@ -18,6 +18,7 @@ use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member};
 
 pub const DECK: &str = "Dragunity Flight";
 
+const ICARUS_ATTACK: u32 = 53567095;
 const MYSTLETAINN: u32 = 876330;
 const LEYVATEN: u32 = 63487632;
 const LIGHT_AND_DARKNESS: u32 = 47297616;
@@ -91,6 +92,8 @@ impl Dragunity {
             TRIDENT_DRAGION => 2600.0,
             BRIONAC => 2300.0 + 100.0 * their_cards.min(3.0),
             CATASTOR => 2200.0,
+            // Phalanx lets Vajrayana extend into a Level 8 Synchro.
+            VAJRAYANA if Self::in_graveyard(ctx, PHALANX) || ctx.monsters(ctx.me).iter().any(|c| ctx.is(c, PHALANX)) => 3400.0,
             VAJRAYANA => 2100.0,
             _ => ctx.data(code).attack as f64,
         }
@@ -129,8 +132,8 @@ impl Strategy for Dragunity {
                 return t.pick(i);
             }
         }
-        // Dragon Ravine: discard 1 to stock the Graveyard / find a host.
-        if ctx.hand_size(ctx.me) >= 2 {
+        // Dragon Ravine needs only one discard, including our last hand card.
+        if ctx.hand_size(ctx.me) >= 1 {
             if let Some(i) = t.activate_from(DRAGON_RAVINE, Location::SpellTrapZone) {
                 return t.pick(i);
             }
@@ -171,11 +174,17 @@ impl Strategy for Dragunity {
                 return t.pick(i);
             }
         }
-        // Cards of Consonance: a spare Dragon Tuner (ideally Phalanx, which
-        // wants the Graveyard anyway) for two cards.
+        // Consonance turns any eligible Dragon Tuner into two cards. The
+        // engine offers the activation only when its discard cost is legal.
         let tuners_in_hand = ctx.hand().iter().filter(|c| ctx.view_data(c).is_tuner()).count();
-        if tuners_in_hand >= 1 && (tuners_in_hand >= 2 || ctx.in_hand(PHALANX)) {
+        if tuners_in_hand >= 1 {
             if let Some(i) = t.activate(CARDS_OF_CONSONANCE) {
+                return t.pick(i);
+            }
+        }
+        // Icarus needs exactly two targets; keep both on the opposing field.
+        if ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len() >= 2 {
+            if let Some(i) = t.activate(ICARUS_ATTACK) {
                 return t.pick(i);
             }
         }
@@ -193,7 +202,9 @@ impl Strategy for Dragunity {
         let code = ctx.canonical(choice.code()?);
         let equip_ready = [PHALANX, AKLYS, BRANDISTOCK, DARKSPEAR, JAVELIN].iter().any(|c| Self::in_graveyard(&ctx, *c));
         Some(match (choice.kind, code) {
-            // Hosts that equip a Dragon from the Graveyard.
+            // Against a large attacker, prefer Legionnaire's removal with Aklys ready.
+            // Otherwise Dux leads the equip and Synchro line.
+            (ChoiceKind::NormalSummon, LEGIONNAIRE) if Self::in_graveyard(&ctx, AKLYS) && ctx.opp_best_attack() > 2100 => Some(2300.0),
             (ChoiceKind::NormalSummon, DUX) if equip_ready => Some(2200.0),
             (ChoiceKind::NormalSummon, LEGIONNAIRE) if equip_ready => Some(2150.0),
             // Aklys brings a Dragunity from the hand and equips itself to it.
@@ -227,6 +238,8 @@ impl Strategy for Dragunity {
         let choice = t.choice(index);
         let code = ctx.canonical(choice.code()?);
         Some(match code {
+            ICARUS_ATTACK if ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len() >= 2 => Response::new(70.0),
+            ICARUS_ATTACK => Response::no(),
             // Negates any activation, shrinking by 500 each time.
             LIGHT_AND_DARKNESS if t.hostile_top().matches(|_| true) => Response::new(60.0),
             LIGHT_AND_DARKNESS => Response::no(),
@@ -239,6 +252,11 @@ impl Strategy for Dragunity {
         let code = member.code.map(|c| ctx.canonical(c))?;
         if member.at.controller != ctx.me {
             return None;
+        }
+        // The first Phalanx in the Graveyard enables our equip hosts.
+        if member.at.location == Location::Hand && matches!(t.decision.hint, Hint::Discard | Hint::ToGraveyard)
+            && code == PHALANX && !Self::in_graveyard(&ctx, PHALANX) {
+            return Some(4000.0);
         }
         match t.decision.hint {
             // Which Dragon to equip.

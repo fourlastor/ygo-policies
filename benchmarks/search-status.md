@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Nineteen pilots have been through it. The other 12 are to follow, a few at a
+Twenty-one pilots have been through it. The other 10 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
@@ -17,11 +17,11 @@ and reading it and measuring each rule it suggests takes a few hours more.
 
 The first five pilots were searched against 12 reference decks. The later
 rounds use the current 13, excluding a pilot's self-match: Burn, Spellcaster,
-Crystal, Morphtronic, and Gishki face 12.
+Crystal, Morphtronic, Gishki, Dragunity, and Gladiators face 12.
 The first five entries show searches before their latest rules; the other
 entries show follow-up searches after their rules (104 games each, 96 for
-Burn, Spellcaster, Crystal, Morphtronic, and Gishki). Search gaps estimate remaining
-headroom; they are not hard ceilings.
+Burn, Spellcaster, Crystal, Morphtronic, Gishki, Dragunity, and Gladiators).
+Search gaps estimate remaining headroom; they are not hard ceilings.
 
 | Deck | Searches | Last search: alone | With the search | Gap | Win rate before → after its rules | Record |
 |---|---:|---:|---:|---:|---|---|
@@ -44,28 +44,28 @@ headroom; they are not hard ceilings.
 | Karakuri | 2 | 46.2% | 72.1% | 26.0 | 44.41% → 51.30% (the 30 other decks, held out) | [gishki-karakuri-rules.md](gishki-karakuri-rules.md) |
 | Quickdraw Plants | 2 | 60.6% | 79.8% | 19.2 | 51.32% → 56.70% (the 30 other decks, held out) | [quickdraw-xsaber-rules.md](quickdraw-xsaber-rules.md) |
 | X-Sabers | 2 | 61.5% | 80.8% | 19.2 | 52.04% → 59.15% (the 30 other decks, held out) | [quickdraw-xsaber-rules.md](quickdraw-xsaber-rules.md) |
+| Dragunity Flight | 2 | 63.5% | 81.2% | 17.7 | 54.47% → 63.92% (the 30 other decks, held out) | [dragunity-gladiator-rules.md](dragunity-gladiator-rules.md) |
+| Fight, Gladiators! | 2 | 51.0% | 70.8% | 19.8 | 55.83% → 62.46% (the 30 other decks, held out) | [dragunity-gladiator-rules.md](dragunity-gladiator-rules.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
 
 ## To do
 
-The 12 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
+The 10 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
 refreshed on 2026-10-06.
 Harpie remains in the ranking pool, but its illegal list must be replaced
 and remeasured before policy work.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 92.6% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 82.4% | strong |  |
-| 4 | Machina Gadgets | `machina` | 70.9% | strong |  |
-| 5 | Gravekeeper's Tomb | `gravekeeper` | 67.5% | mid |  |
-| 8 | Fusion Heroes | `heroes` | 61.6% | mid |  |
-| 9 | Legendary Six Samurai | `six-samurai` | 61.6% | mid |  |
-| 12 | Lightsworn Judgment | `lightsworn` | 57.7% | mid |  |
-| 13 | Tele-DAD | `tele-dad` | 57.5% | mid |  |
-| 15 | 06 Koaki Meiru - Rock Block | `rock-block` | 56.7% | mid |  |
-| 16 | Fight, Gladiators! | `gladiator` | 55.7% | mid |  |
-| 17 | Dragunity Flight | `dragunity` | 53.7% | mid |  |
-| 20 | Harpie Sisters | `harpie` | 47.4% | weak | illegal list; defer policy work |
+| 1 | Claudi-oh's Countdown | `countdown` | 92.1% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 82.1% | strong |  |
+| 3 | Machina Gadgets | `machina` | 70.2% | strong |  |
+| 5 | Gravekeeper's Tomb | `gravekeeper` | 67.0% | mid |  |
+| 10 | Legendary Six Samurai | `six-samurai` | 61.1% | mid |  |
+| 11 | Fusion Heroes | `heroes` | 60.9% | mid |  |
+| 14 | Lightsworn Judgment | `lightsworn` | 56.9% | mid |  |
+| 15 | Tele-DAD | `tele-dad` | 56.6% | mid |  |
+| 16 | 06 Koaki Meiru - Rock Block | `rock-block` | 56.4% | mid |  |
+| 20 | Harpie Sisters | `harpie` | 46.9% | weak | illegal list; defer policy work |
