@@ -274,6 +274,17 @@ dependencies = [
 name = "ygo-policies-bench"
 version = "0.1.0"
 dependencies = [
+ "rusqlite",
+ "serde_json",
+ "ygo-policies",
+ "ygo-policies-duel",
+ "ygo-policies-ocgcore",
+]
+
+[[package]]
+name = "ygo-policies-duel"
+version = "0.1.0"
+dependencies = [
  "cc",
  "libloading",
  "rusqlite",

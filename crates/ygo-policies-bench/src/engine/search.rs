@@ -13,46 +13,9 @@
 //! decision taken while one is on the field to the pilot.
 //!
 //! This needs an engine with arena snapshots and a hidden-card swap
-//! (`OCG_DuelCreateSnapshot`, `OCG_DuelSwapHiddenCards`).  The built-in engine
-//! has both; an engine given as `--core` must have them too.
+//! ([`Duel::snapshot`], [`Duel::swap`]).  The built-in engine has both; an
+//! engine given as `--core` must have them too.
 use super::*;
-
-/// What the search needs beyond the public OCGCore API.
-pub(super) struct Extensions {
-    snapshot: unsafe extern "C" fn(Handle, *mut Handle) -> i32,
-    restore: unsafe extern "C" fn(Handle, Handle) -> i32,
-    discard: unsafe extern "C" fn(Handle),
-    swap: unsafe extern "C" fn(Handle, u8, u32, u32, u32, u32) -> i32,
-    count: unsafe extern "C" fn(Handle, u8, u32) -> u32,
-    card: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
-}
-
-impl Extensions {
-    /// Those of the engine this binary is built with.
-    pub(super) fn built_in() -> Self {
-        Self {
-            snapshot: OCG_DuelCreateSnapshot,
-            restore: OCG_DuelRestoreSnapshot,
-            discard: OCG_DuelDestroySnapshot,
-            swap: OCG_DuelSwapHiddenCards,
-            count: OCG_DuelQueryCount,
-            card: OCG_DuelQuery,
-        }
-    }
-
-    /// Those of an engine given as `--core`, if it has them.  The swap was
-    /// `YGO_DuelSwapHiddenCards` before it moved into the engine's fork.
-    pub(super) unsafe fn load(library: &Library) -> Option<Self> {
-        Some(Self {
-            snapshot: symbol(library, b"OCG_DuelCreateSnapshot").ok()?,
-            restore: symbol(library, b"OCG_DuelRestoreSnapshot").ok()?,
-            discard: symbol(library, b"OCG_DuelDestroySnapshot").ok()?,
-            swap: symbol(library, b"OCG_DuelSwapHiddenCards").or_else(|_| symbol(library, b"YGO_DuelSwapHiddenCards")).ok()?,
-            count: symbol(library, b"OCG_DuelQueryCount").ok()?,
-            card: symbol(library, b"OCG_DuelQuery").ok()?,
-        })
-    }
-}
 
 #[derive(Clone, Copy)]
 pub struct SearchOptions {
@@ -266,7 +229,7 @@ fn listed(answer: &serde_json::Value, given: &[u8]) -> Option<Listed> {
 /// Both seats of a duel, with everything each was fed: a seat can be built
 /// again in the same state by feeding another one the same messages.
 struct Table<'a> {
-    seats: Vec<Seat<'a>>,
+    seats: Vec<LibrarySeat<'a>>,
     logs: [Vec<u8>; 2],
 }
 
@@ -287,558 +250,417 @@ struct Setup<'a> {
     limit: usize,
 }
 
-impl Core {
-    /// The cards `viewer` cannot see: its own Deck, and the other player's
-    /// Deck, hand and Set Spells and Traps.  Revealed cards stay known.
-    unsafe fn hidden(&self, handle: Handle, viewer: u8) -> Vec<Slot> {
-        let extensions = self.extensions.as_ref().unwrap();
-        let mut slots = Vec::new();
-        let mut add = |controller: u8, location: u32, sequence: u32, face_down_only: bool| {
-            let q = Query { flags: query::CODE | query::POSITION | QUERY_IS_PUBLIC, controller, location, sequence, overlay: 0 };
-            let mut length = 0;
-            let bytes = (extensions.card)(handle, &mut length, &q);
-            if length == 0 {
-                return;
-            }
-            let (code, position, public) = card_query(std::slice::from_raw_parts(bytes, length as usize));
-            if code != 0 && !public && (!face_down_only || position & position::FACEDOWN != 0) {
-                slots.push(Slot { code, controller, location, sequence });
-            }
-        };
-        let opponent = 1 - viewer;
-        for (controller, location) in [(viewer, 1), (opponent, 1), (opponent, 2)] {
-            for sequence in 0..(extensions.count)(handle, controller, location) {
-                add(controller, location, sequence, false);
-            }
+/// The cards `viewer` cannot see: its own Deck, and the other player's
+/// Deck, hand and Set Spells and Traps.  Revealed cards stay known.
+fn hidden(duel: &Duel, viewer: u8) -> Result<Vec<Slot>> {
+    let mut slots = Vec::new();
+    let mut add = |controller: u8, location: u32, sequence: u32, face_down_only: bool| -> Result<()> {
+        let bytes = duel.card(query::CODE | query::POSITION | QUERY_IS_PUBLIC, controller, location, sequence)?;
+        if bytes.is_empty() {
+            return Ok(());
         }
-        for sequence in 0..7 {
-            add(opponent, 8, sequence, true);
+        let (code, position, public) = card_query(&bytes);
+        if code != 0 && !public && (!face_down_only || position & position::FACEDOWN != 0) {
+            slots.push(Slot { code, controller, location, sequence });
         }
-        slots
+        Ok(())
+    };
+    let opponent = 1 - viewer;
+    for (controller, location) in [(viewer, 1), (opponent, 1), (opponent, 2)] {
+        for sequence in 0..duel.count(controller, location)? {
+            add(controller, location, sequence, false)?;
+        }
     }
-
-    /// Deal again what `viewer` cannot see: its own Deck in another order,
-    /// and the other player's hidden cards among their Deck, hand and Set
-    /// cards (a Set card stays a Spell or Trap).  Not possible in a chain.
-    unsafe fn redeal(&self, handle: Handle, viewer: u8, seed: u64) -> Result<()> {
-        let extensions = self.extensions.as_ref().unwrap();
-        let slots = self.hidden(handle, viewer);
-        let mut rng = SplitMix(seed);
-        let permute = |group: &[usize], wanted: &[usize]| -> Result<()> {
-            let mut current = group.to_vec();
-            for destination in 0..group.len() {
-                let source = current.iter().position(|slot| *slot == wanted[destination]).ok_or("Lost a hidden card")?;
-                if source == destination {
-                    continue;
-                }
-                let (a, b) = (slots[group[destination]], slots[group[source]]);
-                if (extensions.swap)(handle, a.controller, a.location, a.sequence, b.location, b.sequence) == 0 {
-                    return Err(format!("The engine refused to swap {:x}:{} and {:x}:{}", a.location, a.sequence, b.location, b.sequence));
-                }
-                current.swap(destination, source);
-            }
-            Ok(())
-        };
-        let own: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller == viewer).collect();
-        let mut wanted = own.clone();
-        rng.shuffle(&mut wanted);
-        permute(&own, &wanted)?;
-
-        let theirs: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller != viewer).collect();
-        let set: Vec<usize> = theirs.iter().copied().filter(|i| slots[*i].location == 8).collect();
-        let mut backrow: Vec<usize> = theirs
-            .iter()
-            .copied()
-            .filter(|i| self.resources.cards.get(&slots[*i].code).is_some_and(|(card, _)| card.kind & TYPE_SPELL_OR_TRAP != 0))
-            .collect();
-        if backrow.len() < set.len() {
-            return Err("Fewer hidden Spells and Traps than Set cards".into());
-        }
-        rng.shuffle(&mut backrow);
-        backrow.truncate(set.len());
-        let mut rest: Vec<usize> = theirs.iter().copied().filter(|i| !backrow.contains(i)).collect();
-        rng.shuffle(&mut rest);
-        let destinations: Vec<usize> = set.iter().copied().chain(theirs.iter().copied().filter(|i| slots[*i].location != 8)).collect();
-        let sources: Vec<usize> = backrow.into_iter().chain(rest).collect();
-        permute(&destinations, &sources)
+    for sequence in 0..7 {
+        add(opponent, 8, sequence, true)?;
     }
+    Ok(slots)
+}
 
-    /// Play a duel on from `snapshot` with `response` to its pending
-    /// question, in the world as it is or in one dealt again for `viewer`.
-    /// Both seats are built again from what the live ones were fed.
-    /// Returns the winner, if the duel ends before the decision limit.
-    unsafe fn playout(
-        &mut self,
-        handle: Handle,
-        snapshot: Handle,
-        setup: &Setup,
-        logs: &[Vec<u8>; 2],
-        world: Option<(u8, u64)>,
-        response: &[u8],
-        mut decisions: usize,
-    ) -> Result<Option<u8>> {
-        let status = (self.extensions.as_ref().unwrap().restore)(handle, snapshot);
-        if status != 0 {
-            return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
+/// Deal again what `viewer` cannot see: its own Deck in another order,
+/// and the other player's hidden cards among their Deck, hand and Set
+/// cards (a Set card stays a Spell or Trap).  Not possible in a chain.
+fn redeal(duel: &mut Duel, viewer: u8, seed: u64) -> Result<()> {
+    let slots = hidden(duel, viewer)?;
+    let mut rng = SplitMix(seed);
+    let permute = |duel: &mut Duel, group: &[usize], wanted: &[usize]| -> Result<()> {
+        let mut current = group.to_vec();
+        for destination in 0..group.len() {
+            let source = current.iter().position(|slot| *slot == wanted[destination]).ok_or("Lost a hidden card")?;
+            if source == destination {
+                continue;
+            }
+            let (a, b) = (slots[group[destination]], slots[group[source]]);
+            if !duel.swap(a.controller, (a.location, a.sequence), (b.location, b.sequence))? {
+                return Err(format!("The engine refused to swap {:x}:{} and {:x}:{}", a.location, a.sequence, b.location, b.sequence));
+            }
+            current.swap(destination, source);
         }
-        self.resources.errors.clear();
-        if let Some((viewer, seed)) = world {
-            self.redeal(handle, viewer, seed)?;
+        Ok(())
+    };
+    let own: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller == viewer).collect();
+    let mut wanted = own.clone();
+    rng.shuffle(&mut wanted);
+    permute(duel, &own, &wanted)?;
+
+    let theirs: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller != viewer).collect();
+    let set: Vec<usize> = theirs.iter().copied().filter(|i| slots[*i].location == 8).collect();
+    let mut backrow: Vec<usize> = theirs
+        .iter()
+        .copied()
+        .filter(|i| duel.printed(slots[*i].code).is_some_and(|card| card.kind & TYPE_SPELL_OR_TRAP != 0))
+        .collect();
+    if backrow.len() < set.len() {
+        return Err("Fewer hidden Spells and Traps than Set cards".into());
+    }
+    rng.shuffle(&mut backrow);
+    backrow.truncate(set.len());
+    let mut rest: Vec<usize> = theirs.iter().copied().filter(|i| !backrow.contains(i)).collect();
+    rng.shuffle(&mut rest);
+    let destinations: Vec<usize> = set.iter().copied().chain(theirs.iter().copied().filter(|i| slots[*i].location != 8)).collect();
+    let sources: Vec<usize> = backrow.into_iter().chain(rest).collect();
+    permute(duel, &destinations, &sources)
+}
+
+/// Play a duel on from `snapshot` with `response` to its pending
+/// question, in the world as it is or in one dealt again for `viewer`.
+/// Both seats are built again from what the live ones were fed.
+/// Returns the winner, if the duel ends before the decision limit.
+fn playout(
+    duel: &mut Duel,
+    snapshot: &Snapshot,
+    setup: &Setup,
+    logs: &[Vec<u8>; 2],
+    world: Option<(u8, u64)>,
+    response: &[u8],
+    mut decisions: usize,
+) -> Result<Option<u8>> {
+    duel.restore(snapshot)?;
+    if let Some((viewer, seed)) = world {
+        redeal(duel, viewer, seed)?;
+    }
+    let mut seats = Vec::new();
+    for p in 0..2 {
+        // A dealt world also breaks ties its own way: the search must not
+        // learn from a playout which of two equal choices the other
+        // player's policy is about to make in the duel.
+        let ties = match world {
+            Some((_, seed)) => seed.rotate_left(17) ^ p as u64,
+            None => setup.seed + p as u64,
+        };
+        let seat = setup.policies[p].seat(setup.names[p], setup.cards, p as i32, ties)?;
+        seat.feed_buffer(&logs[p])?;
+        seats.push(seat);
+    }
+    duel.respond(response);
+    decisions += 1;
+    loop {
+        let step = duel.step()?;
+        let mut answer = None;
+        for sent in &step.messages {
+            if !sent.refresh && sent.bytes[0] == msg::RETRY {
+                return Err("Engine rejected response (MSG_RETRY)".into());
+            }
+            for seat in &seats {
+                let given = seat.feed(&sent.bytes)?;
+                if !sent.refresh && given.is_some() {
+                    answer = given;
+                }
+            }
         }
-        let mut seats = Vec::new();
-        for p in 0..2 {
-            // A dealt world also breaks ties its own way: the search must not
-            // learn from a playout which of two equal choices the other
-            // player's policy is about to make in the duel.
-            let ties = match world {
-                Some((_, seed)) => seed.rotate_left(17) ^ p as u64,
-                None => setup.seed + p as u64,
+        if matches!(step.state, State::Over(_)) || decisions >= setup.limit {
+            let winner = match step.state {
+                State::Over(Some(outcome)) => Some(outcome.winner),
+                _ => None,
             };
-            let seat = setup.policies[p].seat(setup.names[p], setup.cards, p as i32, ties)?;
-            seat.feed_buffer(&logs[p])?;
-            seats.push(seat);
+            return Ok(winner.filter(|w| *w < 2));
         }
-        (self.respond)(handle, response.as_ptr(), response.len() as u32);
-        decisions += 1;
-        loop {
-            let status = (self.process)(handle);
-            let mut length = 0;
-            let bytes = (self.messages)(handle, &mut length);
-            let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
-            let (mut offset, mut answer, mut winner) = (0, None, None);
-            while offset + 4 <= buffer.len() {
-                let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
-                let message = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
-                offset += 4 + n;
-                let id = *message.first().ok_or("Empty message")?;
-                if id == msg::RETRY {
-                    return Err("Engine rejected response (MSG_RETRY)".into());
-                }
-                if id == msg::WIN {
-                    winner = message.get(1).copied();
-                }
-                if message::is_selection(id) {
-                    for update in self.field(handle) {
-                        for seat in &seats {
-                            seat.feed(&update)?;
-                        }
-                    }
-                }
-                for seat in &seats {
-                    if let Some(given) = seat.feed(message)? {
-                        answer = Some(given);
-                    }
-                }
-            }
-            if !self.resources.errors.is_empty() {
-                return Err(self.resources.errors.join("\n"));
-            }
-            if winner.is_some() || status == 0 || decisions >= setup.limit {
-                return Ok(winner.filter(|w| *w < 2));
-            }
-            match answer {
-                Some(given) => {
-                    (self.respond)(handle, given.as_ptr(), given.len() as u32);
-                    decisions += 1;
-                }
-                None if status == 1 => return Err("Engine awaiting with no policy answer".into()),
-                None => {}
-            }
-        }
-    }
-
-    /// Search one decision of `viewer`: the response to give, and what the
-    /// search saw when that is not the pilot's.  `counts` is playouts run
-    /// and playouts that failed.
-    unsafe fn decide(
-        &mut self,
-        handle: Handle,
-        setup: &Setup,
-        logs: &[Vec<u8>; 2],
-        viewer: u8,
-        decision: &Listed,
-        search: &SearchOptions,
-        decisions: usize,
-        counts: &mut [u64; 2],
-        log: Option<&mut Vec<serde_json::Value>>,
-    ) -> Result<(usize, serde_json::Value)> {
-        let before = counts[0];
-        let mut snapshot = ptr::null_mut();
-        let status = (self.extensions.as_ref().unwrap().snapshot)(handle, &mut snapshot);
-        if status != 0 {
-            return Err(format!("OCG_DuelCreateSnapshot: {status}"));
-        }
-        let _guard = SnapshotGuard { handle: snapshot, discard: self.extensions.as_ref().unwrap().discard };
-        let mut candidates: Vec<Candidate> = (0..decision.responses.len()).map(|index| Candidate { index, payoffs: vec![] }).collect();
-        let mut alive: Vec<usize> = (1..candidates.len()).collect();
-        let mut seen = serde_json::Value::Null;
-        let mut chosen = 0;
-        let mut done = 0;
-        let mut won_everywhere = false;
-        for (stage, total) in search.stages.iter().copied().enumerate() {
-            // The pilot's answer goes first.  Where it wins every first-stage
-            // world no alternative can be ahead of it, so none is tried: the
-            // answer is the one the full stage would keep.
-            for pilot_pass in [true, false] {
-                if !pilot_pass && won_everywhere {
-                    break;
-                }
-                for world in done..total {
-                    let seed = setup.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
-                    let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
-                    for index in indices {
-                        counts[0] += 1;
-                        let played = self.playout(handle, snapshot, setup, logs, Some((viewer, seed)), &decision.responses[index], decisions);
-                        candidates[index].payoffs.push(match played {
-                            Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
-                            Ok(None) => Some(0.0),
-                            Err(_) => {
-                                counts[1] += 1;
-                                None
-                            }
-                        });
-                    }
-                }
-                if pilot_pass && stage == 0 {
-                    won_everywhere = candidates[0].payoffs.iter().all(|payoff| payoff.map_or(true, |p| p >= 1.0));
-                }
-            }
-            if won_everywhere {
-                break;
-            }
-            done = total;
-            let mut ranked: Vec<(usize, f64, f64, usize)> = alive
-                .iter()
-                .map(|index| {
-                    let (mean, z, n) = paired(&candidates[*index], &candidates[0]);
-                    (*index, mean, z, n)
-                })
-                .filter(|(_, mean, _, _)| *mean > 0.0)
-                .collect();
-            ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
-            let Some(best) = ranked.first().copied() else { break };
-            let last = stage + 1 == search.stages.len();
-            let accept = if last { best.2 >= search.z } else { stage > 0 && best.2 >= EARLY_ACCEPT };
-            if accept {
-                chosen = best.0;
-                seen = serde_json::json!({"kind": decision.kind, "from": decision.labels[0], "to": decision.labels[best.0],
-                    "gain": best.1, "z": if best.2.is_finite() { best.2 } else { 99.0 }, "worlds": best.3});
-                break;
-            }
-            if last || (stage > 0 && best.2 < EARLY_REJECT) {
-                break;
-            }
-            alive = ranked.iter().take(KEPT).map(|r| r.0).collect();
-        }
-        // The live duel goes on from the decision itself.
-        let status = (self.extensions.as_ref().unwrap().restore)(handle, snapshot);
-        if status != 0 {
-            return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
-        }
-        self.resources.errors.clear();
-        if let Some(log) = log {
-            // How each alternative did in the first-stage worlds (wins, of
-            // the worlds played), the pilot's answer first.
-            let first = search.stages[0];
-            let record: Vec<serde_json::Value> = candidates
-                .iter()
-                .map(|candidate| {
-                    let played: Vec<f64> = candidate.payoffs.iter().take(first).filter_map(|p| *p).collect();
-                    serde_json::json!([played.iter().filter(|p| **p > 0.0).count(), played.len()])
-                })
-                .collect();
-            // Every world each alternative was played in: + won, - lost,
-            // 0 drawn, x not played out.
-            let played: Vec<String> = candidates
-                .iter()
-                .map(|candidate| {
-                    candidate
-                        .payoffs
-                        .iter()
-                        .map(|payoff| match payoff {
-                            Some(p) if *p > 0.0 => '+',
-                            Some(p) if *p < 0.0 => '-',
-                            Some(_) => '0',
-                            None => 'x',
-                        })
-                        .collect()
-                })
-                .collect();
-            log.push(serde_json::json!({"kind": decision.kind, "labels": decision.labels, "first": record, "played": played,
-                "worlds": candidates[0].payoffs.len(), "playouts": counts[0] - before, "chosen": chosen,
-                "skipped": won_everywhere}));
-        }
-        Ok((candidates[chosen].index, seen))
-    }
-
-    /// With foresight (see [`SearchOptions::foresight`]): the first alternative
-    /// that wins in the world as it is, when the pilot's answer does not.
-    unsafe fn foresee(
-        &mut self,
-        handle: Handle,
-        setup: &Setup,
-        logs: &[Vec<u8>; 2],
-        viewer: u8,
-        decision: &Listed,
-        decisions: usize,
-        counts: &mut [u64; 2],
-    ) -> Result<usize> {
-        let mut snapshot = ptr::null_mut();
-        let extensions = self.extensions.as_ref().unwrap();
-        let (restore, discard) = (extensions.restore, extensions.discard);
-        let status = (extensions.snapshot)(handle, &mut snapshot);
-        if status != 0 {
-            return Err(format!("OCG_DuelCreateSnapshot: {status}"));
-        }
-        let _guard = SnapshotGuard { handle: snapshot, discard };
-        let mut chosen = 0;
-        for index in 0..decision.responses.len() {
-            counts[0] += 1;
-            match self.playout(handle, snapshot, setup, logs, None, &decision.responses[index], decisions) {
-                Ok(Some(winner)) if winner == viewer => {
-                    chosen = index;
-                    break;
-                }
-                Ok(_) => {}
-                Err(_) => counts[1] += 1,
-            }
-        }
-        let status = restore(handle, snapshot);
-        if status != 0 {
-            return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
-        }
-        self.resources.errors.clear();
-        Ok(chosen)
-    }
-
-    /// [`Core::play`] with one seat searching (see the module).  Without a
-    /// deviation the duel is the one `play` plays, answer for answer.
-    pub fn play_searching(
-        &mut self,
-        decks: &[Deck; 2],
-        policies: [&PolicyLibrary; 2],
-        names: [&str; 2],
-        cards: &Path,
-        run: PlayOptions,
-        search: SearchOptions,
-    ) -> Result<serde_json::Value> {
-        if self.extensions.is_none() {
-            return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
-        }
-        let PlayOptions { seed, limit, life_points, .. } = run;
-        self.resources.errors.clear();
-        for code in decks.iter().flat_map(|d| d.main.iter().chain(&d.extra)) {
-            if !self.resources.cards.contains_key(code) {
-                return Err(format!("Deck card {code} is absent from the database"));
-            }
-        }
-        let payload = (&mut *self.resources) as *mut Resources as Handle;
-        let player = |lp| Player { lp, draw: 5, per_turn: 1 };
-        let options = Options {
-            seed: [seed, (seed.wrapping_mul(1103515245) + 12345) & 0xffffffff, 3, 4],
-            flags: 0xD0700,
-            p0: player(life_points[0]),
-            p1: player(life_points[1]),
-            reader,
-            payload1: payload,
-            scripts,
-            payload2: payload,
-            log,
-            payload3: payload,
-            done,
-            payload4: payload,
-            unsafe_libraries: 0,
-        };
-        let setup = Setup { policies, names, cards, seed, limit };
-        let viewer = search.searcher as u8;
-        unsafe {
-            let mut handle = ptr::null_mut();
-            let status = (self.create)(&mut handle, &options);
-            if status != 0 {
-                return Err(format!("OCG_CreateDuel: {status}"));
-            }
-            let _duel = DuelGuard { handle, destroy: self.destroy };
-            for name in ["constant.lua", "utility.lua"] {
-                let name = CString::new(name).unwrap();
-                if scripts(payload, handle, name.as_ptr()) == 0 {
-                    return Err(format!("Failed to load {name:?}"));
-                }
-            }
-            let mut table = Table { seats: Vec::new(), logs: [Vec::new(), Vec::new()] };
-            let mut rng = seed;
-            for p in 0..2 {
-                table.seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
-                table.feed(
-                    p,
-                    &message::start_message(
-                        p as u8,
-                        life_points,
-                        [decks[0].main.len() as u16, decks[1].main.len() as u16],
-                        [decks[0].extra.len() as u16, decks[1].extra.len() as u16],
-                    ),
-                )?;
-                let mut main = decks[p].main.clone();
-                shuffle(&mut main, &mut rng);
-                for (location, pile) in [(1, &main), (0x40, &decks[p].extra)] {
-                    for code in pile {
-                        (self.new_card)(
-                            handle,
-                            &NewCard { team: p as u8, duelist: 0, code: *code, controller: p as u8, location, sequence: 0, position: 8 },
-                        );
-                    }
-                }
-            }
-            (self.start)(handle);
-            let mut decisions = 0;
-            let mut winner = None;
-            let (mut reason, mut turns) = (None, 0u32);
-            let mut digest = 0xcbf29ce484222325u64;
-            let mut chain = false;
-            // Decisions searched, left to the pilot in a chain or facing a
-            // face-down monster, playouts, failed playouts.
-            let (mut searched, mut in_chain, mut facing_set, mut counts) = (0u64, 0u64, 0u64, [0u64; 2]);
-            let mut deviations = Vec::new();
-            let mut examined: Vec<serde_json::Value> = Vec::new();
-            let mut predictions: Vec<Option<u8>> = Vec::new();
-            loop {
-                let status = (self.process)(handle);
-                let mut length = 0;
-                let bytes = (self.messages)(handle, &mut length);
-                let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
-                let mut offset = 0;
-                let mut response: Option<(usize, Vec<u8>, Vec<u8>)> = None;
-                while offset < buffer.len() {
-                    if offset + 4 > buffer.len() {
-                        return Err("Truncated message length".into());
-                    }
-                    let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
-                    let message = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
-                    offset += 4 + n;
-                    let id = *message.first().ok_or("Empty message")?;
-                    match id {
-                        msg::RETRY => return Err("Engine rejected response (MSG_RETRY)".into()),
-                        msg::WIN => {
-                            winner = message.get(1).copied();
-                            reason = message.get(2).copied();
-                        }
-                        msg::NEW_TURN => turns += 1,
-                        msg::CHAINING => chain = true,
-                        msg::CHAIN_END => chain = false,
-                        _ => {}
-                    }
-                    if message::is_selection(id) {
-                        for update in self.field(handle) {
-                            for p in 0..2 {
-                                table.feed(p, &update)?;
-                            }
-                        }
-                    }
-                    for p in 0..2 {
-                        if let Some(answer) = table.feed(p, message)? {
-                            if response.is_some() {
-                                return Err("Multiple answers in one engine batch".into());
-                            }
-                            response = Some((p, answer, message.to_vec()));
-                        }
-                    }
-                }
-                if !self.resources.errors.is_empty() {
-                    return Err(self.resources.errors.join("\n"));
-                }
-                if winner.is_some() || status == 0 || decisions >= limit {
-                    if status == 0 && winner.is_none() {
-                        return Err("Engine ended without MSG_WIN".into());
-                    }
-                    let mispredicted = predictions.iter().filter(|p| **p != winner.filter(|w| *w < 2)).count();
-                    return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
-                        "limit": winner.is_none(), "digest": format!("{digest:016x}"), "searched": searched, "in_chain": in_chain,
-                        "facing_set": facing_set,
-                        "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations, "examined": examined,
-                        "predictions": predictions.len(), "mispredicted": mispredicted}));
-                }
-                let Some((p, mut answer, message)) = response else {
-                    if status == 1 {
-                        return Err("Engine awaiting with no policy answer".into());
-                    }
-                    continue;
-                };
-                if p == search.searcher {
-                    if search.validate {
-                        // The pilot's own answer, played out in the world as it is.
-                        counts[0] += 1;
-                        let mut snapshot = ptr::null_mut();
-                        let extensions = self.extensions.as_ref().unwrap();
-                        let (restore, discard) = (extensions.restore, extensions.discard);
-                        let status = (extensions.snapshot)(handle, &mut snapshot);
-                        if status != 0 {
-                            return Err(format!("OCG_DuelCreateSnapshot: {status}"));
-                        }
-                        let _guard = SnapshotGuard { handle: snapshot, discard };
-                        predictions.push(self.playout(handle, snapshot, &setup, &table.logs, None, &answer, decisions)?);
-                        let status = restore(handle, snapshot);
-                        if status != 0 {
-                            return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
-                        }
-                    } else if let Some((described, decision)) = {
-                        let described = table.seats[p].last_answer()?;
-                        listed(&described, &answer).map(|decision| (described, decision))
-                    } {
-                        if search.foresight {
-                            searched += 1;
-                            let index = self.foresee(handle, &setup, &table.logs, viewer, &decision, decisions, &mut counts)?;
-                            if index != 0 {
-                                answer = decision.responses[index].clone();
-                                deviations.push(serde_json::json!({"kind": decision.kind, "from": decision.labels[0],
-                                    "to": decision.labels[index], "decision": decisions, "turn": turns}));
-                            }
-                        } else if chain {
-                            in_chain += 1;
-                        } else if search.strict
-                            && self.monsters(handle).iter().any(|m| m.controller != viewer && m.position & position::FACEDOWN != 0)
-                        {
-                            facing_set += 1;
-                        } else {
-                            searched += 1;
-                            let log = search.log.then_some(&mut examined);
-                            let (index, seen) = self.decide(handle, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts, log)?;
-                            if search.log {
-                                if let Some(record) = examined.last_mut() {
-                                    record["decision"] = serde_json::json!(decisions);
-                                    record["turn"] = serde_json::json!(turns);
-                                    record["situation"] = situation(&described, viewer);
-                                    if index != 0 {
-                                        // Where the pilot's answer was left: all the seat saw and
-                                        // every choice it had, for whoever writes the pilot's rules.
-                                        record["seen"] = described.clone();
-                                    }
-                                }
-                            }
-                            if index != 0 {
-                                answer = decision.responses[index].clone();
-                                let mut seen = seen;
-                                seen["decision"] = serde_json::json!(decisions);
-                                seen["turn"] = serde_json::json!(turns);
-                                deviations.push(seen);
-                            }
-                        }
-                    }
-                }
-                for byte in message.iter().chain(&answer) {
-                    digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
-                }
-                (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
+        match answer {
+            Some(given) => {
+                duel.respond(&given);
                 decisions += 1;
             }
+            None if step.state == State::Awaiting => return Err("Engine awaiting with no policy answer".into()),
+            None => {}
         }
     }
 }
 
-struct SnapshotGuard {
-    handle: Handle,
-    discard: unsafe extern "C" fn(Handle),
+/// Search one decision of `viewer`: the response to give, and what the
+/// search saw when that is not the pilot's.  `counts` is playouts run
+/// and playouts that failed.
+#[allow(clippy::too_many_arguments)]
+fn decide(
+    duel: &mut Duel,
+    setup: &Setup,
+    logs: &[Vec<u8>; 2],
+    viewer: u8,
+    decision: &Listed,
+    search: &SearchOptions,
+    decisions: usize,
+    counts: &mut [u64; 2],
+    log: Option<&mut Vec<serde_json::Value>>,
+) -> Result<(usize, serde_json::Value)> {
+    let before = counts[0];
+    let snapshot = duel.snapshot()?;
+    let mut candidates: Vec<Candidate> = (0..decision.responses.len()).map(|index| Candidate { index, payoffs: vec![] }).collect();
+    let mut alive: Vec<usize> = (1..candidates.len()).collect();
+    let mut seen = serde_json::Value::Null;
+    let mut chosen = 0;
+    let mut done = 0;
+    let mut won_everywhere = false;
+    for (stage, total) in search.stages.iter().copied().enumerate() {
+        // The pilot's answer goes first.  Where it wins every first-stage
+        // world no alternative can be ahead of it, so none is tried: the
+        // answer is the one the full stage would keep.
+        for pilot_pass in [true, false] {
+            if !pilot_pass && won_everywhere {
+                break;
+            }
+            for world in done..total {
+                let seed = setup.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
+                let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
+                for index in indices {
+                    counts[0] += 1;
+                    let played = playout(duel, &snapshot, setup, logs, Some((viewer, seed)), &decision.responses[index], decisions);
+                    candidates[index].payoffs.push(match played {
+                        Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
+                        Ok(None) => Some(0.0),
+                        Err(_) => {
+                            counts[1] += 1;
+                            None
+                        }
+                    });
+                }
+            }
+            if pilot_pass && stage == 0 {
+                won_everywhere = candidates[0].payoffs.iter().all(|payoff| payoff.map_or(true, |p| p >= 1.0));
+            }
+        }
+        if won_everywhere {
+            break;
+        }
+        done = total;
+        let mut ranked: Vec<(usize, f64, f64, usize)> = alive
+            .iter()
+            .map(|index| {
+                let (mean, z, n) = paired(&candidates[*index], &candidates[0]);
+                (*index, mean, z, n)
+            })
+            .filter(|(_, mean, _, _)| *mean > 0.0)
+            .collect();
+        ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let Some(best) = ranked.first().copied() else { break };
+        let last = stage + 1 == search.stages.len();
+        let accept = if last { best.2 >= search.z } else { stage > 0 && best.2 >= EARLY_ACCEPT };
+        if accept {
+            chosen = best.0;
+            seen = serde_json::json!({"kind": decision.kind, "from": decision.labels[0], "to": decision.labels[best.0],
+                "gain": best.1, "z": if best.2.is_finite() { best.2 } else { 99.0 }, "worlds": best.3});
+            break;
+        }
+        if last || (stage > 0 && best.2 < EARLY_REJECT) {
+            break;
+        }
+        alive = ranked.iter().take(KEPT).map(|r| r.0).collect();
+    }
+    // The live duel goes on from the decision itself.
+    duel.restore(&snapshot)?;
+    if let Some(log) = log {
+        // How each alternative did in the first-stage worlds (wins, of
+        // the worlds played), the pilot's answer first.
+        let first = search.stages[0];
+        let record: Vec<serde_json::Value> = candidates
+            .iter()
+            .map(|candidate| {
+                let played: Vec<f64> = candidate.payoffs.iter().take(first).filter_map(|p| *p).collect();
+                serde_json::json!([played.iter().filter(|p| **p > 0.0).count(), played.len()])
+            })
+            .collect();
+        // Every world each alternative was played in: + won, - lost,
+        // 0 drawn, x not played out.
+        let played: Vec<String> = candidates
+            .iter()
+            .map(|candidate| {
+                candidate
+                    .payoffs
+                    .iter()
+                    .map(|payoff| match payoff {
+                        Some(p) if *p > 0.0 => '+',
+                        Some(p) if *p < 0.0 => '-',
+                        Some(_) => '0',
+                        None => 'x',
+                    })
+                    .collect()
+            })
+            .collect();
+        log.push(serde_json::json!({"kind": decision.kind, "labels": decision.labels, "first": record, "played": played,
+            "worlds": candidates[0].payoffs.len(), "playouts": counts[0] - before, "chosen": chosen,
+            "skipped": won_everywhere}));
+    }
+    Ok((candidates[chosen].index, seen))
 }
-impl Drop for SnapshotGuard {
-    fn drop(&mut self) {
-        unsafe { (self.discard)(self.handle) }
+
+/// With foresight (see [`SearchOptions::foresight`]): the first alternative
+/// that wins in the world as it is, when the pilot's answer does not.
+fn foresee(
+    duel: &mut Duel,
+    setup: &Setup,
+    logs: &[Vec<u8>; 2],
+    viewer: u8,
+    decision: &Listed,
+    decisions: usize,
+    counts: &mut [u64; 2],
+) -> Result<usize> {
+    let snapshot = duel.snapshot()?;
+    let mut chosen = 0;
+    for index in 0..decision.responses.len() {
+        counts[0] += 1;
+        match playout(duel, &snapshot, setup, logs, None, &decision.responses[index], decisions) {
+            Ok(Some(winner)) if winner == viewer => {
+                chosen = index;
+                break;
+            }
+            Ok(_) => {}
+            Err(_) => counts[1] += 1,
+        }
+    }
+    duel.restore(&snapshot)?;
+    Ok(chosen)
+}
+
+/// [`play`] with one seat searching (see the module).  Without a
+/// deviation the duel is the one `play` plays, answer for answer.
+pub fn play_searching(
+    core: &Core,
+    decks: &[Deck; 2],
+    policies: [&PolicyLibrary; 2],
+    names: [&str; 2],
+    cards: &Path,
+    run: PlayOptions,
+    search: SearchOptions,
+) -> Result<serde_json::Value> {
+    if !core.has_snapshots() {
+        return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
+    }
+    let PlayOptions { seed, limit, life_points, .. } = run;
+    let mut duel = core.deal(&DuelOptions { life_points, ..DuelOptions::seeded(seed) }, decks)?;
+    let setup = Setup { policies, names, cards, seed, limit };
+    let viewer = search.searcher as u8;
+    let mut table = Table { seats: Vec::new(), logs: [Vec::new(), Vec::new()] };
+    for p in 0..2 {
+        table.seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
+        table.feed(p, &duel.start_message(p as u8))?;
+    }
+    let mut decisions = 0;
+    let mut turns = 0u32;
+    let mut digest = 0xcbf29ce484222325u64;
+    let mut chain = false;
+    // Decisions searched, left to the pilot in a chain or facing a
+    // face-down monster, playouts, failed playouts.
+    let (mut searched, mut in_chain, mut facing_set, mut counts) = (0u64, 0u64, 0u64, [0u64; 2]);
+    let mut deviations = Vec::new();
+    let mut examined: Vec<serde_json::Value> = Vec::new();
+    let mut predictions: Vec<Option<u8>> = Vec::new();
+    loop {
+        let step = duel.step()?;
+        let mut response: Option<(usize, Vec<u8>, Vec<u8>)> = None;
+        for sent in &step.messages {
+            let message = &sent.bytes;
+            if sent.refresh {
+                for p in 0..2 {
+                    table.feed(p, message)?;
+                }
+                continue;
+            }
+            match message[0] {
+                msg::RETRY => return Err("Engine rejected response (MSG_RETRY)".into()),
+                msg::NEW_TURN => turns += 1,
+                msg::CHAINING => chain = true,
+                msg::CHAIN_END => chain = false,
+                _ => {}
+            }
+            for p in 0..2 {
+                if let Some(answer) = table.feed(p, message)? {
+                    if response.is_some() {
+                        return Err("Multiple answers in one engine batch".into());
+                    }
+                    response = Some((p, answer, message.to_vec()));
+                }
+            }
+        }
+        if matches!(step.state, State::Over(_)) || decisions >= limit {
+            let (winner, reason) = match step.state {
+                State::Over(Some(outcome)) => (Some(outcome.winner), Some(outcome.reason)),
+                State::Over(None) => return Err("Engine ended without MSG_WIN".into()),
+                _ => (None, None),
+            };
+            let mispredicted = predictions.iter().filter(|p| **p != winner.filter(|w| *w < 2)).count();
+            return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
+                "limit": winner.is_none(), "digest": format!("{digest:016x}"), "searched": searched, "in_chain": in_chain,
+                "facing_set": facing_set,
+                "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations, "examined": examined,
+                "predictions": predictions.len(), "mispredicted": mispredicted}));
+        }
+        let Some((p, mut answer, message)) = response else {
+            if step.state == State::Awaiting {
+                return Err("Engine awaiting with no policy answer".into());
+            }
+            continue;
+        };
+        if p == search.searcher {
+            if search.validate {
+                // The pilot's own answer, played out in the world as it is.
+                counts[0] += 1;
+                let snapshot = duel.snapshot()?;
+                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, None, &answer, decisions)?);
+                duel.restore(&snapshot)?;
+            } else if let Some((described, decision)) = {
+                let described = table.seats[p].last_answer()?;
+                listed(&described, &answer).map(|decision| (described, decision))
+            } {
+                if search.foresight {
+                    searched += 1;
+                    let index = foresee(&mut duel, &setup, &table.logs, viewer, &decision, decisions, &mut counts)?;
+                    if index != 0 {
+                        answer = decision.responses[index].clone();
+                        deviations.push(serde_json::json!({"kind": decision.kind, "from": decision.labels[0],
+                            "to": decision.labels[index], "decision": decisions, "turn": turns}));
+                    }
+                } else if chain {
+                    in_chain += 1;
+                } else if search.strict && duel.monsters().iter().any(|m| m.controller != viewer && m.position & position::FACEDOWN != 0) {
+                    facing_set += 1;
+                } else {
+                    searched += 1;
+                    let log = search.log.then_some(&mut examined);
+                    let (index, seen) = decide(&mut duel, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts, log)?;
+                    if search.log {
+                        if let Some(record) = examined.last_mut() {
+                            record["decision"] = serde_json::json!(decisions);
+                            record["turn"] = serde_json::json!(turns);
+                            record["situation"] = situation(&described, viewer);
+                            if index != 0 {
+                                // Where the pilot's answer was left: all the seat saw and
+                                // every choice it had, for whoever writes the pilot's rules.
+                                record["seen"] = described.clone();
+                            }
+                        }
+                    }
+                    if index != 0 {
+                        answer = decision.responses[index].clone();
+                        let mut seen = seen;
+                        seen["decision"] = serde_json::json!(decisions);
+                        seen["turn"] = serde_json::json!(turns);
+                        deviations.push(seen);
+                    }
+                }
+            }
+        }
+        for byte in message.iter().chain(&answer) {
+            digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
+        }
+        duel.respond(&answer);
+        decisions += 1;
     }
 }

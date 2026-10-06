@@ -577,7 +577,7 @@ fn run() -> Result<()> {
             );
             scope.spawn(move || {
                 let work = || -> Result<()> {
-                    let mut core = Core::open(core_path.as_deref(), cards, scripts)?;
+                    let core = Core::open(core_path.as_deref(), cards, scripts)?;
                     let baseline = PolicyLibrary::open(baseline)?;
                     let candidate = PolicyLibrary::open(candidate)?;
                     loop {
@@ -591,10 +591,10 @@ fn run() -> Result<()> {
                         if mode == "search" {
                             let policies = [&candidate, &candidate];
                             let options = PlayOptions { seed, limit, trace: false, life_points };
-                            row["baseline"] = scored(core.play(&decks, policies, names, cards, options), seat);
+                            row["baseline"] = scored(engine::play(&core, &decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
                             let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
-                            row["search"] = scored(core.play_searching(&decks, policies, names, cards, options, search), seat);
+                            row["search"] = scored(engine::play_searching(&core, &decks, policies, names, cards, options, search), seat);
                             row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
                             tx.send(Ok(row)).map_err(|e| e.to_string())?;
                             continue;
@@ -613,7 +613,7 @@ fn run() -> Result<()> {
                                 [&baseline, library]
                             };
                             row[label] = scored(
-                                core.play(&decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points }),
+                                engine::play(&core, &decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points }),
                                 seat,
                             );
                         }

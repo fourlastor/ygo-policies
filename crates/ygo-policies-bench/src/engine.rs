@@ -1,21 +1,16 @@
-//! The public OCGCore C API. Callbacks and their backing data outlive every duel.
-use libloading::Library;
-use std::{
-    collections::HashMap,
-    ffi::{c_char, c_void, CStr, CString},
-    path::Path,
-    ptr,
-};
+//! Duels between two policy libraries, and staged duels for the probes.
+//! The engine, the Decks and the duel itself are `ygo-policies-duel`'s: what
+//! is here seats the players and writes what happened.
+use std::{collections::HashMap, path::Path};
+use ygo_policies_duel::{Duel, LibrarySeat, Snapshot, State};
+pub use ygo_policies_duel::{Asked, Core, Deck, DuelOptions, Monster, Placed, PolicyLibrary, Printed, Recorded, Replayed, Result};
 use ygo_policies_ocgcore::{
     message::{self, Message},
     wire::{msg, position, query},
 };
 
 mod search;
-pub use search::SearchOptions;
-
-pub type Result<T> = std::result::Result<T, String>;
-type Handle = *mut c_void;
+pub use search::{play_searching, SearchOptions};
 
 #[derive(Clone, Copy)]
 pub struct PlayOptions {
@@ -29,40 +24,6 @@ pub struct PlayOptions {
 /// Life Points of both players in a staged duel.
 pub const STAGED_LIFE_POINTS: u32 = 30000;
 
-/// A card put somewhere before a staged duel starts (see [`Core::stage`]).
-/// `location`, `sequence` and `position` are OCGCore's own values.
-#[derive(Clone, Copy, Debug)]
-pub struct Placed {
-    pub controller: u8,
-    pub code: u32,
-    pub location: u32,
-    pub sequence: u32,
-    pub position: u32,
-}
-
-/// A monster on the field, as the engine reports it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Monster {
-    pub controller: u8,
-    pub sequence: u32,
-    pub code: u32,
-    pub position: u32,
-    pub attack: i32,
-    pub defense: i32,
-}
-
-/// Printed data of a card.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Printed {
-    pub kind: u32,
-    pub level: u32,
-    pub attribute: u32,
-    pub race: u64,
-    pub attack: i32,
-    pub defense: i32,
-    pub alias: u32,
-}
-
 /// What a staged duel shows its watcher.
 pub enum Step<'a> {
     /// Every engine message, in order, with its bytes (id first).
@@ -71,973 +32,169 @@ pub enum Step<'a> {
     Prompt(&'a Message, &'a [Monster]),
 }
 
-/// A duel recorded elsewhere (Beat Claudi-oh's log): all it takes to play
-/// it again.
-pub struct Recorded {
-    pub seed: [u64; 4],
-    pub flags: u64,
-    pub life_points: [u32; 2],
-    pub hand: u32,
-    pub per_turn: u32,
-    /// Each player's Deck in the order it was loaded, already shuffled.
-    pub decks: [Deck; 2],
-    /// Who answered each of the engine's questions, and with which bytes.
-    pub responses: Vec<(u8, Vec<u8>)>,
-}
-
-/// What a replayed duel shows its watcher.
-pub enum Replayed<'a> {
-    /// Every engine message, in order, as the engine wrote it: nothing hidden.
-    Message(&'a Message),
-    /// The recorded answer to the selection just shown, and who gave it.
-    Answer(u8, &'a [u8]),
-    /// Before a recorded answer that the policy asked alongside
-    /// ([`Asked`]) would not give: its own (as `policy-bench --trace`
-    /// writes a decision), and the recorded one.
-    Otherwise(&'a serde_json::Value, &'a [u8]),
-}
-
-/// A policy to ask, at every decision one seat took in a recorded duel,
-/// what it would answer there.
-pub struct Asked<'a> {
-    pub library: &'a PolicyLibrary,
-    pub policy: &'a str,
-    pub cards: &'a Path,
-    pub seat: u8,
-}
-
-#[repr(C)]
-#[derive(Default, Clone, Copy)]
-struct CardData {
-    code: u32,
-    alias: u32,
-    sets: *const u16,
-    kind: u32,
-    level: u32,
-    attribute: u32,
-    race: u64,
-    attack: i32,
-    defense: i32,
-    lscale: u32,
-    rscale: u32,
-    link: u32,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-struct Player {
-    lp: u32,
-    draw: u32,
-    per_turn: u32,
-}
-
-#[repr(C)]
-struct Options {
-    seed: [u64; 4],
-    flags: u64,
-    p0: Player,
-    p1: Player,
-    reader: unsafe extern "C" fn(Handle, u32, *mut CardData),
-    payload1: Handle,
-    scripts: unsafe extern "C" fn(Handle, Handle, *const c_char) -> i32,
-    payload2: Handle,
-    log: unsafe extern "C" fn(Handle, *const c_char, i32),
-    payload3: Handle,
-    done: unsafe extern "C" fn(Handle, *mut CardData),
-    payload4: Handle,
-    unsafe_libraries: u8,
-}
-
-#[repr(C)]
-struct NewCard {
-    team: u8,
-    duelist: u8,
-    code: u32,
-    controller: u8,
-    location: u32,
-    sequence: u32,
-    position: u32,
-}
-
-#[repr(C)]
-struct Query {
-    flags: u32,
-    controller: u8,
-    location: u32,
-    sequence: u32,
-    overlay: u32,
-}
-
-type LoadScript = unsafe extern "C" fn(Handle, *const u8, u32, *const c_char) -> i32;
-
-// Linked from the pinned vendor tree by build.rs. --core can override it for
-// comparisons against another host's engine without changing policy code.
-extern "C" {
-    fn OCG_CreateDuel(out: *mut Handle, options: *const Options) -> i32;
-    fn OCG_DestroyDuel(duel: Handle);
-    fn OCG_DuelNewCard(duel: Handle, card: *const NewCard);
-    fn OCG_StartDuel(duel: Handle);
-    fn OCG_DuelProcess(duel: Handle) -> i32;
-    fn OCG_DuelGetMessage(duel: Handle, length: *mut u32) -> *const u8;
-    fn OCG_DuelSetResponse(duel: Handle, response: *const u8, length: u32);
-    fn OCG_DuelQueryLocation(duel: Handle, length: *mut u32, query: *const Query) -> *const u8;
-    fn OCG_LoadScript(duel: Handle, bytes: *const u8, length: u32, name: *const c_char) -> i32;
-    fn OCG_DuelQueryCount(duel: Handle, team: u8, location: u32) -> u32;
-    fn OCG_DuelQuery(duel: Handle, length: *mut u32, query: *const Query) -> *const u8;
-    // The fork's additions: arena snapshots and the hidden-card swap.
-    fn OCG_DuelCreateSnapshot(duel: Handle, out: *mut Handle) -> i32;
-    fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
-    fn OCG_DuelDestroySnapshot(snapshot: Handle);
-    fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
-}
-
-struct Resources {
-    cards: HashMap<u32, (CardData, Box<[u16]>)>,
-    scripts: HashMap<String, Vec<u8>>,
-    load: LoadScript,
-    errors: Vec<String>,
-}
-
-unsafe extern "C" fn reader(payload: Handle, code: u32, out: *mut CardData) {
-    let resources = &*(payload as *const Resources);
-    *out = resources
-        .cards
-        .get(&code)
-        .map(|(data, _)| *data)
-        .unwrap_or_default();
-}
-
-unsafe extern "C" fn scripts(payload: Handle, duel: Handle, name: *const c_char) -> i32 {
-    let resources = &*(payload as *const Resources);
-    let name_str = CStr::from_ptr(name).to_string_lossy();
-    match resources.scripts.get(name_str.as_ref()) {
-        Some(bytes) => (resources.load)(duel, bytes.as_ptr(), bytes.len() as u32, name),
-        None => 0,
+/// A duel that starts from a staged board instead of two shuffled decks:
+/// `cards` are put in place, nobody draws an opening hand, and seat 0
+/// takes the first turn with attacks allowed (Master Rule 1 otherwise).
+/// Both players start at [`STAGED_LIFE_POINTS`], so that a few attacks
+/// in a row do not end the duel.
+/// The seats answer in process.  `watch` sees every message, and every
+/// selection with the monster zones before it is answered; it returns
+/// `false` to end the duel there.  Returns the monster zones at the end.
+pub fn stage(
+    core: &Core,
+    cards: &[Placed],
+    seed: u64,
+    seats: &mut [ygo_policies_ocgcore::Seat; 2],
+    limit: usize,
+    watch: &mut dyn FnMut(Step) -> bool,
+) -> Result<Vec<Monster>> {
+    let options = DuelOptions {
+        seed: [seed, 2, 3, 4],
+        flags: DuelOptions::MASTER_RULE_1 | DuelOptions::ATTACK_FIRST_TURN,
+        life_points: [STAGED_LIFE_POINTS; 2],
+        hand: 0,
+        per_turn: 1,
+        shuffle: None,
+    };
+    let failed = |e: ygo_policies_ocgcore::ProtocolError| e.to_string();
+    let mut duel = core.duel(&options)?;
+    for card in cards {
+        duel.add(*card);
     }
-}
-
-unsafe extern "C" fn log(payload: Handle, text: *const c_char, kind: i32) {
-    if kind == 0 {
-        (*(payload as *mut Resources))
-            .errors
-            .push(CStr::from_ptr(text).to_string_lossy().into_owned());
+    for (p, seat) in seats.iter_mut().enumerate() {
+        seat.feed(&duel.start_message(p as u8)).map_err(failed)?;
     }
-}
-
-unsafe extern "C" fn done(_: Handle, _: *mut CardData) {}
-
-unsafe fn symbol<T: Copy>(library: &Library, name: &[u8]) -> Result<T> {
-    library
-        .get::<T>(name)
-        .map(|s| *s)
-        .map_err(|e| e.to_string())
-}
-
-pub struct Core {
-    _library: Option<Library>,
-    /// Snapshots and the hidden-card swap: the built-in engine has them, an
-    /// engine given as `--core` may not.
-    extensions: Option<search::Extensions>,
-    resources: Box<Resources>,
-    create: unsafe extern "C" fn(*mut Handle, *const Options) -> i32,
-    destroy: unsafe extern "C" fn(Handle),
-    new_card: unsafe extern "C" fn(Handle, *const NewCard),
-    start: unsafe extern "C" fn(Handle),
-    process: unsafe extern "C" fn(Handle) -> i32,
-    messages: unsafe extern "C" fn(Handle, *mut u32) -> *const u8,
-    respond: unsafe extern "C" fn(Handle, *const u8, u32),
-    query: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
-}
-
-impl Core {
-    pub fn open(path: Option<&Path>, cards: &Path, script_dir: &Path) -> Result<Self> {
-        let mut data = HashMap::new();
-        let db = rusqlite::Connection::open_with_flags(
-            cards,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .map_err(|e| e.to_string())?;
-        let mut stmt = db
-            .prepare("select id,alias,setcode,type,atk,def,level,race,attribute from datas")
-            .map_err(|e| e.to_string())?;
-        let rows = stmt
-            .query_map([], |row| {
-                let mut values = [0i64; 9];
-                for (i, v) in values.iter_mut().enumerate() {
-                    *v = row.get(i)?;
-                }
-                Ok(values)
-            })
-            .map_err(|e| e.to_string())?;
-        for row in rows {
-            let [code, alias, sets, kind, attack, defense, level, race, attribute] =
-                row.map_err(|e| e.to_string())?;
-            let sets: Box<[u16]> = (0..4)
-                .map(|i| ((sets as u64 >> (i * 16)) & 65535) as u16)
-                .filter(|s| *s != 0)
-                .chain([0])
-                .collect();
-            let link = kind & 0x4000000 != 0;
-            data.insert(
-                code as u32,
-                (
-                    CardData {
-                        code: code as u32,
-                        alias: alias as u32,
-                        sets: sets.as_ptr(),
-                        kind: kind as u32,
-                        level: level as u32 & 255,
-                        attribute: attribute as u32,
-                        race: race as u64,
-                        attack: attack as i32,
-                        defense: if link { 0 } else { defense as i32 },
-                        lscale: (level as u32 >> 24) & 255,
-                        rscale: (level as u32 >> 16) & 255,
-                        link: if link { defense as u32 } else { 0 },
-                    },
-                    sets,
-                ),
-            );
-        }
-        let mut script_data = HashMap::new();
-        // Root helpers first, then official cards, then missing pre-errata scripts.
-        for folder in ["", "official", "pre-errata"] {
-            let dir = script_dir.join(folder);
-            if !dir.is_dir() {
+    duel.start();
+    let mut decisions = 0;
+    loop {
+        let step = duel.step()?;
+        let mut response = None;
+        let mut running = true;
+        // The field refresh that comes before a selection, until the watcher
+        // has seen the selection itself.
+        let mut refresh: Vec<&[u8]> = Vec::new();
+        for sent in &step.messages {
+            if !running {
+                break;
+            }
+            if sent.refresh {
+                refresh.push(&sent.bytes);
                 continue;
             }
-            for file in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
-                let file = file.map_err(|e| e.to_string())?;
-                if file.path().extension().and_then(|e| e.to_str()) == Some("lua") {
-                    script_data
-                        .entry(file.file_name().to_string_lossy().into_owned())
-                        .or_insert(std::fs::read(file.path()).map_err(|e| e.to_string())?);
-                }
+            let raw = &sent.bytes[..];
+            let parsed = message::parse(raw).map_err(failed)?;
+            if matches!(parsed, Message::Retry) {
+                return Err("Engine rejected response (MSG_RETRY)".into());
             }
-        }
-        unsafe {
-            let library = path
-                .map(|p| Library::new(p).map_err(|e| e.to_string()))
-                .transpose()?;
-            macro_rules! api {
-                ($name:ident) => {
-                    match &library {
-                        Some(library) => symbol(library, stringify!($name).as_bytes())?,
-                        None => $name,
-                    }
-                };
-            }
-            Ok(Self {
-                resources: Box::new(Resources {
-                    cards: data,
-                    scripts: script_data,
-                    load: api!(OCG_LoadScript),
-                    errors: vec![],
-                }),
-                create: api!(OCG_CreateDuel),
-                destroy: api!(OCG_DestroyDuel),
-                new_card: api!(OCG_DuelNewCard),
-                start: api!(OCG_StartDuel),
-                process: api!(OCG_DuelProcess),
-                messages: api!(OCG_DuelGetMessage),
-                respond: api!(OCG_DuelSetResponse),
-                query: api!(OCG_DuelQueryLocation),
-                extensions: match &library {
-                    Some(library) => search::Extensions::load(library),
-                    None => Some(search::Extensions::built_in()),
-                },
-                _library: library,
-            })
-        }
-    }
-
-    /// Printed data of a card, if the database (or [`Core::define`]) has it.
-    pub fn printed(&self, code: u32) -> Option<Printed> {
-        self.resources.cards.get(&code).map(|(c, _)| Printed {
-            kind: c.kind,
-            level: c.level,
-            attribute: c.attribute,
-            race: c.race,
-            attack: c.attack,
-            defense: c.defense,
-            alias: c.alias,
-        })
-    }
-
-    /// Every code in the database, in order.
-    pub fn codes(&self) -> Vec<u32> {
-        let mut codes: Vec<u32> = self.resources.cards.keys().copied().collect();
-        codes.sort_unstable();
-        codes
-    }
-
-    /// Add or replace a card of our own: staged duels use plain monsters
-    /// that no script touches.  Duels read card data when they start, so a
-    /// card can be redefined between duels.
-    pub fn define(&mut self, code: u32, card: Printed) {
-        let sets: Box<[u16]> = Box::new([0]);
-        let data = CardData {
-            code,
-            alias: card.alias,
-            sets: sets.as_ptr(),
-            kind: card.kind,
-            level: card.level,
-            attribute: card.attribute,
-            race: card.race,
-            attack: card.attack,
-            defense: card.defense,
-            lscale: 0,
-            rscale: 0,
-            link: 0,
-        };
-        self.resources.cards.insert(code, (data, sets));
-    }
-
-    fn monsters(&self, handle: Handle) -> Vec<Monster> {
-        let mut out = Vec::new();
-        for controller in 0..2u8 {
-            let q = Query { flags: query::RECOMMENDED, controller, location: 4, sequence: 0, overlay: 0 };
-            let mut length = 0;
-            let bytes = unsafe { (self.query)(handle, &mut length, &q) };
-            let mut update = vec![msg::UPDATE_DATA, controller, 4];
-            if length > 0 {
-                update.extend_from_slice(unsafe { std::slice::from_raw_parts(bytes, length as usize) });
-            }
-            if let Ok(Message::UpdateData { cards, .. }) = message::parse(&update) {
-                for (sequence, card) in cards.iter().enumerate() {
-                    if let Some(card) = card {
-                        out.push(Monster {
-                            controller,
-                            sequence: sequence as u32,
-                            code: card.code.unwrap_or(0),
-                            position: card.position.unwrap_or(0),
-                            attack: card.attack.unwrap_or(0),
-                            defense: card.defense.unwrap_or(0),
-                        });
-                    }
-                }
-            }
-        }
-        out
-    }
-
-    /// A duel that starts from a staged board instead of two shuffled decks:
-    /// `cards` are put in place, nobody draws an opening hand, and seat 0
-    /// takes the first turn with attacks allowed (Master Rule 1 otherwise).
-    /// Both players start at [`STAGED_LIFE_POINTS`], so that a few attacks
-    /// in a row do not end the duel.
-    /// The seats answer in process.  `watch` sees every message, and every
-    /// selection with the monster zones before it is answered; it returns
-    /// `false` to end the duel there.  Returns the monster zones at the end.
-    pub fn stage(
-        &mut self,
-        cards: &[Placed],
-        seed: u64,
-        seats: &mut [ygo_policies_ocgcore::Seat; 2],
-        limit: usize,
-        watch: &mut dyn FnMut(Step) -> bool,
-    ) -> Result<Vec<Monster>> {
-        self.resources.errors.clear();
-        let payload = (&mut *self.resources) as *mut Resources as Handle;
-        let player = Player { lp: STAGED_LIFE_POINTS, draw: 0, per_turn: 1 };
-        let options = Options {
-            seed: [seed, 2, 3, 4],
-            // Master Rule 1 plus DUEL_ATTACK_FIRST_TURN.
-            flags: 0xD0700 | 0x02,
-            p0: player,
-            p1: player,
-            reader,
-            payload1: payload,
-            scripts,
-            payload2: payload,
-            log,
-            payload3: payload,
-            done,
-            payload4: payload,
-            unsafe_libraries: 0,
-        };
-        let failed = |e: ygo_policies_ocgcore::ProtocolError| e.to_string();
-        unsafe {
-            let mut handle = ptr::null_mut();
-            let status = (self.create)(&mut handle, &options);
-            if status != 0 {
-                return Err(format!("OCG_CreateDuel: {status}"));
-            }
-            let _duel = DuelGuard { handle, destroy: self.destroy };
-            for name in ["constant.lua", "utility.lua"] {
-                let name = CString::new(name).unwrap();
-                if scripts(payload, handle, name.as_ptr()) == 0 {
-                    return Err(format!("Failed to load {name:?}"));
-                }
-            }
-            let count = |p: u8, l: u32| cards.iter().filter(|c| c.controller == p && c.location == l).count() as u16;
-            for (p, seat) in seats.iter_mut().enumerate() {
-                let start = message::start_message(
-                    p as u8,
-                    [STAGED_LIFE_POINTS; 2],
-                    [count(0, 1), count(1, 1)],
-                    [count(0, 0x40), count(1, 0x40)],
-                );
-                seat.feed(&start).map_err(failed)?;
-            }
-            for card in cards {
-                (self.new_card)(
-                    handle,
-                    &NewCard {
-                        team: card.controller,
-                        duelist: 0,
-                        code: card.code,
-                        controller: card.controller,
-                        location: card.location,
-                        sequence: card.sequence,
-                        position: card.position,
-                    },
-                );
-            }
-            (self.start)(handle);
-            let mut decisions = 0;
-            loop {
-                let status = (self.process)(handle);
-                let mut length = 0;
-                let bytes = (self.messages)(handle, &mut length);
-                let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
-                let mut offset = 0;
-                let mut response = None;
-                let mut running = true;
-                while running && offset < buffer.len() {
-                    let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
-                    let raw = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
-                    offset += 4 + n;
-                    let id = *raw.first().ok_or("Empty message")?;
-                    let parsed = message::parse(raw).map_err(failed)?;
-                    if matches!(parsed, Message::Retry) {
-                        return Err("Engine rejected response (MSG_RETRY)".into());
-                    }
-                    running = watch(Step::Message(&parsed, raw)) && !matches!(parsed, Message::Win { .. });
-                    if running && message::is_selection(id) {
-                        running = watch(Step::Prompt(&parsed, &self.monsters(handle)));
-                        if running {
-                            for p in 0..2 {
-                                for loc in [2, 4, 8, 16, 32, 64] {
-                                    let q = Query { flags: query::RECOMMENDED, controller: p, location: loc, sequence: 0, overlay: 0 };
-                                    let bytes = (self.query)(handle, &mut length, &q);
-                                    let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
-                                    if length > 0 {
-                                        update.extend_from_slice(std::slice::from_raw_parts(bytes, length as usize));
-                                    }
-                                    for seat in seats.iter_mut() {
-                                        seat.feed(&update).map_err(failed)?;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if running {
+            running = watch(Step::Message(&parsed, raw)) && !matches!(parsed, Message::Win { .. });
+            if running && message::is_selection(raw[0]) {
+                running = watch(Step::Prompt(&parsed, &duel.monsters()));
+                if running {
+                    for update in &refresh {
                         for seat in seats.iter_mut() {
-                            if let Some(answer) = seat.feed(raw).map_err(failed)? {
-                                response = Some(answer);
-                            }
+                            seat.feed(update).map_err(failed)?;
                         }
                     }
                 }
-                if !self.resources.errors.is_empty() {
-                    return Err(self.resources.errors.join("\n"));
-                }
-                if !running || status == 0 || decisions >= limit {
-                    return Ok(self.monsters(handle));
-                }
-                match response {
-                    Some(answer) => {
-                        (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
-                        decisions += 1;
-                    }
-                    None if status == 1 => return Err("Engine awaiting with no answer".into()),
-                    None => {}
-                }
             }
-        }
-    }
-
-    /// Both players' cards as `MSG_UPDATE_DATA` messages, for the seats
-    /// before a selection: current ATK/DEF and positions.
-    unsafe fn field(&self, handle: Handle) -> Vec<Vec<u8>> {
-        let mut updates = Vec::new();
-        for p in 0..2 {
-            for loc in [2, 4, 8, 16, 32, 64] {
-                let q = Query { flags: query::RECOMMENDED, controller: p, location: loc, sequence: 0, overlay: 0 };
-                let mut length = 0;
-                let bytes = (self.query)(handle, &mut length, &q);
-                let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
-                if length > 0 {
-                    update.extend_from_slice(std::slice::from_raw_parts(bytes, length as usize));
-                }
-                updates.push(update);
-            }
-        }
-        updates
-    }
-
-    /// Play a recorded duel again: its seed and Decks, and the recorded
-    /// answers in order.  The Decks go in as Beat Claudi-oh's server loads
-    /// them, last card first.  `watch` sees every message and every answer.
-    /// A policy can be `asked` alongside: it is fed the duel as its seat saw
-    /// it and answers each of that seat's decisions, the duel going on with
-    /// the recorded answer whatever it says.
-    /// Returns how many recorded answers were left when the duel ended.
-    pub fn replay(&mut self, record: &Recorded, asked: Option<&Asked>, watch: &mut dyn FnMut(Replayed)) -> Result<usize> {
-        self.resources.errors.clear();
-        for code in record.decks.iter().flat_map(|d| d.main.iter().chain(&d.extra)) {
-            if !self.resources.cards.contains_key(code) {
-                return Err(format!("Deck card {code} is absent from the database"));
-            }
-        }
-        let payload = (&mut *self.resources) as *mut Resources as Handle;
-        let player = |lp| Player { lp, draw: record.hand, per_turn: record.per_turn };
-        let options = Options {
-            seed: record.seed,
-            flags: record.flags,
-            p0: player(record.life_points[0]),
-            p1: player(record.life_points[1]),
-            reader,
-            payload1: payload,
-            scripts,
-            payload2: payload,
-            log,
-            payload3: payload,
-            done,
-            payload4: payload,
-            unsafe_libraries: 0,
-        };
-        unsafe {
-            let mut handle = ptr::null_mut();
-            let status = (self.create)(&mut handle, &options);
-            if status != 0 {
-                return Err(format!("OCG_CreateDuel: {status}"));
-            }
-            let _duel = DuelGuard { handle, destroy: self.destroy };
-            for name in ["constant.lua", "utility.lua"] {
-                let name = CString::new(name).unwrap();
-                if scripts(payload, handle, name.as_ptr()) == 0 {
-                    return Err(format!("Failed to load {name:?}"));
-                }
-            }
-            for (p, deck) in record.decks.iter().enumerate() {
-                for (location, pile) in [(1, &deck.main), (0x40, &deck.extra)] {
-                    for code in pile.iter().rev() {
-                        (self.new_card)(
-                            handle,
-                            &NewCard { team: p as u8, duelist: 0, code: *code, controller: p as u8, location, sequence: 0, position: 8 },
-                        );
+            refresh.clear();
+            if running {
+                for seat in seats.iter_mut() {
+                    if let Some(answer) = seat.feed(raw).map_err(failed)? {
+                        response = Some(answer);
                     }
                 }
             }
-            let seat = match asked {
-                Some(asked) => {
-                    let seat = asked.library.seat(asked.policy, asked.cards, asked.seat as i32, record.seed[0])?;
-                    let size = |pile: fn(&Deck) -> &Vec<u32>| [pile(&record.decks[0]).len() as u16, pile(&record.decks[1]).len() as u16];
-                    seat.feed(&message::start_message(asked.seat, record.life_points, size(|d| &d.main), size(|d| &d.extra)))?;
-                    Some(seat)
+        }
+        if !running || matches!(step.state, State::Over(_)) || decisions >= limit {
+            return Ok(duel.monsters());
+        }
+        match response {
+            Some(answer) => {
+                duel.respond(&answer);
+                decisions += 1;
+            }
+            None if step.state == State::Awaiting => return Err("Engine awaiting with no answer".into()),
+            None => {}
+        }
+    }
+}
+
+/// A duel between two policies, each from its library: who won and how, the
+/// digest of every question and answer, and with `trace` every decision.
+pub fn play(
+    core: &Core,
+    decks: &[Deck; 2],
+    policies: [&PolicyLibrary; 2],
+    names: [&str; 2],
+    cards: &Path,
+    run: PlayOptions,
+) -> Result<serde_json::Value> {
+    let PlayOptions { seed, limit, trace, life_points } = run;
+    let mut duel = core.deal(&DuelOptions { life_points, ..DuelOptions::seeded(seed) }, decks)?;
+    let mut seats = Vec::new();
+    for p in 0..2 {
+        seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
+        seats[p].feed(&duel.start_message(p as u8))?;
+    }
+    let mut decisions = 0;
+    let mut turns = 0u32;
+    let mut digest = 0xcbf29ce484222325u64;
+    let mut traces = Vec::new();
+    let mut activations = HashMap::<u32, u32>::new();
+    loop {
+        let step = duel.step()?;
+        let mut response = None;
+        for sent in &step.messages {
+            let message = &sent.bytes;
+            if sent.refresh {
+                for seat in &seats {
+                    seat.feed(message)?;
                 }
-                None => None,
+                continue;
+            }
+            let id = message[0];
+            if id == msg::RETRY {
+                return Err("Engine rejected response (MSG_RETRY)".into());
+            }
+            if id == msg::NEW_TURN {
+                turns += 1;
+            }
+            if id == msg::CHAINING && message.len() >= 5 {
+                *activations
+                    .entry(u32::from_le_bytes(message[1..5].try_into().unwrap()))
+                    .or_default() += 1;
+            }
+            for seat in &seats {
+                if let Some(answer) = seat.feed(message)? {
+                    if response.is_some() {
+                        return Err("Multiple answers in one engine batch".into());
+                    }
+                    for byte in message.iter().chain(&answer) {
+                        digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
+                    }
+                    if trace {
+                        traces.push(seat.last_answer()?);
+                    }
+                    response = Some(answer);
+                }
+            }
+        }
+        if matches!(step.state, State::Over(_)) || decisions >= limit {
+            // 1: Life Points, 2: deck-out, 0x10 and up: a card's own win condition.
+            let (winner, reason) = match step.state {
+                State::Over(Some(outcome)) => (Some(outcome.winner), Some(outcome.reason)),
+                State::Over(None) => return Err("Engine ended without MSG_WIN".into()),
+                _ => (None, None),
             };
-            (self.start)(handle);
-            let mut answers = record.responses.iter();
-            let mut responder = None;
-            loop {
-                let status = (self.process)(handle);
-                let mut length = 0;
-                let bytes = (self.messages)(handle, &mut length);
-                let buffer = if length == 0 { vec![] } else { std::slice::from_raw_parts(bytes, length as usize).to_vec() };
-                let mut offset = 0;
-                let mut won = false;
-                let mut own = None;
-                while offset < buffer.len() {
-                    let n = u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
-                    let raw = buffer.get(offset + 4..offset + 4 + n).ok_or("Truncated message")?;
-                    offset += 4 + n;
-                    let parsed = message::parse(raw).map_err(|e| e.to_string())?;
-                    // A rejected answer: the same player is asked again.
-                    if let Some(player) = parsed.responder() {
-                        responder = Some(player);
-                    }
-                    won |= matches!(parsed, Message::Win { .. });
-                    if let Some(seat) = &seat {
-                        if raw.first().is_some_and(|id| message::is_selection(*id)) {
-                            for update in self.field(handle) {
-                                seat.feed(&update)?;
-                            }
-                        }
-                        if let Some(answer) = seat.feed(raw)? {
-                            own = Some(answer);
-                        }
-                    }
-                    watch(Replayed::Message(&parsed));
-                }
-                if !self.resources.errors.is_empty() {
-                    return Err(self.resources.errors.join("\n"));
-                }
-                if won || status == 0 {
-                    return Ok(answers.len());
-                }
-                if status == 1 {
-                    let (player, answer) = answers.next().ok_or("The record ends before the duel does")?;
-                    if responder.is_some_and(|p| p != *player) {
-                        return Err(format!("The record has player {player} answering a question for player {}: not the same duel", responder.unwrap()));
-                    }
-                    if let (Some(seat), Some(own)) = (&seat, own) {
-                        if own != *answer {
-                            watch(Replayed::Otherwise(&seat.last_answer()?, answer));
-                        }
-                    }
-                    watch(Replayed::Answer(*player, answer));
-                    (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
-                }
-            }
+            return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
+                "limit": winner.is_none(), "digest": format!("{digest:016x}"), "trace": traces, "activations": activations}));
         }
-    }
-
-    pub fn play(
-        &mut self,
-        decks: &[Deck; 2],
-        policies: [&PolicyLibrary; 2],
-        names: [&str; 2],
-        cards: &Path,
-        run: PlayOptions,
-    ) -> Result<serde_json::Value> {
-        let PlayOptions { seed, limit, trace, life_points } = run;
-        self.resources.errors.clear();
-        for code in decks.iter().flat_map(|d| d.main.iter().chain(&d.extra)) {
-            if !self.resources.cards.contains_key(code) {
-                return Err(format!("Deck card {code} is absent from the database"));
-            }
+        if let Some(answer) = response {
+            duel.respond(&answer);
+            decisions += 1;
+        } else if step.state == State::Awaiting {
+            return Err("Engine awaiting with no policy answer".into());
         }
-        let payload = (&mut *self.resources) as *mut Resources as Handle;
-        let player = |lp| Player {
-            lp,
-            draw: 5,
-            per_turn: 1,
-        };
-        let options = Options {
-            seed: [
-                seed,
-                (seed.wrapping_mul(1103515245) + 12345) & 0xffffffff,
-                3,
-                4,
-            ],
-            flags: 0xD0700,
-            p0: player(life_points[0]),
-            p1: player(life_points[1]),
-            reader,
-            payload1: payload,
-            scripts,
-            payload2: payload,
-            log,
-            payload3: payload,
-            done,
-            payload4: payload,
-            unsafe_libraries: 0,
-        };
-        unsafe {
-            let mut handle = ptr::null_mut();
-            let status = (self.create)(&mut handle, &options);
-            if status != 0 {
-                return Err(format!("OCG_CreateDuel: {status}"));
-            }
-            let _duel = DuelGuard {
-                handle,
-                destroy: self.destroy,
-            };
-            for name in ["constant.lua", "utility.lua"] {
-                let name = CString::new(name).unwrap();
-                if scripts(payload, handle, name.as_ptr()) == 0 {
-                    return Err(format!("Failed to load {name:?}"));
-                }
-            }
-            let mut seats = Vec::new();
-            let mut rng = seed;
-            for p in 0..2 {
-                seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
-                seats[p].feed(&message::start_message(
-                    p as u8,
-                    life_points,
-                    [decks[0].main.len() as u16, decks[1].main.len() as u16],
-                    [decks[0].extra.len() as u16, decks[1].extra.len() as u16],
-                ))?;
-                let mut main = decks[p].main.clone();
-                shuffle(&mut main, &mut rng);
-                for (location, pile) in [(1, &main), (0x40, &decks[p].extra)] {
-                    for code in pile {
-                        (self.new_card)(
-                            handle,
-                            &NewCard {
-                                team: p as u8,
-                                duelist: 0,
-                                code: *code,
-                                controller: p as u8,
-                                location,
-                                sequence: 0,
-                                position: 8,
-                            },
-                        );
-                    }
-                }
-            }
-            (self.start)(handle);
-            let mut decisions = 0;
-            let mut winner = None;
-            let (mut reason, mut turns) = (None, 0u32);
-            let mut digest = 0xcbf29ce484222325u64;
-            let mut traces = Vec::new();
-            let mut activations = HashMap::<u32, u32>::new();
-            loop {
-                let status = (self.process)(handle);
-                let mut length = 0;
-                let bytes = (self.messages)(handle, &mut length);
-                let buffer = if length == 0 {
-                    vec![]
-                } else {
-                    std::slice::from_raw_parts(bytes, length as usize).to_vec()
-                };
-                let mut offset = 0;
-                let mut response = None;
-                while offset < buffer.len() {
-                    if offset + 4 > buffer.len() {
-                        return Err("Truncated message length".into());
-                    }
-                    let n =
-                        u32::from_le_bytes(buffer[offset..offset + 4].try_into().unwrap()) as usize;
-                    let message = buffer
-                        .get(offset + 4..offset + 4 + n)
-                        .ok_or("Truncated message")?;
-                    offset += 4 + n;
-                    let id = *message.first().ok_or("Empty message")?;
-                    if id == msg::RETRY {
-                        return Err("Engine rejected response (MSG_RETRY)".into());
-                    }
-                    if id == msg::WIN {
-                        winner = message.get(1).copied();
-                        // 1: Life Points, 2: deck-out, 0x10 and up: a card's own win condition.
-                        reason = message.get(2).copied();
-                    }
-                    if id == msg::NEW_TURN {
-                        turns += 1;
-                    }
-                    if id == msg::CHAINING && message.len() >= 5 {
-                        *activations
-                            .entry(u32::from_le_bytes(message[1..5].try_into().unwrap()))
-                            .or_default() += 1;
-                    }
-                    if message::is_selection(id) {
-                        for update in self.field(handle) {
-                            for seat in &seats {
-                                seat.feed(&update)?;
-                            }
-                        }
-                    }
-                    for seat in &seats {
-                        if let Some(answer) = seat.feed(message)? {
-                            if response.is_some() {
-                                return Err("Multiple answers in one engine batch".into());
-                            }
-                            for byte in message.iter().chain(&answer) {
-                                digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
-                            }
-                            if trace {
-                                traces.push(seat.last_answer()?);
-                            }
-                            response = Some(answer);
-                        }
-                    }
-                }
-                if !self.resources.errors.is_empty() {
-                    return Err(self.resources.errors.join("\n"));
-                }
-                if winner.is_some() || status == 0 || decisions >= limit {
-                    if status == 0 && winner.is_none() {
-                        return Err("Engine ended without MSG_WIN".into());
-                    }
-                    return Ok(serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
-                        "limit": winner.is_none(), "digest": format!("{digest:016x}"), "trace": traces, "activations": activations}));
-                }
-                if let Some(answer) = response {
-                    (self.respond)(handle, answer.as_ptr(), answer.len() as u32);
-                    decisions += 1;
-                } else if status == 1 {
-                    return Err("Engine awaiting with no policy answer".into());
-                }
-            }
-        }
-    }
-}
-
-struct DuelGuard {
-    handle: Handle,
-    destroy: unsafe extern "C" fn(Handle),
-}
-impl Drop for DuelGuard {
-    fn drop(&mut self) {
-        unsafe { (self.destroy)(self.handle) }
-    }
-}
-
-pub struct PolicyLibrary {
-    _library: Library,
-    create: unsafe extern "C" fn(*const c_char, *const c_char, i32, u64) -> Handle,
-    destroy: unsafe extern "C" fn(Handle),
-    feed: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
-    feed_buffer: unsafe extern "C" fn(Handle, *const u8, usize) -> i32,
-    response: unsafe extern "C" fn(Handle, *mut usize) -> *const u8,
-    error: unsafe extern "C" fn() -> *const c_char,
-    answer: unsafe extern "C" fn(Handle) -> *const c_char,
-    pub catalog: HashMap<String, String>,
-}
-
-impl PolicyLibrary {
-    pub fn open(path: &Path) -> Result<Self> {
-        unsafe {
-            let path =
-                std::fs::canonicalize(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let library = Library::new(path).map_err(|e| e.to_string())?;
-            let catalog: unsafe extern "C" fn() -> *const c_char =
-                symbol(&library, b"ygo_policy_catalog")?;
-            let entries: serde_json::Value =
-                serde_json::from_slice(CStr::from_ptr(catalog()).to_bytes())
-                    .map_err(|e| e.to_string())?;
-            let catalog = entries
-                .as_array()
-                .ok_or("Invalid catalog")?
-                .iter()
-                .map(|v| {
-                    (
-                        v["id"].as_str().unwrap().to_owned(),
-                        v["deck"].as_str().unwrap().to_owned(),
-                    )
-                })
-                .collect();
-            Ok(Self {
-                create: symbol(&library, b"ygo_policy_create_seeded")?,
-                destroy: symbol(&library, b"ygo_policy_destroy")?,
-                feed: symbol(&library, b"ygo_policy_feed")?,
-                feed_buffer: symbol(&library, b"ygo_policy_feed_buffer")?,
-                response: symbol(&library, b"ygo_policy_response")?,
-                error: symbol(&library, b"ygo_policy_last_error")?,
-                answer: symbol(&library, b"ygo_policy_last_answer_json")?,
-                catalog,
-                _library: library,
-            })
-        }
-    }
-
-    fn seat(&self, name: &str, cards: &Path, player: i32, seed: u64) -> Result<Seat<'_>> {
-        let name = CString::new(name).map_err(|e| e.to_string())?;
-        let cards = CString::new(cards.to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
-        let handle = unsafe { (self.create)(name.as_ptr(), cards.as_ptr(), player, seed) };
-        if handle.is_null() {
-            return Err(self.last_error());
-        }
-        Ok(Seat {
-            library: self,
-            handle,
-        })
-    }
-
-    fn last_error(&self) -> String {
-        unsafe {
-            let error = (self.error)();
-            if error.is_null() {
-                "Unspecified policy error".into()
-            } else {
-                CStr::from_ptr(error).to_string_lossy().into_owned()
-            }
-        }
-    }
-}
-
-struct Seat<'a> {
-    library: &'a PolicyLibrary,
-    handle: Handle,
-}
-impl Seat<'_> {
-    fn feed(&self, message: &[u8]) -> Result<Option<Vec<u8>>> {
-        unsafe {
-            match (self.library.feed)(self.handle, message.as_ptr(), message.len()) {
-                0 => Ok(None),
-                1 => {
-                    let mut length = 0;
-                    let bytes = (self.library.response)(self.handle, &mut length);
-                    Ok(Some(std::slice::from_raw_parts(bytes, length).to_vec()))
-                }
-                _ => Err(self.library.last_error()),
-            }
-        }
-    }
-    /// Feed several messages at once, each behind its length as OCGCore
-    /// writes them; answers along the way are dropped.
-    fn feed_buffer(&self, buffer: &[u8]) -> Result<()> {
-        unsafe {
-            match (self.library.feed_buffer)(self.handle, buffer.as_ptr(), buffer.len()) {
-                0 | 1 => Ok(()),
-                _ => Err(self.library.last_error()),
-            }
-        }
-    }
-    fn last_answer(&self) -> Result<serde_json::Value> {
-        unsafe {
-            let answer = (self.library.answer)(self.handle);
-            if answer.is_null() {
-                return Err(self.library.last_error());
-            }
-            serde_json::from_slice(CStr::from_ptr(answer).to_bytes()).map_err(|e| e.to_string())
-        }
-    }
-}
-impl Drop for Seat<'_> {
-    fn drop(&mut self) {
-        unsafe { (self.library.destroy)(self.handle) }
-    }
-}
-
-#[derive(Clone)]
-pub struct Deck {
-    pub main: Vec<u32>,
-    pub extra: Vec<u32>,
-}
-impl Deck {
-    pub fn load(path: &Path) -> Result<Self> {
-        let mut deck = Deck {
-            main: vec![],
-            extra: vec![],
-        };
-        let mut section = "";
-        let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        for line in text.lines().map(str::trim) {
-            match line {
-                "#main" | "#extra" | "!side" => section = line,
-                _ => {
-                    if let Ok(code) = line.parse() {
-                        match section {
-                            "#main" => deck.main.push(code),
-                            "#extra" => deck.extra.push(code),
-                            _ => {}
-                        }
-                    }
-                }
-            }
-        }
-        if deck.main.is_empty() {
-            return Err("Empty main deck".into());
-        }
-        Ok(deck)
-    }
-}
-
-fn shuffle(cards: &mut [u32], state: &mut u64) {
-    for i in (1..cards.len()).rev() {
-        *state = state.wrapping_add(0x9E3779B97F4A7C15);
-        let mut z = *state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-        z ^= z >> 31;
-        cards.swap(i, z as usize % (i + 1));
     }
 }

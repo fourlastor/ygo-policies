@@ -865,7 +865,7 @@ impl Lab {
             board: Vec::new(),
             seen: Seen::default(),
         };
-        let monsters = self.core.stage(&cards, subject as u64, &mut seats, 200, &mut |step| recorder.step(step))?;
+        let monsters = crate::engine::stage(&self.core, &cards, subject as u64, &mut seats, 200, &mut |step| recorder.step(step))?;
         let mut seen = recorder.seen.clone();
         seen.after = recorder.subject_in(&monsters);
         let shared = shared.lock().unwrap();

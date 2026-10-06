@@ -1,0 +1,17 @@
+[package]
+name = "ygo-policies-duel"
+description = "OCGCore duels a caller steps: the engine build, card data and scripts, decks, snapshots and replay records"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+libloading = "0.8.9"
+rusqlite.workspace = true
+serde_json.workspace = true
+ygo-policies-ocgcore.workspace = true
+
+[dev-dependencies]
+ygo-policies.workspace = true
+
+[build-dependencies]
+cc = "1"

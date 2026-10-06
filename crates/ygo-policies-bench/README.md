@@ -1,12 +1,21 @@
 # policy-bench
 
-Native OCGCore benchmarks for any registered policy and its deck. This crate builds
-the pinned `vendor/ocgcore` and its Lua submodule; `vendor/CardScripts` and
+Native OCGCore benchmarks for any registered policy and its deck. The engine is
+the pinned `vendor/ocgcore` with its Lua submodule, built by
+[`ygo-policies-duel`](../ygo-policies-duel/src/lib.rs); `vendor/CardScripts` and
 `vendor/BabelCdb` supply scripts and printed card data. A C++17 compiler is required.
 `vendor/ocgcore` is the [fourlastor fork](https://github.com/fourlastor/ygopro-core)
 of `edo9300/ygopro-core`: the same engine at `400a541`, plus arena snapshots and
 a hidden-card swap, which the [search](#a-search-on-top-of-a-pilot) is built on.
 The regular policy libraries remain engine-independent.
+
+`ygo-policies-duel` is a library any program can use.  It holds the engine
+build, the card database and script loading, the Decks, the duel itself (a
+duel its caller steps, with snapshots, the hidden-card swap and the duel's
+options as a value) and the replay of a recorded duel.  What is left in this
+crate seats the players and writes what happened: `engine.rs` (a duel between
+two policy libraries, and the staged duels of the probes), `engine/search.rs`
+(the search) and `replay.rs` (the story of a recorded duel).
 
 ```bash
 git submodule update --init --recursive

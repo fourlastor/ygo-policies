@@ -82,6 +82,10 @@ by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
   `include/ygo_policies.h`.
 - `crates/ygo-policies-edopro`: `edopro-bot`, a native EDOPro network client
   that joins a room as a player.
+- `crates/ygo-policies-duel`: duels on the native engine for any program. It
+  builds OCGCore and Lua from `vendor/`, loads the card database, the scripts
+  and the Decks, and gives a duel its caller steps, with snapshots and
+  records of duels to play again.
 - `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
   baseline/candidate comparisons, round robins, generated tier lists, the
   card probes that generate the shared card knowledge, and a search on top
@@ -90,8 +94,9 @@ by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
   (an EDOPro lflist), and what the engine shows about each of its monsters.
 
 The policy libraries do not link OCGCore. Card data comes from any `cards.cdb`
-(EDOPro ships one). The optional benchmark crate builds the pinned engine and
-Lua from `vendor/`; it is excluded from the workspace's default build members.
+(EDOPro ships one). `ygo-policies-duel` builds the pinned engine and Lua from
+`vendor/`; it and the benchmark crate on top of it are excluded from the
+workspace's default build members.
 
 ## Using it
 

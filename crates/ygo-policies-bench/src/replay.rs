@@ -15,7 +15,7 @@ use std::path::Path;
 use serde_json::Value;
 use ygo_policies_ocgcore::{message::Message, wire::Loc};
 
-use crate::engine::{Asked, Core, Deck, Recorded, Replayed, Result};
+use crate::engine::{Asked, Core, Recorded, Replayed, Result};
 
 const HAND: u8 = 0x02;
 const MONSTER_ZONE: u8 = 0x04;
@@ -66,35 +66,9 @@ pub fn load(input: &Path, duel: Option<i64>) -> Result<Record> {
         .map_err(|e| failed(&e))?
     };
     let replay: Value = serde_json::from_str(&text).map_err(|e| failed(&e))?;
-    let number = |value: &Value| value.as_u64().or_else(|| value.as_str()?.parse().ok());
-    let field = |key: &str| number(&replay[key]).ok_or_else(|| format!("{}: no {key} in the replay", input.display()));
-    let seed: Vec<u64> = replay["seed"].as_array().map(|a| a.iter().filter_map(number).collect()).unwrap_or_default();
-    let seed: [u64; 4] = seed.try_into().map_err(|_| failed(&"the replay's seed is not four numbers"))?;
-    let codes = |value: &Value| -> Vec<u32> { value.as_array().map(|a| a.iter().filter_map(|c| Some(c.as_u64()? as u32)).collect()).unwrap_or_default() };
-    let deck = |index: usize| Deck { main: codes(&replay["decks"][index]["main"]), extra: codes(&replay["decks"][index]["extra"]) };
-    let mut responses = Vec::new();
-    for answer in replay["responses"].as_array().ok_or_else(|| failed(&"no responses in the replay"))? {
-        let player = answer[0].as_u64().ok_or_else(|| failed(&"a response without its player"))? as u8;
-        let hex = answer[1].as_str().ok_or_else(|| failed(&"a response without its bytes"))?;
-        let bytes = (0..hex.len() / 2).map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16)).collect::<std::result::Result<Vec<u8>, _>>();
-        responses.push((player, bytes.map_err(|e| failed(&e))?));
-    }
+    let recorded = Recorded::from_json(&replay).map_err(|e| failed(&e))?;
     let name = |index: usize| replay["players"][index].as_str().map_or_else(|| format!("Player {}", index + 1), str::to_owned);
-    let life_points = field("start_lp")? as u32;
-    Ok(Record {
-        recorded: Recorded {
-            seed,
-            flags: field("flags")?,
-            life_points: [life_points; 2],
-            hand: field("start_hand")? as u32,
-            per_turn: field("draw_count")? as u32,
-            decks: [deck(0), deck(1)],
-            responses,
-        },
-        players: [name(0), name(1)],
-        title,
-        policy,
-    })
+    Ok(Record { recorded, players: [name(0), name(1)], title, policy })
 }
 
 /// Card names, for the story.
