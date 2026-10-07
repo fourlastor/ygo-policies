@@ -96,17 +96,8 @@ fn new_registered_lists_are_legal_and_have_scripts() {
                 Some((x.next()?.parse().ok()?, x.next()?.parse().ok()?))
             })
             .collect();
-    for id in [
-        "fabled",
-        "counter-fairy",
-        "macro-dd",
-        "gusto",
-        "agents",
-        "scrap",
-        "zombie",
-        "herald",
-    ] {
-        let entry = registry::find(id).unwrap();
+    for entry in registry::POLICIES.iter().skip(32) {
+        let id = entry.id;
         let text =
             std::fs::read_to_string(root().join("decks").join(format!("{}.ydk", entry.deck)))
                 .unwrap();
@@ -707,4 +698,92 @@ fn herald_dawn_recovers_fairy_instead_of_treating_recovery_as_a_cost() {
         required: false,
     };
     assert!(member_score(&Herald, &t, &m) > 0.0);
+}
+
+#[test]
+fn fish_recruitment_prefers_an_oyster_after_selecting_a_tuner() {
+    use ygo_policies::decks::fish::Fish;
+    let db = db();
+    let o = obs();
+    let eel = card(db.as_ref(), 0, Location::Deck, 0, 37953640);
+    let oyster = card(db.as_ref(), 0, Location::Deck, 1, 83239739);
+    let eel2 = card(db.as_ref(), 0, Location::Deck, 2, 37953640);
+    let mut c = choice(ChoiceKind::Toggle, Some(&oyster));
+    c.members
+        .push(choice(ChoiceKind::Toggle, Some(&eel)).card.unwrap());
+    let mut d = decision(DecisionKind::SelectCards, vec![c]);
+    d.selected = vec![eel.at];
+    d.hint = Hint::SpecialSummon;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(88307361);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    assert!(
+        member_score(
+            &Fish,
+            &t,
+            &choice(ChoiceKind::Toggle, Some(&oyster)).card.unwrap()
+        ) > member_score(
+            &Fish,
+            &t,
+            &choice(ChoiceKind::Toggle, Some(&eel2)).card.unwrap()
+        )
+    );
+}
+
+#[test]
+fn cyber_holds_power_bond_without_a_safe_attack_window() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![card(db.as_ref(), 0, Location::Hand, 0, 37630732)];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("cyber", db.clone(), &o, &d), 1);
+    let mut battle = d.clone();
+    battle.choices.push(choice(ChoiceKind::EnterBattle, None));
+    assert_eq!(picks("cyber", db.clone(), &o, &battle), 0);
+    o.life_points[0] = 2000;
+    assert_ne!(picks("cyber", db, &o, &battle), 0);
+}
+
+#[test]
+fn gemini_resummons_gigaplant_to_unlock_its_effect() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![card(db.as_ref(), 0, Location::MonsterZone, 0, 53257892)];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("gemini", db, &o, &d), 0);
+}
+
+#[test]
+fn psychic_jumper_does_not_give_away_a_boss_for_a_weak_monster() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 52430902),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 40101111),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 39552864),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("psychic", db, &o, &d), 1);
 }

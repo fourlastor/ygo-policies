@@ -334,6 +334,9 @@ pub fn facts(code: u32) -> Facts {
 /// the opponent's field, such a card is one to remove first.  0 for the rest.
 pub fn owner_worth(code: u32) -> i32 {
     match code {
+        88307361 => 3400, // Coelacanth: mass Fish recruitment
+        53257892 => 2800, // Gigaplant: Plant/Insect revival
+        95750695 => 2100, // Supervise: Gemini effects and revival
         44665365 => 3500, // Herald of Perfection: renewable negation
         59509952 => 3300, // Archlord Kristya: Special Summon restriction
         55794644 => 3100, // Master Hyperion: repeatable removal
