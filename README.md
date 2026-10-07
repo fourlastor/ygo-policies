@@ -74,6 +74,10 @@ EDOPro already filtered pass through unchanged.
 | `spirit` | Passing Spirits | Kinka revival, returning Creature Swap gifts and tribute Spirits |
 | `naturia` | The Quiet Grove | Naturia recruitment, Bamboo Shoot tributes and Synchro negation |
 | `garden` | Garden of Thorns | Plant development, Black Garden tokens and Rose Tentacles attacks |
+| `destiny-board` | The Final Sentence | Four opposing End Phases, hand shields and reserved message zones |
+| `venom` | Crown of Venom | Snake Rain, Vennominon revival and Rise into Vennominaga |
+| `batteryman` | Full Charge | Micro-Cell/Charger recruitment, AA swarms and Short Circuit |
+| `gem-knight` | Prismatic Forge | Armadillo materials, recyclable Fusion and Prismaura removal |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them

@@ -56,3 +56,8 @@ pub mod alien;
 pub mod spirit;
 pub mod naturia;
 pub mod garden;
+
+pub mod destiny_board;
+pub mod venom;
+pub mod batteryman;
+pub mod gem_knight;

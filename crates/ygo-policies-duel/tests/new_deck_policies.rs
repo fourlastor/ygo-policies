@@ -986,3 +986,110 @@ fn garden_is_activated_after_summoning_the_initial_attacker() {
     );
     assert_eq!(picks("garden", db, &o, &d), 1);
 }
+
+#[test]
+fn destiny_board_releases_messenger_for_the_last_message() {
+    use ygo_policies::{decks::destiny_board::DestinyBoard, Strategy};
+    let db = db();
+    let mut o = obs();
+    for (i, code) in [94212438, 31893528, 67287533, 94772232, 44656491]
+        .into_iter()
+        .enumerate()
+    {
+        o.cards.push(card(
+            db.as_ref(),
+            0,
+            Location::SpellTrapZone,
+            i as u32,
+            code,
+        ));
+    }
+    let mut d = decision(
+        DecisionKind::YesNo,
+        vec![choice(ChoiceKind::Yes, None), choice(ChoiceKind::No, None)],
+    );
+    for c in &mut d.choices {
+        c.description = (44656491u64) << 20;
+    }
+    assert_eq!(picks("destiny-board", db.clone(), &o, &d), 1);
+    let mut memory = Memory::default();
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    assert_eq!(DestinyBoard.set_spell_trap(&t, 83968380), Some(false));
+}
+
+#[test]
+fn venom_does_not_mill_vennominaga_with_snake_rain() {
+    use ygo_policies::decks::venom::Venom;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ToGraveyard;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(17189677);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Deck,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(member_score(&Venom, &t, &m(72677437)) > member_score(&Venom, &t, &m(8062132)));
+}
+
+#[test]
+fn industrial_strength_does_not_destroy_our_backrow_to_hit_a_monster() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 19441018),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 61840587),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 89631139),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("batteryman", db, &o, &d), 1);
+}
+
+#[test]
+fn prismaura_sends_recoverable_fusion_before_a_monster_material() {
+    use ygo_policies::decks::gem_knight::GemKnight;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ToGraveyard;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(93379652);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Hand,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(member_score(&GemKnight, &t, &m(1264319)) > member_score(&GemKnight, &t, &m(91731841)));
+}
