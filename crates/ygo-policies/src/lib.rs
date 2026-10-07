@@ -111,6 +111,10 @@ pub mod registry {
         entry!("chain-burn", chain_burn::ChainBurn),
         entry!("nurse", nurse::Nurse),
         entry!("benkei", benkei::Benkei),
+        entry!("alien", alien::Alien),
+        entry!("spirit", spirit::Spirit),
+        entry!("naturia", naturia::Naturia),
+        entry!("garden", garden::Garden),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

@@ -334,6 +334,9 @@ pub fn facts(code: u32) -> Facts {
 /// the opponent's field, such a card is one to remove first.  0 for the rest.
 pub fn owner_worth(code: u32) -> i32 {
     match code {
+        68319538 => 3400, // Golgar: reusable backrow and targeted removal
+        20174189 => 3300, // Bamboo Shoot: potential Spell/Trap suppression
+        99342953 | 71645242 => 2200, // Code A / Black Garden engine cards
         67316075 | 40633297 => 3500, // Nurse / Simochi: recovery becomes damage
         84430950 => 2600, // Ben Kei: each equip grants another attack
         88307361 => 3400, // Coelacanth: mass Fish recruitment

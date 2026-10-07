@@ -26,6 +26,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `chain-burn` | Chain Reaction | Different-name draw/burn chains, Chain Strike and Accumulated Fortune |
 | `nurse` | A Bitter Cure | Resolve Nurse/Simochi before Gift Card and LP-gain burn |
 | `benkei` | A Thousand Blades | Concentrated equips, Ben Kei multiattacks and Maha Vailo backup |
+| `alien` | Visitors from Beyond | Ammonite into Gol'gar, reusable backrow and Code A revival |
+| `spirit` | Passing Spirits | Kinka revival, returning Creature Swap gifts and tribute Spirits |
+| `naturia` | The Quiet Grove | Naturia recruitment, Bamboo Shoot tributes and Synchro negation |
+| `garden` | Garden of Thorns | Plant development, Black Garden tokens and Rose Tentacles attacks |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -37,10 +41,6 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 
 | Plan | Available cards | What to test |
 |---|---|---|
-| Alien control | Alien Ammonite, Alien Dog, Cosmic Fortress Gol'gar | A-Counters, return face-up Spells/Traps to hand and reuse them. |
-| Spirit control | Asura Priest, Hino-Kagu-Tsuchi, Yamata Dragon, Kinka-byo, Izanagi | End Phase returns and repeated Normal Summons. Aratama/Nikitama are unavailable. |
-| Naturia | Bamboo Shoot, Cliff, Cherries, Beast, Barkion | Recruiters and Spell/Trap suppression. Generic Naturia Beast in other Extras does not cover the family. |
-| Black Garden | Black Garden plus suitable ATK/revival targets | Shared tokens, ATK manipulation, deliberate revival setup; no dedicated list designed yet. |
 | Destiny Board | Destiny Board and the Spirit Messages | Backrow-dependent alternate win; lower novelty now that Countdown and Exodia exist. |
 | Venom | Venom Swamp, Vennominon, Vennominaga | ATK erosion, a protected boss and an alternate win; demanding setup. |
 
