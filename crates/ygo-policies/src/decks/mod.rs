@@ -46,3 +46,8 @@ pub mod fish;
 pub mod cyber;
 pub mod gemini;
 pub mod psychic;
+
+pub mod deckout;
+pub mod chain_burn;
+pub mod nurse;
+pub mod benkei;

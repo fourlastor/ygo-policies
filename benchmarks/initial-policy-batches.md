@@ -103,3 +103,37 @@ Gigaplant 1,207, Supervise 956, Teleporter 373, and Jumper 20. Cyber is the
 clearest tuning priority in this batch. These are initial results, with no
 search gap measured. [Compact results](initial-batch3.summary.json) and
 [run fingerprints](initial-batch3.metadata.json) are retained.
+
+## Batch 4: Last Page, Chain Reaction, A Bitter Cure, A Thousand Blades
+
+- **Last Page** (`deckout`): Needle Worm/Jar milling, Book flip cycling and battle shields.
+- **Chain Reaction** (`chain-burn`): Different-name draw/burn chains, Chain Strike and Accumulated Fortune.
+- **A Bitter Cure** (`nurse`): Resolve Nurse/Simochi before Gift Card and LP-gain burn.
+- **A Thousand Blades** (`benkei`): Concentrated equips, Ben Kei multiattacks and Maha Vailo backup.
+
+```sh
+target/release/policy-bench matchup --policies deckout,chain-burn,nurse,benkei \
+  --opponents all --games 16 --seed 850000 --workers 6 \
+  --output /tmp/initial-batch4.jsonl
+```
+
+**2,912 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| A Bitter Cure | 752 | 41.16% | 37.69–44.71% |
+| Last Page | 752 | 37.10% | 33.72–40.61% |
+| A Thousand Blades | 752 | 33.78% | 30.49–37.23% |
+| Chain Reaction | 752 | 31.65% | 28.43–35.06% |
+
+Workspace tests pass. [Compact results](initial-batch4.summary.json) and
+[run fingerprints](initial-batch4.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 4 adds 31-test coverage for all additions. Its dedicated tests cover
+Taiyou/Needle Worm, extending one's own burn chain, waiting for Simochi to
+resolve, and preserving the Normal Summon before Hidden Armory. Shared
+shield logic avoids redundant battle protection within a turn; shared removal
+priorities recognize Nurse/Simochi and Ben Kei. Core activations included
+Needle Worm 1,063, Jar #2 768, Chain Strike 458, Accumulated Fortune 98,
+Simochi 552, Gift Card 454, United We Stand 524, and Mage Power 792.

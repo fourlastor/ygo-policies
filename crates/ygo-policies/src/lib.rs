@@ -107,6 +107,10 @@ pub mod registry {
         entry!("cyber", cyber::Cyber),
         entry!("gemini", gemini::Gemini),
         entry!("psychic", psychic::Psychic),
+        entry!("deckout", deckout::Deckout),
+        entry!("chain-burn", chain_burn::ChainBurn),
+        entry!("nurse", nurse::Nurse),
+        entry!("benkei", benkei::Benkei),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
