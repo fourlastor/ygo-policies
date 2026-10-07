@@ -235,6 +235,8 @@ one-step search at each of its decisions (see the bench README).\n\
   wins; what it still loses, no single change of answer could have won)\n\
   --log true (write every decision examined: the situation, how each alternative did in\n\
   the first-stage worlds, the playouts it took and what was chosen)\n\
+  --log full (the same, with the alternatives also tried where the pilot's answer wins\n\
+  every first-stage world: the games are the same, the playouts up to a fifth more)\n\
   --validate true (search nothing; check that snapshots and rebuilt seats replay the duel)\n\
   --record true (also for matchup, compare and round-robin: write each duel as a record that\n\
   replay plays again; a deviation's `decision` is its answer's place in the record's responses)\n\
@@ -534,7 +536,12 @@ fn run() -> Result<()> {
         }
     };
     let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
-    let log = flag("--log", false)?;
+    let (log, log_all) = match args.get("--log").map(String::as_str) {
+        None | Some("false") => (false, false),
+        Some("true") => (true, false),
+        Some("full") => (true, true),
+        Some(_) => return Err("--log must be true, false or full".into()),
+    };
     let record = flag("--record", false)?;
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
@@ -603,7 +610,7 @@ fn run() -> Result<()> {
                             let options = PlayOptions { seed, limit, trace: false, life_points, record };
                             row["baseline"] = scored(engine::play(&core, &decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
-                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
+                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log, log_all };
                             row["search"] = scored(engine::play_searching(&core, &decks, policies, names, cards, options, search), seat);
                             row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
                             tx.send(Ok(row)).map_err(|e| e.to_string())?;
