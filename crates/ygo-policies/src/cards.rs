@@ -43,6 +43,10 @@ pub mod races {
     pub const DRAGON: u32 = 0x2000;
     pub const BEAST: u32 = 0x4000;
     pub const BEAST_WARRIOR: u32 = 0x8000;
+    pub const DINOSAUR: u32 = 0x10000;
+    pub const FISH: u32 = 0x20000;
+    pub const SEA_SERPENT: u32 = 0x40000;
+    pub const REPTILE: u32 = 0x80000;
     pub const PSYCHIC: u32 = 0x100000;
 }
 

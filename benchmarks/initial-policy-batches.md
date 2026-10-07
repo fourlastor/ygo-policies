@@ -172,3 +172,43 @@ that every revived Bamboo Shoot has its tribute-dependent suppression.
 Core activation totals include Ammonite 445, Gol'gar 1,160, Code A 1,745,
 Kinka 1,015, Creature Swap 687, Black Garden 4,983 and Rose Tentacles 175.
 Bamboo's suppression is continuous, so activation counts do not measure it.
+
+## Batch 6: The Final Sentence, Crown of Venom, Full Charge, Prismatic Forge
+
+- **The Final Sentence** (`destiny-board`): Four opposing End Phases, hand shields and reserved message zones.
+- **Crown of Venom** (`venom`): Snake Rain, Vennominon revival and Rise into Vennominaga.
+- **Full Charge** (`batteryman`): Micro-Cell/Charger recruitment, AA swarms and Short Circuit.
+- **Prismatic Forge** (`gem-knight`): Armadillo materials, recyclable Fusion and Prismaura removal.
+
+```sh
+target/release/policy-bench matchup --policies destiny-board,venom,batteryman,gem-knight \
+  --opponents all --games 16 --seed 870000 --workers 6 \
+  --output /tmp/initial-batch6.jsonl
+```
+
+**3,424 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| Prismatic Forge | 880 | 49.09% | 45.80–52.39% |
+| Full Charge | 880 | 45.80% | 42.53–49.10% |
+| The Final Sentence | 880 | 43.30% | 40.06–46.59% |
+| Crown of Venom | 880 | 15.80% | 13.54–18.35% |
+
+Workspace tests pass. [Compact results](initial-batch6.summary.json) and
+[run fingerprints](initial-batch6.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 6 passes the 39-test focused suite. New checks preserve a slot for the
+last Spirit Message, stop Snake Rain from milling Vennominaga, prevent
+Industrial Strength from destroying our own backrow, and use recoverable
+Gem-Knight Fusion as Prismaura's cost. Shared card information adds the
+missing Dinosaur/Fish/Sea Serpent/Reptile race constants and removal values
+for Destiny Board/messages, Vennominaga and Prismaura.
+
+Core activation totals include Destiny Board 6,682 (including message
+placement), Snake Rain 842, Rise 47, Vennominon 218, Vennominaga 74,
+Batteryman Charger 514, Short Circuit 274, Inferno Reckless Summon 124,
+Gem-Knight Fusion 4,966 (including recovery), and Prismaura 974. Venom's
+low win rate despite functional progression makes setup speed a priority
+for the subsequent optimization pass.

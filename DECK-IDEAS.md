@@ -30,6 +30,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `spirit` | Passing Spirits | Kinka revival, returning Creature Swap gifts and tribute Spirits |
 | `naturia` | The Quiet Grove | Naturia recruitment, Bamboo Shoot tributes and Synchro negation |
 | `garden` | Garden of Thorns | Plant development, Black Garden tokens and Rose Tentacles attacks |
+| `destiny-board` | The Final Sentence | Four opposing End Phases, hand shields and reserved message zones |
+| `venom` | Crown of Venom | Snake Rain, Vennominon revival and Rise into Vennominaga |
+| `batteryman` | Full Charge | Micro-Cell/Charger recruitment, AA swarms and Short Circuit |
+| `gem-knight` | Prismatic Forge | Armadillo materials, recyclable Fusion and Prismaura removal |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -37,38 +41,25 @@ focused decision tests. No policy search was used. See
 [`benchmarks/initial-policy-batches.md`](benchmarks/initial-policy-batches.md) for validation.
 The 32-deck tier list predates these additions; they are not ranked there yet.
 
-## Additional win plans and interaction styles
-
-| Plan | Available cards | What to test |
-|---|---|---|
-| Destiny Board | Destiny Board and the Spirit Messages | Backrow-dependent alternate win; lower novelty now that Countdown and Exodia exist. |
-| Venom | Venom Swamp, Vennominon, Vennominaga | ATK erosion, a protected boss and an alternate win; demanding setup. |
-
 ## Other available families
 
-- **Batteryman:** AA, Charger, Micro-Cell, Industrial Strength, Short Circuit,
-  Quick Charger. Swarm into removal and burst damage; different from Watt.
-- **Early Gem-Knight:** Fusion, Gem-Armadillo, Alexandrite, Ruby, Citrine.
-  Obsidian and Lazuli are outside the pool; do not assume later combo support.
-- **Flamvell / early Laval:** Firedog, Magician, Rekindling, Laval Cannon,
-  Volcano Handmaiden. Lakeside Lady and Molten Conduction Field unavailable.
-- **Nordic/Aesir:** Guldfaxe, Tanngnjostr, Valkyrie, Gleipnir, Odin and Thor.
-- **Cloudian:** Turbulence, Smoke Ball, Altus, Acid Cloud, Cirrostratus,
-  Cloudian Squall; counters and battle resilience.
-- **Volcanic:** Shell, Rocket, Scattershot, Blaze Accelerator, Doomfire.
-  Blaze Accelerator Reload unavailable.
-- **Early Dark World:** Broww, Goldd, Sillva, Dealings. Grapha, Snoww and
-  Gates unavailable; a vanilla Renge in Exodia does not cover this engine.
-- **Worm:** Xex, Yagan, King, Zero; W Nebula Meteorite unavailable.
-- **Chaos:** Chaos Sorcerer is available; BLS - Envoy is forbidden,
-  Lightpulsar and Eclipse Wyvern unavailable.
-- **Demise:** Demise and End of the World are available; field wipe into
-  battle damage is a separate Ritual direction.
-- **Amazoness, Jurrac, Genex, Ice Barrier, Reptilianne, Iron Chain:** legal
-  family members exist, but no complete list or strength case has been built.
-- **Malefic:** World, Cyber End, Stardust and supporting monsters are present;
-  the roster only has a Rainbow Dragon splash. Skill Drain beatdown itself
-  is already extensively represented by Verdict/Rock Block.
+| Engine | Available building blocks / caveat |
+|---|---|
+| Flamvell / early Laval | Firedog, Magician, Rekindling, Laval Cannon, Volcano Handmaiden; Lakeside Lady and Molten Conduction unavailable |
+| Nordic / Aesir | Guldfaxe, Tanngnjostr, Valkyrie, Gleipnir, Odin and Thor |
+| Cloudian | Turbulence, Smoke Ball, Altus, Acid Cloud, Cirrostratus, Squall; counters and battle resilience |
+| Volcanic | Shell, Rocket, Scattershot, Blaze Accelerator, Doomfire; Reload unavailable |
+| Early Dark World | Broww, Goldd, Sillva, Dealings; Grapha, Snoww and Gates unavailable |
+| Worm | Xex, Yagan, King, Zero; W Nebula Meteorite unavailable |
+| Chaos | Chaos Sorcerer; BLS Envoy forbidden, Lightpulsar and Eclipse Wyvern unavailable |
+| Demise | Demise and End of the World; field wipe into battle damage |
+| Amazoness | Legal family members available; initial list pending |
+| Jurrac | Legal family members available; initial list pending |
+| Genex | Legal family members available; initial list pending |
+| Ice Barrier | Legal family members available; initial list pending |
+| Reptilianne | Legal family members available; initial list pending |
+| Iron Chain | Legal family members available; initial list pending |
+| Malefic | World, Cyber End, Stardust; existing roster only has a Rainbow splash |
 
 ## Coverage boundaries
 

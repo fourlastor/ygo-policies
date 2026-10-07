@@ -115,6 +115,10 @@ pub mod registry {
         entry!("spirit", spirit::Spirit),
         entry!("naturia", naturia::Naturia),
         entry!("garden", garden::Garden),
+        entry!("destiny-board", destiny_board::DestinyBoard),
+        entry!("venom", venom::Venom),
+        entry!("batteryman", batteryman::Batteryman),
+        entry!("gem-knight", gem_knight::GemKnight),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
