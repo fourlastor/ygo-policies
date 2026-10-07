@@ -256,7 +256,7 @@ fn attack_burn(ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
         Burn::Fixed(n) => n,
         Burn::AttackerAtk => atk,
         Burn::Reflected => {
-            if met.defending { 0 } else { (atk - met.stat).max(0) }
+            if met.defending && !ctx.facts(attacker).striking.piercing { 0 } else { (atk - met.stat).max(0) }
         }
     }
 }

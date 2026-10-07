@@ -54,6 +54,10 @@ EDOPro already filtered pass through unchanged.
 | `countdown` | Claudi-oh's Countdown | Final Countdown behind attack locks kept by Skill Drain; one cover a turn, Cyber Valley and Shining Angel for the rest |
 | `verdict` | Claudi-oh's Verdict | Skill Drain beatdown: Beast King Barbaros and big Level 4 monsters behind the era's Traps |
 | `exodia` | Astra's Exodia | Multiple Hearts of the Underdog and Draw Phase Reloads; Normal Monsters defend while keeping all five pieces in hand |
+| `fabled` | Fabled Encore | Discard-triggered summons, Grimro searches, Ragin hand refills and Synchros |
+| `counter-fairy` | Heaven's Rebuttal | Counter Traps with Artemis draws, Sanctuary/Meltiel removal and Van'Dalgyon |
+| `macro-dd` | D.D. Border Patrol | Macro Cosmos / Dimensional Fissure, returning D.D. monsters and Monarch tributes |
+| `gusto` | Gusto's Reprisal | Gusto recruitment, Sphreez reflected battle damage and graveyard recycling |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
@@ -64,7 +68,10 @@ folder, which EDOPro loads.  `countdown` and `verdict` are the boss's decks for
 *Beat Claudi-oh*, built to rank first: one wins without attacking, the other
 by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
 `exodia` adds a measured WC2011 Exodia deck ([construction and validation](benchmarks/exodia.md)).
-[DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
+[DECK-TIER-LIST.md](DECK-TIER-LIST.md) records the measured 32-deck ranking.
+The four newest decks have [initial validation](benchmarks/four-new-decks.md)
+and await a full ranking refresh. [DECK-IDEAS.md](DECK-IDEAS.md) records other
+engines and play styles available in the pool for future additions.
 
 ## Layout
 

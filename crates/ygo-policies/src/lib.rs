@@ -95,6 +95,10 @@ pub mod registry {
         entry!("countdown", countdown::Countdown),
         entry!("verdict", verdict::Verdict),
         entry!("exodia", exodia::Exodia),
+        entry!("fabled", fabled::Fabled),
+        entry!("counter-fairy", counter_fairy::CounterFairy),
+        entry!("macro-dd", macro_dd::MacroDd),
+        entry!("gusto", gusto::Gusto),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

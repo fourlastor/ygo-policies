@@ -219,11 +219,26 @@ impl<'a> Ctx<'a> {
         let met = match facts.needs {
             Needs::Nothing => true,
             Needs::EmptyHand => self.hand_size(card.at.controller) == 0,
+            Needs::EqualHands => self.hand_size(self.me) == self.hand_size(self.opp),
         };
         if !met {
             facts.attacked = [Attacked::PLAIN; 2];
             facts.immune = 0;
             facts.unaffected = 0;
+            facts.negates_any = 0;
+            facts.negates_aimed = 0;
+            facts.negates_destruction = 0;
+        }
+        if self.monsters_banished() {
+            if matches!(self.canonical(code), knowledge::GUSTO_GULLDO | knowledge::GUSTO_EGUL | knowledge::GUSTO_WINDA) {
+                for attacked in &mut facts.attacked { attacked.payoff = 0; }
+                facts.effect_payoff = 0;
+            }
+            if matches!(self.canonical(code), knowledge::DD_SURVIVOR | knowledge::DD_SCOUT_PLANE)
+                && card.position.face_up {
+                for attacked in &mut facts.attacked { attacked.payoff = 1200; }
+                facts.effect_payoff = 1200;
+            }
         }
         // Skill Drain leaves a face-up monster only what it does once it has
         // left the field.
@@ -243,7 +258,31 @@ impl<'a> Ctx<'a> {
                 ..Facts::NONE
             };
         }
+        if self.gusto_reflects(card) {
+            for attacked in &mut facts.attacked {
+                attacked.no_damage = true;
+                attacked.burn = knowledge::Burn::Reflected;
+            }
+        }
         facts
+    }
+
+    /// Public replacement effects that stop monsters reaching the Graveyard.
+    pub fn monsters_banished(&self) -> bool {
+        [self.me, self.opp].iter().any(|&player| {
+            self.face_up_on_field(player, knowledge::MACRO_COSMOS)
+                || self.face_up_on_field(player, knowledge::DIMENSIONAL_FISSURE)
+                || (!self.effects_drained() && self.face_up_on_field(player, knowledge::BANISHER_OF_THE_RADIANCE))
+        })
+    }
+
+    /// Sphreez reflects damage for all its controller's face-up Gustos.
+    /// It does not grant its own battle indestructibility to the others.
+    pub fn gusto_reflects(&self, card: &CardView) -> bool {
+        card.at.location == Location::MonsterZone && card.position.face_up
+            && self.view_data(card).in_set(knowledge::SET_GUSTO)
+            && !self.effects_drained()
+            && self.face_up_on_field(card.at.controller, knowledge::DAIGUSTO_SPHREEZ)
     }
 
     /// A face-up Skill Drain, on either field: monsters on the field have
