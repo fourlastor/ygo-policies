@@ -22,6 +22,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `cyber` | Power Surge | Cyber names, Power Bond, Future Fusion and Overload finishers |
 | `gemini` | Second Bloom | Lonefire/Gigaplant, Supervise revival and Gemini Spark removal |
 | `psychic` | Mind Over Matter | Teleporter Synchros, Psychic Jumper exchanges and LP recovery |
+| `deckout` | Last Page | Needle Worm/Jar milling, Book flip cycling and battle shields |
+| `chain-burn` | Chain Reaction | Different-name draw/burn chains, Chain Strike and Accumulated Fortune |
+| `nurse` | A Bitter Cure | Resolve Nurse/Simochi before Gift Card and LP-gain burn |
+| `benkei` | A Thousand Blades | Concentrated equips, Ben Kei multiattacks and Maha Vailo backup |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -33,10 +37,6 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 
 | Plan | Available cards | What to test |
 |---|---|---|
-| Opponent deck-out / flip cycling | Morphing Jar (one), Morphing Jar #2, Needle Worm, Book of Taiyou, Book of Eclipse | Opponent milling and repeated Flip effects. Cyber Jar is forbidden; Desertapir is outside the pool. No infinite loop or FTK is assumed. |
-| Chain Burn | Chain Strike (two), Accumulated Fortune, Just Desserts, Secret Barrel, Reckless Greed | Chain-link sequencing and burst damage; distinct from Burn Princess's gradual LP gain/burn. |
-| Nurse / Simochi Burn | Nurse Reficule (database name: Darklord Nurse Reficule), Bad Reaction to Simochi, Gift Card | Turn opposing LP gain into damage. All three core cards at three. |
-| Ben Kei equip OTK | Armed Samurai - Ben Kei, United We Stand, Mage Power, Hidden Armory | Several attacks from one heavily equipped monster. Power of the Guardians is outside this pool. |
 | Alien control | Alien Ammonite, Alien Dog, Cosmic Fortress Gol'gar | A-Counters, return face-up Spells/Traps to hand and reuse them. |
 | Spirit control | Asura Priest, Hino-Kagu-Tsuchi, Yamata Dragon, Kinka-byo, Izanagi | End Phase returns and repeated Normal Summons. Aratama/Nikitama are unavailable. |
 | Naturia | Bamboo Shoot, Cliff, Cherries, Beast, Barkion | Recruiters and Spell/Trap suppression. Generic Naturia Beast in other Extras does not cover the family. |

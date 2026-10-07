@@ -787,3 +787,128 @@ fn psychic_jumper_does_not_give_away_a_boss_for_a_weak_monster() {
     );
     assert_eq!(picks("psychic", db, &o, &d), 1);
 }
+
+#[test]
+fn nurse_waits_for_simochi_to_resolve_before_gift_card() {
+    use ygo_policies::{decks::nurse::Nurse, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 40633297),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 1, 39526584),
+    ];
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[1])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    let mut memory = Memory::default();
+    o.chain.push(ChainLink {
+        code: 40633297,
+        controller: 0,
+        source: o.cards[0].at,
+        targets: vec![],
+    });
+    let mut strategy = Nurse;
+    assert!(
+        strategy
+            .chain(
+                &Turn {
+                    ctx: Ctx::new(&o, db.as_ref()),
+                    decision: &d,
+                    memory: &mut memory
+                },
+                0
+            )
+            .unwrap()
+            .score
+            <= 0.0
+    );
+    o.chain.clear();
+    assert!(
+        strategy
+            .chain(
+                &Turn {
+                    ctx: Ctx::new(&o, db.as_ref()),
+                    decision: &d,
+                    memory: &mut memory
+                },
+                0
+            )
+            .unwrap()
+            .score
+            > 0.0
+    );
+}
+
+#[test]
+fn chain_burn_extends_its_own_chain_with_a_different_draw_card() {
+    let db = db();
+    let mut o = obs();
+    o.turn_player = Some(1);
+    o.cards = vec![card(db.as_ref(), 0, Location::SpellTrapZone, 0, 83968380)];
+    o.chain.push(ChainLink {
+        code: 27053506,
+        controller: 0,
+        source: CardRef {
+            controller: 0,
+            location: Location::SpellTrapZone,
+            sequence: 1,
+        },
+        targets: vec![],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    assert_eq!(picks("chain-burn", db, &o, &d), 0);
+}
+
+#[test]
+fn hidden_armory_waits_for_a_body_instead_of_locking_out_ben_kei() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 52105192),
+        card(db.as_ref(), 0, Location::Hand, 1, 84430950),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[1])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("benkei", db, &o, &d), 1);
+}
+
+#[test]
+fn deckout_flips_its_needle_worm_with_taiyou() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 38699854),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 81843628),
+    ];
+    o.cards[1].position = Position::FACE_DOWN_DEFENSE;
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("deckout", db, &o, &d), 0);
+}

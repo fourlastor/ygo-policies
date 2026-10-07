@@ -66,6 +66,10 @@ EDOPro already filtered pass through unchanged.
 | `cyber` | Power Surge | Cyber names, Power Bond, Future Fusion and Overload finishers |
 | `gemini` | Second Bloom | Lonefire/Gigaplant, Supervise revival and Gemini Spark removal |
 | `psychic` | Mind Over Matter | Teleporter Synchros, Psychic Jumper exchanges and LP recovery |
+| `deckout` | Last Page | Needle Worm/Jar milling, Book flip cycling and battle shields |
+| `chain-burn` | Chain Reaction | Different-name draw/burn chains, Chain Strike and Accumulated Fortune |
+| `nurse` | A Bitter Cure | Resolve Nurse/Simochi before Gift Card and LP-gain burn |
+| `benkei` | A Thousand Blades | Concentrated equips, Ben Kei multiattacks and Maha Vailo backup |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them

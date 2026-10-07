@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Thirty pilots have been through it. 14 have not; the 12 new initial
+Thirty pilots have been through it. 18 have not; the 16 new initial
 policies are intentionally deferred from search. For future work, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
@@ -88,5 +88,9 @@ ceiling recorded and are not yet in the full tier-list ranking:
 | Power Surge | `cyber` | Initial strategy; search deferred |
 | Second Bloom | `gemini` | Initial strategy; search deferred |
 | Mind Over Matter | `psychic` | Initial strategy; search deferred |
+| Last Page | `deckout` | Initial strategy; search deferred |
+| Chain Reaction | `chain-burn` | Initial strategy; search deferred |
+| A Bitter Cure | `nurse` | Initial strategy; search deferred |
+| A Thousand Blades | `benkei` | Initial strategy; search deferred |
 
 See [first-batch validation](four-new-decks.md), [later batches](initial-policy-batches.md), and [remaining deck ideas](../DECK-IDEAS.md).

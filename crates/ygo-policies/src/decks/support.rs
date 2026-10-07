@@ -106,3 +106,44 @@ pub fn material_score(ctx: &Ctx, m: &Member, hint: Hint) -> Option<f64> {
     let d = ctx.data(m.code?);
     Some(-(d.attack.max(d.defense) as f64) - if d.is(types::SYNCHRO) { 2000.0 } else { 0.0 })
 }
+
+/// Basic defense and draw cards used by the initial alternate-win decks.
+/// Never spend two resolved turn-long battle shields on the same turn.
+pub fn stall_chain(t: &Turn, i: usize) -> Option<Response> {
+    let ctx = t.ctx;
+    let c = t.choice(i);
+    let code = ctx.canonical(c.code()?);
+    let covered = t
+        .memory
+        .activated
+        .iter()
+        .any(|k| matches!(*k, 36361633 | 12607053 | 18964575 | 19665973));
+    Some(match code {
+        18964575 | 19665973
+            if !covered && ctx.incoming_attack().map_or(false, |(_, b)| b.is_none()) =>
+        {
+            Response::new(90.0)
+        }
+        3657444
+            if !covered
+                && c.description == ((3657444u64) << 20)
+                && ctx
+                    .incoming_attack()
+                    .map_or(false, |(_, b)| b.map_or(false, |b| ctx.is(b, 3657444))) =>
+        {
+            Response::new(95.0)
+        }
+        36361633
+            if !covered
+                && !ctx.my_turn()
+                && ctx.phase() == Some(crate::model::Phase::BattleStart)
+                && !ctx.monsters(ctx.opp).is_empty() =>
+        {
+            Response::new(85.0)
+        }
+        12607053 if !covered && ctx.incoming_attack().is_some() => Response::new(90.0),
+        83968380 | 30461781 if ctx.deck_size(ctx.me) > 1 => Response::new(120.0),
+        18964575 | 19665973 | 3657444 | 36361633 | 12607053 | 83968380 | 30461781 => Response::no(),
+        _ => return None,
+    })
+}
