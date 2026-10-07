@@ -334,6 +334,10 @@ pub fn facts(code: u32) -> Facts {
 /// the opponent's field, such a card is one to remove first.  0 for the rest.
 pub fn owner_worth(code: u32) -> i32 {
     match code {
+        44665365 => 3500, // Herald of Perfection: renewable negation
+        59509952 => 3300, // Archlord Kristya: Special Summon restriction
+        55794644 => 3100, // Master Hyperion: repeatable removal
+        17259470 | 70595331 => 2300, // Zombie Master / Il Blud: revival engines
         DAIGUSTO_SPHREEZ => 3400, // protects the Gusto battle plan
         FABLED_UNICORE => 2700,
         MACRO_COSMOS | DIMENSIONAL_FISSURE => 2600,

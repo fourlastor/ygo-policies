@@ -14,20 +14,21 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `counter-fairy` | Heaven's Rebuttal | Artemis draws, Sanctuary/Meltiel removal, Counter Traps, Van'Dalgyon |
 | `macro-dd` | D.D. Border Patrol | Macro/Fissure, recurring Survivor/Scout Plane, Monarch tributes |
 | `gusto` | Gusto's Reprisal | Recruiter defense, Sphreez damage reflection, Caam/Contact recycling |
+| `agents` | Heaven's Dispatch | Earth/Venus Fairy swarm, Hyperion removal and Kristya |
+| `scrap` | Scrap Renaissance | Scrapstorm setup, Chimera/Golem recovery, Scrap Dragon removal |
+| `zombie` | Graveyard Shift | Recruiters, Zombie Master/Mezuki revival and Plaguespreader Synchros |
+| `herald` | Herald's Veto | Herald ritual control, Fairy recovery, Kristya and Royal Decree |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
-[`benchmarks/four-new-decks.md`](benchmarks/four-new-decks.md) for validation.
+[`benchmarks/four-new-decks.md`](benchmarks/four-new-decks.md) and
+[`benchmarks/initial-policy-batches.md`](benchmarks/initial-policy-batches.md) for validation.
 The 32-deck tier list predates these additions; they are not ranked there yet.
 
 ## Substantial remaining engines
 
 | Engine | Available building blocks | Distinct plan / caveat |
 |---|---|---|
-| Agents / Hyperion | Earth, Venus, Mystical Shine Ball, Master Hyperion, Sanctuary, Kristya | Search and Fairy swarm, graveyard-fuelled removal, summon restriction. Core cards at three; Kristya at two. |
-| Scrap | Chimera, Beast, Goblin, Scrapyard, Scrapstorm, Scrap Dragon/Twin | Deliberate self-destruction and recovery. Generic Scrap Dragon in current Extras does not cover this engine. |
-| Zombie revival | Zombie Master, Goblin Zombie, Book of Life, Il Blud, Mezuki, Plaguespreader | Repeated graveyard revival; Mezuki and Plaguespreader limited to one. Pyramid/Tele-DAD splashes are not a dedicated Zombie engine. |
-| Herald control | Herald of Perfection, Dawn, Manju, Preparation of Rites, Orange Light | Ritual boss sustained by Fairies in hand for negation; Advanced Ritual Art limited to one. Gishki already covers other Ritual play. |
 | Fish Synchro | Coelacanth, Fishborg Blaster, Oyster Meister, Royal Swamp Eel, Deep Sea Diva | Mass recruitment and Synchro sequencing. Fishborg is legal at three here; Nimble Sunfish is outside the pool. |
 | Cyber Dragon OTK | Cyber Dragon/Zwei, Power Bond, Cyber Twin/End, Chimeratech Overdragon, Overload Fusion | Concentrated Fusion battle damage. Overload at two; Cyber Dragon/Fortress splashes already exist. |
 | Gemini / Gigaplant | Gemini Spark, Supervise, Blazewing Butterfly, Gigaplant, Evocator Chevalier | Second Normal Summon decisions, equipment and revival; Alius in Fusion Heroes is only a splash. |
@@ -84,6 +85,5 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 - T.G. Striker/Warwolf/Hyper Librarian, Reborn Tengu and Rescue Rabbit are
   outside this whitelist. Calendar-era assumptions are insufficient.
 
-For future strength-oriented additions, Agents and Scrap are the first
-candidates. For further play-style variety, consider opponent deck-out,
-Aliens, Spirits or Gemini. These priorities are hypotheses, not benchmark results.
+The remaining entries are the implementation queue. Additions use initial
+hand-written policies, with search deferred to `benchmarks/search-status.md`.

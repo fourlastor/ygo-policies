@@ -85,7 +85,7 @@ fn picks(id: &str, db: Arc<dyn CardDatabase>, o: &Observation, d: &Decision) -> 
 }
 
 #[test]
-fn four_registered_lists_are_legal_and_have_scripts() {
+fn new_registered_lists_are_legal_and_have_scripts() {
     let db = db();
     let limits: HashMap<u32, usize> =
         std::fs::read_to_string(root().join("data/wc2011.lflist.conf"))
@@ -96,7 +96,16 @@ fn four_registered_lists_are_legal_and_have_scripts() {
                 Some((x.next()?.parse().ok()?, x.next()?.parse().ok()?))
             })
             .collect();
-    for id in ["fabled", "counter-fairy", "macro-dd", "gusto"] {
+    for id in [
+        "fabled",
+        "counter-fairy",
+        "macro-dd",
+        "gusto",
+        "agents",
+        "scrap",
+        "zombie",
+        "herald",
+    ] {
         let entry = registry::find(id).unwrap();
         let text =
             std::fs::read_to_string(root().join("decks").join(format!("{}.ydk", entry.deck)))
@@ -592,4 +601,110 @@ fn piercing_into_a_defending_gusto_still_reflects_lethal_damage() {
         ],
     );
     assert_eq!(picks("blackwing", db, &o, &d), 1);
+}
+
+#[test]
+fn agents_search_venus_before_redundant_earth() {
+    use ygo_policies::decks::agents::Agents;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::AddToHand;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(91188343);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let member = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Deck,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(
+        member_score(&Agents, &t, &member(64734921)) > member_score(&Agents, &t, &member(91188343))
+    );
+}
+
+#[test]
+fn scrapstorm_is_held_under_macro() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 48445393),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 83135907),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("scrap", db.clone(), &o, &d), 0);
+    o.cards
+        .push(card(db.as_ref(), 1, Location::SpellTrapZone, 0, 30241314));
+    assert_eq!(picks("scrap", db, &o, &d), 1);
+}
+
+#[test]
+fn zombie_master_spends_mezuki_before_a_live_master() {
+    use ygo_policies::decks::zombie::Zombie;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ToGraveyard;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(17259470);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let member = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Hand,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(
+        member_score(&Zombie, &t, &member(92826944)) > member_score(&Zombie, &t, &member(17259470))
+    );
+}
+
+#[test]
+fn herald_dawn_recovers_fairy_instead_of_treating_recovery_as_a_cost() {
+    use ygo_policies::decks::herald::Herald;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ReturnToHand;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(27383110);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Graveyard,
+            sequence: 0,
+        },
+        code: Some(95492061),
+        value: 0,
+        required: false,
+    };
+    assert!(member_score(&Herald, &t, &m) > 0.0);
 }
