@@ -78,6 +78,10 @@ EDOPro already filtered pass through unchanged.
 | `venom` | Crown of Venom | Snake Rain, Vennominon revival and Rise into Vennominaga |
 | `batteryman` | Full Charge | Micro-Cell/Charger recruitment, AA swarms and Short Circuit |
 | `gem-knight` | Prismatic Forge | Armadillo materials, recyclable Fusion and Prismaura removal |
+| `flamvell` | Ashes to Inferno | Firedog recruitment, ordered Laval milling and Rekindling Synchros |
+| `nordic` | Road to Ragnarok | Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin |
+| `cloudian` | Eye of the Storm | Sanctuary/Barrier defense, Fog Counters and Cloudian removal |
+| `volcanic` | Volcanic Aftershock | Shell ammunition, Scattershot wipes and Doomfire battle pressure |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them

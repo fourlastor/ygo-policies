@@ -61,3 +61,8 @@ pub mod destiny_board;
 pub mod venom;
 pub mod batteryman;
 pub mod gem_knight;
+
+pub mod flamvell;
+pub mod nordic;
+pub mod cloudian;
+pub mod volcanic;

@@ -119,6 +119,10 @@ pub mod registry {
         entry!("venom", venom::Venom),
         entry!("batteryman", batteryman::Batteryman),
         entry!("gem-knight", gem_knight::GemKnight),
+        entry!("flamvell", flamvell::Flamvell),
+        entry!("nordic", nordic::Nordic),
+        entry!("cloudian", cloudian::Cloudian),
+        entry!("volcanic", volcanic::Volcanic),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

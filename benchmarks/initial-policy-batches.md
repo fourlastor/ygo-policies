@@ -212,3 +212,44 @@ Batteryman Charger 514, Short Circuit 274, Inferno Reckless Summon 124,
 Gem-Knight Fusion 4,966 (including recovery), and Prismaura 974. Venom's
 low win rate despite functional progression makes setup speed a priority
 for the subsequent optimization pass.
+
+## Batch 7: Ashes to Inferno, Road to Ragnarok, Eye of the Storm, Volcanic Aftershock
+
+- **Ashes to Inferno** (`flamvell`): Firedog recruitment, ordered Laval milling and Rekindling Synchros.
+- **Road to Ragnarok** (`nordic`): Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin.
+- **Eye of the Storm** (`cloudian`): Sanctuary/Barrier defense, Fog Counters and Cloudian removal.
+- **Volcanic Aftershock** (`volcanic`): Shell ammunition, Scattershot wipes and Doomfire battle pressure.
+
+```sh
+target/release/policy-bench matchup --policies flamvell,nordic,cloudian,volcanic \
+  --opponents all --games 16 --seed 880000 --workers 6 \
+  --output /tmp/initial-batch7.jsonl
+```
+
+**3,680 duels; 0 failures and 2 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| Road to Ragnarok | 944 | 54.45% | 51.26–57.60% |
+| Eye of the Storm | 944 | 52.33% | 49.14–55.50% |
+| Volcanic Aftershock | 944 | 46.29% | 43.13–49.48% |
+| Ashes to Inferno | 944 | 44.81% | 41.66–48.00% |
+
+Workspace tests pass. [Compact results](initial-batch7.summary.json) and
+[run fingerprints](initial-batch7.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 7 passes 43 focused tests. New checks cover Cloudian positions,
+Tanngnjostr's recruitment, Laval mill order, and Accelerator's attack cost.
+Shared removal values recognize Cloudian Squall and the Accelerators.
+Core activation totals include Rekindling 727, Handmaiden 1,034,
+Tanngnjostr 1,363, Thor 1,168, Odin 286, Squall 5,665, Altus 2,559,
+Blaze Accelerator 2,602, Scattershot 1,243 and Doomfire 192.
+
+Both capped duels were Cloudian–Crystal at the normal 4,096-decision limit.
+A separate 16-game rerun of that pair, same seed and seats, with `--limit 8192`
+and four workers had zero caps or failures. The two formerly capped games
+(engine seeds 128025549 and 128025560) completed after 4,335 and 6,081
+choices, on turns 65 and 64, both Cloudian deck-out wins. A recorded replay
+confirmed ordinary progress. The original batch table retains the two
+capped draws; the higher-limit outcomes are diagnostic, not substituted.
