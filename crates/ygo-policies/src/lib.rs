@@ -94,6 +94,7 @@ pub mod registry {
         entry!("draconic-might", draconic_might::DraconicMight),
         entry!("countdown", countdown::Countdown),
         entry!("verdict", verdict::Verdict),
+        entry!("exodia", exodia::Exodia),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

@@ -53,6 +53,7 @@ EDOPro already filtered pass through unchanged.
 | `draconic-might` | Draconic Might | Red-Eyes Darkness Metal Dragon every turn, guarded by Prime Material Dragon, Jinzo and Horus LV8; Armed Dragon and Horus LV lines |
 | `countdown` | Claudi-oh's Countdown | Final Countdown behind attack locks kept by Skill Drain; one cover a turn, Cyber Valley and Shining Angel for the rest |
 | `verdict` | Claudi-oh's Verdict | Skill Drain beatdown: Beast King Barbaros and big Level 4 monsters behind the era's Traps |
+| `exodia` | Astra's Exodia | Multiple Hearts of the Underdog and Draw Phase Reloads; Normal Monsters defend while keeping all five pieces in hand |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
@@ -62,6 +63,7 @@ Darkness Metal Dragon needs the card's script from ProjectIgnis' `pre-errata/`
 folder, which EDOPro loads.  `countdown` and `verdict` are the boss's decks for
 *Beat Claudi-oh*, built to rank first: one wins without attacking, the other
 by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
+`exodia` adds a measured WC2011 Exodia deck ([construction and validation](benchmarks/exodia.md)).
 [DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
 
 ## Layout

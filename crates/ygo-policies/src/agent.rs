@@ -304,6 +304,11 @@ pub trait Strategy: Send {
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
         None
     }
+    /// An engine-gated effect whose legal repetitions exceed the loop guard.
+    /// The policy must still reject activations that do not make progress.
+    fn allow_repeated_chain(&self, t: &Turn, index: usize) -> bool {
+        false
+    }
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
         None
     }
@@ -522,7 +527,7 @@ fn chain<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
     let own_top = t.own_top();
     let mut best: Option<(f64, usize, Vec<CardRef>)> = None;
     for (i, choice) in t.choices() {
-        if choice.kind != ChoiceKind::Activate || !t.fresh(i) {
+        if choice.kind != ChoiceKind::Activate || (!t.fresh(i) && !s.allow_repeated_chain(t, i)) {
             continue;
         }
         // The plan passed on our monsters' Ignition effects; resolving them

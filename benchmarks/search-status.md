@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Twenty-nine pilots have been through it. The other 2 are to follow, a few at a
+Thirty pilots have been through it. The other 2 are to follow, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
 
@@ -54,6 +54,7 @@ Search gaps estimate remaining headroom; they are not hard ceilings.
 | Legendary Six Samurai | 2 | 73.1% | 90.4% | 17.3 | 59.51% → 70.83% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
 | Gravekeeper's Tomb | 2 | 60.6% | 77.9% | 17.3 | 65.41% → 67.25% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
 | Machina Gadgets | 2 | 81.7% | 92.3% | 10.6 | 70.36% → 78.40% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
+| Astra's Exodia | 2 | 69.2% | 77.9% | 8.7 | 80.24% → 78.48% (faster Heart replacement, held out) | [exodia.md](exodia.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
@@ -65,5 +66,5 @@ refreshed on 2026-10-07.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 91.4% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 80.8% | strong |  |
+| 1 | Claudi-oh's Countdown | `countdown` | 89.0% | strong |  |
+| 3 | Claudi-oh's Verdict | `verdict` | 78.5% | strong |  |
