@@ -41,3 +41,8 @@ pub mod agents;
 pub mod scrap;
 pub mod zombie;
 pub mod herald;
+
+pub mod fish;
+pub mod cyber;
+pub mod gemini;
+pub mod psychic;

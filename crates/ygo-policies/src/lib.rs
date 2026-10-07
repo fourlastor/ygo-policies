@@ -103,6 +103,10 @@ pub mod registry {
         entry!("scrap", scrap::Scrap),
         entry!("zombie", zombie::Zombie),
         entry!("herald", herald::Herald),
+        entry!("fish", fish::Fish),
+        entry!("cyber", cyber::Cyber),
+        entry!("gemini", gemini::Gemini),
+        entry!("psychic", psychic::Psychic),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

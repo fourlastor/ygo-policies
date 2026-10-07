@@ -18,21 +18,16 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `scrap` | Scrap Renaissance | Scrapstorm setup, Chimera/Golem recovery, Scrap Dragon removal |
 | `zombie` | Graveyard Shift | Recruiters, Zombie Master/Mezuki revival and Plaguespreader Synchros |
 | `herald` | Herald's Veto | Herald ritual control, Fairy recovery, Kristya and Royal Decree |
+| `fish` | Tidal Assembly | Coelacanth recruitment, Oyster tokens and Fish Synchros |
+| `cyber` | Power Surge | Cyber names, Power Bond, Future Fusion and Overload finishers |
+| `gemini` | Second Bloom | Lonefire/Gigaplant, Supervise revival and Gemini Spark removal |
+| `psychic` | Mind Over Matter | Teleporter Synchros, Psychic Jumper exchanges and LP recovery |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
 [`benchmarks/four-new-decks.md`](benchmarks/four-new-decks.md) and
 [`benchmarks/initial-policy-batches.md`](benchmarks/initial-policy-batches.md) for validation.
 The 32-deck tier list predates these additions; they are not ranked there yet.
-
-## Substantial remaining engines
-
-| Engine | Available building blocks | Distinct plan / caveat |
-|---|---|---|
-| Fish Synchro | Coelacanth, Fishborg Blaster, Oyster Meister, Royal Swamp Eel, Deep Sea Diva | Mass recruitment and Synchro sequencing. Fishborg is legal at three here; Nimble Sunfish is outside the pool. |
-| Cyber Dragon OTK | Cyber Dragon/Zwei, Power Bond, Cyber Twin/End, Chimeratech Overdragon, Overload Fusion | Concentrated Fusion battle damage. Overload at two; Cyber Dragon/Fortress splashes already exist. |
-| Gemini / Gigaplant | Gemini Spark, Supervise, Blazewing Butterfly, Gigaplant, Evocator Chevalier | Second Normal Summon decisions, equipment and revival; Alius in Fusion Heroes is only a splash. |
-| Gusto-adjacent Psychic control | Psychic Jumper, Overdrive Teleporter, Psychic Commander, Krebons | LP costs, swapping monsters, Psychic Synchros. Current Tele-DAD and Gusto borrow Tuners but do not cover the dedicated engine. |
 
 ## Additional win plans and interaction styles
 

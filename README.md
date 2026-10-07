@@ -62,6 +62,10 @@ EDOPro already filtered pass through unchanged.
 | `scrap` | Scrap Renaissance | Scrapstorm setup, Chimera/Golem recovery, Scrap Dragon removal |
 | `zombie` | Graveyard Shift | Recruiters, Zombie Master/Mezuki revival and Plaguespreader Synchros |
 | `herald` | Herald's Veto | Herald ritual control, Fairy recovery, Kristya and Royal Decree |
+| `fish` | Tidal Assembly | Coelacanth recruitment, Oyster tokens and Fish Synchros |
+| `cyber` | Power Surge | Cyber names, Power Bond, Future Fusion and Overload finishers |
+| `gemini` | Second Bloom | Lonefire/Gigaplant, Supervise revival and Gemini Spark removal |
+| `psychic` | Mind Over Matter | Teleporter Synchros, Psychic Jumper exchanges and LP recovery |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
