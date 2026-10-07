@@ -1,0 +1,103 @@
+{
+  "games": 3680,
+  "failures": 0,
+  "limits": 2,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.5126053802033149,
+          0.5760170225272679
+        ],
+        "games": 944,
+        "rate": 0.5444915254237288
+      },
+      "deck": "Road to Ragnarok",
+      "elo": 1532.9172018772827,
+      "policy": "nordic",
+      "reference": {
+        "ci95": [
+          0.43739172918853736,
+          0.5720492871179859
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.5048076923076923,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.49141350519378774,
+          0.5550077533793747
+        ],
+        "games": 944,
+        "rate": 0.5233050847457628
+      },
+      "deck": "Eye of the Storm",
+      "elo": 1516.980364953572,
+      "policy": "cloudian",
+      "reference": {
+        "ci95": [
+          0.3904315970047479,
+          0.5245992562365418
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.4567307692307692,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.43132969859858017,
+          0.494818299125934
+        ],
+        "games": 944,
+        "rate": 0.4629237288135593
+      },
+      "deck": "Volcanic Aftershock",
+      "elo": 1471.663993799989,
+      "policy": "volcanic",
+      "reference": {
+        "ci95": [
+          0.3074805168196702,
+          0.43761204290419903
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.3701923076923077,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.41664331284115697,
+          0.47996388397316303
+        ],
+        "games": 944,
+        "rate": 0.4480932203389831
+      },
+      "deck": "Ashes to Inferno",
+      "elo": 1460.4705822447286,
+      "policy": "flamvell",
+      "reference": {
+        "ci95": [
+          0.3029341846027797,
+          0.43271735881456613
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.36538461538461536,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

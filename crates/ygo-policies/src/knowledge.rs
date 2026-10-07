@@ -334,6 +334,8 @@ pub fn facts(code: u32) -> Facts {
 /// the opponent's field, such a card is one to remove first.  0 for the rest.
 pub fn owner_worth(code: u32) -> i32 {
     match code {
+        90135989 => 2600, // Cloudian Squall: accumulating Fog Counters
+        69537999 | 21420702 => 2400, // Volcanic ammunition engines
         94212438 | 31893528 | 67287533 | 94772232 | 30170981 => 4500, // Destiny Board and messages
         8062132 => 5000, // Vennominaga: protected alternate-win threat
         93379652 => 3300, // Gem-Knight Prismaura: repeated removal

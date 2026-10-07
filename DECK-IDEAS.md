@@ -34,6 +34,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `venom` | Crown of Venom | Snake Rain, Vennominon revival and Rise into Vennominaga |
 | `batteryman` | Full Charge | Micro-Cell/Charger recruitment, AA swarms and Short Circuit |
 | `gem-knight` | Prismatic Forge | Armadillo materials, recyclable Fusion and Prismaura removal |
+| `flamvell` | Ashes to Inferno | Firedog recruitment, ordered Laval milling and Rekindling Synchros |
+| `nordic` | Road to Ragnarok | Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin |
+| `cloudian` | Eye of the Storm | Sanctuary/Barrier defense, Fog Counters and Cloudian removal |
+| `volcanic` | Volcanic Aftershock | Shell ammunition, Scattershot wipes and Doomfire battle pressure |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -45,10 +49,6 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 
 | Engine | Available building blocks / caveat |
 |---|---|
-| Flamvell / early Laval | Firedog, Magician, Rekindling, Laval Cannon, Volcano Handmaiden; Lakeside Lady and Molten Conduction unavailable |
-| Nordic / Aesir | Guldfaxe, Tanngnjostr, Valkyrie, Gleipnir, Odin and Thor |
-| Cloudian | Turbulence, Smoke Ball, Altus, Acid Cloud, Cirrostratus, Squall; counters and battle resilience |
-| Volcanic | Shell, Rocket, Scattershot, Blaze Accelerator, Doomfire; Reload unavailable |
 | Early Dark World | Broww, Goldd, Sillva, Dealings; Grapha, Snoww and Gates unavailable |
 | Worm | Xex, Yagan, King, Zero; W Nebula Meteorite unavailable |
 | Chaos | Chaos Sorcerer; BLS Envoy forbidden, Lightpulsar and Eclipse Wyvern unavailable |

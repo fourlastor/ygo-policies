@@ -1093,3 +1093,89 @@ fn prismaura_sends_recoverable_fusion_before_a_monster_material() {
     };
     assert!(member_score(&GemKnight, &t, &m(1264319)) > member_score(&GemKnight, &t, &m(91731841)));
 }
+
+#[test]
+fn cloudians_never_choose_face_up_defense() {
+    use ygo_policies::{decks::cloudian::Cloudian, Strategy};
+    let db = db();
+    let o = obs();
+    let d = decision(DecisionKind::Position, vec![]);
+    let mut memory = Memory::default();
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    assert_eq!(
+        Cloudian.position(&t, 16197610),
+        Some(Position::FACE_UP_ATTACK)
+    );
+    let c = card(db.as_ref(), 0, Location::MonsterZone, 0, 16197610);
+    assert!(!Cloudian.allow_reposition(&t, &c));
+}
+
+#[test]
+fn nordic_changes_tanngnjostr_to_recruit_even_against_a_larger_monster() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 14677495),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 89631139),
+    ];
+    o.cards[0].position = Position::FACE_UP_DEFENSE;
+    o.cards[0].can_attack = false;
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::ChangePosition, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("nordic", db, &o, &d), 0);
+}
+
+#[test]
+fn laval_miller_sends_a_non_handmaiden_before_the_handmaiden() {
+    use ygo_policies::decks::flamvell::Flamvell;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ToGraveyard;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(89893715);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Deck,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(member_score(&Flamvell, &t, &m(52786469)) > member_score(&Flamvell, &t, &m(2407147)));
+}
+
+#[test]
+fn volcanic_holds_accelerator_when_rocket_can_win_the_battle() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 69537999),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 76459806),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 39552864),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("volcanic", db, &o, &d), 1);
+}
