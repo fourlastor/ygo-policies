@@ -36,3 +36,8 @@ pub mod fabled;
 pub mod counter_fairy;
 pub mod macro_dd;
 pub mod gusto;
+pub(crate) mod support;
+pub mod agents;
+pub mod scrap;
+pub mod zombie;
+pub mod herald;

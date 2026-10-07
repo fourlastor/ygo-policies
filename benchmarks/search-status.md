@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Thirty pilots have been through it. Six have not; the four new initial
+Thirty pilots have been through it. 10 have not; the 8 new initial
 policies are intentionally deferred from search. For future work, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
@@ -70,7 +70,7 @@ refreshed on 2026-10-07.
 | 1 | Claudi-oh's Countdown | `countdown` | 89.0% | strong |  |
 | 3 | Claudi-oh's Verdict | `verdict` | 78.5% | strong |  |
 
-The four policies added on 2026-10-08 use initial hand-written strategies.
+The policies added on 2026-10-08 use initial hand-written strategies.
 Search was explicitly excluded from that task. They have no search gap or
 ceiling recorded and are not yet in the full tier-list ranking:
 
@@ -80,5 +80,9 @@ ceiling recorded and are not yet in the full tier-list ranking:
 | Heaven's Rebuttal | `counter-fairy` | Initial strategy; search deferred |
 | D.D. Border Patrol | `macro-dd` | Initial strategy; search deferred |
 | Gusto's Reprisal | `gusto` | Initial strategy; search deferred |
+| Heaven's Dispatch | `agents` | Initial strategy; search deferred |
+| Scrap Renaissance | `scrap` | Initial strategy; search deferred |
+| Graveyard Shift | `zombie` | Initial strategy; search deferred |
+| Herald's Veto | `herald` | Initial strategy; search deferred |
 
-See [validation](four-new-decks.md) and [remaining deck ideas](../DECK-IDEAS.md).
+See [first-batch validation](four-new-decks.md), [later batches](initial-policy-batches.md), and [remaining deck ideas](../DECK-IDEAS.md).

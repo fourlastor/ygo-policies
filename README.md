@@ -58,6 +58,10 @@ EDOPro already filtered pass through unchanged.
 | `counter-fairy` | Heaven's Rebuttal | Counter Traps with Artemis draws, Sanctuary/Meltiel removal and Van'Dalgyon |
 | `macro-dd` | D.D. Border Patrol | Macro Cosmos / Dimensional Fissure, returning D.D. monsters and Monarch tributes |
 | `gusto` | Gusto's Reprisal | Gusto recruitment, Sphreez reflected battle damage and graveyard recycling |
+| `agents` | Heaven's Dispatch | Earth/Venus Fairy swarm, Hyperion removal and Kristya |
+| `scrap` | Scrap Renaissance | Scrapstorm setup, Chimera/Golem recovery, Scrap Dragon removal |
+| `zombie` | Graveyard Shift | Recruiters, Zombie Master/Mezuki revival and Plaguespreader Synchros |
+| `herald` | Herald's Veto | Herald ritual control, Fairy recovery, Kristya and Royal Decree |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them

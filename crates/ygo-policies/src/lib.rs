@@ -99,6 +99,10 @@ pub mod registry {
         entry!("counter-fairy", counter_fairy::CounterFairy),
         entry!("macro-dd", macro_dd::MacroDd),
         entry!("gusto", gusto::Gusto),
+        entry!("agents", agents::Agents),
+        entry!("scrap", scrap::Scrap),
+        entry!("zombie", zombie::Zombie),
+        entry!("herald", herald::Herald),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
