@@ -133,3 +133,22 @@ fn a_snapshot_brings_the_duel_back_and_a_swap_changes_it() {
     assert_eq!(code(&duel, size - 1), top);
     assert_eq!(duel.field(), field);
 }
+
+#[test]
+fn exodia_stall_with_large_synchro_searches_finishes() {
+    // Seed 1311823037 used to throw std::bad_alloc inside Tele-DAD's
+    // Synchro-material checks when its duel arena reached 256 MiB. Keep
+    // the exact dealt cards and responses so policy edits cannot hide it.
+    let json = serde_json::from_str(include_str!("fixtures/exodia-tele-dad-arena.json")).unwrap();
+    let record = Recorded::from_json(&json).unwrap();
+    let mut won = None;
+    let mut answers = 0;
+    let left = core().replay(&record, None, &mut |shown| match shown {
+        Replayed::Message(Message::Win { player, reason }) => won = Some((*player, *reason)),
+        Replayed::Answer(..) => answers += 1,
+        _ => {}
+    }).unwrap();
+    assert_eq!(left, 0);
+    assert_eq!(answers, 932);
+    assert_eq!(won, Some((0, 16)), "the duel ends with Exodia's victory");
+}

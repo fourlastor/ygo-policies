@@ -31,3 +31,4 @@ pub mod x_saber;
 pub mod draconic_might;
 pub mod countdown;
 pub mod verdict;
+pub mod exodia;

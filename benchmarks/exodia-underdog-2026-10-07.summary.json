@@ -1,0 +1,1801 @@
+{
+  "date": "2026-10-07",
+  "policy": "exodia",
+  "selected": "screen-04-locks-more-reload",
+  "selection": "User selected faster Heart replacement despite the measured overall win-rate tradeoff. Steelcage increased overall development wins slightly but reduced speed and the Countdown advantage.",
+  "heldout_heart": {
+    "games": 15872,
+    "win_rate": 78.48412298387096,
+    "burn": 49.609375,
+    "countdown": 80.6640625,
+    "mean_winning_turn": 17.784297985068637,
+    "median_winning_turn": 16,
+    "wins_by_turn_8": 1063,
+    "win_reasons": {
+      "16": 12336,
+      "2": 81,
+      "1": 40
+    },
+    "heart_activated_games": 14677
+  },
+  "heldout_hope": {
+    "games": 15872,
+    "win_rate": 80.23563508064517,
+    "burn": 15.625,
+    "countdown": 21.09375,
+    "mean_winning_turn": 31.158460934432664,
+    "median_winning_turn": 31,
+    "wins_by_turn_8": 65,
+    "win_reasons": {
+      "16": 12421,
+      "2": 314
+    },
+    "heart_activated_games": 0
+  },
+  "paired_comparison": {
+    "delta_percentage_points": -1.7515120967741933,
+    "ci95_percentage_points": [
+      -2.518666615080402,
+      -0.9843575784679849
+    ],
+    "improved": 1793,
+    "regressed": 2071,
+    "same": 12008,
+    "note": "Same matchup, seat and seed; both deck composition and policy differ."
+  },
+  "canonical_rank": 2,
+  "canonical": {
+    "all": {
+      "ci95": [
+        0.7848091252705983,
+        0.8026081350435116
+      ],
+      "games": 7936,
+      "rate": 0.7938508064516129
+    },
+    "deck": "Exodia's Escape",
+    "elo": 1775.385693617488,
+    "policy": "exodia",
+    "reference": {
+      "ci95": [
+        0.7469475860392976,
+        0.7758863926228332
+      ],
+      "games": 3328,
+      "opponents": 13,
+      "rate": 0.76171875,
+      "required_opponents": 13
+    },
+    "tier": "strong"
+  },
+  "search": {
+    "games": 104,
+    "seed": 56360000,
+    "worlds": [
+      8,
+      32,
+      96
+    ],
+    "strict": true,
+    "foresight": false,
+    "pilot_rate": 0.6923076923076923,
+    "search_rate": 0.7788461538461539,
+    "playouts": 124664,
+    "failed_playouts": 0,
+    "limits": 0,
+    "wall_seconds": 252,
+    "gap_percentage_points": 8.653846153846157,
+    "deviations": [
+      {
+        "kind": "Chain",
+        "from": [
+          "Pass",
+          null
+        ],
+        "to": [
+          "Activate",
+          22589918
+        ],
+        "count": 9
+      },
+      {
+        "kind": "YesNo",
+        "from": [
+          "Yes",
+          null
+        ],
+        "to": [
+          "No",
+          null
+        ],
+        "count": 5
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "Activate",
+          44656491
+        ],
+        "count": 4
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "SetSpellTrap",
+          82732705
+        ],
+        "count": 4
+      },
+      {
+        "kind": "Chain",
+        "from": [
+          "Pass",
+          null
+        ],
+        "to": [
+          "Activate",
+          82732705
+        ],
+        "count": 3
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          98645731
+        ],
+        "to": [
+          "EndTurn",
+          null
+        ],
+        "count": 3
+      },
+      {
+        "kind": "YesNo",
+        "from": [
+          "Yes",
+          35762283
+        ],
+        "to": [
+          "No",
+          35762283
+        ],
+        "count": 2
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "Activate",
+          3136426
+        ],
+        "count": 2
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          44656491
+        ],
+        "to": [
+          "SetSpellTrap",
+          44656491
+        ],
+        "count": 2
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "SetSpellTrap",
+          85742772
+        ],
+        "count": 2
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "SetSpellTrap",
+          44656491
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          98645731
+        ],
+        "to": [
+          "SetMonster",
+          13179332
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetMonster",
+          60606759
+        ],
+        "to": [
+          "EndTurn",
+          null
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "ChangePosition",
+          86652646
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          98645731
+        ],
+        "to": [
+          "SetMonster",
+          60606759
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          35762283
+        ],
+        "to": [
+          "SetMonster",
+          27126980
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetMonster",
+          27126980
+        ],
+        "to": [
+          "NormalSummon",
+          60606759
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "Activate",
+          22589918
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          35762283
+        ],
+        "to": [
+          "NormalSummon",
+          27126980
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetMonster",
+          27126980
+        ],
+        "to": [
+          "SetSpellTrap",
+          82732705
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          44656491
+        ],
+        "to": [
+          "SetSpellTrap",
+          22589918
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          98645731
+        ],
+        "to": [
+          "SetSpellTrap",
+          82732705
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "SetSpellTrap",
+          35762283
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "EndTurn",
+          null
+        ],
+        "to": [
+          "Activate",
+          35762283
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          35762283
+        ],
+        "to": [
+          "EndTurn",
+          null
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          35762283
+        ],
+        "to": [
+          "SetSpellTrap",
+          85742772
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetMonster",
+          13179332
+        ],
+        "to": [
+          "NormalSummon",
+          27126980
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Chain",
+        "from": [
+          "Activate",
+          35762283
+        ],
+        "to": [
+          "Pass",
+          null
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetSpellTrap",
+          82732705
+        ],
+        "to": [
+          "Activate",
+          3136426
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "SetMonster",
+          86652646
+        ],
+        "to": [
+          "SetSpellTrap",
+          82732705
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Chain",
+        "from": [
+          "Activate",
+          85742772
+        ],
+        "to": [
+          "Pass",
+          null
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          22589918
+        ],
+        "to": [
+          "SetSpellTrap",
+          22589918
+        ],
+        "count": 1
+      },
+      {
+        "kind": "Idle",
+        "from": [
+          "Activate",
+          44656491
+        ],
+        "to": [
+          "SetMonster",
+          48094997
+        ],
+        "count": 1
+      }
+    ]
+  },
+  "screens": [
+    {
+      "games": 3968,
+      "win_rate": 61.08870967741935,
+      "burn": 50.0,
+      "countdown": 90.625,
+      "mean_winning_turn": 14.178217821782178,
+      "median_winning_turn": 13.0,
+      "wins_by_turn_8": 272,
+      "win_reasons": {
+        "16": 2392,
+        "2": 23,
+        "1": 9
+      },
+      "heart_activated_games": 3593,
+      "name": "screen-01-cantrips",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 45.287298387096776,
+      "burn": 56.25,
+      "countdown": 89.84375,
+      "mean_winning_turn": 11.257095158597663,
+      "median_winning_turn": 10,
+      "wins_by_turn_8": 533,
+      "win_reasons": {
+        "16": 1777,
+        "1": 13,
+        "2": 7
+      },
+      "heart_activated_games": 3274,
+      "name": "screen-01-duality",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 58.996975806451616,
+      "burn": 45.3125,
+      "countdown": 91.40625,
+      "mean_winning_turn": 13.080734728748398,
+      "median_winning_turn": 12,
+      "wins_by_turn_8": 576,
+      "win_reasons": {
+        "16": 2304,
+        "2": 18,
+        "1": 19
+      },
+      "heart_activated_games": 3425,
+      "name": "screen-01-hand-draw",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 62.19758064516129,
+      "burn": 52.34375,
+      "countdown": 89.0625,
+      "mean_winning_turn": 14.274311183144246,
+      "median_winning_turn": 13.0,
+      "wins_by_turn_8": 287,
+      "win_reasons": {
+        "16": 2435,
+        "1": 15,
+        "2": 18
+      },
+      "heart_activated_games": 3500,
+      "name": "screen-01-jar",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 60.20665322580645,
+      "burn": 52.34375,
+      "countdown": 85.15625,
+      "mean_winning_turn": 14.535370447886145,
+      "median_winning_turn": 13,
+      "wins_by_turn_8": 257,
+      "win_reasons": {
+        "16": 2356,
+        "1": 16,
+        "2": 17
+      },
+      "heart_activated_games": 3437,
+      "name": "screen-01-light-locks",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 76.76411290322581,
+      "burn": 39.84375,
+      "countdown": 74.21875,
+      "mean_winning_turn": 21.00361129349967,
+      "median_winning_turn": 19.0,
+      "wins_by_turn_8": 42,
+      "win_reasons": {
+        "16": 3006,
+        "2": 28,
+        "1": 12
+      },
+      "heart_activated_games": 3631,
+      "name": "screen-01-locks",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 37.121975806451616,
+      "burn": 51.5625,
+      "countdown": 77.34375,
+      "mean_winning_turn": 14.044806517311608,
+      "median_winning_turn": 11,
+      "wins_by_turn_8": 325,
+      "win_reasons": {
+        "16": 1451,
+        "2": 12,
+        "1": 10
+      },
+      "heart_activated_games": 2630,
+      "name": "screen-01-pure",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 45.715725806451616,
+      "burn": 55.46875,
+      "countdown": 84.375,
+      "mean_winning_turn": 10.764608599779493,
+      "median_winning_turn": 9.0,
+      "wins_by_turn_8": 782,
+      "win_reasons": {
+        "16": 1795,
+        "2": 11,
+        "1": 8
+      },
+      "heart_activated_games": 3000,
+      "name": "screen-01-reload",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 59.72782258064516,
+      "burn": 44.53125,
+      "countdown": 88.28125,
+      "mean_winning_turn": 14.90042194092827,
+      "median_winning_turn": 13.0,
+      "wins_by_turn_8": 205,
+      "win_reasons": {
+        "16": 2336,
+        "2": 22,
+        "1": 12
+      },
+      "heart_activated_games": 3501,
+      "name": "screen-01-upstart",
+      "policy_stage": "01",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55056648,
+        "fnv1a64": "9c9eea0796f44f09",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-01.so"
+      },
+      "selection_evidence": false
+    },
+    {
+      "games": 3968,
+      "win_rate": 64.64213709677419,
+      "burn": 52.34375,
+      "countdown": 92.1875,
+      "mean_winning_turn": 12.530214424951268,
+      "median_winning_turn": 11,
+      "wins_by_turn_8": 670,
+      "win_reasons": {
+        "16": 2538,
+        "2": 18,
+        "1": 9
+      },
+      "heart_activated_games": 3593,
+      "name": "screen-02-cantrips",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 67.51512096774194,
+      "burn": 51.5625,
+      "countdown": 77.34375,
+      "mean_winning_turn": 17.242254572601716,
+      "median_winning_turn": 14,
+      "wins_by_turn_8": 379,
+      "win_reasons": {
+        "16": 2654,
+        "2": 16,
+        "1": 9
+      },
+      "heart_activated_games": 3272,
+      "name": "screen-02-drain",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 55.77116935483871,
+      "burn": 73.4375,
+      "countdown": 92.1875,
+      "mean_winning_turn": 8.890646181653864,
+      "median_winning_turn": 7,
+      "wins_by_turn_8": 1386,
+      "win_reasons": {
+        "16": 2200,
+        "1": 9,
+        "2": 4
+      },
+      "heart_activated_games": 3274,
+      "name": "screen-02-duality",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 62.878024193548384,
+      "burn": 52.34375,
+      "countdown": 91.40625,
+      "mean_winning_turn": 11.311422845691382,
+      "median_winning_turn": 9,
+      "wins_by_turn_8": 1063,
+      "win_reasons": {
+        "16": 2467,
+        "2": 15,
+        "1": 13
+      },
+      "heart_activated_games": 3425,
+      "name": "screen-02-hand-draw",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 65.92741935483872,
+      "burn": 61.71875,
+      "countdown": 89.84375,
+      "mean_winning_turn": 12.175840978593271,
+      "median_winning_turn": 10.0,
+      "wins_by_turn_8": 833,
+      "win_reasons": {
+        "16": 2589,
+        "1": 14,
+        "2": 13
+      },
+      "heart_activated_games": 3500,
+      "name": "screen-02-jar",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 65.17137096774194,
+      "burn": 60.9375,
+      "countdown": 87.5,
+      "mean_winning_turn": 12.005027068832174,
+      "median_winning_turn": 10.0,
+      "wins_by_turn_8": 898,
+      "win_reasons": {
+        "16": 2564,
+        "1": 12,
+        "2": 10
+      },
+      "heart_activated_games": 3437,
+      "name": "screen-02-light-locks",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.14213709677419,
+      "burn": 40.625,
+      "countdown": 68.75,
+      "mean_winning_turn": 20.905259719046065,
+      "median_winning_turn": 20,
+      "wins_by_turn_8": 130,
+      "win_reasons": {
+        "16": 3023,
+        "1": 10,
+        "2": 28
+      },
+      "heart_activated_games": 3747,
+      "name": "screen-02-locks-cantrips",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 73.58870967741935,
+      "burn": 41.40625,
+      "countdown": 67.96875,
+      "mean_winning_turn": 21.035958904109588,
+      "median_winning_turn": 19.0,
+      "wins_by_turn_8": 142,
+      "win_reasons": {
+        "16": 2891,
+        "2": 20,
+        "1": 9
+      },
+      "heart_activated_games": 3534,
+      "name": "screen-02-locks-jar-no-duality",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 76.99092741935483,
+      "burn": 41.40625,
+      "countdown": 76.5625,
+      "mean_winning_turn": 20.25040916530278,
+      "median_winning_turn": 19,
+      "wins_by_turn_8": 144,
+      "win_reasons": {
+        "16": 3024,
+        "2": 19,
+        "1": 12
+      },
+      "heart_activated_games": 3682,
+      "name": "screen-02-locks-jar",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.15020161290323,
+      "burn": 43.75,
+      "countdown": 78.90625,
+      "mean_winning_turn": 18.41373750403096,
+      "median_winning_turn": 17,
+      "wins_by_turn_8": 260,
+      "win_reasons": {
+        "16": 3080,
+        "2": 14,
+        "1": 7
+      },
+      "heart_activated_games": 3663,
+      "name": "screen-02-locks-more-reload",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 76.78931451612904,
+      "burn": 42.96875,
+      "countdown": 67.1875,
+      "mean_winning_turn": 20.225795864785034,
+      "median_winning_turn": 19,
+      "wins_by_turn_8": 131,
+      "win_reasons": {
+        "16": 3019,
+        "2": 16,
+        "1": 12
+      },
+      "heart_activated_games": 3693,
+      "name": "screen-02-locks-upstart",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.74697580645162,
+      "burn": 44.53125,
+      "countdown": 76.5625,
+      "mean_winning_turn": 19.45931928687196,
+      "median_winning_turn": 18,
+      "wins_by_turn_8": 179,
+      "win_reasons": {
+        "16": 3051,
+        "2": 22,
+        "1": 12
+      },
+      "heart_activated_games": 3631,
+      "name": "screen-02-locks",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 45.564516129032256,
+      "burn": 61.71875,
+      "countdown": 80.46875,
+      "mean_winning_turn": 11.092367256637168,
+      "median_winning_turn": 8.0,
+      "wins_by_turn_8": 1072,
+      "win_reasons": {
+        "16": 1789,
+        "2": 11,
+        "1": 8
+      },
+      "heart_activated_games": 2630,
+      "name": "screen-02-pure",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 56.17439516129033,
+      "burn": 67.96875,
+      "countdown": 87.5,
+      "mean_winning_turn": 8.514131897711978,
+      "median_winning_turn": 6,
+      "wins_by_turn_8": 1601,
+      "win_reasons": {
+        "16": 2215,
+        "2": 8,
+        "1": 6
+      },
+      "heart_activated_games": 3000,
+      "name": "screen-02-reload",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 63.659274193548384,
+      "burn": 52.34375,
+      "countdown": 89.84375,
+      "mean_winning_turn": 12.846001583531274,
+      "median_winning_turn": 11.0,
+      "wins_by_turn_8": 687,
+      "win_reasons": {
+        "16": 2499,
+        "2": 18,
+        "1": 9
+      },
+      "heart_activated_games": 3501,
+      "name": "screen-02-upstart",
+      "policy_stage": "02",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55059104,
+        "fnv1a64": "2321fe3f423c5112",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-02.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.93145161290323,
+      "burn": 35.15625,
+      "countdown": 60.9375,
+      "mean_winning_turn": 23.18199233716475,
+      "median_winning_turn": 22.0,
+      "wins_by_turn_8": 72,
+      "win_reasons": {
+        "16": 3095,
+        "2": 28,
+        "1": 9
+      },
+      "heart_activated_games": 3701,
+      "name": "screen-03-locks-cage",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.21774193548387,
+      "burn": 38.28125,
+      "countdown": 70.3125,
+      "mean_winning_turn": 20.99902088772846,
+      "median_winning_turn": 20.0,
+      "wins_by_turn_8": 128,
+      "win_reasons": {
+        "16": 3031,
+        "1": 8,
+        "2": 25
+      },
+      "heart_activated_games": 3747,
+      "name": "screen-03-locks-cantrips",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 63.43245967741935,
+      "burn": 40.625,
+      "countdown": 68.75,
+      "mean_winning_turn": 18.54668255860151,
+      "median_winning_turn": 18,
+      "wins_by_turn_8": 72,
+      "win_reasons": {
+        "16": 2492,
+        "2": 16,
+        "1": 9
+      },
+      "heart_activated_games": 3806,
+      "name": "screen-03-locks-gold",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.04133064516128,
+      "burn": 39.0625,
+      "countdown": 67.96875,
+      "mean_winning_turn": 21.82302911350998,
+      "median_winning_turn": 21,
+      "wins_by_turn_8": 119,
+      "win_reasons": {
+        "16": 3027,
+        "2": 18,
+        "1": 12
+      },
+      "heart_activated_games": 3710,
+      "name": "screen-03-locks-jar-swords",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 76.5625,
+      "burn": 42.96875,
+      "countdown": 70.3125,
+      "mean_winning_turn": 20.790651744568795,
+      "median_winning_turn": 20.0,
+      "wins_by_turn_8": 150,
+      "win_reasons": {
+        "16": 3007,
+        "2": 18,
+        "1": 13
+      },
+      "heart_activated_games": 3682,
+      "name": "screen-03-locks-jar",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.25100806451613,
+      "burn": 44.53125,
+      "countdown": 79.6875,
+      "mean_winning_turn": 18.583252818035426,
+      "median_winning_turn": 17,
+      "wins_by_turn_8": 277,
+      "win_reasons": {
+        "16": 3083,
+        "2": 15,
+        "1": 7
+      },
+      "heart_activated_games": 3663,
+      "name": "screen-03-locks-more-reload",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 73.03427419354838,
+      "burn": 43.75,
+      "countdown": 67.96875,
+      "mean_winning_turn": 20.827467218771567,
+      "median_winning_turn": 18.0,
+      "wins_by_turn_8": 199,
+      "win_reasons": {
+        "16": 2868,
+        "2": 20,
+        "1": 10
+      },
+      "heart_activated_games": 3441,
+      "name": "screen-03-locks-no-duality",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 71.74899193548387,
+      "burn": 45.3125,
+      "countdown": 55.46875,
+      "mean_winning_turn": 23.98876009834914,
+      "median_winning_turn": 23,
+      "wins_by_turn_8": 75,
+      "win_reasons": {
+        "16": 2811,
+        "2": 25,
+        "1": 11
+      },
+      "heart_activated_games": 3679,
+      "name": "screen-03-locks-rainbow",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.37701612903226,
+      "burn": 39.0625,
+      "countdown": 73.4375,
+      "mean_winning_turn": 21.009646302250804,
+      "median_winning_turn": 19.0,
+      "wins_by_turn_8": 122,
+      "win_reasons": {
+        "16": 3072,
+        "2": 25,
+        "1": 13
+      },
+      "heart_activated_games": 3664,
+      "name": "screen-03-locks-swords",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.34375,
+      "burn": 42.96875,
+      "countdown": 71.09375,
+      "mean_winning_turn": 19.83186705767351,
+      "median_winning_turn": 18,
+      "wins_by_turn_8": 187,
+      "win_reasons": {
+        "16": 3034,
+        "2": 24,
+        "1": 11
+      },
+      "heart_activated_games": 3631,
+      "name": "screen-03-locks",
+      "policy_stage": "03",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55071528,
+        "fnv1a64": "c2dc1b75ffc4c12b",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-03.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.07459677419355,
+      "burn": 33.59375,
+      "countdown": 74.21875,
+      "mean_winning_turn": 22.842801807617818,
+      "median_winning_turn": 22.0,
+      "wins_by_turn_8": 51,
+      "win_reasons": {
+        "16": 3064,
+        "2": 25,
+        "1": 9
+      },
+      "heart_activated_games": 3706,
+      "name": "screen-04-cage-jar",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 79.56149193548387,
+      "burn": 39.84375,
+      "countdown": 71.875,
+      "mean_winning_turn": 21.148242001900538,
+      "median_winning_turn": 20,
+      "wins_by_turn_8": 120,
+      "win_reasons": {
+        "16": 3135,
+        "2": 19,
+        "1": 3
+      },
+      "heart_activated_games": 3703,
+      "name": "screen-04-cage-reload",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.62903225806451,
+      "burn": 35.15625,
+      "countdown": 69.53125,
+      "mean_winning_turn": 22.548076923076923,
+      "median_winning_turn": 22.0,
+      "wins_by_turn_8": 50,
+      "win_reasons": {
+        "16": 3094,
+        "2": 21,
+        "1": 5
+      },
+      "heart_activated_games": 3735,
+      "name": "screen-04-cage-upstart",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.88104838709677,
+      "burn": 38.28125,
+      "countdown": 64.84375,
+      "mean_winning_turn": 22.259424920127795,
+      "median_winning_turn": 21.0,
+      "wins_by_turn_8": 66,
+      "win_reasons": {
+        "16": 3099,
+        "2": 22,
+        "1": 9
+      },
+      "heart_activated_games": 3684,
+      "name": "screen-04-locks-cage",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.32661290322581,
+      "burn": 44.53125,
+      "countdown": 79.6875,
+      "mean_winning_turn": 19.72876447876448,
+      "median_winning_turn": 19.0,
+      "wins_by_turn_8": 126,
+      "win_reasons": {
+        "16": 3080,
+        "1": 6,
+        "2": 22
+      },
+      "heart_activated_games": 3738,
+      "name": "screen-04-locks-cantrips",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 77.87298387096774,
+      "burn": 47.65625,
+      "countdown": 78.125,
+      "mean_winning_turn": 19.500647249190937,
+      "median_winning_turn": 19.0,
+      "wins_by_turn_8": 159,
+      "win_reasons": {
+        "16": 3064,
+        "2": 18,
+        "1": 8
+      },
+      "heart_activated_games": 3673,
+      "name": "screen-04-locks-jar",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    },
+    {
+      "games": 3968,
+      "win_rate": 78.42741935483872,
+      "burn": 44.53125,
+      "countdown": 85.15625,
+      "mean_winning_turn": 17.556233933161955,
+      "median_winning_turn": 16.0,
+      "wins_by_turn_8": 268,
+      "win_reasons": {
+        "16": 3089,
+        "2": 17,
+        "1": 6
+      },
+      "heart_activated_games": 3647,
+      "name": "screen-04-locks-more-reload",
+      "policy_stage": "04",
+      "complete": true,
+      "failures": 0,
+      "limits": 0,
+      "library": {
+        "bytes": 55034552,
+        "fnv1a64": "b669625fd6913760",
+        "path": "/tmp/ygo-underdog.vj7fml23/policy-04.so"
+      },
+      "selection_evidence": true
+    }
+  ],
+  "support_variants": {
+    "pure": {
+      "35762283": 3
+    },
+    "reload": {
+      "35762283": 3,
+      "22589918": 3
+    },
+    "duality": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3
+    },
+    "locks": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1
+    },
+    "light-locks": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "44656491": 3
+    },
+    "hand-draw": {
+      "35762283": 3,
+      "22589918": 3,
+      "74519184": 3,
+      "98645731": 3,
+      "44656491": 3
+    },
+    "upstart": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "70368879": 3,
+      "44656491": 3
+    },
+    "jar": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "83968380": 3,
+      "44656491": 3
+    },
+    "cantrips": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "70368879": 3,
+      "83968380": 3,
+      "44656491": 3
+    },
+    "locks-jar": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "83968380": 3
+    },
+    "locks-upstart": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "70368879": 3
+    },
+    "locks-cantrips": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "83968380": 3,
+      "70368879": 3
+    },
+    "locks-jar-no-duality": {
+      "35762283": 3,
+      "22589918": 2,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "83968380": 3
+    },
+    "drain": {
+      "35762283": 3,
+      "22589918": 2,
+      "44656491": 3,
+      "82732705": 3
+    },
+    "locks-more-reload": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1
+    },
+    "locks-cage": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "58775978": 3
+    },
+    "locks-rainbow": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "34002992": 3
+    },
+    "locks-swords": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "72302403": 1
+    },
+    "locks-jar-swords": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "83968380": 3,
+      "72302403": 1
+    },
+    "locks-no-duality": {
+      "35762283": 3,
+      "22589918": 2,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1
+    },
+    "locks-gold": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "75500286": 3
+    },
+    "cage-reload": {
+      "35762283": 3,
+      "22589918": 3,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "58775978": 3
+    },
+    "cage-jar": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "58775978": 3,
+      "83968380": 3
+    },
+    "cage-upstart": {
+      "35762283": 3,
+      "22589918": 2,
+      "98645731": 3,
+      "44656491": 3,
+      "82732705": 3,
+      "3136426": 1,
+      "85742772": 1,
+      "58775978": 3,
+      "70368879": 3
+    }
+  },
+  "validation": {
+    "workspace_tests": 179,
+    "cleanup_identical_games": 3968,
+    "heldout_identical_games": 15872,
+    "search_baseline_identical_games": 104,
+    "unchanged_opponent_games": 119040,
+    "canonical_games": 126976,
+    "canonical_failures": 0,
+    "canonical_limits": 0,
+    "trace_max_simultaneous_hearts": 3,
+    "trace_max_heart_activations_in_one_draw_phase": 32,
+    "jar_draw_phase_activations": 28,
+    "jar_restarted_heart_sequences": 12
+  },
+  "source_sha256": {
+    "crates/ygo-policies/src/decks/exodia.rs": "28df9ce687a4f9ddd6195029ee46f5df3cb529875927b2d7d70959f0adbed489",
+    "crates/ygo-policies/src/agent.rs": "2fde7f6dfd842ea474415ccfce385319171adcea26510aea5842c06918a61e95",
+    "decks/Exodia's Escape.ydk": "f6ea955144f7b217d2be7f42d1555e54d4a64d45cd14a32a5cc51d8265902fc8",
+    "crates/ygo-policies/tests/exodia_policy.rs": "94f9d2bf6cfe4d22c6e97d2c0a48fe8e0ce7c06f2e2913f49f464936666e7b09",
+    "vendor/ocgcore/ocgapi.cpp": "88e8f9a911b545dc02bbe022d713319dee96a289551e34152ff2682f6349e388"
+  },
+  "rename": {
+    "date": "2026-10-08",
+    "previous_deck_name": "Exodia's Escape",
+    "deck_name": "Astra's Exodia",
+    "policy": "exodia",
+    "changes": "Display name and .ydk filename only; deck bytes and decision rules unchanged.",
+    "source_sha256": {
+      "crates/ygo-policies/src/decks/exodia.rs": "a28a4936e06f524e00c4b8b9e6096c6de79d086f8d9ca0398e2dbc5ae46895ac",
+      "decks/Astra's Exodia.ydk": "f6ea955144f7b217d2be7f42d1555e54d4a64d45cd14a32a5cc51d8265902fc8",
+      "crates/ygo-policies/tests/exodia_deck.rs": "88f3cc43d0a2918fee85fb294bc189ad604081ec47e5e4db43f9c4afce4e0924"
+    },
+    "validation": {
+      "deck_policy_tests_passed": 9,
+      "same_outcomes_and_digests": 496,
+      "games_per_opponent": 16,
+      "seed": 56250000,
+      "failures": 0,
+      "limits": 0
+    },
+    "core_commit": "f1a6ec196aa17309d147eafa9865cdab430f549b"
+  }
+}
