@@ -32,3 +32,7 @@ pub mod draconic_might;
 pub mod countdown;
 pub mod verdict;
 pub mod exodia;
+pub mod fabled;
+pub mod counter_fairy;
+pub mod macro_dd;
+pub mod gusto;

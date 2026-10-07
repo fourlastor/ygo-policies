@@ -28,6 +28,18 @@ pub const MORPHTRONIC_BOOMBOXEN: u32 = 92720564;
 pub const TOON_WORLD: u32 = 15259703;
 pub const TOON_KINGDOM: u32 = 43175858;
 pub const SET_TOON: u16 = 0x62;
+pub const SET_FABLED: u16 = 0x35;
+pub const FABLED_UNICORE: u32 = 44155002;
+pub const SET_GUSTO: u16 = 0x10;
+pub const DAIGUSTO_SPHREEZ: u32 = 29552709;
+pub const GUSTO_GULLDO: u32 = 65277087;
+pub const GUSTO_EGUL: u32 = 91662792;
+pub const GUSTO_WINDA: u32 = 54455435;
+pub const MACRO_COSMOS: u32 = 30241314;
+pub const DIMENSIONAL_FISSURE: u32 = 81674782;
+pub const BANISHER_OF_THE_RADIANCE: u32 = 94853057;
+pub const DD_SURVIVOR: u32 = 48092532;
+pub const DD_SCOUT_PLANE: u32 = 3773196;
 
 /// Skill Drain: while it is face-up, monsters on the field have no effects.
 pub const SKILL_DRAIN: u32 = 82732705;
@@ -213,6 +225,8 @@ pub enum Needs {
     Nothing,
     /// Its controller has no cards in hand (Infernity Guardian).
     EmptyHand,
+    /// Unicore only negates while both players have the same hand size.
+    EqualHands,
 }
 
 /// Facts about one card, as long as it is face-up.
@@ -298,6 +312,16 @@ pub fn facts(code: u32) -> Facts {
         // the hand or Graveyard: the staged Deck has neither.
         BIRDFACE => facts.attacked = [Attacked { payoff: 700, ..PLAIN }; 2],
         MORPHTRONIC_CAMERAN => facts.attacked[0].payoff = 1000,
+        FABLED_UNICORE => {
+            // The probe's particular hand sizes cannot establish an unconditional lock.
+            facts = Facts { needs: Needs::EqualHands, negates_any: kind::ALL,
+                negate_times: ALWAYS, ..Facts::NONE };
+        }
+        GUSTO_GULLDO | GUSTO_EGUL | GUSTO_WINDA => {
+            // The probe's generic Deck contains no Gusto to recruit.
+            facts.attacked = [Attacked { payoff: 1100, ..PLAIN }; 2];
+            if code == GUSTO_GULLDO { facts.effect_payoff = 1100; }
+        }
         _ => {}
     }
     facts
@@ -310,6 +334,12 @@ pub fn facts(code: u32) -> Facts {
 /// the opponent's field, such a card is one to remove first.  0 for the rest.
 pub fn owner_worth(code: u32) -> i32 {
     match code {
+        DAIGUSTO_SPHREEZ => 3400, // protects the Gusto battle plan
+        FABLED_UNICORE => 2700,
+        MACRO_COSMOS | DIMENSIONAL_FISSURE => 2600,
+        32296881 => 2600, // Bountiful Artemis: draws for Counter Traps
+        49905576 => 2400, // Meltiel: LP and removal after Counter Traps
+        56433456 => 2200, // Sanctuary enables Divine Punishment and Meltiel
         52687916 => 3300, // Trishula, Dragon of the Ice Barrier (quickdraw-plant)
         15259703 | // Toon World (toon)
         79229522 => 3000, // Chimeratech Fortress Dragon (machina)
