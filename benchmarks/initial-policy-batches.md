@@ -137,3 +137,38 @@ shield logic avoids redundant battle protection within a turn; shared removal
 priorities recognize Nurse/Simochi and Ben Kei. Core activations included
 Needle Worm 1,063, Jar #2 768, Chain Strike 458, Accumulated Fortune 98,
 Simochi 552, Gift Card 454, United We Stand 524, and Mage Power 792.
+
+## Batch 5: Visitors from Beyond, Passing Spirits, The Quiet Grove, Garden of Thorns
+
+- **Visitors from Beyond** (`alien`): Ammonite into Gol'gar, reusable backrow and Code A revival.
+- **Passing Spirits** (`spirit`): Kinka revival, returning Creature Swap gifts and tribute Spirits.
+- **The Quiet Grove** (`naturia`): Naturia recruitment, Bamboo Shoot tributes and Synchro negation.
+- **Garden of Thorns** (`garden`): Plant development, Black Garden tokens and Rose Tentacles attacks.
+
+```sh
+target/release/policy-bench matchup --policies alien,spirit,naturia,garden \
+  --opponents all --games 16 --seed 860000 --workers 6 \
+  --output /tmp/initial-batch5.jsonl
+```
+
+**3,168 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| The Quiet Grove | 816 | 57.84% | 54.43–61.19% |
+| Visitors from Beyond | 816 | 54.90% | 51.47–58.29% |
+| Garden of Thorns | 816 | 45.22% | 41.84–48.65% |
+| Passing Spirits | 816 | 28.19% | 25.21–31.37% |
+
+Workspace tests pass. [Compact results](initial-batch5.summary.json) and
+[run fingerprints](initial-batch5.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 5 passes the 35-test focused suite. New checks cover Naturia-specific
+Bamboo tributes, Gol'gar recycling Swords, withholding a harmful Dark Dust
+summon, and developing a monster before Black Garden. Shared removal values
+recognize Gol'gar, Bamboo Shoot, Code A and Black Garden without claiming
+that every revived Bamboo Shoot has its tribute-dependent suppression.
+Core activation totals include Ammonite 445, Gol'gar 1,160, Code A 1,745,
+Kinka 1,015, Creature Swap 687, Black Garden 4,983 and Rose Tentacles 175.
+Bamboo's suppression is continuous, so activation counts do not measure it.

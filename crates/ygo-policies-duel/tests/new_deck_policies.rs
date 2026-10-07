@@ -912,3 +912,77 @@ fn deckout_flips_its_needle_worm_with_taiyou() {
     );
     assert_eq!(picks("deckout", db, &o, &d), 0);
 }
+
+#[test]
+fn naturia_only_tributes_bamboo_over_a_naturia() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 20174189),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 39552864),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("naturia", db.clone(), &o, &d), 1);
+    o.cards[1] = card(db.as_ref(), 0, Location::MonsterZone, 0, 33866130);
+    assert_eq!(picks("naturia", db, &o, &d), 0);
+}
+
+#[test]
+fn alien_recovers_swords_with_golgar() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 68319538),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 72302403),
+    ];
+    let mut c = choice(ChoiceKind::Activate, Some(&o.cards[0]));
+    c.description = (68319538u64) << 20;
+    let d = decision(
+        DecisionKind::Idle,
+        vec![c, choice(ChoiceKind::EndTurn, None)],
+    );
+    assert_eq!(picks("alien", db, &o, &d), 0);
+}
+
+#[test]
+fn spirit_holds_dark_dust_when_it_would_wipe_our_better_board() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 89111398),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 44508094),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("spirit", db, &o, &d), 1);
+}
+
+#[test]
+fn garden_is_activated_after_summoning_the_initial_attacker() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 71645242),
+        card(db.as_ref(), 0, Location::Hand, 1, 20546916),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[1])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("garden", db, &o, &d), 1);
+}

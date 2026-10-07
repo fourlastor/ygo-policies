@@ -70,6 +70,10 @@ EDOPro already filtered pass through unchanged.
 | `chain-burn` | Chain Reaction | Different-name draw/burn chains, Chain Strike and Accumulated Fortune |
 | `nurse` | A Bitter Cure | Resolve Nurse/Simochi before Gift Card and LP-gain burn |
 | `benkei` | A Thousand Blades | Concentrated equips, Ben Kei multiattacks and Maha Vailo backup |
+| `alien` | Visitors from Beyond | Ammonite into Gol'gar, reusable backrow and Code A revival |
+| `spirit` | Passing Spirits | Kinka revival, returning Creature Swap gifts and tribute Spirits |
+| `naturia` | The Quiet Grove | Naturia recruitment, Bamboo Shoot tributes and Synchro negation |
+| `garden` | Garden of Thorns | Plant development, Black Garden tokens and Rose Tentacles attacks |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
