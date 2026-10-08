@@ -1,0 +1,67 @@
+{
+ "checkpoint": "checkpoints/0546_22750M.flax_model",
+ "games": 256,
+ "decisions_per_game": 201.640625,
+ "after_reveal": 0.11129407206509105,
+ "kinds": {
+  "select_chain": {
+   "share": 0.37686943045331267,
+   "per_game": 75.9921875,
+   "options": 2.2141975943250745
+  },
+  "select_idlecmd": {
+   "share": 0.18750484308407595,
+   "per_game": 37.80859375,
+   "options": 7.977786961462961
+  },
+  "select_place": {
+   "share": 0.14325842696629212,
+   "per_game": 28.88671875,
+   "options": 4.46342123056119
+  },
+  "select_card": {
+   "share": 0.1286516853932584,
+   "per_game": 25.94140625,
+   "options": 3.6669176328866135
+  },
+  "select_position": {
+   "share": 0.0685974428516079,
+   "per_game": 13.83203125,
+   "options": 2.0
+  },
+  "select_battlecmd": {
+   "share": 0.04748159628051143,
+   "per_game": 9.57421875,
+   "options": 3.245206038351693
+  },
+  "select_effectyn": {
+   "share": 0.03250678031770632,
+   "per_game": 6.5546875,
+   "options": 2.0
+  },
+  "select_yesno": {
+   "share": 0.00809763657497094,
+   "per_game": 1.6328125,
+   "options": 2.0
+  },
+  "select_sum": {
+   "share": 0.004203796977915537,
+   "per_game": 0.84765625,
+   "options": 2.2442396313364057
+  },
+  "select_unselect_card": {
+   "share": 0.002557148392096087,
+   "per_game": 0.515625,
+   "options": 2.0303030303030303
+  },
+  "select_tribute": {
+   "share": 0.00027121270825261525,
+   "per_game": 0.0546875,
+   "options": 3.7857142857142856
+  }
+ },
+ "chain": {
+  "pass": 17124,
+  "activate": 2330
+ }
+}

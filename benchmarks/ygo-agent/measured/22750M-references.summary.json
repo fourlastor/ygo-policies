@@ -1,0 +1,495 @@
+{
+  "failures": 0,
+  "games": 2000,
+  "matchups": [
+    {
+      "a": "first",
+      "b": "ygo-agent",
+      "by_seat": [
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 500,
+          "losses": 498,
+          "score": 0.004,
+          "standard_error": 0.002822764602300376,
+          "win_share": 0.004,
+          "wins": 2
+        },
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 500,
+          "losses": 494,
+          "score": 0.012,
+          "standard_error": 0.004869496893930624,
+          "win_share": 0.012,
+          "wins": 6
+        }
+      ],
+      "draws": 0,
+      "failures": 0,
+      "games": 1000,
+      "losses": 992,
+      "model": {
+        "asked": 93854,
+        "calibration": [
+          {
+            "band": [
+              0.0,
+              0.1
+            ],
+            "decisions": 1715,
+            "draws": 0,
+            "mean_prediction": 0.04569286801377121,
+            "observed_win_share": 0.9323615160349854,
+            "wins": 1599
+          },
+          {
+            "band": [
+              0.1,
+              0.2
+            ],
+            "decisions": 707,
+            "draws": 0,
+            "mean_prediction": 0.15087870850927254,
+            "observed_win_share": 0.8925035360678925,
+            "wins": 631
+          },
+          {
+            "band": [
+              0.2,
+              0.3
+            ],
+            "decisions": 1553,
+            "draws": 0,
+            "mean_prediction": 0.2561172296443603,
+            "observed_win_share": 0.9684481648422408,
+            "wins": 1504
+          },
+          {
+            "band": [
+              0.3,
+              0.4
+            ],
+            "decisions": 3420,
+            "draws": 0,
+            "mean_prediction": 0.35523045630744327,
+            "observed_win_share": 0.9880116959064328,
+            "wins": 3379
+          },
+          {
+            "band": [
+              0.4,
+              0.5
+            ],
+            "decisions": 4343,
+            "draws": 0,
+            "mean_prediction": 0.45115822835926384,
+            "observed_win_share": 0.9850333870596362,
+            "wins": 4278
+          },
+          {
+            "band": [
+              0.5,
+              0.6
+            ],
+            "decisions": 4840,
+            "draws": 0,
+            "mean_prediction": 0.55044873585455,
+            "observed_win_share": 0.9857438016528925,
+            "wins": 4771
+          },
+          {
+            "band": [
+              0.6,
+              0.7
+            ],
+            "decisions": 6171,
+            "draws": 0,
+            "mean_prediction": 0.6503832161576256,
+            "observed_win_share": 0.9871981850591476,
+            "wins": 6092
+          },
+          {
+            "band": [
+              0.7,
+              0.8
+            ],
+            "decisions": 6605,
+            "draws": 0,
+            "mean_prediction": 0.7512292986314104,
+            "observed_win_share": 0.9880393641180923,
+            "wins": 6526
+          },
+          {
+            "band": [
+              0.8,
+              0.9
+            ],
+            "decisions": 10825,
+            "draws": 0,
+            "mean_prediction": 0.857310382672876,
+            "observed_win_share": 0.9977829099307159,
+            "wins": 10801
+          },
+          {
+            "band": [
+              0.9,
+              1.0
+            ],
+            "decisions": 44448,
+            "draws": 0,
+            "mean_prediction": 0.9665118032634591,
+            "observed_win_share": 1.0,
+            "wins": 44448
+          }
+        ],
+        "fallback_games_by_kind": {
+          "select_option": 1
+        },
+        "fallback_reasons": {
+          "select_option: KeyError: 1173": 1
+        },
+        "fallbacks": 1,
+        "mirror_draws": 0,
+        "second_seat_win_share": null,
+        "server_error_rate": 0.000010654846889850193,
+        "server_errors": 1
+      },
+      "score": 0.008,
+      "standard_error": 0.0028170906978654416,
+      "win_share": 0.008,
+      "wins": 8
+    },
+    {
+      "a": "random",
+      "b": "ygo-agent",
+      "by_seat": [
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 500,
+          "losses": 500,
+          "score": 0.0,
+          "standard_error": 0.0,
+          "win_share": 0.0,
+          "wins": 0
+        },
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 500,
+          "losses": 500,
+          "score": 0.0,
+          "standard_error": 0.0,
+          "win_share": 0.0,
+          "wins": 0
+        }
+      ],
+      "draws": 0,
+      "failures": 0,
+      "games": 1000,
+      "losses": 1000,
+      "model": {
+        "asked": 81445,
+        "calibration": [
+          {
+            "band": [
+              0.0,
+              0.1
+            ],
+            "decisions": 1016,
+            "draws": 0,
+            "mean_prediction": 0.04286597234996285,
+            "observed_win_share": 1.0,
+            "wins": 1016
+          },
+          {
+            "band": [
+              0.1,
+              0.2
+            ],
+            "decisions": 359,
+            "draws": 0,
+            "mean_prediction": 0.1618240625081288,
+            "observed_win_share": 1.0,
+            "wins": 359
+          },
+          {
+            "band": [
+              0.2,
+              0.3
+            ],
+            "decisions": 1392,
+            "draws": 0,
+            "mean_prediction": 0.2566032887960987,
+            "observed_win_share": 1.0,
+            "wins": 1392
+          },
+          {
+            "band": [
+              0.3,
+              0.4
+            ],
+            "decisions": 3109,
+            "draws": 0,
+            "mean_prediction": 0.3553922613378735,
+            "observed_win_share": 1.0,
+            "wins": 3109
+          },
+          {
+            "band": [
+              0.4,
+              0.5
+            ],
+            "decisions": 4217,
+            "draws": 0,
+            "mean_prediction": 0.45188572309701003,
+            "observed_win_share": 1.0,
+            "wins": 4217
+          },
+          {
+            "band": [
+              0.5,
+              0.6
+            ],
+            "decisions": 5310,
+            "draws": 0,
+            "mean_prediction": 0.5497872965399828,
+            "observed_win_share": 1.0,
+            "wins": 5310
+          },
+          {
+            "band": [
+              0.6,
+              0.7
+            ],
+            "decisions": 6292,
+            "draws": 0,
+            "mean_prediction": 0.6519319792310675,
+            "observed_win_share": 1.0,
+            "wins": 6292
+          },
+          {
+            "band": [
+              0.7,
+              0.8
+            ],
+            "decisions": 6754,
+            "draws": 0,
+            "mean_prediction": 0.7506866653113101,
+            "observed_win_share": 1.0,
+            "wins": 6754
+          },
+          {
+            "band": [
+              0.8,
+              0.9
+            ],
+            "decisions": 10665,
+            "draws": 0,
+            "mean_prediction": 0.8559435178989879,
+            "observed_win_share": 1.0,
+            "wins": 10665
+          },
+          {
+            "band": [
+              0.9,
+              1.0
+            ],
+            "decisions": 34874,
+            "draws": 0,
+            "mean_prediction": 0.967462911634446,
+            "observed_win_share": 1.0,
+            "wins": 34874
+          }
+        ],
+        "fallback_games_by_kind": {},
+        "fallback_reasons": {},
+        "fallbacks": 0,
+        "mirror_draws": 0,
+        "second_seat_win_share": null,
+        "server_error_rate": 0.0,
+        "server_errors": 0
+      },
+      "score": 0.0,
+      "standard_error": 0.0,
+      "win_share": 0.0,
+      "wins": 0
+    }
+  ],
+  "metadata": {
+    "arguments": {
+      "--games": "1000",
+      "--opponents": "random,first",
+      "--output": "/home/daniele/Documents/ygo/analysis/ygo-agent-benchmark/runs/22750M-references.jsonl",
+      "--policies": "ygo-agent",
+      "--record": "true",
+      "--rules": "mr5",
+      "--seed": "850000",
+      "--server": "http://127.0.0.1:3013",
+      "--workers": "4"
+    },
+    "baseline": {
+      "bytes": 91657080,
+      "fnv1a64": "ba30de8e7406e25e",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../target/release/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 91657080,
+      "fnv1a64": "ba30de8e7406e25e",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../target/release/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "catalog": {
+      "agents": "Heaven's Dispatch",
+      "alien": "Visitors from Beyond",
+      "amazoness": "Queens of the Wild",
+      "arcana": "Arcana Force Fortune",
+      "batteryman": "Full Charge",
+      "benkei": "A Thousand Blades",
+      "blackwing": "Blackwing Assassin",
+      "blue-eyes": "BlueEyes",
+      "burn": "Burn Princess",
+      "chain-burn": "Chain Reaction",
+      "chaos": "Between Light and Dark",
+      "cloudian": "Eye of the Storm",
+      "countdown": "Claudi-oh's Countdown",
+      "counter-fairy": "Heaven's Rebuttal",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "cyber": "Power Surge",
+      "dark-world": "Gates Unopened",
+      "deckout": "Last Page",
+      "demise": "Armageddon Hour",
+      "destiny-board": "The Final Sentence",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "exodia": "Astra's Exodia",
+      "fabled": "Fabled Encore",
+      "first": "BlueEyes",
+      "fish": "Tidal Assembly",
+      "flamvell": "Ashes to Inferno",
+      "fortune-lady": "Fortune Ladies",
+      "garden": "Garden of Thorns",
+      "gem-knight": "Prismatic Forge",
+      "gemini": "Second Bloom",
+      "genex": "Clockwork Current",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "gusto": "Gusto's Reprisal",
+      "harpie": "Harpie Sisters",
+      "herald": "Herald's Veto",
+      "heroes": "Fusion Heroes",
+      "ice-barrier": "Winter Parliament",
+      "infernity": "Infernity Infinity",
+      "iron-chain": "Rust Never Sleeps",
+      "jurrac": "Footprints in Fire",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "macro-dd": "D.D. Border Patrol",
+      "malefic": "Eclipse Without End",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "naturia": "The Quiet Grove",
+      "nordic": "Road to Ragnarok",
+      "nurse": "A Bitter Cure",
+      "ojama": "Ojama Brigade",
+      "psychic": "Mind Over Matter",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "random": "BlueEyes",
+      "reptilianne": "The Still Gaze",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "scrap": "Scrap Renaissance",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "spirit": "Passing Spirits",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "venom": "Crown of Venom",
+      "verdict": "Claudi-oh's Verdict",
+      "volcanic": "Volcanic Aftershock",
+      "watt": "Watt Grid",
+      "worm": "Visitors Beneath",
+      "x-saber": "X-Sabers",
+      "ygo-agent": "BlueEyes",
+      "zombie": "Graveyard Shift"
+    },
+    "checkout": {
+      "commit": "9e595de7250ba2fa6475bffe295c2faaa9209df2",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "M crates/ygo-policies-bench/src/ygo_agent.rs\n?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "f1a6ec196aa17309d147eafa9865cdab430f549b",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "first": {
+        "bytes": 647,
+        "fnv1a64": "5ef7fe2f32915cb8",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+      },
+      "random": {
+        "bytes": 647,
+        "fnv1a64": "5ef7fe2f32915cb8",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+      },
+      "ygo-agent": {
+        "bytes": 647,
+        "fnv1a64": "5ef7fe2f32915cb8",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 1000,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "matchup",
+    "planned_jobs": 2000,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule5 (0x2E800)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 850000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed"
+  }
+}

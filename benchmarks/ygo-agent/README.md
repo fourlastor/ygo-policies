@@ -24,6 +24,10 @@ branch is in [What to build](#what-to-build): the rules, the deck, three
 players, and the seat that asks the server. The measurements of step 2 are
 then run by whoever set up the model's side.
 
+**Measured on 2026-10-08:** the checks hold, and the model wins 1,659 of
+2,000 games against the pilot, 83.0% ± 0.8%. See
+[Measured](#measured-2026-10-08).
+
 Everything said of ygo-agent below was read in its source at commit
 `26293f8` or measured with it on 2026-10-08; where a file is named without a
 repository, it is theirs.
@@ -292,7 +296,7 @@ At most 160.
 | `location` | `deck`, `hand`, `mzone`, `szone`, `grave`, `removed`, `extra`. The Field Zone and the Pendulum Zones are `szone` at their YGOPro places (see [The two engines](#the-two-engines)). |
 | `sequence` | The card's place in its location, **from 0**, as the engine counts it. It ties an option to its card: an option names a card by controller, location and sequence. |
 | `controller` | `me` or `opponent`. |
-| `position` | On the field, in the Graveyard and banished: as it lies, `faceup_attack`, `facedown_defense`, `faceup_defense`, `facedown_attack`, or `faceup` / `facedown` for a Spell or Trap. The seat's own Deck, hand and Extra Deck: `facedown`. The opponent's Deck, hand and Extra Deck, which the seat cannot see: `none`. |
+| `position` | On the field, in the Graveyard and banished: as it lies, `faceup_attack`, `facedown_defense`, `faceup_defense`, `facedown_attack`, or `faceup` / `facedown` for a Spell or Trap. The seat's own Deck, hand and Extra Deck: `facedown`. The opponent's Deck, hand and Extra Deck, which the seat cannot see: `none`, and `facedown` after a reveal (below). |
 | `overlay_sequence` | -1, or for an Xyz Material its place under the monster, from 0, with the monster's own location and sequence. Materials follow their monster. |
 | `attribute`, `race`, `level` | As the card is now. `level` is the Rank of an Xyz and the rating of a Link monster. `none` and 0 for a Spell or Trap. |
 | `counter` | Its counters, of the first kind if it has several. |
@@ -303,8 +307,17 @@ At most 160.
 **What a seat cannot see has nothing but its place.** The opponent's hand,
 Deck and Extra Deck, and a face-down card of the opponent on the field:
 `code` 0, `attribute` and `race` `none`, every number 0, `types` empty. A
-face-down card on the field keeps its `position`; one the opponent revealed
-by an effect is shown.
+face-down card on the field keeps its `position`.
+
+**A card the opponent revealed is not shown either**, though their code
+means to: their environment keeps what was revealed under one name and looks
+it up under another, so the model never saw one (none of 9.5 million rows of
+the opponent's Deck, hand and Extra Deck in 256,000 decisions of random play
+there, `kit/scan_revealed.py`). What a reveal does change is how those rows
+are written: from any reveal (the engine's `MSG_CONFIRM_CARDS`, whoever is
+shown what) until a chain link next resolves (`MSG_CHAIN_SOLVED`), the
+opponent's Deck, hand and Extra Deck have `position` `facedown` in place of
+`none`. That is one decision in nine of the model's own games.
 
 **The seat's own Deck is shown with its cards**, as their environment shows
 it: the model sees which cards are left in it. A seat does not know their
@@ -422,6 +435,11 @@ not always. What is known to differ:
 - **Descriptions.** EDOPro packs a card's text as `code << 20 | n`
   (`aux.Stringid` in `vendor/CardScripts/utility.lua`), YGOPro as
   `code * 16 + n`. Convert every description that is not a text of the game.
+  The two sets of scripts number the effects of this deck's cards alike,
+  with two exceptions. Phoenix Wing Wind Blast's effect has no description
+  in YGOPro's script and the card's first text in EDOPro's: it is sent as 0.
+  Number 46: Dragluon has three effects in YGOPro's and one with a choice of
+  three in EDOPro's, which cannot be made alike.
 - **Zones.** In YGOPro the Field Zone is Spell & Trap Zone 5 (from 0), and
   under Master Rule 5 the Pendulum Zones are Spell & Trap Zones 0 and 4.
   The Extra Monster Zones are Monster Zones 5 and 6 in both.
@@ -616,6 +634,146 @@ half to score but not to win_share. The **rank --input PATH** command can
 regenerate benchmark summaries from uncompressed game rows with their adjacent
 metadata JSON; decompress the archived rows first.
 
+## Measured, 2026-10-08
+
+By the side that set up the model: `kit/serve.py` with its defaults, one
+server a run, and the bench of this branch with the commands of the section
+above. No game failed and none ended without a winner. The rows, settings
+and summaries of every run are in [`measured/`](measured/), and
+`kit/report.py` prints the figures below from the rows.
+
+### Two changes to the seat before the runs
+
+Reading the seat against their environment found two places where the model
+was not shown what that environment showed it. Both come from these
+instructions and not from how they were followed, and both are changed in
+the commit that adds this section.
+
+- **Revealed cards.** The instructions said that a card the opponent
+  revealed is shown. Their environment never shows one
+  ([The table](#the-table-global-and-cards)). The seat showed whatever lay
+  at the revealed place until a chain link resolved, which after the hand is
+  shuffled is another card of the opponent's hand. Nothing is shown now, and
+  after a reveal the opponent's Deck, hand and Extra Deck are written
+  face-down, as there.
+- **Phoenix Wing Wind Blast** is sent with the description the model knows
+  it by ([The two engines](#the-two-engines)).
+
+It makes little difference. On the same 1,000 deals against the pilot the
+seat as committed at `9e595de` won 848 and the changed one 841: 0.7 ± 0.5
+points apart, the same result in 971 deals.
+
+### The checks
+
+`0546_22750M`, 1,000 games a matchup (`kit/check_checks.py` passes).
+
+| Check | Here | In its own environment | |
+| --- | ---: | ---: | --- |
+| 1. Against `random` | 1,000 of 1,000 | 1,023 of 1,024 | holds |
+| 1. Against `first` | 992 of 1,000 | 1,022 of 1,024 | holds: 98% asked |
+| 2. Against itself, the named seat | 505 of 1,000 | | holds |
+| 2. Against itself, the seat that goes second | 51.9% | 51 to 52% | holds: 48 to 56% asked |
+| 3. Its estimate, the band furthest from its row | 3.3 points | | holds: 5 asked |
+| 4. Requests the server could not answer, all runs of this section | 46 of 862,195 | | holds: 1% asked |
+| 5. Nothing under Master Rule 1 changed | not run, at the user's direction | | |
+
+- **Check 1.** It loses 8 games in 1,000 to `first` here and 2 in 1,024
+  there, a difference chance gives one time in ten.
+- **Check 3**, over the 200,934 decisions of the games against itself:
+
+  | The model gives the seat to move | Decisions | The seat won | In its own environment |
+  | --- | ---: | ---: | ---: |
+  | under 10% | 13,639 | 4.0% | 3.9% |
+  | 10 to 20% | 12,498 | 16.1% | 13.0% |
+  | 20 to 30% | 13,978 | 26.5% | 25.8% |
+  | 30 to 40% | 18,239 | 36.3% | 37.2% |
+  | 40 to 50% | 22,050 | 48.2% | 48.1% |
+  | 50 to 60% | 23,665 | 60.3% | 57.0% |
+  | 60 to 70% | 22,057 | 68.9% | 67.7% |
+  | 70 to 80% | 19,825 | 77.8% | 78.0% |
+  | 80 to 90% | 20,727 | 86.5% | 87.6% |
+  | over 90% | 34,256 | 98.1% | 96.9% |
+
+- **Check 4.** All 46 are one prompt: which of two ways to Xyz Summon a
+  monster, where "Xyz Summon" is text 1173 of the game in EDOPro and 1165
+  in YGOPro. The seat took the first way.
+
+**What the model is asked here is what it is asked there.** 128 further
+games against itself with every request kept, beside 256 games in its own
+environment (`kit/native_mix.py`, `kit/native-mix-22750M.json`); decisions
+with one option are in neither count:
+
+| | Here | In its own environment |
+| --- | ---: | ---: |
+| Decisions put to the model, a game | 194.9 | 201.6 |
+| A chance to respond (`select_chain`) | 71.7 a game | 76.0 |
+| of which the model takes | 11.8% | 12.0% |
+| Main Phase (`select_idlecmd`) | 38.4, of 8.0 options | 37.8, of 8.0 |
+| Which zone (`select_place`) | 28.3 | 28.9 |
+| A choice of cards (`select_card`) | 23.5 | 25.9 |
+| Battle position (`select_position`) | 13.6 | 13.8 |
+| Battle Phase (`select_battlecmd`) | 9.1 | 9.6 |
+| Whether to use an effect (`select_effectyn`) | 6.0 | 6.6 |
+| One card at a time (`select_unselect_card`) | 2.8 | 0.5 |
+| Cards whose Levels add up (`select_sum`) | 0 | 0.8 |
+| Decisions after a reveal | 13.1% | 11.1% |
+
+The one difference is the one [The two engines](#the-two-engines) names:
+EDOPro asks for the materials of a Synchro or Xyz Summon one card at a time.
+
+### The result
+
+| Checkpoint | Games | The model wins | Going first | Going second |
+| --- | ---: | ---: | ---: | ---: |
+| **`0546_22750M`** | 2,000 | **1,659, 83.0% ± 0.8%** | 825 of 1,000 | 834 of 1,000 |
+| `0546_22750M`, the first 1,000 deals | 1,000 | 841, 84.1% ± 1.2% | 423 of 500 | 418 of 500 |
+| `0546_16500M`, the same deals | 1,000 | 852, 85.2% ± 1.1% | 424 of 500 | 428 of 500 |
+| `0546_11300M`, the same deals | 1,000 | 803, 80.3% ± 1.3% | 388 of 500 | 415 of 500 |
+
+- **The model is well past the pilot, and the pilot takes one game in
+  six.** The same pilot beats `first` 919 times in 1,000 and `random` every
+  time (the handoff's figures, run again with the same result); the model
+  beats `first` 992 times.
+- **Deal by deal**, 16.5 billion steps are worth 4.9 ± 1.2 points over 11.3
+  billion against the pilot, and 22.75 billion nothing over 16.5 (-1.1 ±
+  1.3). In their own environment a later checkpoint wins 50.8 to 53.9% of
+  its games against an earlier one.
+- **Games are short**: 6 turns at the median. Those the model wins last 6.4
+  turns on average, those the pilot wins 8.2.
+- **Against the pilot the model underrates itself.** Where it gives itself
+  40 to 50% it wins 79% of the time, and 32% where it gives itself under
+  10%: its estimate is of a game against a player like itself.
+
+Of the three ways [The measurement](#the-measurement) says this can read, it
+is the third, near the first: 100 million games give a player well past a
+quick pilot, which still takes one game in six from it. Whether the same
+pilot with a search on top reaches it is the next rung.
+
+### Running it again
+
+One server a run, each on its own port, and the commands of the section
+above with `--output` in a folder of the run's own. Five servers at once
+took 25 minutes on 24 cores; a server answers about 160 requests a second
+and a game against the pilot asks 117.
+
+| Run in `measured/` | Checkpoint (SHA-256 begins) | Opponents | Games | Seed |
+| --- | --- | --- | ---: | ---: |
+| `22750M-references` | `0546_22750M` (`48e4d3bd`) | `random`, `first` | 1,000 each | 850000 |
+| `22750M-mirror` | the same | `ygo-agent` | 1,000 | 850000 |
+| `22750M-pilot` | the same | `blue-eyes` | 2,000 | 860000 |
+| `16500M-pilot` | `0546_16500M` (`975e673a`) | `blue-eyes` | 1,000 | 860000 |
+| `11300M-pilot` | `0546_11300M` (`25035d28`) | `blue-eyes` | 1,000 | 860000 |
+| `22750M-pilot-as-committed` | `0546_22750M`, the bench built at `9e595de` | `blue-eyes` | 1,000 | 860000 |
+
+- The metadata of these runs names the checkout as `9e595de` with
+  `ygo_agent.rs` modified: they ran before the change to the seat was
+  committed. The last run is of a bench built before that change.
+- **Single games are not reproduced to the last answer on another server
+  setting.** A server held to one thread and one left to use several differ
+  in the last digit of a probability; where two options are tied (two
+  copies of a card in hand) the other one is then taken, and the game goes
+  another way from there. The results agree.
+
 ## The kit
 
 | File | What it is |
@@ -627,4 +785,8 @@ metadata JSON; decompress the archived rows first.
 | [`kit/golden-requests.json`](kit/golden-requests.json), [`golden-answers.json`](kit/golden-answers.json) | Four requests in a row and their answers. |
 | [`kit/dump_first.py`](kit/dump_first.py) | What their environment shows the model at the first decisions of a game. |
 | [`kit/native_values.py`](kit/native_values.py), [`native-values-22750M.json`](kit/native-values-22750M.json) | The model's own estimate against how its games end, in its own environment. |
+| [`kit/native_mix.py`](kit/native_mix.py), [`native-mix-22750M.json`](kit/native-mix-22750M.json) | What the model is asked in its own environment: how often, of which kind, with how many options. |
+| [`kit/scan_revealed.py`](kit/scan_revealed.py) | What their environment shows a seat of the opponent's hidden cards, and after a reveal. |
+| [`kit/check_checks.py`](kit/check_checks.py) | Checks 1 to 4 from the summaries of the two runs they need. |
+| [`kit/report.py`](kit/report.py) | The results from the rows: the model's share by seat, and two runs deal by deal. |
 | [`kit/BlueEyes.ydk`](kit/BlueEyes.ydk) | The deck. |

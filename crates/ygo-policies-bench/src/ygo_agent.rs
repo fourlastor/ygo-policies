@@ -136,6 +136,17 @@ fn description(value: u64) -> u64 {
         (value >> 20) * 16 + (value & 0xfffff)
     }
 }
+/// Cards whose effect has no description in YGOPro's script and the card's
+/// first text in EDOPro's (Phoenix Wing Wind Blast): the model knows it as 0.
+const UNDESCRIBED_IN_YGOPRO: &[u32] = &[63356631];
+fn effect_description(code: u32, value: u64) -> u64 {
+    let code = code & 0x7fffffff;
+    if value == u64::from(code) << 20 && UNDESCRIBED_IN_YGOPRO.contains(&code) {
+        0
+    } else {
+        description(value)
+    }
+}
 fn field_u32(record: &RawRecord, flag: u32) -> u32 {
     record
         .get(flag)
@@ -225,21 +236,22 @@ fn position(value: u32, kind: u32) -> &'static str {
     }
 }
 
-fn card(record: &RawRecord, owner: u8, loc: u8, sequence: usize, me: u8) -> Value {
-    card_visible(record, owner, loc, sequence, me, false)
-}
-fn card_visible(
+/// A card of the table as seat `me` is shown it. Their environment never
+/// shows a card the opponent revealed: it keeps what was revealed under one
+/// name and looks it up under another (none of 9.5 million rows of the
+/// opponent's Deck, hand and Extra Deck in 256,000 decisions of its random
+/// play). What a reveal changes there is how those rows are written until a
+/// chain link next resolves, `after_reveal`: face-down, not bare places.
+fn card(
     record: &RawRecord,
     owner: u8,
     loc: u8,
     sequence: usize,
     me: u8,
-    revealed: bool,
+    after_reveal: bool,
 ) -> Value {
     let pos = record.position().unwrap_or(0);
-    let known = owner == me
-        || revealed
-        || ygo_policies_ocgcore::redact::visible(record, owner, loc, Some(me));
+    let known = owner == me || ygo_policies_ocgcore::redact::visible(record, owner, loc, Some(me));
     let code = if known {
         field_u32(record, query::CODE)
     } else {
@@ -257,7 +269,11 @@ fn card_visible(
     };
     let pile = loc == location::DECK || loc == location::HAND || loc == location::EXTRA;
     let face = if pile && !known {
-        "none"
+        if after_reveal {
+            "facedown"
+        } else {
+            "none"
+        }
     } else if pile && owner == me {
         "facedown"
     } else {
@@ -280,7 +296,7 @@ fn card_visible(
         "types": TYPES.iter().filter(|(bit, _)| kind & bit != 0).map(|(_, name)| *name).collect::<Vec<_>>()})
 }
 
-fn table(duel: &Duel, me: u8, message: &Message, revealed: &[Loc]) -> Result<Vec<Value>> {
+fn table(duel: &Duel, me: u8, message: &Message, after_reveal: bool) -> Result<Vec<Value>> {
     let flags = query::RECOMMENDED
         | query::TYPE
         | query::ATTRIBUTE
@@ -296,14 +312,7 @@ fn table(duel: &Duel, me: u8, message: &Message, revealed: &[Loc]) -> Result<Vec
             let mut pile = Vec::new();
             for (sequence, record) in records.iter().enumerate() {
                 let Some(record) = record else { continue };
-                let item = if revealed.iter().any(|r| {
-                    r.controller == owner && r.location == loc && r.sequence == sequence as u32
-                }) {
-                    card_visible(record, owner, loc, sequence, me, true)
-                } else {
-                    card(record, owner, loc, sequence, me)
-                };
-                pile.push(item);
+                pile.push(card(record, owner, loc, sequence, me, after_reveal));
                 if let Some(materials) = record.get(query::OVERLAY_CARD) {
                     for (overlay, bytes) in materials[4..].chunks_exact(4).enumerate() {
                         let code = u32::from_le_bytes(bytes.try_into().unwrap());
@@ -394,7 +403,7 @@ fn prompt(message: &Message, p: &Prompt, me: u8) -> Result<(Value, Vec<Vec<u8>>)
                 if let Some(m) = c.card {
                     command["data"] = json!({"card_info": {"code": m.code.unwrap_or(0) & 0x7fffffff,
                         "controller": controller(m.at.controller, me), "location": location_name(model_location(m.at.location)),
-                        "sequence": m.at.sequence}, "effect_description": description(c.description),
+                        "sequence": m.at.sequence}, "effect_description": effect_description(m.code.unwrap_or(0), c.description),
                         "direct_attackable": m.value != 0, "response": commands.len()});
                 }
                 commands.push(command);
@@ -409,7 +418,7 @@ fn prompt(message: &Message, p: &Prompt, me: u8) -> Result<(Value, Vec<Vec<u8>>)
         Message::SelectChain { forced, chains, .. } => {
             json!({"msg_type":"select_chain", "forced":forced,
             "chains": chains.iter().enumerate().map(|(i,c)| json!({"code":c.code & 0x7fffffff,
-                "location":at(c.loc,me), "effect_description":description(c.description), "response":i})).collect::<Vec<_>>()})
+                "location":at(c.loc,me), "effect_description":effect_description(c.code, c.description), "response":i})).collect::<Vec<_>>()})
         }
         Message::SelectEffectYesNo {
             code,
@@ -417,7 +426,7 @@ fn prompt(message: &Message, p: &Prompt, me: u8) -> Result<(Value, Vec<Vec<u8>>)
             description: desc,
             ..
         } => json!({"msg_type":"select_effectyn",
-            "code":code, "location":at(*loc,me), "effect_description":description(*desc)}),
+            "code":code, "location":at(*loc,me), "effect_description":effect_description(*code, *desc)}),
         Message::SelectYesNo {
             description: desc, ..
         } => json!({"msg_type":"select_yesno", "effect_description":description(*desc)}),
@@ -530,7 +539,7 @@ struct ModelSeat {
     values: Vec<Option<f64>>,
     trace: Vec<Value>,
     trace_enabled: bool,
-    revealed: Vec<Loc>,
+    after_reveal: bool,
 }
 impl ModelSeat {
     fn new(url: &str, me: u8, cards: &Path, trace_enabled: bool) -> Result<Self> {
@@ -560,7 +569,7 @@ impl ModelSeat {
             values: Vec::new(),
             trace: Vec::new(),
             trace_enabled,
-            revealed: Vec::new(),
+            after_reveal: false,
         })
     }
     fn fallback(&mut self, reason: String) {
@@ -653,23 +662,15 @@ impl ModelSeat {
         Ok(Some((chosen, predictions[chosen].clone())))
     }
     fn feed(&mut self, bytes: &[u8], duel: &Duel) -> Result<Option<Vec<u8>>> {
+        // Any reveal counts, whoever is shown what: theirs is one list for both seats.
         if bytes.first() == Some(&ygo_policies_ocgcore::wire::msg::CONFIRM_CARDS) {
-            if let Some(visible) = ygo_policies_ocgcore::redact::redact(bytes, Some(self.me))
-                .map_err(|e| e.to_string())?
+            if let Message::ConfirmCards { cards, .. } =
+                message::parse(bytes).map_err(|e| e.to_string())?
             {
-                if let Message::ConfirmCards { cards, .. } =
-                    message::parse(&visible).map_err(|e| e.to_string())?
-                {
-                    self.revealed.extend(
-                        cards
-                            .into_iter()
-                            .filter(|(code, _)| *code != 0)
-                            .map(|(_, loc)| loc),
-                    );
-                }
+                self.after_reveal |= !cards.is_empty();
             }
         } else if bytes.first() == Some(&ygo_policies_ocgcore::wire::msg::CHAIN_SOLVED) {
-            self.revealed.clear();
+            self.after_reveal = false;
         }
         let fallback = self.first.feed(bytes).map_err(|e| e.to_string())?;
         let Some(fallback) = fallback else {
@@ -693,7 +694,7 @@ impl ModelSeat {
                 return Ok(Some(fallback));
             }
         };
-        let table = table(duel, self.me, &message, &self.revealed)?;
+        let table = table(duel, self.me, &message, self.after_reveal)?;
         let mut input = json!({"global":global(&obs),"cards":table,"action_msg":{"data":data}});
         if let Some(sequential) = p.sequential {
             let mut selected = Vec::new();
@@ -1031,14 +1032,29 @@ mod tests {
         .map(|(f, v)| (f, v.to_le_bytes().to_vec()))
         .into();
         let record = field(&fields);
-        let hidden = card(&record, 1, 4, 3, 0);
+        let hidden = card(&record, 1, 4, 3, 0, false);
         assert_eq!(hidden["code"], 0);
         assert_eq!(hidden["types"], json!([]));
         assert_eq!(hidden["attack"], 0);
         assert_eq!(hidden["race"], "none");
         assert_eq!(hidden["position"], "facedown_defense");
-        assert_eq!(card(&record, 1, 2, 0, 0)["position"], "none");
-        let own = card(&record, 0, 1, 7, 0);
+        assert_eq!(card(&record, 1, 2, 0, 0, false)["position"], "none");
+        // After a reveal the opponent's hand is still nothing but places,
+        // written face-down; a card on the field is written as before.
+        let after = card(&record, 1, 2, 0, 0, true);
+        assert_eq!(after["position"], "facedown");
+        assert_eq!(after["code"], 0);
+        assert_eq!(after["attack"], 0);
+        assert_eq!(after["types"], json!([]));
+        assert_eq!(card(&record, 1, 4, 3, 0, true), hidden);
+        assert_eq!(
+            effect_description(63356631, 63356631u64 << 20),
+            0,
+            "Phoenix Wing Wind Blast has no description in YGOPro"
+        );
+        assert_eq!(effect_description(38517737, 38517737u64 << 20), 38517737 * 16);
+        assert_eq!(effect_description(63356631, 1050), 1050);
+        let own = card(&record, 0, 1, 7, 0, false);
         assert_eq!(own["code"], 89631139);
         assert_eq!(own["position"], "facedown");
         assert_eq!(own["attack"], 3000);
@@ -1149,7 +1165,7 @@ mod tests {
             sequence: 0,
             position: 8,
         });
-        let cards = table(&duel, 0, &Message::Other(0), &[]).unwrap();
+        let cards = table(&duel, 0, &Message::Other(0), false).unwrap();
         let codes: Vec<_> = cards
             .iter()
             .filter(|c| c["controller"] == "me")
@@ -1182,7 +1198,7 @@ mod tests {
             }],
             fixed: vec![],
         });
-        let cards = table(&duel, 0, &m, &[]).unwrap();
+        let cards = table(&duel, 0, &m, false).unwrap();
         assert_eq!(cards[0]["code"], code);
         assert_eq!(cards[0]["sequence"], 0);
     }
@@ -1237,7 +1253,7 @@ mod tests {
                 position: pos,
             });
         }
-        let got = table(&duel, 0, &Message::Other(0), &[]).unwrap();
+        let got = table(&duel, 0, &Message::Other(0), false).unwrap();
         // Deck/Extra row order is immaterial to the attention encoder. For this
         // nonselection fixture their sequence does not enter the model input.
         let normalized = |cards: &[Value]| {
