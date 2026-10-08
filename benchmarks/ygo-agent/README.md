@@ -97,8 +97,8 @@ every decision, 1,024 games each (`eval_masked.py --bot_type random|greedy
 
 - A game against either lasts 75 to 80 of the model's decisions; a game of
   the model against itself 195 to 200 decisions of both seats, and the seat
-  that goes second wins about half of those (49.6, 51.2 and 55% in runs of
-  512, 2,048 and 512 games).
+  that goes second wins about half of those (51.2% of 2,048 games; 49.6 and
+  55% in two runs of 512).
 - **Its own estimate is right.** Against itself, over 512 games and 103,000
   decisions, the seat to move won 3.9% of the time where the model gave it
   under 10%, 48.1% where it gave 40 to 50%, and 96.9% where it gave over
@@ -107,8 +107,21 @@ every decision, 1,024 games each (`eval_masked.py --bot_type random|greedy
   their list at every prompt, and their random player a uniform draw from
   it. The order of that list is in [The options](#the-options).
 
+The three checkpoints against each other, 2,048 games a pair
+(`battle.py --num-episodes 2048 --seed 0`), each share good to 1.1 points:
+
+| | wins |
+| --- | ---: |
+| 22.75 against 16.5 billion steps | 51.5% |
+| 22.75 against 11.3 | 53.9% |
+| 16.5 against 11.3 | 50.8% |
+
+Twice the training, from 11.3 to 22.75 billion steps, is worth 4 points
+against itself, and the seat that goes second wins 51 to 52% in all three.
+
 So the released model is far past both players that the pilot of step 1 has
-to beat. What it is worth against a pilot is not known.
+to beat, and its three checkpoints are close to one another. What any of
+them is worth against a pilot is not known.
 
 ## The match
 
