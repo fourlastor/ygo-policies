@@ -123,6 +123,10 @@ pub mod registry {
         entry!("nordic", nordic::Nordic),
         entry!("cloudian", cloudian::Cloudian),
         entry!("volcanic", volcanic::Volcanic),
+        entry!("dark-world", dark_world::DarkWorld),
+        entry!("worm", worm::Worm),
+        entry!("chaos", chaos::Chaos),
+        entry!("demise", demise::Demise),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

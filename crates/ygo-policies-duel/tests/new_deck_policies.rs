@@ -1179,3 +1179,129 @@ fn volcanic_holds_accelerator_when_rocket_can_win_the_battle() {
     );
     assert_eq!(picks("volcanic", db, &o, &d), 1);
 }
+
+#[test]
+fn dark_world_needs_effect_discards_not_costs() {
+    use ygo_policies::decks::dark_world::DarkWorld;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::Discard;
+    let m = Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Hand,
+            sequence: 0,
+        },
+        code: Some(78004197),
+        value: 0,
+        required: false,
+    };
+    let mut memory = Memory::default();
+    memory.last_activated = Some(74117290);
+    assert!(
+        member_score(
+            &DarkWorld,
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory
+            },
+            &m
+        ) > 0.0
+    );
+    memory.last_activated = Some(63356631);
+    assert!(
+        member_score(
+            &DarkWorld,
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory
+            },
+            &m
+        ) < 0.0
+    );
+}
+
+#[test]
+fn worm_xex_mills_yagan_before_a_generic_worm() {
+    use ygo_policies::decks::worm::Worm;
+    let db = db();
+    let o = obs();
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::ToGraveyard;
+    let mut memory = Memory::default();
+    memory.last_activated = Some(11722335);
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Deck,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(member_score(&Worm, &t, &m(47111934)) > member_score(&Worm, &t, &m(10026986)));
+}
+
+#[test]
+fn chaos_veiler_targets_the_opponents_current_field_effect() {
+    use ygo_policies::{decks::chaos::Chaos, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.turn_player = Some(1);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 97268402),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 55794644),
+    ];
+    o.chain.push(ChainLink {
+        code: 55794644,
+        controller: 1,
+        source: o.cards[1].at,
+        targets: vec![],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![choice(ChoiceKind::Activate, Some(&o.cards[0]))],
+    );
+    let mut memory = Memory::default();
+    let r = Chaos
+        .chain(
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory,
+            },
+            0,
+        )
+        .unwrap();
+    assert_eq!(r.intent, vec![o.cards[1].at]);
+}
+
+#[test]
+fn demise_does_not_wipe_our_doom_dozer_over_an_empty_opposing_field() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 72426662),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 76039636),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("demise", db, &o, &d), 1);
+}

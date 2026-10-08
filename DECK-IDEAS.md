@@ -38,6 +38,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `nordic` | Road to Ragnarok | Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin |
 | `cloudian` | Eye of the Storm | Sanctuary/Barrier defense, Fog Counters and Cloudian removal |
 | `volcanic` | Volcanic Aftershock | Shell ammunition, Scattershot wipes and Doomfire battle pressure |
+| `dark-world` | Gates Unopened | Effect discards, early Dark World bosses and Raven Synchros |
+| `worm` | Visitors Beneath | Xex/Yagan, repeated Flips and diverse Worm Zero materials |
+| `chaos` | Between Light and Dark | LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects |
+| `demise` | Armageddon Hour | Demise field wipe, Doom Dozer and Megamorph finishers |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -49,10 +53,6 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 
 | Engine | Available building blocks / caveat |
 |---|---|
-| Early Dark World | Broww, Goldd, Sillva, Dealings; Grapha, Snoww and Gates unavailable |
-| Worm | Xex, Yagan, King, Zero; W Nebula Meteorite unavailable |
-| Chaos | Chaos Sorcerer; BLS Envoy forbidden, Lightpulsar and Eclipse Wyvern unavailable |
-| Demise | Demise and End of the World; field wipe into battle damage |
 | Amazoness | Legal family members available; initial list pending |
 | Jurrac | Legal family members available; initial list pending |
 | Genex | Legal family members available; initial list pending |

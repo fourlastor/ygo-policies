@@ -253,3 +253,35 @@ and four workers had zero caps or failures. The two formerly capped games
 choices, on turns 65 and 64, both Cloudian deck-out wins. A recorded replay
 confirmed ordinary progress. The original batch table retains the two
 capped draws; the higher-limit outcomes are diagnostic, not substituted.
+
+## Batch 8: Gates Unopened, Visitors Beneath, Between Light and Dark, Armageddon Hour
+
+- **Gates Unopened** (`dark-world`): Effect discards, early Dark World bosses and Raven Synchros.
+- **Visitors Beneath** (`worm`): Xex/Yagan, repeated Flips and diverse Worm Zero materials.
+- **Between Light and Dark** (`chaos`): LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects.
+- **Armageddon Hour** (`demise`): Demise field wipe, Doom Dozer and Megamorph finishers.
+
+```sh
+target/release/policy-bench matchup --policies dark-world,worm,chaos,demise \
+  --opponents all --games 16 --seed 890000 --workers 6 \
+  --output /tmp/initial-batch8.jsonl
+```
+
+**3,936 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| Between Light and Dark | 1008 | 71.23% | 68.36–73.94% |
+| Gates Unopened | 1008 | 55.75% | 52.67–58.79% |
+| Armageddon Hour | 1008 | 53.77% | 50.68–56.83% |
+| Visitors Beneath | 1008 | 38.49% | 35.54–41.53% |
+
+Workspace tests pass. [Compact results](initial-batch8.summary.json) and
+[run fingerprints](initial-batch8.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 8 passes 47 focused tests. New checks distinguish Dark World effect
+discards from costs, prioritize Yagan for Xex, aim Veiler at the current
+opposing field effect, and prevent Demise from wiping our own finisher over
+an empty opposing field. Worm, Chaos and Dark World explicitly flip their
+useful face-down monsters when offered a legal position change.

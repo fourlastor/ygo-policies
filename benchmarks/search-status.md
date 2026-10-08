@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Thirty pilots have been through it. 30 have not; the 28 new initial
+Thirty pilots have been through it. 34 have not; the 32 new initial
 policies are intentionally deferred from search. For future work, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
@@ -104,5 +104,9 @@ ceiling recorded and are not yet in the full tier-list ranking:
 | Road to Ragnarok | `nordic` | Initial strategy; search deferred |
 | Eye of the Storm | `cloudian` | Initial strategy; search deferred |
 | Volcanic Aftershock | `volcanic` | Initial strategy; search deferred |
+| Gates Unopened | `dark-world` | Initial strategy; search deferred |
+| Visitors Beneath | `worm` | Initial strategy; search deferred |
+| Between Light and Dark | `chaos` | Initial strategy; search deferred |
+| Armageddon Hour | `demise` | Initial strategy; search deferred |
 
 See [first-batch validation](four-new-decks.md), [later batches](initial-policy-batches.md), and [remaining deck ideas](../DECK-IDEAS.md).
