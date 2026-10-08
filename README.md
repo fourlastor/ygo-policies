@@ -86,6 +86,10 @@ EDOPro already filtered pass through unchanged.
 | `worm` | Visitors Beneath | Xex/Yagan, repeated Flips and diverse Worm Zero materials |
 | `chaos` | Between Light and Dark | LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects |
 | `demise` | Armageddon Hour | Demise field wipe, Doom Dozer and Megamorph finishers |
+| `amazoness` | Queens of the Wild | Village replacements, Queen protection and reflected battle damage |
+| `jurrac` | Footprints in Fire | Battle recruitment, Aeolo revival and Dinosaur Synchros |
+| `genex` | Clockwork Current | Undine setup, reusable Normal Summons and Machine Synchros |
+| `ice-barrier` | Winter Parliament | Triangle name diversity, Gantala recovery and WATER Synchros |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them

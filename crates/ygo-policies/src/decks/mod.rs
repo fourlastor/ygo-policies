@@ -71,3 +71,8 @@ pub mod dark_world;
 pub mod worm;
 pub mod chaos;
 pub mod demise;
+
+pub mod amazoness;
+pub mod jurrac;
+pub mod genex;
+pub mod ice_barrier;

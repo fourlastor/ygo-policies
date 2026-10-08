@@ -285,3 +285,34 @@ discards from costs, prioritize Yagan for Xex, aim Veiler at the current
 opposing field effect, and prevent Demise from wiping our own finisher over
 an empty opposing field. Worm, Chaos and Dark World explicitly flip their
 useful face-down monsters when offered a legal position change.
+
+## Batch 9: Queens of the Wild, Footprints in Fire, Clockwork Current, Winter Parliament
+
+- **Queens of the Wild** (`amazoness`): Village replacements, Queen protection and reflected battle damage.
+- **Footprints in Fire** (`jurrac`): Battle recruitment, Aeolo revival and Dinosaur Synchros.
+- **Clockwork Current** (`genex`): Undine setup, reusable Normal Summons and Machine Synchros.
+- **Winter Parliament** (`ice-barrier`): Triangle name diversity, Gantala recovery and WATER Synchros.
+
+```sh
+target/release/policy-bench matchup --policies amazoness,jurrac,genex,ice-barrier \
+  --opponents all --games 16 --seed 900000 --workers 6 \
+  --output /tmp/initial-batch9.jsonl
+```
+
+**4,192 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| Footprints in Fire | 1072 | 51.40% | 48.41–54.38% |
+| Clockwork Current | 1072 | 50.75% | 47.76–53.73% |
+| Queens of the Wild | 1072 | 49.72% | 46.73–52.71% |
+| Winter Parliament | 1072 | 38.34% | 35.48–41.29% |
+
+Workspace tests pass. [Compact results](initial-batch9.summary.json) and
+[run fingerprints](initial-batch9.metadata.json) are retained. No search was
+used in this implementation batch.
+
+Batch 9 passes 51 focused tests. Checks cover Amazoness protection/reflection
+and Skill Drain, Meteor's destructive summon, Birdman's required follow-up,
+and searching a distinct Ice Barrier name for Triangle. Queen's conditional
+protection and Swords Woman's reflection are shared public-board knowledge.

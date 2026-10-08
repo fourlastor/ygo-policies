@@ -258,11 +258,16 @@ impl<'a> Ctx<'a> {
                 ..Facts::NONE
             };
         }
-        if self.gusto_reflects(card) {
+        if self.gusto_reflects(card) || (self.is(card, 94004268) && card.position.face_up && !self.effects_drained()) {
             for attacked in &mut facts.attacked {
                 attacked.no_damage = true;
                 attacked.burn = knowledge::Burn::Reflected;
             }
+        }
+        if card.at.location == Location::MonsterZone && card.position.face_up
+            && self.view_data(card).in_set(0x4) && !self.effects_drained()
+            && self.face_up_on_field(card.at.controller, 15951532) {
+            for attacked in &mut facts.attacked { attacked.survives = knowledge::ALWAYS; }
         }
         facts
     }

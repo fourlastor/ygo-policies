@@ -1,0 +1,103 @@
+{
+  "games": 4192,
+  "failures": 0,
+  "limits": 0,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.4840762065971707,
+          0.543808939320221
+        ],
+        "games": 1072,
+        "rate": 0.5139925373134329
+      },
+      "deck": "Footprints in Fire",
+      "elo": 1511.466845988275,
+      "policy": "jurrac",
+      "reference": {
+        "ci95": [
+          0.4044552276276143,
+          0.5388986745332456
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.47115384615384615,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.47756132856465455,
+          0.5373107492579542
+        ],
+        "games": 1072,
+        "rate": 0.5074626865671642
+      },
+      "deck": "Clockwork Current",
+      "elo": 1506.462744132764,
+      "policy": "genex",
+      "reference": {
+        "ci95": [
+          0.37646360148363367,
+          0.510244202838086
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.4423076923076923,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.4673339251659043,
+          0.5270890456506174
+        ],
+        "games": 1072,
+        "rate": 0.49720149253731344
+      },
+      "deck": "Queens of the Wild",
+      "elo": 1498.5972576749448,
+      "policy": "amazoness",
+      "reference": {
+        "ci95": [
+          0.37646360148363367,
+          0.510244202838086
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.4423076923076923,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.35475471952964127,
+          0.41286906449209576
+        ],
+        "games": 1072,
+        "rate": 0.3833955223880597
+      },
+      "deck": "Winter Parliament",
+      "elo": 1409.6606798342214,
+      "policy": "ice-barrier",
+      "reference": {
+        "ci95": [
+          0.28481772850488596,
+          0.41306974968636645
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.34615384615384615,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

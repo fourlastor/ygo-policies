@@ -1305,3 +1305,102 @@ fn demise_does_not_wipe_our_doom_dozer_over_an_empty_opposing_field() {
     );
     assert_eq!(picks("demise", db, &o, &d), 1);
 }
+
+#[test]
+fn amazoness_queen_protects_swords_woman_until_skill_drain() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 15951532),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 94004268),
+    ];
+    let ctx = Ctx::new(&o, db.as_ref());
+    assert!(ctx.battle_proof(&o.cards[1]));
+    assert!(matches!(
+        ctx.facts(&o.cards[1]).attacked[0].burn,
+        knowledge::Burn::Reflected
+    ));
+    o.cards
+        .push(card(db.as_ref(), 1, Location::SpellTrapZone, 0, 82732705));
+    let ctx = Ctx::new(&o, db.as_ref());
+    assert!(!ctx.battle_proof(&o.cards[1]));
+    assert!(!matches!(
+        ctx.facts(&o.cards[1]).attacked[0].burn,
+        knowledge::Burn::Reflected
+    ));
+}
+
+#[test]
+fn jurrac_does_not_meteor_an_unopposed_board() {
+    use ygo_policies::{decks::jurrac::Jurrac, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 80032567),
+        card(db.as_ref(), 0, Location::Extra, 0, 17548456),
+    ];
+    let d = decision(DecisionKind::Idle, vec![]);
+    let mut memory = Memory::default();
+    assert_eq!(
+        Jurrac.special_summon(
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory
+            },
+            &choice(ChoiceKind::SpecialSummon, Some(&o.cards[1]))
+        ),
+        Some(false)
+    );
+}
+
+#[test]
+fn genex_keeps_its_only_body_when_normal_summon_is_spent() {
+    let db = db();
+    let mut o = obs();
+    o.summon_used = true;
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 64034255),
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 4904812),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("genex", db, &o, &d), 1);
+}
+
+#[test]
+fn ice_barrier_searches_a_new_name_for_triangle() {
+    use ygo_policies::decks::ice_barrier::IceBarrier;
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 64990807),
+        card(db.as_ref(), 0, Location::Hand, 1, 53921056),
+    ];
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::AddToHand;
+    let mut memory = Memory::default();
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |code| Member {
+        at: CardRef {
+            controller: 0,
+            location: Location::Deck,
+            sequence: 0,
+        },
+        code: Some(code),
+        value: 0,
+        required: false,
+    };
+    assert!(
+        member_score(&IceBarrier, &t, &m(50032342)) > member_score(&IceBarrier, &t, &m(53921056))
+    );
+}
