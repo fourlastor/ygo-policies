@@ -46,6 +46,9 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `jurrac` | Footprints in Fire | Battle recruitment, Aeolo revival and Dinosaur Synchros |
 | `genex` | Clockwork Current | Undine setup, reusable Normal Summons and Machine Synchros |
 | `ice-barrier` | Winter Parliament | Triangle name diversity, Gantala recovery and WATER Synchros |
+| `reptilianne` | The Still Gaze | Zero-ATK control, Viper theft, Vaskii tributes and Hydra draws |
+| `iron-chain` | Rust Never Sleeps | Repairman/Coil recursion, Synchros and opportunistic milling |
+| `malefic` | Eclipse Without End | Supported 4000-ATK summons, Skill Drain and field protection |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -53,13 +56,9 @@ focused decision tests. No policy search was used. See
 [`benchmarks/initial-policy-batches.md`](benchmarks/initial-policy-batches.md) for validation.
 The 32-deck tier list predates these additions; they are not ranked there yet.
 
-## Other available families
+## Inventory status
 
-| Engine | Available building blocks / caveat |
-|---|---|
-| Reptilianne | Legal family members available; initial list pending |
-| Iron Chain | Legal family members available; initial list pending |
-| Malefic | World, Cyber End, Stardust; existing roster only has a Rainbow splash |
+All 39 additions in this inventory now have initial decks and policies.
 
 ## Coverage boundaries
 
@@ -71,5 +70,5 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 - T.G. Striker/Warwolf/Hyper Librarian, Reborn Tengu and Rescue Rabbit are
   outside this whitelist. Calendar-era assumptions are insufficient.
 
-The remaining entries are the implementation queue. Additions use initial
-hand-written policies, with search deferred to `benchmarks/search-status.md`.
+The implementation queue is complete. Search and measured optimization are
+the next pass; progress is tracked in `benchmarks/search-status.md`.

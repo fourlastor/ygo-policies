@@ -9,7 +9,7 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Thirty pilots have been through it. 38 have not; the 36 new initial
+Thirty pilots have been through it. 41 have not; the 39 new initial
 policies are intentionally deferred from search. For future work, a few at a
 time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
 and reading it and measuring each rule it suggests takes a few hours more.
@@ -112,5 +112,8 @@ ceiling recorded and are not yet in the full tier-list ranking:
 | Footprints in Fire | `jurrac` | Initial strategy; search deferred |
 | Clockwork Current | `genex` | Initial strategy; search deferred |
 | Winter Parliament | `ice-barrier` | Initial strategy; search deferred |
+| The Still Gaze | `reptilianne` | Initial strategy; search deferred |
+| Rust Never Sleeps | `iron-chain` | Initial strategy; search deferred |
+| Eclipse Without End | `malefic` | Initial strategy; search deferred |
 
 See [first-batch validation](four-new-decks.md), [later batches](initial-policy-batches.md), and [remaining deck ideas](../DECK-IDEAS.md).

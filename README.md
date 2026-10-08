@@ -90,6 +90,9 @@ EDOPro already filtered pass through unchanged.
 | `jurrac` | Footprints in Fire | Battle recruitment, Aeolo revival and Dinosaur Synchros |
 | `genex` | Clockwork Current | Undine setup, reusable Normal Summons and Machine Synchros |
 | `ice-barrier` | Winter Parliament | Triangle name diversity, Gantala recovery and WATER Synchros |
+| `reptilianne` | The Still Gaze | Zero-ATK control, Viper theft, Vaskii tributes and Hydra draws |
+| `iron-chain` | Rust Never Sleeps | Repairman/Coil recursion, Synchros and opportunistic milling |
+| `malefic` | Eclipse Without End | Supported 4000-ATK summons, Skill Drain and field protection |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
