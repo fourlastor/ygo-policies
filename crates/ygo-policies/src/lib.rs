@@ -127,6 +127,10 @@ pub mod registry {
         entry!("worm", worm::Worm),
         entry!("chaos", chaos::Chaos),
         entry!("demise", demise::Demise),
+        entry!("amazoness", amazoness::Amazoness),
+        entry!("jurrac", jurrac::Jurrac),
+        entry!("genex", genex::Genex),
+        entry!("ice-barrier", ice_barrier::IceBarrier),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

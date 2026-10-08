@@ -42,6 +42,10 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `worm` | Visitors Beneath | Xex/Yagan, repeated Flips and diverse Worm Zero materials |
 | `chaos` | Between Light and Dark | LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects |
 | `demise` | Armageddon Hour | Demise field wipe, Doom Dozer and Megamorph finishers |
+| `amazoness` | Queens of the Wild | Village replacements, Queen protection and reflected battle damage |
+| `jurrac` | Footprints in Fire | Battle recruitment, Aeolo revival and Dinosaur Synchros |
+| `genex` | Clockwork Current | Undine setup, reusable Normal Summons and Machine Synchros |
+| `ice-barrier` | Winter Parliament | Triangle name diversity, Gantala recovery and WATER Synchros |
 
 These are initial hand-written strategies, with ordinary-duel validation and
 focused decision tests. No policy search was used. See
@@ -53,10 +57,6 @@ The 32-deck tier list predates these additions; they are not ranked there yet.
 
 | Engine | Available building blocks / caveat |
 |---|---|
-| Amazoness | Legal family members available; initial list pending |
-| Jurrac | Legal family members available; initial list pending |
-| Genex | Legal family members available; initial list pending |
-| Ice Barrier | Legal family members available; initial list pending |
 | Reptilianne | Legal family members available; initial list pending |
 | Iron Chain | Legal family members available; initial list pending |
 | Malefic | World, Cyber End, Stardust; existing roster only has a Rainbow splash |
