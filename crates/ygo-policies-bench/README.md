@@ -36,7 +36,7 @@ target/release/policy-bench round-robin \
   --policies arcana,blackwing,monarch --games 256 \
   --output small-tournament.jsonl --markdown small-ranking.md
 
-# The complete current roster (68 policies = 583,168 games at 256 per pair).
+# The complete current roster (71 policies = 636,160 games at 256 per pair).
 target/release/policy-bench round-robin \
   --policies all --games 256 --workers 6 \
   --output tournament.jsonl --markdown DECK-TIER-LIST.md

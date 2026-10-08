@@ -131,6 +131,9 @@ pub mod registry {
         entry!("jurrac", jurrac::Jurrac),
         entry!("genex", genex::Genex),
         entry!("ice-barrier", ice_barrier::IceBarrier),
+        entry!("reptilianne", reptilianne::Reptilianne),
+        entry!("iron-chain", iron_chain::IronChain),
+        entry!("malefic", malefic::Malefic),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {

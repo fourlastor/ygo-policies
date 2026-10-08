@@ -76,3 +76,7 @@ pub mod amazoness;
 pub mod jurrac;
 pub mod genex;
 pub mod ice_barrier;
+
+pub mod reptilianne;
+pub mod iron_chain;
+pub mod malefic;

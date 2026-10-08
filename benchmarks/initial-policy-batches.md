@@ -316,3 +316,37 @@ Batch 9 passes 51 focused tests. Checks cover Amazoness protection/reflection
 and Skill Drain, Meteor's destructive summon, Birdman's required follow-up,
 and searching a distinct Ice Barrier name for Triangle. Queen's conditional
 protection and Swords Woman's reflection are shared public-board knowledge.
+
+## Batch 10: The Still Gaze, Rust Never Sleeps, Eclipse Without End
+
+- **The Still Gaze** (`reptilianne`): Zero-ATK control, Viper theft, Vaskii tributes and Hydra draws.
+- **Rust Never Sleeps** (`iron-chain`): Repairman/Coil recursion, Synchros and opportunistic milling.
+- **Eclipse Without End** (`malefic`): Supported 4000-ATK summons, Skill Drain and field protection.
+
+```sh
+target/release/policy-bench matchup --policies reptilianne,iron-chain,malefic \
+  --opponents all --games 16 --seed 910000 --workers 6 \
+  --output /tmp/initial-batch10.jsonl
+```
+
+**3,312 duels; 0 failures and 0 decision-limit draws.**
+
+| Deck | Games | Initial win rate | Wilson 95% interval |
+|---|---:|---:|---:|
+| Eclipse Without End | 1120 | 54.91% | 51.98–57.80% |
+| The Still Gaze | 1120 | 44.91% | 42.02–47.84% |
+| Rust Never Sleeps | 1120 | 39.64% | 36.82–42.54% |
+
+Workspace tests pass. [Compact results](initial-batch10.summary.json) and
+[run fingerprints](initial-batch10.metadata.json) are retained. No search was
+used in this implementation batch.
+
+The final implementation batch passes 54 focused tests. Reptilianne spends
+opposing zero-ATK monsters before its own, Iron Chain preserves its revival
+fuel when a temporary boost is unnecessary, and Malefic requires a supporting
+Field Spell or Skill Drain before committing its monsters. All 39 inventory
+entries now have named lists and initial policies; the roster contains 71.
+
+The user subsequently authorized optimization after creation. The following
+phase uses search, with at most eight execution workers, and keeps these
+initial measurements as the before-optimization record.

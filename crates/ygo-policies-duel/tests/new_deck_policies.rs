@@ -1404,3 +1404,86 @@ fn ice_barrier_searches_a_new_name_for_triangle() {
         member_score(&IceBarrier, &t, &m(50032342)) > member_score(&IceBarrier, &t, &m(53921056))
     );
 }
+
+#[test]
+fn reptilianne_tributes_the_opponents_zero_attack_monster_first() {
+    use ygo_policies::decks::reptilianne::Reptilianne;
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 79491903),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 44508094),
+    ];
+    o.cards[1].attack = 0;
+    let mut d = decision(DecisionKind::SelectCards, vec![]);
+    d.hint = Hint::Release;
+    let mut memory = Memory::default();
+    let t = Turn {
+        ctx: Ctx::new(&o, db.as_ref()),
+        decision: &d,
+        memory: &mut memory,
+    };
+    let m = |c: &CardView| Member {
+        at: c.at,
+        code: c.code,
+        value: 0,
+        required: false,
+    };
+    assert!(
+        member_score(&Reptilianne, &t, &m(&o.cards[1]))
+            > member_score(&Reptilianne, &t, &m(&o.cards[0]))
+    );
+}
+
+#[test]
+fn iron_chain_preserves_graveyard_for_repairman_when_boost_is_unneeded() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 19974580),
+        card(db.as_ref(), 0, Location::Graveyard, 0, 53152590),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("iron-chain", db, &o, &d), 1);
+}
+
+#[test]
+fn malefic_requires_a_field_spell_or_skill_drain() {
+    use ygo_policies::{decks::malefic::Malefic, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![card(db.as_ref(), 0, Location::Hand, 0, 1710476)];
+    let d = decision(DecisionKind::Idle, vec![]);
+    let c = choice(ChoiceKind::SpecialSummon, Some(&o.cards[0]));
+    let mut memory = Memory::default();
+    assert_eq!(
+        Malefic.special_summon(
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory
+            },
+            &c
+        ),
+        Some(false)
+    );
+    o.cards
+        .push(card(db.as_ref(), 0, Location::SpellTrapZone, 5, 27564031));
+    assert_eq!(
+        Malefic.special_summon(
+            &Turn {
+                ctx: Ctx::new(&o, db.as_ref()),
+                decision: &d,
+                memory: &mut memory
+            },
+            &c
+        ),
+        Some(true)
+    );
+}
