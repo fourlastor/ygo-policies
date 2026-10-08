@@ -130,10 +130,16 @@ fn at(loc: Loc, me: u8) -> Value {
         "sequence": loc.sequence, "overlay_sequence": if loc.location & 0x80 != 0 { loc.position as i64 } else { -1 }})
 }
 fn description(value: u64) -> u64 {
-    if value < 10000 {
-        value
-    } else {
-        (value >> 20) * 16 + (value & 0xfffff)
+    match value {
+        // The summoning procedures are other texts of the game in EDOPro than
+        // in YGOPro: Fusion, Ritual, Synchro, Xyz and Link Summon.
+        1170 => 1169,
+        1171 => 1168,
+        1172 => 1164,
+        1173 => 1165,
+        1174 => 1166,
+        _ if value < 10000 => value,
+        _ => (value >> 20) * 16 + (value & 0xfffff),
     }
 }
 /// Cards whose effect has no description in YGOPro's script and the card's
@@ -1062,6 +1068,8 @@ mod tests {
         assert_eq!(description((38517737u64 << 20) | 2), 38517737 * 16 + 2);
         assert_eq!(description(1050), 1050);
         assert_eq!(description(0), 0);
+        assert_eq!(description(1173), 1165, "Xyz Summon");
+        assert_eq!(description(1163), 1163, "Pendulum Summon is the same text in both");
         let overlay = Loc {
             controller: 0,
             location: 0x84,

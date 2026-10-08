@@ -440,6 +440,12 @@ not always. What is known to differ:
   in YGOPro's script and the card's first text in EDOPro's: it is sent as 0.
   Number 46: Dragluon has three effects in YGOPro's and one with a choice of
   three in EDOPro's, which cannot be made alike.
+- **The summoning procedures** are other texts of the game in the two, and
+  are asked about where a monster can be Summoned in two ways: Synchro, Xyz
+  and Link Summon are 1172 to 1174 in EDOPro and 1164 to 1166 in YGOPro,
+  Fusion Summon 1170 and 1169, Ritual Summon 1171 and 1168. The seat sends
+  YGOPro's. The other texts of the game seen in these games (30, 96, 221)
+  are the same in both.
 - **Zones.** In YGOPro the Field Zone is Spell & Trap Zone 5 (from 0), and
   under Master Rule 5 the Pendulum Zones are Spell & Trap Zones 0 and 4.
   The Extra Monster Zones are Monster Zones 5 and 6 in both.
@@ -696,7 +702,8 @@ points apart, the same result in 971 deals.
 
 - **Check 4.** All 46 are one prompt: which of two ways to Xyz Summon a
   monster, where "Xyz Summon" is text 1173 of the game in EDOPro and 1165
-  in YGOPro. The seat took the first way.
+  in YGOPro. The seat took the first way. It sends YGOPro's number since
+  ([The two engines](#the-two-engines)); the runs here are from before.
 
 **What the model is asked here is what it is asked there.** 128 further
 games against itself with every request kept, beside 256 games in its own
