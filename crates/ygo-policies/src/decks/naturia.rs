@@ -32,6 +32,9 @@ impl Strategy for Naturia {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[21502796, ANTJAW]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if ctx.in_hand(BAMBOO)
             && ctx.obs.summon_used
@@ -69,6 +72,7 @@ impl Strategy for Naturia {
             {
                 Some(3300.0)
             }
+            (ChoiceKind::NormalSummon, ANTJAW) if !ctx.effects_drained() => Some(2100.0),
             (ChoiceKind::SetMonster, CHERRIES | BEANS | ANTJAW) => Some(2000.0),
             (ChoiceKind::NormalSummon, CHERRIES | BUTTERFLY)
                 if support::body_score(self, &ctx, code) > 2000.0 =>

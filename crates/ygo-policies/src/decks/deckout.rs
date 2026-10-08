@@ -33,6 +33,9 @@ impl Strategy for Deckout {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[81843628, 79106360, 33508719]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         // Store spare spells/traps before Jar discards the hand. Keep Taiyou
         // available to turn the freshly set Jar over this turn.

@@ -62,6 +62,19 @@ impl Strategy for ChainBurn {
     fn chain(&mut self, t: &Turn, i: usize) -> Option<Response> {
         let code = t.ctx.canonical(t.choice(i).code()?);
         let damage = self.burn(t, code);
+        // Duplicating a link's name prevents the payoffs that require a unique chain.
+        let payoff_waiting = t.ctx.spell_traps(t.ctx.me).iter().any(|c| {
+            !c.position.face_up
+                && matches!(c.code, Some(STRIKE | FORTUNE))
+                && !t.ctx.obs.chain.iter().any(|l| Some(l.code) == c.code)
+        });
+        if payoff_waiting
+            && damage < t.ctx.opp_lp()
+            && t.ctx.obs.chain.iter().any(|l| l.code == code)
+        {
+            return Some(Response::no());
+        }
+
         Some(match code {
             JAR | LEGACY if t.ctx.deck_size(t.ctx.me) > 1 => Response::new(145.0),
             RECKLESS if t.ctx.deck_size(t.ctx.me) > 2 => Response::new(140.0),

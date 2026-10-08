@@ -72,6 +72,18 @@ impl Gusto {
                 _ => ctx.data(code).defense as f64,
             };
         }
+        let d = ctx.data(code);
+        // Gulldos is also a stepping stone: a later Egul makes Sphreez.
+        let synchro = ctx
+            .monsters(ctx.me)
+            .iter()
+            .filter(|c| c.position.face_up && ctx.view_data(c).is_tuner() != d.is_tuner())
+            .filter_map(|c| crate::tactics::synchro_worth(self, ctx, c.level + d.level))
+            .max()
+            .unwrap_or(0);
+        if synchro > 0 {
+            return 4000.0 + synchro as f64 / 10.0;
+        }
         // Leave a non-Tuner alongside an existing Tuner and vice versa.
         let partner = ctx.monsters(ctx.me).iter().any(|c| {
             c.position.face_up && ctx.view_data(c).is_tuner() != ctx.data(code).is_tuner()
@@ -215,7 +227,7 @@ impl Strategy for Gusto {
             return t.pick_targeting(i, vec![ours.at]);
         }
         if let (Some(i), Some(target)) = (t.activate(LIMIT_REVERSE), self.revive(&ctx)) {
-            if Self::makes_sphreez(&ctx, target.code.unwrap_or(0))
+            if self.body_score(&ctx, target.code.unwrap_or(0)) >= 4000.0
                 || Self::sphreez(&ctx)
                 || ctx.monsters(ctx.me).is_empty()
             {
@@ -349,11 +361,15 @@ impl Strategy for Gusto {
             {
                 Response::new(40.0)
             }
-            LIMIT_REVERSE if ctx.incoming_attack().is_some() && ctx.monsters(ctx.me).is_empty() => {
-                self.revive(&ctx)
-                    .map(|c| Response::targeting(45.0, vec![c.at]))
-                    .unwrap_or_else(Response::no)
-            }
+            LIMIT_REVERSE => self
+                .revive(&ctx)
+                .filter(|c| {
+                    (ctx.incoming_attack().is_some() && ctx.monsters(ctx.me).is_empty())
+                        || ((ctx.my_turn() || ctx.phase() == Some(crate::model::Phase::End))
+                            && self.body_score(&ctx, c.code.unwrap_or(0)) >= 4000.0)
+                })
+                .map(|c| Response::targeting(45.0, vec![c.at]))
+                .unwrap_or_else(Response::no),
             TELEPORT if ctx.incoming_attack().is_some() && ctx.monsters(ctx.me).is_empty() => {
                 Response::new(40.0)
             }
@@ -361,8 +377,9 @@ impl Strategy for Gusto {
                 Response::new(120.0)
             }
             STARDUST if t.hostile_top().matches(|_| true) => Response::new(90.0),
-            CAAM | REEZE | GULLDOS | CONTACT | SWAP | TELEPORT | LIMIT_REVERSE | KREBONS
-            | SOLDIER | STARDUST => Response::no(),
+            CAAM | REEZE | GULLDOS | CONTACT | SWAP | TELEPORT | KREBONS | SOLDIER | STARDUST => {
+                Response::no()
+            }
             _ => return None,
         })
     }
@@ -376,6 +393,14 @@ impl Strategy for Gusto {
         let worth = value(self, &ctx, Some(code), None) as f64;
         if t.decision.hint == Hint::SpecialSummon {
             return Some(self.body_score(&ctx, code));
+        }
+        // Reeze needs the Level-1 Egul left beside it to make Sphreez.
+        if matches!(t.decision.hint, Hint::Tribute | Hint::Release) {
+            return Some(if code == EGUL && ctx.in_hand(REEZE) {
+                -9000.0
+            } else {
+                -worth
+            });
         }
         if t.decision.hint == Hint::SynchroMaterial {
             return Some(-worth - if code == SPHREEZ { 20000.0 } else { 0.0 });

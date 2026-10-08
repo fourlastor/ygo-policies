@@ -58,12 +58,25 @@ impl Strategy for Benkei {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[73431236]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(CYBER), Some(Location::Hand)) {
             return t.pick(i);
         }
         if !ctx.in_hand(BEN) {
             if let Some(i) = t.activate(RETURN) {
+                return t.pick(i);
+            }
+        }
+        if !ctx.face_up_on_field(ctx.me, BEN)
+            && ctx
+                .hand()
+                .iter()
+                .any(|c| ctx.view_data(c).is(crate::cards::types::EQUIP))
+        {
+            if let Some(i) = t.find(ChoiceKind::NormalSummon, Some(BEN), Some(Location::Hand)) {
                 return t.pick(i);
             }
         }

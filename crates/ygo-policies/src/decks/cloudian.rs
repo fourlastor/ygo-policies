@@ -120,6 +120,7 @@ impl Strategy for Cloudian {
                 Some(2200.0 + ctx.monsters(ctx.me).len() as f64 * 200.0)
             }
             (ChoiceKind::NormalSummon, SMOKE) if ctx.in_hand(NIMBUS) => Some(1000.0),
+            (ChoiceKind::NormalSummon, SMOKE) => Some(500.0),
             (_, SMOKE) => None,
             (ChoiceKind::SetMonster, _) if ctx.data(code).in_set(0x18) => None,
             _ => return None,

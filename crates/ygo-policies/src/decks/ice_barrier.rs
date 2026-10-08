@@ -25,6 +25,9 @@ impl Strategy for IceBarrier {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = t.activate(96947648) {
+            return t.pick(i);
+        }
         if let Some(i) = t.activate(MEDAL) {
             return t.pick(i);
         }
@@ -83,7 +86,9 @@ impl Strategy for IceBarrier {
         }
         let ctx = t.ctx;
         let k = m.code?;
-        if t.decision.hint == Hint::AddToHand {
+        if t.decision.hint == Hint::AddToHand
+            || (t.decision.hint == Hint::ReturnToHand && t.memory.last_activated == Some(96947648))
+        {
             let triangle = ctx.in_hand(TRIANGLE);
             return Some(if triangle && !ctx.in_hand(k) {
                 7000.0 + ctx.data(k).attack as f64

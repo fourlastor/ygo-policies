@@ -52,7 +52,14 @@ impl Strategy for Agents {
                 return t.pick(i);
             }
         }
-        if ctx.monsters(ctx.me).is_empty() && (ctx.in_hand(HYPERION) || ctx.in_hand(KRISTYA)) {
+        if !ctx.in_hand(VALHALLA) && !ctx.face_up_on_field(ctx.me, VALHALLA) {
+            if let Some(i) = t.activate_from(HECATRICE, Location::Hand) {
+                return t.pick(i);
+            }
+        }
+        if ctx.monsters(ctx.me).is_empty()
+            && (ctx.in_hand(HYPERION) || ctx.in_hand(KRISTYA) || ctx.in_hand(VENUS))
+        {
             if let Some(i) = t.activate(VALHALLA) {
                 return t.pick(i);
             }
@@ -105,6 +112,9 @@ impl Strategy for Agents {
             {
                 Some(3100.0)
             }
+            (ChoiceKind::SetMonster, support::HONEST) if ctx.monsters(ctx.me).is_empty() => {
+                Some(1000.0)
+            }
             (_, HYPERION | KRISTYA | support::HONEST) => None,
             (ChoiceKind::NormalSummon, ORANGE)
                 if tactics::synchro_with_tuner(self, &ctx, 2).is_some() =>
@@ -119,6 +129,8 @@ impl Strategy for Agents {
             {
                 Some(1000.0)
             }
+            (ChoiceKind::NormalSummon, BALL) if ctx.monsters(ctx.opp).is_empty() => Some(500.0),
+            (ChoiceKind::SetMonster, BALL) if ctx.monsters(ctx.me).is_empty() => Some(800.0),
             (_, ORANGE | BALL) => None,
             _ => return None,
         })

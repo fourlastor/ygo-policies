@@ -40,6 +40,9 @@ impl Strategy for Alien {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[62437709]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if let Some(i) = t.activate(RUINS) {
             return t.pick(i);

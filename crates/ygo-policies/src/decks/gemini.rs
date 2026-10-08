@@ -53,6 +53,9 @@ impl Strategy for Gemini {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::copy_plant(self, t) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if ctx.free_monster_zones(ctx.me) > 0 {
             for code in [LONEFIRE, GIGA, BUTTERFLY, SWING] {
@@ -150,6 +153,9 @@ impl Strategy for Gemini {
         })
     }
     fn select(&self, t: &Turn, m: &Member) -> Option<f64> {
+        if let Some(score) = support::spore_cost(self, t, m) {
+            return Some(score);
+        }
         let ctx = t.ctx;
         if m.at.controller != ctx.me {
             return None;

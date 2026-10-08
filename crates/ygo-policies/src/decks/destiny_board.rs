@@ -93,6 +93,22 @@ impl Strategy for DestinyBoard {
         let ctx = t.ctx;
         let c = t.choice(i);
         Some(match ctx.canonical(c.code()?) {
+            41420027
+                if ctx.obs.chain.last().is_some_and(|link| {
+                    link.controller == ctx.opp
+                        && link.targets.iter().any(|at| {
+                            ctx.card(*at).is_some_and(|card| {
+                                at.controller == ctx.me
+                                    && card.position.face_up
+                                    && card.code.is_some_and(|code| {
+                                        code == BOARD || LETTERS.contains(&code)
+                                    })
+                            })
+                        })
+                }) =>
+            {
+                Response::new(95.0)
+            }
             BOARD if !Self::board(&ctx) || c.description == ((BOARD as u64) << 20) => {
                 Response::new(130.0)
             }

@@ -15,18 +15,39 @@ const POISON: u32 = 90576781;
 #[derive(Clone, Default)]
 pub struct Reptilianne;
 impl Strategy for Reptilianne {
-    fn value(&self, _: &Ctx, k: u32) -> Option<i32> {
+    fn value(&self, ctx: &Ctx, k: u32) -> Option<i32> {
         Some(match k {
             NAGA => 1800,
             GARDNA => 1700,
             VASKII => 3300,
-            HYDRA => 3200,
+            HYDRA => {
+                2100 + 900
+                    * ctx
+                        .monsters(ctx.opp)
+                        .iter()
+                        .filter(|c| c.position.face_up && c.attack == 0)
+                        .count() as i32
+            }
             MEDUSA => 2800,
             _ => return support::extra_value(k),
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        if !ctx.effects_drained()
+            && ctx
+                .monsters(ctx.opp)
+                .iter()
+                .any(|c| c.position.face_up && c.attack == 0)
+        {
+            if let Some(i) = t.find(
+                ChoiceKind::SpecialSummon,
+                Some(HYDRA),
+                Some(Location::Extra),
+            ) {
+                return t.pick(i);
+            }
+        }
         if let Some(i) = t.find(
             ChoiceKind::SpecialSummon,
             Some(VASKII),

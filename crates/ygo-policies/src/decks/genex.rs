@@ -27,6 +27,11 @@ impl Strategy for Genex {
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
+        if ctx.in_hand(CAIUS) {
+            if let Some(i) = t.activate(2295440) {
+                return t.pick(i);
+            }
+        }
         if let Some(i) = t.activate(DURADARK) {
             if let Some(c) = ctx
                 .monsters(ctx.opp)
@@ -43,20 +48,42 @@ impl Strategy for Genex {
             }
         }
         if let Some(i) = t.activate(BIRD) {
+            // Birdman is a Tuner: returning our only non-Tuner can strand
+            // two Tuners. Choose the return that leaves a useful partner.
             let bodies = ctx.monsters(ctx.me);
             let bounce = bodies
                 .iter()
                 .filter(|c| {
                     c.position.face_up
-                        && [UNDINE, NEUTRON, 30399511, FROG].contains(&c.code.unwrap_or(0))
+                        && [UNDINE, NEUTRON, 30399511, FROG, CONTROLLER]
+                            .contains(&c.code.unwrap_or(0))
                 })
-                .min_by_key(|c| c.attack);
-            if let Some(c) = bounce {
-                if bodies.len() >= 2 || (!ctx.obs.summon_used && c.level <= 4) {
-                    return t.pick_targeting(i, vec![c.at]);
-                }
+                .filter_map(|c| {
+                    let mut worth = bodies
+                        .iter()
+                        .filter(|other| {
+                            other.at != c.at
+                                && other.position.face_up
+                                && !ctx.view_data(other).is_tuner()
+                        })
+                        .filter_map(|other| {
+                            crate::tactics::synchro_worth(self, &ctx, 3 + other.level)
+                        })
+                        .max()
+                        .unwrap_or(0);
+                    if !ctx.obs.summon_used && c.level <= 4 && !ctx.view_data(c).is_tuner() {
+                        worth = worth.max(
+                            crate::tactics::synchro_worth(self, &ctx, 3 + c.level).unwrap_or(0),
+                        );
+                    }
+                    (worth > 0).then_some((worth * 10 - c.attack, c))
+                })
+                .max_by_key(|(score, _)| *score);
+            if let Some((_, c)) = bounce {
+                return t.pick_targeting(i, vec![c.at]);
             }
         }
+
         for code in [52709508, 66165755, 17760003] {
             if let Some(i) = t.activate(code) {
                 return t.pick(i);
@@ -125,6 +152,10 @@ impl Strategy for Genex {
             });
         }
         if t.decision.hint == Hint::SpecialSummon {
+            if src == Some(2295440) {
+                return Some(if code == FROG { 6000.0 } else { 1000.0 });
+            }
+
             return Some(
                 support::body_score(self, &t.ctx, code)
                     + if src == Some(66165755) {

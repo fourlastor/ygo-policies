@@ -24,6 +24,9 @@ impl Strategy for IronChain {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = t.activate(32807846) {
+            return t.pick(i);
+        }
         let ctx = t.ctx;
         if !ctx.monsters(ctx.opp).is_empty() || !ctx.spell_traps(ctx.opp).is_empty() {
             if let Some(i) = t.find_where(|c| {
@@ -105,6 +108,24 @@ impl Strategy for IronChain {
     }
     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
         let k = c.code()?;
+        if c.kind == ChoiceKind::SetMonster
+            && k == RYKO
+            && !t.ctx.effects_drained()
+            && t.ctx.monsters(t.ctx.me).is_empty()
+            && t.ctx.opp_best_attack() >= 1800
+        {
+            return Some(Some(2400.0));
+        }
+        if c.kind == ChoiceKind::NormalSummon
+            && k == 63977008
+            && !t.ctx.effects_drained()
+            && t.ctx
+                .graveyard(t.ctx.me)
+                .iter()
+                .any(|v| t.ctx.view_data(v).is_monster() && v.level <= 2)
+        {
+            return Some(Some(4200.0));
+        }
         if c.kind == ChoiceKind::NormalSummon
             && matches!(k, REPAIR | COIL | SNAKE | BLAST | 63977008 | 14943837)
         {

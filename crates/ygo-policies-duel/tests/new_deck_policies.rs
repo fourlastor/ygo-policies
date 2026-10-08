@@ -1487,3 +1487,492 @@ fn malefic_requires_a_field_spell_or_skill_drain() {
         Some(true)
     );
 }
+
+#[test]
+fn legal_honest_choice_does_not_require_a_damage_step_phase_message() {
+    let db = db();
+    let mut o = obs();
+    o.phase = Some(Phase::BattleStart);
+    o.turn_player = Some(1);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 91188343),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 44508094),
+        card(db.as_ref(), 0, Location::Hand, 0, 37742478),
+    ];
+    o.battle_attacker = Some(o.cards[1].at);
+    o.battle_target = Some(o.cards[0].at);
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[2])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    for id in ["agents", "counter-fairy", "herald", "worm", "chaos"] {
+        assert_eq!(picks(id, db.clone(), &o, &d), 0, "{id}");
+    }
+}
+
+#[test]
+fn new_flip_policies_use_a_free_flip_summon() {
+    let db = db();
+    for (id, code) in [
+        ("herald", 60694662),
+        ("batteryman", 56839613),
+        ("benkei", 73431236),
+        ("nordic", 5220687),
+        ("deckout", 81843628),
+    ] {
+        let mut o = obs();
+        o.cards = vec![card(db.as_ref(), 0, Location::MonsterZone, 0, code)];
+        o.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        let d = decision(
+            DecisionKind::Idle,
+            vec![
+                choice(ChoiceKind::ChangePosition, Some(&o.cards[0])),
+                choice(ChoiceKind::EndTurn, None),
+            ],
+        );
+        assert_eq!(picks(id, db.clone(), &o, &d), 0, "{id}");
+    }
+}
+
+#[test]
+fn alien_uses_fiendish_chain_on_the_visible_effect_source() {
+    let db = db();
+    let mut o = obs();
+    o.turn_player = Some(1);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 50078509),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 9596126),
+    ];
+    o.cards[0].position = Position::FACE_DOWN_DEFENSE;
+    o.chain.push(ChainLink {
+        code: 9596126,
+        controller: 1,
+        source: o.cards[1].at,
+        targets: vec![],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    assert_eq!(picks("alien", db, &o, &d), 0);
+}
+
+#[test]
+fn psychic_commander_pays_the_smallest_amount_that_wins_the_battle() {
+    use ygo_policies::{decks::psychic::Psychic, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.phase = Some(Phase::BattleStart);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 21454943),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 9596126),
+    ];
+    o.cards[0].attack = 2000;
+    o.cards[1].attack = 2250;
+    o.battle_attacker = Some(o.cards[0].at);
+    o.battle_target = Some(o.cards[1].at);
+    let d = decision(
+        DecisionKind::Announce,
+        [100, 200, 300, 400, 500]
+            .iter()
+            .map(|n| {
+                let mut c = choice(ChoiceKind::Announce, None);
+                c.description = *n;
+                c
+            })
+            .collect(),
+    );
+    let mut memory = Memory::default();
+    memory.last_activated = Some(21454943);
+    assert_eq!(
+        Psychic.announce(&Turn {
+            ctx: Ctx::new(&o, db.as_ref()),
+            decision: &d,
+            memory: &mut memory
+        }),
+        Some(2)
+    );
+}
+
+#[test]
+fn chain_burn_preserves_chain_uniqueness_for_its_waiting_payoffs() {
+    use ygo_policies::{decks::chain_burn::ChainBurn, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 83968380),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 1, 98444741),
+    ];
+    o.cards[0].position = Position::FACE_DOWN_DEFENSE;
+    o.cards[1].position = Position::FACE_DOWN_DEFENSE;
+    o.chain.push(ChainLink {
+        code: 83968380,
+        controller: 0,
+        source: CardRef {
+            controller: 0,
+            location: Location::SpellTrapZone,
+            sequence: 2,
+        },
+        targets: vec![],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![choice(ChoiceKind::Activate, Some(&o.cards[0]))],
+    );
+    let mut memory = Memory::default();
+    assert_eq!(
+        ChainBurn
+            .chain(
+                &Turn {
+                    ctx: Ctx::new(&o, db.as_ref()),
+                    decision: &d,
+                    memory: &mut memory
+                },
+                0
+            )
+            .unwrap()
+            .score,
+        0.0
+    );
+}
+
+#[test]
+fn benkei_deploys_ben_kei_before_equipping_cyber_dragon() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 70095154),
+        card(db.as_ref(), 0, Location::Hand, 0, 84430950),
+        card(db.as_ref(), 0, Location::Hand, 1, 56747793),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[2])),
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[1])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("benkei", db, &o, &d), 1);
+}
+
+#[test]
+fn gem_knight_searches_before_spending_armadillo_as_fusion_material() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 27004302),
+        card(db.as_ref(), 0, Location::Hand, 1, 1264319),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[1])),
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("gem-knight", db, &o, &d), 1);
+}
+
+#[test]
+fn new_synchro_policies_stack_their_independent_summon_trigger() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 52687916),
+        card(db.as_ref(), 0, Location::Graveyard, 0, 15341821),
+    ];
+    o.chain.push(ChainLink {
+        code: 15341821,
+        controller: 0,
+        source: o.cards[1].at,
+        targets: vec![],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: true,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    for id in ["fabled", "gemini", "garden", "spirit", "jurrac"] {
+        assert_eq!(picks(id, db.clone(), &o, &d), 0, "{id}");
+    }
+}
+
+#[test]
+fn destiny_board_protects_its_spirit_messages() {
+    let db = db();
+    let mut o = obs();
+    o.turn_player = Some(1);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 41420027),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 1, 31893528),
+        card(db.as_ref(), 1, Location::SpellTrapZone, 0, 5318639),
+    ];
+    o.cards[0].position = Position::FACE_DOWN_DEFENSE;
+    o.chain.push(ChainLink {
+        code: 5318639,
+        controller: 1,
+        source: o.cards[2].at,
+        targets: vec![o.cards[1].at],
+    });
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    assert_eq!(picks("destiny-board", db, &o, &d), 0);
+}
+
+#[test]
+fn snowman_is_not_flipped_into_only_facedown_opponents() {
+    use ygo_policies::{decks::fish::Fish, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 91133740),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 9596126),
+    ];
+    for c in &mut o.cards {
+        c.position = Position::FACE_DOWN_DEFENSE;
+    }
+    o.cards[1].code = None;
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::ChangePosition, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    let mut memory = Memory::default();
+    assert_eq!(
+        Fish.main_phase(&mut Turn {
+            ctx: Ctx::new(&o, db.as_ref()),
+            decision: &d,
+            memory: &mut memory
+        }),
+        None
+    );
+}
+
+#[test]
+fn copy_plant_changes_level_to_open_a_better_synchro() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 66457407),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 20546916),
+        card(db.as_ref(), 0, Location::Extra, 0, 44508094),
+        card(db.as_ref(), 0, Location::Extra, 1, 26593852),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::EnterBattle, None),
+        ],
+    );
+    for id in ["garden", "gemini"] {
+        assert_eq!(picks(id, db.clone(), &o, &d), 0);
+    }
+}
+
+#[test]
+fn gem_knight_attacks_before_spending_an_existing_fusion_as_material() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 93379652),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 91731841),
+        card(db.as_ref(), 0, Location::Hand, 0, 1264319),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[2])),
+            choice(ChoiceKind::EnterBattle, None),
+        ],
+    );
+    assert_eq!(picks("gem-knight", db, &o, &d), 1);
+}
+
+#[test]
+fn genex_birdman_keeps_a_non_tuner_for_the_synchro() {
+    use ygo_policies::{decks::genex::Genex, Strategy};
+    let db = db();
+    let mut o = obs();
+    o.summon_used = true;
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 4904812),
+        card(db.as_ref(), 0, Location::MonsterZone, 1, 68505803),
+        card(db.as_ref(), 0, Location::Hand, 0, 64034255),
+        card(db.as_ref(), 0, Location::Extra, 0, 50321796),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[2])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    let mut memory = Memory::default();
+    assert_eq!(
+        Genex.main_phase(&mut Turn {
+            ctx: Ctx::new(&o, db.as_ref()),
+            decision: &d,
+            memory: &mut memory
+        }),
+        Some(0)
+    );
+    assert_eq!(memory.intent[0].0, o.cards[1].at);
+}
+
+#[test]
+fn iron_chain_prefers_a_live_junk_combo_then_a_defensive_ryko() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::Hand, 0, 21502796),
+        card(db.as_ref(), 0, Location::Hand, 1, 63977008),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 44508094),
+        card(db.as_ref(), 0, Location::Graveyard, 0, 21502796),
+    ];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::SetMonster, Some(&o.cards[0])),
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[1])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("iron-chain", db.clone(), &o, &d), 1);
+    o.cards.pop();
+    assert_eq!(picks("iron-chain", db, &o, &d), 0);
+}
+
+#[test]
+fn jurrac_plans_a_shrink_battle_only_when_the_spell_can_work() {
+    let db = db();
+    let mut o = obs();
+    o.phase = Some(Phase::BattleStart);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::MonsterZone, 0, 11012887),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 44508094),
+        card(db.as_ref(), 0, Location::Hand, 0, 55713623),
+    ];
+    let d = decision(
+        DecisionKind::Battle,
+        vec![
+            choice(ChoiceKind::Attack, Some(&o.cards[0])),
+            choice(ChoiceKind::EnterMain2, None),
+        ],
+    );
+    assert_eq!(picks("jurrac", db.clone(), &o, &d), 0);
+    o.cards
+        .push(card(db.as_ref(), 1, Location::SpellTrapZone, 0, 58921041));
+    assert_eq!(picks("jurrac", db.clone(), &o, &d), 1);
+    o.cards.pop();
+    o.cards.pop();
+    assert_eq!(picks("jurrac", db, &o, &d), 1);
+}
+
+#[test]
+fn naturia_deploys_antjaw_face_up_for_opposing_special_summons() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![card(db.as_ref(), 0, Location::Hand, 0, 99150062)];
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::NormalSummon, Some(&o.cards[0])),
+            choice(ChoiceKind::SetMonster, Some(&o.cards[0])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("naturia", db.clone(), &o, &d), 0);
+    o.cards
+        .push(card(db.as_ref(), 1, Location::SpellTrapZone, 0, 82732705));
+    assert_eq!(picks("naturia", db, &o, &d), 1);
+}
+
+#[test]
+fn gusto_revives_a_gulldos_step_toward_sphreez() {
+    let db = db();
+    let mut o = obs();
+    o.cards = vec![
+        card(
+            db.as_ref(),
+            0,
+            Location::MonsterZone,
+            0,
+            knowledge::GUSTO_WINDA,
+        ),
+        card(
+            db.as_ref(),
+            0,
+            Location::Graveyard,
+            0,
+            knowledge::GUSTO_GULLDO,
+        ),
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 27551),
+        card(db.as_ref(), 0, Location::Extra, 0, 84766279),
+    ];
+    o.cards[2].position = Position::FACE_DOWN_DEFENSE;
+    let d = decision(
+        DecisionKind::Idle,
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[2])),
+            choice(ChoiceKind::EndTurn, None),
+        ],
+    );
+    assert_eq!(picks("gusto", db, &o, &d), 0);
+}
+
+#[test]
+fn volcanic_uses_raigeki_break_with_shell_ammunition() {
+    let db = db();
+    let mut o = obs();
+    o.turn_player = Some(1);
+    o.cards = vec![
+        card(db.as_ref(), 0, Location::SpellTrapZone, 0, 4178474),
+        card(db.as_ref(), 0, Location::Hand, 0, 33365932),
+        card(db.as_ref(), 1, Location::MonsterZone, 0, 9596126),
+    ];
+    o.cards[0].position = Position::FACE_DOWN_DEFENSE;
+    let d = decision(
+        DecisionKind::Chain {
+            forced: false,
+            triggers: false,
+        },
+        vec![
+            choice(ChoiceKind::Activate, Some(&o.cards[0])),
+            choice(ChoiceKind::Pass, None),
+        ],
+    );
+    assert_eq!(picks("volcanic", db, &o, &d), 0);
+}

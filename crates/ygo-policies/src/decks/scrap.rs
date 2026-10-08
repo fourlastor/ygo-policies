@@ -66,6 +66,9 @@ impl Strategy for Scrap {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[21502796]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(CYBER), Some(Location::Hand)) {
             return t.pick(i);

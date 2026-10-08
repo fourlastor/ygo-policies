@@ -1,0 +1,1387 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "baseline_commit": "680d8c28af34db4b204f89ceda6c414573799500",
+  "candidate_revision": "Policy source committed with this report",
+  "candidate_source_sha256": "75f2c170e99d2f612a064f85a9a744ec6e91372a46ce3f5d39f2e8790eff6d24",
+  "source_hash_method": "Sorted crates/ygo-policies/src/**/*.rs: UTF-8 relative path, NUL, contents, NUL",
+  "maximum_concurrent_duel_workers": 8,
+  "baseline_library": {
+    "bytes": 90412640,
+    "fnv1a64": "a73d2abc4cf7b2f9"
+  },
+  "candidate_library": {
+    "bytes": 90497960,
+    "fnv1a64": "b5de67a8fb04abb3"
+  },
+  "cards": {
+    "bytes": 7958528,
+    "fnv1a64": "766ac6cf2385af85"
+  },
+  "core": {
+    "commit": "f1a6ec196aa17309d147eafa9865cdab430f549b",
+    "status": ""
+  },
+  "scripts": {
+    "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+    "status": ""
+  },
+  "lua": {
+    "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+    "status": ""
+  },
+  "decks": {
+    "agents": {
+      "bytes": 493,
+      "fnv1a64": "741c76403ada1cff"
+    },
+    "alien": {
+      "bytes": 510,
+      "fnv1a64": "66f012269e5b0e1f"
+    },
+    "amazoness": {
+      "bytes": 398,
+      "fnv1a64": "a11723326d8e1074"
+    },
+    "arcana": {
+      "bytes": 452,
+      "fnv1a64": "97a17826ce520c62"
+    },
+    "batteryman": {
+      "bytes": 405,
+      "fnv1a64": "c8779e2f7a10633d"
+    },
+    "benkei": {
+      "bytes": 414,
+      "fnv1a64": "dd48990511c03896"
+    },
+    "blackwing": {
+      "bytes": 441,
+      "fnv1a64": "c42cefa917f0fe29"
+    },
+    "burn": {
+      "bytes": 377,
+      "fnv1a64": "01d21f688bf8d9bb"
+    },
+    "chain-burn": {
+      "bytes": 398,
+      "fnv1a64": "31b541cca00f17f2"
+    },
+    "chaos": {
+      "bytes": 498,
+      "fnv1a64": "a0d600a2ff9ccd37"
+    },
+    "cloudian": {
+      "bytes": 405,
+      "fnv1a64": "0e024349d83765de"
+    },
+    "countdown": {
+      "bytes": 462,
+      "fnv1a64": "3bfb6e508e7baaa2"
+    },
+    "counter-fairy": {
+      "bytes": 404,
+      "fnv1a64": "399fc4a93579b3e2"
+    },
+    "crystal": {
+      "bytes": 371,
+      "fnv1a64": "8b15b8152d5f0b78"
+    },
+    "cyber": {
+      "bytes": 483,
+      "fnv1a64": "1eff4dec5af248cb"
+    },
+    "dark-world": {
+      "bytes": 491,
+      "fnv1a64": "35580ccd39da365a"
+    },
+    "deckout": {
+      "bytes": 405,
+      "fnv1a64": "79105fe94b136adf"
+    },
+    "demise": {
+      "bytes": 402,
+      "fnv1a64": "e3fc121632fcce4a"
+    },
+    "destiny-board": {
+      "bytes": 405,
+      "fnv1a64": "8647a1991f62dc21"
+    },
+    "destiny-hero": {
+      "bytes": 446,
+      "fnv1a64": "55370297d22ad7cb"
+    },
+    "draconic-might": {
+      "bytes": 399,
+      "fnv1a64": "e3a9de4aeea604d1"
+    },
+    "dragunity": {
+      "bytes": 697,
+      "fnv1a64": "659bcf43734aad31"
+    },
+    "exodia": {
+      "bytes": 376,
+      "fnv1a64": "aa6afd2eb449212c"
+    },
+    "fabled": {
+      "bytes": 538,
+      "fnv1a64": "bfeb845918a90589"
+    },
+    "fish": {
+      "bytes": 504,
+      "fnv1a64": "fd1b9f0972fc1b95"
+    },
+    "flamvell": {
+      "bytes": 514,
+      "fnv1a64": "6ea21e28d4076036"
+    },
+    "fortune-lady": {
+      "bytes": 448,
+      "fnv1a64": "43e38ab69d74c88c"
+    },
+    "garden": {
+      "bytes": 518,
+      "fnv1a64": "ac71cfd8ba5c8398"
+    },
+    "gem-knight": {
+      "bytes": 531,
+      "fnv1a64": "2cf15703b1f5b43b"
+    },
+    "gemini": {
+      "bytes": 521,
+      "fnv1a64": "9a5a90648ff06aed"
+    },
+    "genex": {
+      "bytes": 533,
+      "fnv1a64": "ba5ebeb111d4eca1"
+    },
+    "gishki": {
+      "bytes": 378,
+      "fnv1a64": "b3dd2d4a99d8115d"
+    },
+    "gladiator": {
+      "bytes": 691,
+      "fnv1a64": "0a5871ee4c4b9dc5"
+    },
+    "gravekeeper": {
+      "bytes": 451,
+      "fnv1a64": "3890321a93a1363f"
+    },
+    "gusto": {
+      "bytes": 534,
+      "fnv1a64": "2a27a4411a0fd906"
+    },
+    "harpie": {
+      "bytes": 444,
+      "fnv1a64": "58e9d34ffc61f28f"
+    },
+    "herald": {
+      "bytes": 495,
+      "fnv1a64": "c4dbab42e8b1373c"
+    },
+    "heroes": {
+      "bytes": 687,
+      "fnv1a64": "c2b55a2dfe7d61cb"
+    },
+    "ice-barrier": {
+      "bytes": 521,
+      "fnv1a64": "cadf634da862bf09"
+    },
+    "infernity": {
+      "bytes": 698,
+      "fnv1a64": "c46d52d7c30a1baf"
+    },
+    "iron-chain": {
+      "bytes": 540,
+      "fnv1a64": "d33d877a15c55a8d"
+    },
+    "jurrac": {
+      "bytes": 540,
+      "fnv1a64": "b7955721f6eed427"
+    },
+    "karakuri": {
+      "bytes": 565,
+      "fnv1a64": "e14879ae310fc57f"
+    },
+    "lightsworn": {
+      "bytes": 647,
+      "fnv1a64": "e2395cbe4f1b277f"
+    },
+    "machina": {
+      "bytes": 456,
+      "fnv1a64": "a5c2530badfd80d0"
+    },
+    "macro-dd": {
+      "bytes": 406,
+      "fnv1a64": "e44f60496de3daf4"
+    },
+    "malefic": {
+      "bytes": 529,
+      "fnv1a64": "1455759790f39ad6"
+    },
+    "monarch": {
+      "bytes": 553,
+      "fnv1a64": "159b78af82b00ea4"
+    },
+    "morphtronic": {
+      "bytes": 401,
+      "fnv1a64": "40f0ef7cd1439b75"
+    },
+    "naturia": {
+      "bytes": 529,
+      "fnv1a64": "e41fef7e3120f4fb"
+    },
+    "nordic": {
+      "bytes": 528,
+      "fnv1a64": "390fcdad7e038d3b"
+    },
+    "nurse": {
+      "bytes": 407,
+      "fnv1a64": "2d1977f8665cee15"
+    },
+    "ojama": {
+      "bytes": 491,
+      "fnv1a64": "4d45fd6908707fe6"
+    },
+    "psychic": {
+      "bytes": 528,
+      "fnv1a64": "50991dbf4dd6829c"
+    },
+    "pyramid": {
+      "bytes": 450,
+      "fnv1a64": "89ddbbe2782e53d1"
+    },
+    "quickdraw-plant": {
+      "bytes": 585,
+      "fnv1a64": "59906bb1d1bedf33"
+    },
+    "reptilianne": {
+      "bytes": 531,
+      "fnv1a64": "b7c65f7ae8e92b47"
+    },
+    "rock-block": {
+      "bytes": 509,
+      "fnv1a64": "6da6ce06586bdf63"
+    },
+    "scrap": {
+      "bytes": 528,
+      "fnv1a64": "8b91feb80b45c165"
+    },
+    "six-samurai": {
+      "bytes": 588,
+      "fnv1a64": "ed5cf1ef3611b727"
+    },
+    "spellcaster": {
+      "bytes": 366,
+      "fnv1a64": "053a1fc8b65e4acb"
+    },
+    "spirit": {
+      "bytes": 489,
+      "fnv1a64": "8ceb1307524831ed"
+    },
+    "tele-dad": {
+      "bytes": 575,
+      "fnv1a64": "6cc19f511ef7a5d3"
+    },
+    "toon": {
+      "bytes": 449,
+      "fnv1a64": "ff69dff2956b1580"
+    },
+    "venom": {
+      "bytes": 401,
+      "fnv1a64": "5fe9c410553c6202"
+    },
+    "verdict": {
+      "bytes": 449,
+      "fnv1a64": "48dd1e9e53c33a28"
+    },
+    "volcanic": {
+      "bytes": 400,
+      "fnv1a64": "07378b24dfdc660c"
+    },
+    "watt": {
+      "bytes": 473,
+      "fnv1a64": "860d9ddb107bbc7c"
+    },
+    "worm": {
+      "bytes": 430,
+      "fnv1a64": "df55b0ad634847eb"
+    },
+    "x-saber": {
+      "bytes": 576,
+      "fnv1a64": "ee211670b36825c0"
+    },
+    "zombie": {
+      "bytes": 523,
+      "fnv1a64": "0e1bcb5539a34c8f"
+    }
+  },
+  "rules": "MasterRule1 (0xD0700)",
+  "life_points": [
+    8000,
+    8000
+  ],
+  "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed",
+  "policy_seed": "engine seed + seat",
+  "initial_search": {
+    "arguments": {
+      "--confirm": "12",
+      "--final": "24",
+      "--games": "4",
+      "--library": "/tmp/new-decks-initial.so",
+      "--limit": "8192",
+      "--log": "true",
+      "--opponents": "existing",
+      "--output": "/tmp/new-decks-search-initial.jsonl",
+      "--policies": "fabled,counter-fairy,macro-dd,gusto,agents,scrap,zombie,herald,fish,cyber,gemini,psychic,deckout,chain-burn,nurse,benkei,alien,spirit,naturia,garden,destiny-board,venom,batteryman,gem-knight,flamvell,nordic,cloudian,volcanic,dark-world,worm,chaos,demise,amazoness,jurrac,genex,ice-barrier,reptilianne,iron-chain,malefic",
+      "--seed": "920000",
+      "--workers": "8",
+      "--worlds": "4"
+    },
+    "strict": true,
+    "results": {
+      "agents": {
+        "games": 52,
+        "baseline": 25.0,
+        "search": 36.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4807692307692308,
+        "search_rate": 0.6923076923076923,
+        "gap": 0.2115384615384615
+      },
+      "alien": {
+        "games": 52,
+        "baseline": 31.0,
+        "search": 40.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5961538461538461,
+        "search_rate": 0.7692307692307693,
+        "gap": 0.17307692307692313
+      },
+      "amazoness": {
+        "games": 52,
+        "baseline": 22.0,
+        "search": 36.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4230769230769231,
+        "search_rate": 0.6923076923076923,
+        "gap": 0.2692307692307692
+      },
+      "batteryman": {
+        "games": 52,
+        "baseline": 27.0,
+        "search": 31.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5192307692307693,
+        "search_rate": 0.5961538461538461,
+        "gap": 0.07692307692307687
+      },
+      "benkei": {
+        "games": 52,
+        "baseline": 17.0,
+        "search": 22.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.3269230769230769,
+        "search_rate": 0.4230769230769231,
+        "gap": 0.09615384615384615
+      },
+      "chain-burn": {
+        "games": 52,
+        "baseline": 14.0,
+        "search": 17.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.2692307692307692,
+        "search_rate": 0.3269230769230769,
+        "gap": 0.05769230769230771
+      },
+      "chaos": {
+        "games": 52,
+        "baseline": 34.0,
+        "search": 43.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.6538461538461539,
+        "search_rate": 0.8269230769230769,
+        "gap": 0.17307692307692302
+      },
+      "cloudian": {
+        "games": 52,
+        "baseline": 22.0,
+        "search": 29.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4230769230769231,
+        "search_rate": 0.5576923076923077,
+        "gap": 0.13461538461538464
+      },
+      "counter-fairy": {
+        "games": 52,
+        "baseline": 25.0,
+        "search": 31.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4807692307692308,
+        "search_rate": 0.5961538461538461,
+        "gap": 0.11538461538461536
+      },
+      "cyber": {
+        "games": 52,
+        "baseline": 9.0,
+        "search": 12.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.17307692307692307,
+        "search_rate": 0.23076923076923078,
+        "gap": 0.05769230769230771
+      },
+      "dark-world": {
+        "games": 52,
+        "baseline": 24.0,
+        "search": 28.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.46153846153846156,
+        "search_rate": 0.5384615384615384,
+        "gap": 0.07692307692307687
+      },
+      "deckout": {
+        "games": 52,
+        "baseline": 19.0,
+        "search": 23.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.36538461538461536,
+        "search_rate": 0.4423076923076923,
+        "gap": 0.07692307692307693
+      },
+      "demise": {
+        "games": 52,
+        "baseline": 23.0,
+        "search": 30.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4423076923076923,
+        "search_rate": 0.5769230769230769,
+        "gap": 0.13461538461538458
+      },
+      "destiny-board": {
+        "games": 52,
+        "baseline": 21.0,
+        "search": 28.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.40384615384615385,
+        "search_rate": 0.5384615384615384,
+        "gap": 0.13461538461538458
+      },
+      "fabled": {
+        "games": 52,
+        "baseline": 20.0,
+        "search": 25.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.38461538461538464,
+        "search_rate": 0.4807692307692308,
+        "gap": 0.09615384615384615
+      },
+      "fish": {
+        "games": 52,
+        "baseline": 24.0,
+        "search": 30.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.46153846153846156,
+        "search_rate": 0.5769230769230769,
+        "gap": 0.11538461538461531
+      },
+      "flamvell": {
+        "games": 52,
+        "baseline": 15.0,
+        "search": 27.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.28846153846153844,
+        "search_rate": 0.5192307692307693,
+        "gap": 0.23076923076923084
+      },
+      "garden": {
+        "games": 52,
+        "baseline": 22.0,
+        "search": 31.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4230769230769231,
+        "search_rate": 0.5961538461538461,
+        "gap": 0.17307692307692307
+      },
+      "gem-knight": {
+        "games": 52,
+        "baseline": 24.0,
+        "search": 25.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.46153846153846156,
+        "search_rate": 0.4807692307692308,
+        "gap": 0.019230769230769218
+      },
+      "gemini": {
+        "games": 52,
+        "baseline": 35.0,
+        "search": 44.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.6730769230769231,
+        "search_rate": 0.8461538461538461,
+        "gap": 0.17307692307692302
+      },
+      "genex": {
+        "games": 52,
+        "baseline": 28.0,
+        "search": 41.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5384615384615384,
+        "search_rate": 0.7884615384615384,
+        "gap": 0.25
+      },
+      "gusto": {
+        "games": 52,
+        "baseline": 23.0,
+        "search": 40.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4423076923076923,
+        "search_rate": 0.7692307692307693,
+        "gap": 0.326923076923077
+      },
+      "herald": {
+        "games": 52,
+        "baseline": 21.0,
+        "search": 25.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.40384615384615385,
+        "search_rate": 0.4807692307692308,
+        "gap": 0.07692307692307693
+      },
+      "ice-barrier": {
+        "games": 52,
+        "baseline": 16.0,
+        "search": 26.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.3076923076923077,
+        "search_rate": 0.5,
+        "gap": 0.1923076923076923
+      },
+      "iron-chain": {
+        "games": 52,
+        "baseline": 15.0,
+        "search": 30.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.28846153846153844,
+        "search_rate": 0.5769230769230769,
+        "gap": 0.28846153846153844
+      },
+      "jurrac": {
+        "games": 52,
+        "baseline": 19.0,
+        "search": 31.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.36538461538461536,
+        "search_rate": 0.5961538461538461,
+        "gap": 0.23076923076923078
+      },
+      "macro-dd": {
+        "games": 52,
+        "baseline": 34.0,
+        "search": 43.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.6538461538461539,
+        "search_rate": 0.8269230769230769,
+        "gap": 0.17307692307692302
+      },
+      "malefic": {
+        "games": 52,
+        "baseline": 25.0,
+        "search": 35.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4807692307692308,
+        "search_rate": 0.6730769230769231,
+        "gap": 0.19230769230769235
+      },
+      "naturia": {
+        "games": 52,
+        "baseline": 24.0,
+        "search": 38.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.46153846153846156,
+        "search_rate": 0.7307692307692307,
+        "gap": 0.26923076923076916
+      },
+      "nordic": {
+        "games": 52,
+        "baseline": 30.0,
+        "search": 42.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5769230769230769,
+        "search_rate": 0.8076923076923077,
+        "gap": 0.23076923076923084
+      },
+      "nurse": {
+        "games": 52,
+        "baseline": 16.0,
+        "search": 22.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.3076923076923077,
+        "search_rate": 0.4230769230769231,
+        "gap": 0.11538461538461536
+      },
+      "psychic": {
+        "games": 52,
+        "baseline": 27.0,
+        "search": 37.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5192307692307693,
+        "search_rate": 0.7115384615384616,
+        "gap": 0.1923076923076923
+      },
+      "reptilianne": {
+        "games": 52,
+        "baseline": 24.0,
+        "search": 32.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.46153846153846156,
+        "search_rate": 0.6153846153846154,
+        "gap": 0.15384615384615385
+      },
+      "scrap": {
+        "games": 52,
+        "baseline": 32.0,
+        "search": 43.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.6153846153846154,
+        "search_rate": 0.8269230769230769,
+        "gap": 0.21153846153846145
+      },
+      "spirit": {
+        "games": 52,
+        "baseline": 12.0,
+        "search": 22.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.23076923076923078,
+        "search_rate": 0.4230769230769231,
+        "gap": 0.1923076923076923
+      },
+      "venom": {
+        "games": 52,
+        "baseline": 8.0,
+        "search": 9.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.15384615384615385,
+        "search_rate": 0.17307692307692307,
+        "gap": 0.019230769230769218
+      },
+      "volcanic": {
+        "games": 52,
+        "baseline": 23.0,
+        "search": 29.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.4423076923076923,
+        "search_rate": 0.5576923076923077,
+        "gap": 0.11538461538461542
+      },
+      "worm": {
+        "games": 52,
+        "baseline": 20.0,
+        "search": 29.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.38461538461538464,
+        "search_rate": 0.5576923076923077,
+        "gap": 0.17307692307692307
+      },
+      "zombie": {
+        "games": 52,
+        "baseline": 26.0,
+        "search": 37.0,
+        "errors": 0,
+        "limits": 0,
+        "failed_playouts": 0,
+        "baseline_rate": 0.5,
+        "search_rate": 0.7115384615384616,
+        "gap": 0.21153846153846156
+      }
+    }
+  },
+  "independent_comparison": {
+    "arguments": {
+      "--baseline": "/tmp/new-decks-initial.so",
+      "--candidate": "/tmp/new-decks-final.so",
+      "--games": "64",
+      "--limit": "8192",
+      "--opponents": "blackwing,burn,rock-block,monarch,lightsworn,infernity,gladiator,heroes,gishki,crystal,morphtronic,dragunity,spellcaster,ojama,watt,pyramid,arcana,toon,gravekeeper,karakuri,harpie,fortune-lady,destiny-hero,six-samurai,tele-dad,quickdraw-plant,machina,x-saber,draconic-might,countdown,verdict,exodia",
+      "--output": "/tmp/new-decks-heldout.jsonl",
+      "--policies": "fabled,counter-fairy,macro-dd,gusto,agents,scrap,zombie,herald,fish,cyber,gemini,psychic,deckout,chain-burn,nurse,benkei,alien,spirit,naturia,garden,destiny-board,venom,batteryman,gem-knight,flamvell,nordic,cloudian,volcanic,dark-world,worm,chaos,demise,amazoness,jurrac,genex,ice-barrier,reptilianne,iron-chain,malefic",
+      "--seed": "950000",
+      "--workers": "8"
+    },
+    "overall": {
+      "baseline": 0.4496569511217949,
+      "candidate": 0.47825896434294873,
+      "delta": 0.028602013221153848,
+      "identical": 56173,
+      "improved": 3832,
+      "limits": 0,
+      "paired_95_half_width": 0.0017863125486796555,
+      "pairs": 79872,
+      "regressed": 1542
+    },
+    "results": {
+      "agents": {
+        "pairs": 2048,
+        "baseline_score": 1195.0,
+        "candidate_score": 1330.0,
+        "improved": 221,
+        "regressed": 86,
+        "identical": 670,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.58349609375,
+        "candidate": 0.6494140625,
+        "delta": 0.06591796875,
+        "paired_95_half_width": 0.0165277579665919
+      },
+      "alien": {
+        "pairs": 2048,
+        "baseline_score": 1041.0,
+        "candidate_score": 1195.0,
+        "improved": 190,
+        "regressed": 36,
+        "identical": 991,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.50830078125,
+        "candidate": 0.58349609375,
+        "delta": 0.0751953125,
+        "paired_95_half_width": 0.014017312017264413
+      },
+      "amazoness": {
+        "pairs": 2048,
+        "baseline_score": 945.0,
+        "candidate_score": 1062.0,
+        "improved": 186,
+        "regressed": 69,
+        "identical": 905,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.46142578125,
+        "candidate": 0.5185546875,
+        "delta": 0.05712890625,
+        "paired_95_half_width": 0.015084622771661265
+      },
+      "batteryman": {
+        "pairs": 2048,
+        "baseline_score": 861.0,
+        "candidate_score": 998.0,
+        "improved": 180,
+        "regressed": 43,
+        "identical": 1231,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.42041015625,
+        "candidate": 0.4873046875,
+        "delta": 0.06689453125,
+        "paired_95_half_width": 0.013998194562730293
+      },
+      "benkei": {
+        "pairs": 2048,
+        "baseline_score": 641.0,
+        "candidate_score": 719.0,
+        "improved": 137,
+        "regressed": 59,
+        "identical": 1168,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.31298828125,
+        "candidate": 0.35107421875,
+        "delta": 0.0380859375,
+        "paired_95_half_width": 0.013299759517144592
+      },
+      "chain-burn": {
+        "pairs": 2048,
+        "baseline_score": 559.0,
+        "candidate_score": 571.0,
+        "improved": 16,
+        "regressed": 4,
+        "identical": 1830,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.27294921875,
+        "candidate": 0.27880859375,
+        "delta": 0.005859375,
+        "paired_95_half_width": 0.00427348730687505
+      },
+      "chaos": {
+        "pairs": 2048,
+        "baseline_score": 1323.0,
+        "candidate_score": 1376.0,
+        "improved": 63,
+        "regressed": 10,
+        "identical": 1771,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.64599609375,
+        "candidate": 0.671875,
+        "delta": 0.02587890625,
+        "paired_95_half_width": 0.008101675672475153
+      },
+      "cloudian": {
+        "pairs": 2048,
+        "baseline_score": 999.0,
+        "candidate_score": 1020.0,
+        "improved": 83,
+        "regressed": 62,
+        "identical": 1126,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.48779296875,
+        "candidate": 0.498046875,
+        "delta": 0.01025390625,
+        "paired_95_half_width": 0.011518434608895536
+      },
+      "counter-fairy": {
+        "pairs": 2048,
+        "baseline_score": 1008.0,
+        "candidate_score": 1069.0,
+        "improved": 70,
+        "regressed": 9,
+        "identical": 1744,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.4921875,
+        "candidate": 0.52197265625,
+        "delta": 0.02978515625,
+        "paired_95_half_width": 0.008409947760025472
+      },
+      "cyber": {
+        "pairs": 2048,
+        "baseline_score": 474.0,
+        "candidate_score": 474.0,
+        "improved": 0,
+        "regressed": 0,
+        "identical": 2048,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.2314453125,
+        "candidate": 0.2314453125,
+        "delta": 0.0,
+        "paired_95_half_width": 0.0
+      },
+      "dark-world": {
+        "pairs": 2048,
+        "baseline_score": 1142.0,
+        "candidate_score": 1171.0,
+        "improved": 90,
+        "regressed": 61,
+        "identical": 1285,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.5576171875,
+        "candidate": 0.57177734375,
+        "delta": 0.01416015625,
+        "paired_95_half_width": 0.011747063357582075
+      },
+      "deckout": {
+        "pairs": 2048,
+        "baseline_score": 764.0,
+        "candidate_score": 1007.5,
+        "improved": 404,
+        "regressed": 156,
+        "identical": 504,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.373046875,
+        "candidate": 0.491943359375,
+        "delta": 0.118896484375,
+        "paired_95_half_width": 0.021887664639731668
+      },
+      "demise": {
+        "pairs": 2048,
+        "baseline_score": 1034.0,
+        "candidate_score": 1050.0,
+        "improved": 50,
+        "regressed": 34,
+        "identical": 1700,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.5048828125,
+        "candidate": 0.5126953125,
+        "delta": 0.0078125,
+        "paired_95_half_width": 0.008766948199050866
+      },
+      "destiny-board": {
+        "pairs": 2048,
+        "baseline_score": 1008.0,
+        "candidate_score": 1044.0,
+        "improved": 37,
+        "regressed": 1,
+        "identical": 1970,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.4921875,
+        "candidate": 0.509765625,
+        "delta": 0.017578125,
+        "paired_95_half_width": 0.005851637029467753
+      },
+      "fabled": {
+        "pairs": 2048,
+        "baseline_score": 813.0,
+        "candidate_score": 815.0,
+        "improved": 62,
+        "regressed": 60,
+        "identical": 1495,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.39697265625,
+        "candidate": 0.39794921875,
+        "delta": 0.0009765625,
+        "paired_95_half_width": 0.010573252721570102
+      },
+      "fish": {
+        "pairs": 2048,
+        "baseline_score": 1050.0,
+        "candidate_score": 1068.0,
+        "improved": 45,
+        "regressed": 27,
+        "identical": 1732,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.5126953125,
+        "candidate": 0.521484375,
+        "delta": 0.0087890625,
+        "paired_95_half_width": 0.008113734023061614
+      },
+      "flamvell": {
+        "pairs": 2048,
+        "baseline_score": 881.0,
+        "candidate_score": 915.0,
+        "improved": 76,
+        "regressed": 42,
+        "identical": 1106,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.43017578125,
+        "candidate": 0.44677734375,
+        "delta": 0.0166015625,
+        "paired_95_half_width": 0.010373658839080556
+      },
+      "garden": {
+        "pairs": 2048,
+        "baseline_score": 858.0,
+        "candidate_score": 934.0,
+        "improved": 126,
+        "regressed": 50,
+        "identical": 948,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.4189453125,
+        "candidate": 0.4560546875,
+        "delta": 0.037109375,
+        "paired_95_half_width": 0.012597392172288379
+      },
+      "gem-knight": {
+        "pairs": 2048,
+        "baseline_score": 908.0,
+        "candidate_score": 922.0,
+        "improved": 82,
+        "regressed": 68,
+        "identical": 1225,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.443359375,
+        "candidate": 0.4501953125,
+        "delta": 0.0068359375,
+        "paired_95_half_width": 0.011720313127257173
+      },
+      "gemini": {
+        "pairs": 2048,
+        "baseline_score": 1167.0,
+        "candidate_score": 1171.0,
+        "improved": 11,
+        "regressed": 7,
+        "identical": 1829,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.56982421875,
+        "candidate": 0.57177734375,
+        "delta": 0.001953125,
+        "paired_95_half_width": 0.004060449916170805
+      },
+      "genex": {
+        "pairs": 2048,
+        "baseline_score": 999.0,
+        "candidate_score": 1008.0,
+        "improved": 57,
+        "regressed": 48,
+        "identical": 1528,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.48779296875,
+        "candidate": 0.4921875,
+        "delta": 0.00439453125,
+        "paired_95_half_width": 0.009807199598503107
+      },
+      "gusto": {
+        "pairs": 2048,
+        "baseline_score": 1034.0,
+        "candidate_score": 1055.0,
+        "improved": 77,
+        "regressed": 56,
+        "identical": 1347,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.5048828125,
+        "candidate": 0.51513671875,
+        "delta": 0.01025390625,
+        "paired_95_half_width": 0.011030777887473009
+      },
+      "herald": {
+        "pairs": 2048,
+        "baseline_score": 581.0,
+        "candidate_score": 671.0,
+        "improved": 118,
+        "regressed": 28,
+        "identical": 1549,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.28369140625,
+        "candidate": 0.32763671875,
+        "delta": 0.0439453125,
+        "paired_95_half_width": 0.011408933007718837
+      },
+      "ice-barrier": {
+        "pairs": 2048,
+        "baseline_score": 750.5,
+        "candidate_score": 873.0,
+        "improved": 146,
+        "regressed": 23,
+        "identical": 1274,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.366455078125,
+        "candidate": 0.42626953125,
+        "delta": 0.059814453125,
+        "paired_95_half_width": 0.012143415887984833
+      },
+      "iron-chain": {
+        "pairs": 2048,
+        "baseline_score": 726.0,
+        "candidate_score": 859.0,
+        "improved": 182,
+        "regressed": 49,
+        "identical": 1024,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.3544921875,
+        "candidate": 0.41943359375,
+        "delta": 0.06494140625,
+        "paired_95_half_width": 0.01427457655355489
+      },
+      "jurrac": {
+        "pairs": 2048,
+        "baseline_score": 1062.0,
+        "candidate_score": 1057.0,
+        "improved": 10,
+        "regressed": 15,
+        "identical": 1911,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.5185546875,
+        "candidate": 0.51611328125,
+        "delta": -0.00244140625,
+        "paired_95_half_width": 0.00478515625
+      },
+      "macro-dd": {
+        "pairs": 2048,
+        "baseline_score": 1396.0,
+        "candidate_score": 1396.0,
+        "improved": 0,
+        "regressed": 0,
+        "identical": 2048,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.681640625,
+        "candidate": 0.681640625,
+        "delta": 0.0,
+        "paired_95_half_width": 0.0
+      },
+      "malefic": {
+        "pairs": 2048,
+        "baseline_score": 1037.0,
+        "candidate_score": 1167.0,
+        "improved": 155,
+        "regressed": 25,
+        "identical": 1607,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.50634765625,
+        "candidate": 0.56982421875,
+        "delta": 0.0634765625,
+        "paired_95_half_width": 0.012545214095566033
+      },
+      "naturia": {
+        "pairs": 2048,
+        "baseline_score": 1096.5,
+        "candidate_score": 1133.0,
+        "improved": 148,
+        "regressed": 111,
+        "identical": 794,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.535400390625,
+        "candidate": 0.55322265625,
+        "delta": 0.017822265625,
+        "paired_95_half_width": 0.015364013179340913
+      },
+      "nordic": {
+        "pairs": 2048,
+        "baseline_score": 1087.0,
+        "candidate_score": 1218.0,
+        "improved": 205,
+        "regressed": 74,
+        "identical": 995,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.53076171875,
+        "candidate": 0.5947265625,
+        "delta": 0.06396484375,
+        "paired_95_half_width": 0.015747535808066773
+      },
+      "nurse": {
+        "pairs": 2048,
+        "baseline_score": 801.0,
+        "candidate_score": 801.0,
+        "improved": 0,
+        "regressed": 0,
+        "identical": 2048,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.39111328125,
+        "candidate": 0.39111328125,
+        "delta": 0.0,
+        "paired_95_half_width": 0.0
+      },
+      "psychic": {
+        "pairs": 2048,
+        "baseline_score": 928.0,
+        "candidate_score": 998.0,
+        "improved": 78,
+        "regressed": 8,
+        "identical": 1625,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.453125,
+        "candidate": 0.4873046875,
+        "delta": 0.0341796875,
+        "paired_95_half_width": 0.00875295286385213
+      },
+      "reptilianne": {
+        "pairs": 2048,
+        "baseline_score": 912.0,
+        "candidate_score": 913.0,
+        "improved": 37,
+        "regressed": 36,
+        "identical": 1608,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.4453125,
+        "candidate": 0.44580078125,
+        "delta": 0.00048828125,
+        "paired_95_half_width": 0.00817884827058862
+      },
+      "scrap": {
+        "pairs": 2048,
+        "baseline_score": 1362.0,
+        "candidate_score": 1385.0,
+        "improved": 42,
+        "regressed": 19,
+        "identical": 1771,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.6650390625,
+        "candidate": 0.67626953125,
+        "delta": 0.01123046875,
+        "paired_95_half_width": 0.007460632406182548
+      },
+      "spirit": {
+        "pairs": 2048,
+        "baseline_score": 591.0,
+        "candidate_score": 591.0,
+        "improved": 0,
+        "regressed": 0,
+        "identical": 2040,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.28857421875,
+        "candidate": 0.28857421875,
+        "delta": 0.0,
+        "paired_95_half_width": 0.0
+      },
+      "venom": {
+        "pairs": 2048,
+        "baseline_score": 329.0,
+        "candidate_score": 329.0,
+        "improved": 0,
+        "regressed": 0,
+        "identical": 2048,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.16064453125,
+        "candidate": 0.16064453125,
+        "delta": 0.0,
+        "paired_95_half_width": 0.0
+      },
+      "volcanic": {
+        "pairs": 2048,
+        "baseline_score": 864.0,
+        "candidate_score": 1012.0,
+        "improved": 218,
+        "regressed": 70,
+        "identical": 738,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.421875,
+        "candidate": 0.494140625,
+        "delta": 0.072265625,
+        "paired_95_half_width": 0.015940824457712405
+      },
+      "worm": {
+        "pairs": 2048,
+        "baseline_score": 758.0,
+        "candidate_score": 849.0,
+        "improved": 136,
+        "regressed": 45,
+        "identical": 1384,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.3701171875,
+        "candidate": 0.41455078125,
+        "delta": 0.04443359375,
+        "paired_95_half_width": 0.012734018794869902
+      },
+      "zombie": {
+        "pairs": 2048,
+        "baseline_score": 930.0,
+        "candidate_score": 973.0,
+        "improved": 94,
+        "regressed": 51,
+        "identical": 1556,
+        "failures": 0,
+        "caps": 0,
+        "baseline": 0.4541015625,
+        "candidate": 0.47509765625,
+        "delta": 0.02099609375,
+        "paired_95_half_width": 0.011491054821704939
+      }
+    }
+  },
+  "ranking": {
+    "arguments": {
+      "--games": "64",
+      "--library": "/tmp/new-decks-final.so",
+      "--limit": "8192",
+      "--markdown": "/tmp/new-decks-final-ranking.md",
+      "--output": "/tmp/new-decks-final-ranking.jsonl",
+      "--policies": "all",
+      "--seed": "960000",
+      "--workers": "8"
+    },
+    "games": 159040,
+    "failures": 0,
+    "limits": 0,
+    "policies": 71
+  },
+  "original_policy_regression": {
+    "stage": "Candidate 7; subsequent edits confined to the new policies and their shared helpers",
+    "arguments": {
+      "--baseline": "/tmp/new-decks-initial.so",
+      "--candidate": "/tmp/new-decks-candidate7.so",
+      "--games": "16",
+      "--limit": "8192",
+      "--opponents": "existing",
+      "--output": "/tmp/new-decks-original-regression.jsonl",
+      "--policies": "blackwing,burn,rock-block,monarch,lightsworn,infernity,gladiator,heroes,gishki,crystal,morphtronic,dragunity,spellcaster,ojama,watt,pyramid,arcana,toon,gravekeeper,karakuri,harpie,fortune-lady,destiny-hero,six-samurai,tele-dad,quickdraw-plant,machina,x-saber,draconic-might,countdown,verdict,exodia",
+      "--seed": "940000",
+      "--workers": "8"
+    },
+    "overall": {
+      "baseline": 0.49038461538461536,
+      "candidate": 0.49038461538461536,
+      "delta": 0.0,
+      "identical": 6448,
+      "improved": 0,
+      "limits": 0,
+      "paired_95_half_width": 0.0,
+      "pairs": 6448,
+      "regressed": 0
+    }
+  }
+}

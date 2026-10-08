@@ -167,7 +167,7 @@ impl Strategy for Fabled {
             && ctx.hand_size(ctx.me) >= 2
             && !ctx.effects_drained()
         {
-            if let Some(i) = tactics::set_spell_trap(self, t) {
+            if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::SetSpellTrap) {
                 return t.pick(i);
             }
         }
@@ -208,8 +208,8 @@ impl Strategy for Fabled {
                     } else {
                         0.0
                     }
-                    + if code == GRIMRO && ctx.in_hand(CHAWA) {
-                        1500.0
+                    + if code == CHAWA && ctx.in_hand(GRIMRO) {
+                        4000.0
                     } else {
                         0.0
                     },
@@ -241,9 +241,8 @@ impl Strategy for Fabled {
         let c = t.choice(index);
         let code = t.ctx.canonical(c.code()?);
         Some(match code {
-            CERBURREL | KRUS | GANASHIA | LURRIE | CATSITH | RAGIN | LEVIATHAN => {
-                Response::new(120.0)
-            }
+            CERBURREL | KRUS | GANASHIA | LURRIE | CATSITH | RAGIN | LEVIATHAN | 52687916
+            | 27315304 => Response::new(120.0),
             NOZOOCHEE if c.at().map(|a| a.location) == Some(Location::MonsterZone) => {
                 Response::new(120.0)
             }

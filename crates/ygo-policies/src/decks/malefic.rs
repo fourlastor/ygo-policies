@@ -42,6 +42,11 @@ impl Strategy for Malefic {
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
         if !Self::supported(&ctx) {
+            if !ctx.in_hand(WORLD) && !ctx.in_hand(VALLEY) {
+                if let Some(i) = t.activate(73628505) {
+                    return t.pick(i);
+                }
+            }
             for k in [WORLD, VALLEY] {
                 if let Some(i) = t.activate(k) {
                     return t.pick(i);

@@ -44,6 +44,16 @@ impl Strategy for DarkWorld {
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
         if ctx.deck_size(ctx.me) >= 5 {
+            let can_flip_jar = t.choices().any(|(_, c)| {
+                c.kind == ChoiceKind::ChangePosition
+                    && c.code() == Some(JAR)
+                    && t.view(c).map_or(false, |v| !v.position.face_up)
+            });
+            if can_flip_jar {
+                if let Some(i) = t.find_where(|c| c.kind == ChoiceKind::SetSpellTrap) {
+                    return t.pick(i);
+                }
+            }
             if let Some(i) = t.find_where(|c| {
                 c.kind == ChoiceKind::ChangePosition
                     && c.code() == Some(JAR)
@@ -96,6 +106,10 @@ impl Strategy for DarkWorld {
     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
         Some(match (c.kind, c.code()?) {
             (ChoiceKind::NormalSummon, RAVEN) if Self::fuel(&t.ctx) => Some(3800.0),
+            (ChoiceKind::NormalSummon, BROWW) if t.ctx.monsters(t.ctx.opp).is_empty() => {
+                Some(1400.0)
+            }
+            (ChoiceKind::SetMonster, BROWW) if t.ctx.monsters(t.ctx.me).is_empty() => Some(800.0),
             (_, GOLDD | SILLVA | BROWW) => None,
             (ChoiceKind::SetMonster, JAR) => Some(2400.0),
             _ => return None,

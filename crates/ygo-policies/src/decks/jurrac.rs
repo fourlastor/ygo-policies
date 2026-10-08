@@ -1,8 +1,8 @@
 //! Footprints in Fire: battle recruitment into Dinosaur Synchros.
 use super::support;
-use crate::agent::{Response, Strategy, Turn};
+use crate::agent::{Outcome, Response, Strategy, Turn};
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, Hint, Member};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Member};
 pub const DECK: &str = "Footprints in Fire";
 const GUAIBA: u32 = 11012887;
 const VELO: u32 = 59312550;
@@ -90,6 +90,30 @@ impl Strategy for Jurrac {
             );
         }
         support::material_score(&t.ctx, m, t.decision.hint)
+    }
+    fn attack_outcome(&self, ctx: &Ctx, attacker: &CardView, target: &CardView) -> Option<Outcome> {
+        let shrink = crate::staples::SHRINK;
+        if ctx.in_hand(shrink)
+            && target.position.face_up
+            && target.position.attack
+            && !ctx.wasted(shrink)
+            && ctx.reaches(target, shrink, true, false)
+            && ![ctx.me, ctx.opp].iter().any(|&p| {
+                ctx.face_up_on_field(p, 58921041)
+                    || ctx.face_up_on_field(p, 61740673)
+                    || ctx.face_up_on_field(p, 84636823)
+            })
+        {
+            return Some(crate::tactics::default_outcome(
+                ctx,
+                attacker,
+                target,
+                (ctx.view_data(target).attack / 2)
+                    .min(target.attack / 2)
+                    .max(0),
+            ));
+        }
+        None
     }
     fn special_summon(&self, t: &Turn, c: &Choice) -> Option<bool> {
         if c.code() == Some(METEOR) {

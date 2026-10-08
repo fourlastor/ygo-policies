@@ -41,6 +41,9 @@ impl Strategy for Garden {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::copy_plant(self, t) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         for code in [LONEFIRE, EVIL, ONE, FOOLISH] {
             if let Some(i) = t.activate(code) {
@@ -158,6 +161,11 @@ impl Strategy for Garden {
                 Some(3500.0)
             }
             (ChoiceKind::NormalSummon, SPORE | BULB | COPY) => None,
+            (ChoiceKind::NormalSummon, GIRL | WITCH)
+                if ctx.monsters(ctx.opp).is_empty() && t.has(ChoiceKind::EnterBattle) =>
+            {
+                Some(1800.0)
+            }
             (ChoiceKind::SetMonster, GIRL | WITCH | DANDY) => Some(1700.0),
             _ => return None,
         })
@@ -180,6 +188,9 @@ impl Strategy for Garden {
         })
     }
     fn select(&self, t: &Turn, m: &Member) -> Option<f64> {
+        if let Some(score) = support::spore_cost(self, t, m) {
+            return Some(score);
+        }
         let ctx = t.ctx;
         if m.at.controller != ctx.me {
             return None;

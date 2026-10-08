@@ -64,7 +64,11 @@ impl Strategy for Demise {
                     if let Some(c) = ctx
                         .monsters(ctx.me)
                         .into_iter()
-                        .filter(|c| c.position.face_up && c.attack >= 2300)
+                        .filter(|c| {
+                            c.position.face_up
+                                && c.attack >= 2300
+                                && c.attack < 2 * ctx.view_data(c).attack
+                        })
                         .max_by_key(|c| c.attack)
                     {
                         return t.pick_targeting(i, vec![c.at]);
@@ -78,6 +82,15 @@ impl Strategy for Demise {
         if ctx.count_in(ctx.me, Location::Hand, DEMISE) > 1
             || ctx.count_in(ctx.me, Location::Hand, DOZER) > 1
             || ctx.face_up_on_field(ctx.me, DEMISE)
+            || ctx.in_hand(RUIN)
+            || (ctx.in_hand(DOZER)
+                && !ctx.in_hand(ART)
+                && ctx
+                    .graveyard(ctx.me)
+                    .iter()
+                    .filter(|c| ctx.view_data(c).race & crate::cards::races::INSECT != 0)
+                    .count()
+                    < 2)
         {
             if let Some(i) = t.activate(TRADE) {
                 return t.pick(i);
@@ -112,6 +125,17 @@ impl Strategy for Demise {
                 ART if !ctx.in_hand(ART) => 5500.0,
                 END | CONTRACT if !ctx.in_hand(END) && !ctx.in_hand(CONTRACT) => 5000.0,
                 _ => value(self, &ctx, Some(code), None) as f64,
+            });
+        }
+        if t.decision.hint == Hint::Discard && t.memory.last_activated == Some(TRADE) {
+            return Some(if ctx.count_in(ctx.me, Location::Hand, code) > 1 {
+                6000.0
+            } else if code == RUIN {
+                4500.0
+            } else if code == DEMISE && !ctx.face_up_on_field(ctx.me, DEMISE) {
+                -10000.0
+            } else {
+                -value(self, &ctx, Some(code), None) as f64
             });
         }
         if t.decision.hint == Hint::SpecialSummon {

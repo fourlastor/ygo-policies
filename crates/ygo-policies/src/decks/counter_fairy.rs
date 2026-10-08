@@ -33,9 +33,7 @@ impl CounterFairy {
     }
 
     fn honest(ctx: &Ctx) -> bool {
-        if !ctx.phase().map_or(false, |p| p.is_damage_step()) {
-            return false;
-        }
+        // The engine offers Honest only in its legal battle window.
         let (Some(a), Some(b)) = (ctx.battle_attacker(), ctx.battle_target()) else {
             return false;
         };
