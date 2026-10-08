@@ -4,6 +4,7 @@ mod knowledge;
 mod probe;
 mod replay;
 mod report;
+mod ygo_agent;
 use engine::{Asked, Core, Deck, PlayOptions, PolicyLibrary, Result, SearchOptions};
 use serde_json::{json, Value};
 use std::{
@@ -31,7 +32,7 @@ struct Job {
 
 fn names(spec: &str, catalog: &std::collections::HashMap<String, String>) -> Result<Vec<String>> {
     let mut result: Vec<_> = match spec {
-        "all" => catalog.keys().cloned().collect(),
+        "all" => catalog.keys().filter(|n| !["blue-eyes", "ygo-agent", "first", "random"].contains(&n.as_str())).cloned().collect(),
         "existing" => EXISTING.split(',').map(str::to_owned).collect(),
         _ => spec.split(',').map(str::to_owned).collect(),
     };
@@ -51,7 +52,7 @@ fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed:
     let mut pairs = BTreeSet::new();
     for a in pilots {
         for b in opponents {
-            if a == b {
+            if a == b && mode != "matchup" {
                 continue;
             }
             if mode != "compare" && a > b {
@@ -216,6 +217,10 @@ fn help() {
   --limit 4096 --trace true --markdown PATH\n\
   --first POLICY (that policy goes first in every game; default: seats alternate)\n\
   --lp 8000,4000 (starting Life Points of the first and second player)\n\
+  --rules mr1|mr5 (default mr1)\n\
+  --server http://127.0.0.1:3013 (required for ygo-agent; MR5 matchup)\n\
+  matchup --policies blue-eyes --opponents random,first --rules mr5 --games 1000\n\
+  matchup --policies ygo-agent --opponents ygo-agent --rules mr5 --server URL\n\
 Deck lists and libraries are never modified. Each pair alternates seats.\n\
 Compare keeps opponents on the baseline library and runs both versions on identical seeds.\n\
 \nknowledge stages every monster of a card pool against the engine and writes what it\n\
@@ -304,6 +309,8 @@ fn run() -> Result<()> {
             "--log",
             "--record",
             "--which",
+            "--rules",
+            "--server",
         ]
         .contains(&key.as_str())
         {
@@ -348,6 +355,11 @@ fn run() -> Result<()> {
             &std::fs::read(input.with_extension("metadata.json")).map_err(|e| e.to_string())?,
         )
         .map_err(|e| e.to_string())?;
+        if rows.iter().any(|r| r["a"] == r["b"]
+            || [r["a"].as_str().unwrap_or(""), r["b"].as_str().unwrap_or("")]
+                .iter().any(|n| ["blue-eyes", "first", "random", "ygo-agent"].contains(n))) {
+            return ygo_agent::summary(&rows, &metadata, &input.with_extension("summary.json"));
+        }
         return report::ranking(
             &rows,
             &metadata,
@@ -465,11 +477,13 @@ fn run() -> Result<()> {
     } else {
         library
     };
-    let catalog = PolicyLibrary::open(&baseline)?.catalog;
+    let mut catalog = PolicyLibrary::open(&baseline)?.catalog;
+    catalog.insert("ygo-agent".into(), "BlueEyes".into());
     if mode != "compare" && (args.contains_key("--baseline") || args.contains_key("--candidate")) {
         return Err("--baseline/--candidate require compare mode".into());
     }
-    let candidate_catalog = PolicyLibrary::open(&candidate)?.catalog;
+    let mut candidate_catalog = PolicyLibrary::open(&candidate)?.catalog;
+    candidate_catalog.insert("ygo-agent".into(), "BlueEyes".into());
     let pilots = names(
         args.get("--policies").map(String::as_str).unwrap_or("all"),
         &catalog,
@@ -536,6 +550,16 @@ fn run() -> Result<()> {
     let (validate, strict, foresight) = (flag("--validate", false)?, flag("--strict", true)?, flag("--foresight", false)?);
     let log = flag("--log", false)?;
     let record = flag("--record", false)?;
+    let flags = match args.get("--rules").map(String::as_str).unwrap_or("mr1") {
+        "mr1" => engine::DuelOptions::MASTER_RULE_1,
+        "mr5" => engine::DuelOptions::MASTER_RULE_5,
+        _ => return Err("--rules must be mr1 or mr5".into()),
+    };
+    let has_agent = pilots.iter().chain(&opponents).any(|p| p == "ygo-agent");
+    let server = args.get("--server").map(String::as_str);
+    if has_agent && (mode != "matchup" || server.is_none() || flags != engine::DuelOptions::MASTER_RULE_5) {
+        return Err("ygo-agent requires matchup --rules mr5 --server http://HOST:PORT".into());
+    }
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
     }
@@ -555,7 +579,8 @@ fn run() -> Result<()> {
         deck_ids.insert(name.clone(), file_identity(&file));
     }
     let metadata = json!({"mode": mode, "arguments": args, "games_per_matchup": games, "seed": seed,
-        "decision_limit": limit, "life_points": life_points, "first": first, "rules": "MasterRule1 (0xD0700)",
+        "decision_limit": limit, "life_points": life_points, "first": first,
+        "rules": if flags == engine::DuelOptions::MASTER_RULE_5 { "MasterRule5 (0x2E800)" } else { "MasterRule1 (0xD0700)" },
         "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed", "policy_seed": "engine seed + seat",
         "engine": core_path.as_ref().map(|p| file_identity(p)).unwrap_or_else(|| json!({"linked": true})),
         "cards": file_identity(&cards), "scripts": git_revision(&scripts), "core": git_revision(&root.join("vendor/ocgcore")),
@@ -600,7 +625,7 @@ fn run() -> Result<()> {
                         let mut row = json!({"a": a, "b": b, "seed": seed, "seat": seat});
                         if mode == "search" {
                             let policies = [&candidate, &candidate];
-                            let options = PlayOptions { seed, limit, trace: false, life_points, record };
+                            let options = PlayOptions { seed, limit, trace: false, life_points, record, flags };
                             row["baseline"] = scored(engine::play(&core, &decks, policies, names, cards, options), seat);
                             let started = std::time::Instant::now();
                             let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
@@ -622,10 +647,13 @@ fn run() -> Result<()> {
                             } else {
                                 [&baseline, library]
                             };
-                            row[label] = scored(
-                                engine::play(&core, &decks, policies, names, cards, PlayOptions { seed, limit, trace, life_points, record }),
-                                seat,
-                            );
+                            let options = PlayOptions { seed, limit, trace, life_points, record, flags };
+                            let game = if names.contains(&"ygo-agent") {
+                                ygo_agent::play(&core, &decks, library, names, cards, options, server.unwrap())
+                            } else {
+                                engine::play(&core, &decks, policies, names, cards, options)
+                            };
+                            row[label] = scored(game, seat);
                         }
                         tx.send(Ok(row)).map_err(|e| e.to_string())?;
                     }
@@ -680,6 +708,10 @@ fn run() -> Result<()> {
         Ok(())
     } else if mode == "compare" {
         report::comparison(&results, &output.with_extension("summary.json"))
+    } else if mode == "matchup" && (pilots.iter().chain(&opponents)
+        .any(|n| ["blue-eyes", "first", "random", "ygo-agent"].contains(&n.as_str()))
+        || results.iter().any(|r| r["a"] == r["b"])) {
+        ygo_agent::summary(&results, &metadata, &output.with_extension("summary.json"))
     } else {
         report::ranking(
             &results,
@@ -708,5 +740,15 @@ mod tests {
         );
         assert_eq!(subset.iter().filter(|j| j.seat == 0).count(), 2);
         assert!(all.iter().all(|j| j.a < j.b));
+    }
+
+    #[test]
+    fn mirrors_have_one_job_per_deal_and_alternate_the_named_player() {
+        let players=vec!["ygo-agent".into()];
+        let mirror=jobs(&players,&players,"matchup",10,7,None);
+        assert_eq!(mirror.len(),10);
+        assert_eq!(mirror.iter().filter(|j|j.seat==0).count(),5);
+        assert!(mirror.iter().all(|j|j.a==j.b));
+        assert_eq!(mirror, jobs(&players,&players,"matchup",10,7,None));
     }
 }

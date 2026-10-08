@@ -1,0 +1,134 @@
+diff --git a/repo/packages/y/ygopro-core/xmake.lua b/repo/packages/y/ygopro-core/xmake.lua
+index 4a54a87..0dfa736 100644
+--- a/repo/packages/y/ygopro-core/xmake.lua
++++ b/repo/packages/y/ygopro-core/xmake.lua
+@@ -5,12 +5,12 @@ package("ygopro-core")
+     add_urls("https://github.com/Fluorohydride/ygopro-core.git")
+     add_versions("0.0.1", "6ed45241ab9360fd832dbc5fe913aa0017f577fc")
+ 
+-    add_deps("lua")
++    add_deps("lua v5.4.6", {system = false})
+ 
+     on_install("linux", function (package)
+         io.writefile("xmake.lua", [[
+             add_rules("mode.debug", "mode.release")
+-            add_requires("lua")
++            add_requires("lua v5.4.6", {system = false})
+             target("ygopro-core")
+                 set_kind("static")
+                 add_files("*.cpp")
+diff --git a/xmake.lua b/xmake.lua
+index 38185c4..15007f7 100644
+--- a/xmake.lua
++++ b/xmake.lua
+@@ -3,27 +3,11 @@ add_rules("mode.debug", "mode.release")
+ add_repositories("my-repo repo")
+ 
+ add_requires(
+-    "ygopro-core", "edopro-core", "pybind11 2.13.*", "fmt 10.2.*", "glog 0.6.0",
++    "ygopro-core", "pybind11 2.13.*", "fmt 10.2.*", "glog 0.6.0",
+     "sqlite3 3.43.0+200", "concurrentqueue 1.0.4", "unordered_dense 4.4.*",
+     "sqlitecpp 3.2.1")
+-
+-
+-target("ygopro0_ygoenv")
+-    add_rules("python.library")
+-    add_files("ygoenv/ygoenv/ygopro0/*.cpp")
+-    add_packages("pybind11", "fmt", "glog", "concurrentqueue", "sqlitecpp", "unordered_dense", "ygopro-core")
+-    set_languages("c++17")
+-    if is_mode("release") then
+-        set_policy("build.optimization.lto", true)
+-        add_cxxflags("-march=native")
+-    end
+-    add_includedirs("ygoenv")
+-
+-    after_build(function (target)
+-        local install_target = "$(projectdir)/ygoenv/ygoenv/ygopro0"
+-        os.cp(target:targetfile(), install_target)
+-        print("Copy target to " .. install_target)
+-    end)
++-- This machine's compiler (GCC 15) no longer includes <cstdint> by itself.
++add_requireconfs("sqlitecpp", {configs = {cxxflags = "-includecstdint"}})
+ 
+ 
+ target("ygopro_ygoenv")
+@@ -43,38 +27,3 @@ target("ygopro_ygoenv")
+         print("Copy target to " .. install_target)
+     end)
+ 
+-target("edopro_ygoenv")
+-    add_rules("python.library")
+-    add_files("ygoenv/ygoenv/edopro/*.cpp")
+-    add_packages("pybind11", "fmt", "glog", "concurrentqueue", "sqlitecpp", "unordered_dense", "edopro-core")
+-    set_languages("c++17")
+-    if is_mode("release") then
+-        set_policy("build.optimization.lto", true)
+-        add_cxxflags("-march=native")
+-    end
+-    add_includedirs("ygoenv")
+-
+-    after_build(function (target)
+-        local install_target = "$(projectdir)/ygoenv/ygoenv/edopro"
+-        os.cp(target:targetfile(), install_target)
+-        print("Copy target to " .. install_target)
+-    end)
+-
+-
+-target("alphazero_mcts")
+-    add_rules("python.library")
+-    add_files("mcts/mcts/alphazero/*.cpp")
+-    add_packages("pybind11")
+-    set_languages("c++17")
+-    if is_mode("release") then
+-        set_policy("build.optimization.lto", true)
+-        add_cxxflags("-march=native")
+-    end
+-    add_includedirs("mcts")
+-
+-    after_build(function (target)
+-        local install_target = "$(projectdir)/mcts/mcts/alphazero"
+-        os.cp(target:targetfile(), install_target)
+-        print("Copy target to " .. install_target)
+-        os.run("pybind11-stubgen mcts.alphazero.alphazero_mcts -o %s", "$(projectdir)/mcts")
+-    end)
+diff --git a/ygoenv/ygoenv/core/env_spec.h b/ygoenv/ygoenv/core/env_spec.h
+index 7e8b3f4..93e4f32 100644
+--- a/ygoenv/ygoenv/core/env_spec.h
++++ b/ygoenv/ygoenv/core/env_spec.h
+@@ -38,7 +38,7 @@ auto common_state_spec =
+              "info:players.env_id"_.Bind(Spec<int>({-1})),
+              "elapsed_step"_.Bind(Spec<int>({})), "done"_.Bind(Spec<bool>({})),
+              "reward"_.Bind(Spec<float>({-1})),
+-             "discount"_.Bind(Spec<float>({-1}, {0.0, 1.0})),
++             "discount"_.Bind(Spec<float>({-1}, std::tuple<float, float>{0.0F, 1.0F})),
+              "step_type"_.Bind(Spec<int>({})), "trunc"_.Bind(Spec<bool>({})));
+ 
+ /**
+diff --git a/ygoenv/ygoenv/ygopro/ygopro.h b/ygoenv/ygoenv/ygopro/ygopro.h
+index 9b9448d..71befb7 100644
+--- a/ygoenv/ygoenv/ygopro/ygopro.h
++++ b/ygoenv/ygoenv/ygopro/ygopro.h
+@@ -1541,10 +1541,10 @@ public:
+         "obs:h_actions_"_.Bind(
+             Spec<uint8_t>({conf["n_history_actions"_], n_action_feats + 2})),
+         "obs:mask_"_.Bind(Spec<uint8_t>({conf["max_cards"_] * 2, 14})),
+-        "info:num_options"_.Bind(Spec<int>({}, {0, conf["max_options"_] - 1})),
+-        "info:to_play"_.Bind(Spec<int>({}, {0, 1})),
+-        "info:is_selfplay"_.Bind(Spec<int>({}, {0, 1})),
+-        "info:win_reason"_.Bind(Spec<int>({}, {-1, 1})),
++        "info:num_options"_.Bind(Spec<int>({}, std::tuple<int, int>{0, conf["max_options"_] - 1})),
++        "info:to_play"_.Bind(Spec<int>({}, std::tuple<int, int>{0, 1})),
++        "info:is_selfplay"_.Bind(Spec<int>({}, std::tuple<int, int>{0, 1})),
++        "info:win_reason"_.Bind(Spec<int>({}, std::tuple<int, int>{-1, 1})),
+         "info:step_time"_.Bind(Spec<double>({2})),
+         "info:deck"_.Bind(Spec<int>({2}))
+       );
+@@ -1552,7 +1552,7 @@ public:
+   template <typename Config>
+   static decltype(auto) ActionSpec(const Config &conf) {
+     return MakeDict(
+-        "action"_.Bind(Spec<int>({}, {0, conf["max_options"_] - 1})));
++        "action"_.Bind(Spec<int>({}, std::tuple<int, int>{0, conf["max_options"_] - 1})));
+   }
+ };
+ 

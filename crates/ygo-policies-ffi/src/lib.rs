@@ -285,7 +285,7 @@ pub extern "C" fn ygo_policy_catalog() -> *const c_char {
     static CATALOG: OnceLock<CString> = OnceLock::new();
     CATALOG
         .get_or_init(|| {
-            let entries: Vec<_> = registry::POLICIES.iter().map(|e| json!({ "id": e.id, "deck": e.deck })).collect();
+            let entries: Vec<_> = registry::POLICIES.iter().chain(registry::BENCHMARK_PLAYERS).map(|e| json!({ "id": e.id, "deck": e.deck })).collect();
             CString::new(serde_json::Value::from(entries).to_string()).unwrap_or_default()
         })
         .as_ptr()

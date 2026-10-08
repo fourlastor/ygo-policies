@@ -21,6 +21,8 @@ pub struct PlayOptions {
     pub life_points: [u32; 2],
     /// Also write the duel as a record that `replay` plays again.
     pub record: bool,
+    /// The engine's duel flags (MR1 by default, or MR5).
+    pub flags: u64,
 }
 
 /// A record in the form `replay` reads, with the policies that played.
@@ -139,8 +141,8 @@ pub fn play(
     cards: &Path,
     run: PlayOptions,
 ) -> Result<serde_json::Value> {
-    let PlayOptions { seed, limit, trace, life_points, record } = run;
-    let options = DuelOptions { life_points, ..DuelOptions::seeded(seed) };
+    let PlayOptions { seed, limit, trace, life_points, record, flags } = run;
+    let options = DuelOptions { life_points, flags, ..DuelOptions::seeded(seed) };
     let mut duel = core.deal(&options, decks)?;
     let mut recorded = record.then(|| Recorded::dealt(&options, decks));
     let mut seats = Vec::new();

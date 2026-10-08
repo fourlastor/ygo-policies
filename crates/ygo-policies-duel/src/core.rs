@@ -343,6 +343,11 @@ impl Core {
         })
     }
 
+    /// Printed Link arrows, stored in the database's DEF column.
+    pub fn link_markers(&self, code: u32) -> Option<u32> {
+        self.resources.cards.get(&code).map(|(card, _)| card.link)
+    }
+
     /// Every code in the database, in order.
     pub fn codes(&self) -> Vec<u32> {
         let mut codes: Vec<u32> = self.resources.cards.keys().copied().collect();

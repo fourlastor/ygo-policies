@@ -80,3 +80,4 @@ pub mod ice_barrier;
 pub mod reptilianne;
 pub mod iron_chain;
 pub mod malefic;
+pub mod blue_eyes;

@@ -16,6 +16,7 @@ pub mod ctx;
 pub mod decks;
 pub mod knowledge;
 pub mod model;
+pub mod reference;
 pub mod staples;
 pub mod tactics;
 
@@ -136,8 +137,15 @@ pub mod registry {
         entry!("malefic", malefic::Malefic),
     ];
 
+    /// Players for the MR5 benchmark, separate from the WC2011 deck roster.
+    pub const BENCHMARK_PLAYERS: &[Entry] = &[
+        entry!("blue-eyes", blue_eyes::BlueEyes),
+        Entry { id: "first", deck: "BlueEyes", build: |_, _| Box::new(crate::reference::First) },
+        Entry { id: "random", deck: "BlueEyes", build: |_, seed| Box::new(crate::reference::Random(crate::agent::TieBreak::new(seed))) },
+    ];
+
     pub fn find(id: &str) -> Option<&'static Entry> {
-        POLICIES.iter().find(|e| e.id == id)
+        POLICIES.iter().chain(BENCHMARK_PLAYERS).find(|e| e.id == id)
     }
 
     pub fn create(id: &str, db: Arc<dyn CardDatabase>) -> Option<Box<dyn Policy>> {

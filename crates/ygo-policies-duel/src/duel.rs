@@ -30,8 +30,10 @@ pub struct DuelOptions {
 }
 
 impl DuelOptions {
-    /// Master Rule 1, as every duel of the bench is played.
+    /// Master Rule 1, the bench's default rules.
     pub const MASTER_RULE_1: u64 = 0xD0700;
+    /// `DUEL_MODE_MR5`: modern zones and summon rules, without a first-turn draw.
+    pub const MASTER_RULE_5: u64 = 0x2E800;
     /// `DUEL_ATTACK_FIRST_TURN`: the player who goes first may attack.
     pub const ATTACK_FIRST_TURN: u64 = 0x02;
     /// Each player's Life Points at the start.
@@ -337,7 +339,13 @@ impl Duel<'_> {
 
     /// `OCG_DuelQueryLocation` for one player's pile or zone.
     fn location(&self, controller: u8, location: u32) -> Vec<u8> {
-        let q = Query { flags: query::RECOMMENDED, controller, location, sequence: 0, overlay: 0 };
+        self.query_location(query::RECOMMENDED, controller, location)
+    }
+
+    /// Query a complete pile or zone with the caller's requested fields.
+    /// This contains hidden information; callers must apply their seat's visibility rules.
+    pub fn query_location(&self, flags: u32, controller: u8, location: u32) -> Vec<u8> {
+        let q = Query { flags, controller, location, sequence: 0, overlay: 0 };
         let mut length = 0;
         unsafe {
             let bytes = (self.core.query)(self.handle, &mut length, &q);
@@ -376,6 +384,11 @@ impl Duel<'_> {
     /// Printed data of a card, from the duel's [`Core`].
     pub fn printed(&self, code: u32) -> Option<crate::Printed> {
         self.core.printed(code)
+    }
+
+    /// Printed Link arrows, including those of a card used as Xyz Material.
+    pub fn link_markers(&self, code: u32) -> Option<u32> {
+        self.core.link_markers(code)
     }
 
     fn extensions(&self) -> Result<&core::Extensions> {

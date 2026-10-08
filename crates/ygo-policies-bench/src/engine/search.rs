@@ -601,7 +601,7 @@ pub fn play_searching(
         return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
     }
     let PlayOptions { seed, limit, life_points, record, .. } = run;
-    let options = DuelOptions { life_points, ..DuelOptions::seeded(seed) };
+    let options = DuelOptions { life_points, flags: run.flags, ..DuelOptions::seeded(seed) };
     let mut duel = core.deal(&options, decks)?;
     // The duel as it is played, the search's answers in the place of the pilot's.
     let mut recorded = record.then(|| Recorded::dealt(&options, decks));

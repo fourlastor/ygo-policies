@@ -1,0 +1,154 @@
+[
+ {
+  "predict_results": {
+   "action_preds": [
+    {
+     "prob": 0.07286027073860168,
+     "response": 1,
+     "can_finish": false
+    },
+    {
+     "prob": 0.013794061727821827,
+     "response": 2,
+     "can_finish": false
+    },
+    {
+     "prob": 0.07286030054092407,
+     "response": 3,
+     "can_finish": false
+    },
+    {
+     "prob": 0.05210993066430092,
+     "response": 4,
+     "can_finish": false
+    },
+    {
+     "prob": 0.38944879174232483,
+     "response": 1,
+     "can_finish": false
+    },
+    {
+     "prob": 0.38944870233535767,
+     "response": 3,
+     "can_finish": false
+    },
+    {
+     "prob": 0.005368471145629883,
+     "response": 4,
+     "can_finish": false
+    },
+    {
+     "prob": 0.004109440837055445,
+     "response": 7,
+     "can_finish": false
+    }
+   ],
+   "win_rate": 0.045972734689712524
+  },
+  "index": 1
+ },
+ {
+  "predict_results": {
+   "action_preds": [
+    {
+     "prob": 0.20114870369434357,
+     "response": 0,
+     "can_finish": false
+    },
+    {
+     "prob": 0.20339174568653107,
+     "response": 1,
+     "can_finish": false
+    },
+    {
+     "prob": 0.19285178184509277,
+     "response": 2,
+     "can_finish": false
+    },
+    {
+     "prob": 0.20255497097969055,
+     "response": 3,
+     "can_finish": false
+    },
+    {
+     "prob": 0.20005282759666443,
+     "response": 4,
+     "can_finish": false
+    }
+   ],
+   "win_rate": 0.05725961923599243
+  },
+  "index": 2
+ },
+ {
+  "predict_results": {
+   "action_preds": [
+    {
+     "prob": 1.0,
+     "response": 0,
+     "can_finish": false
+    },
+    {
+     "prob": -1.0,
+     "response": -1,
+     "can_finish": false
+    }
+   ],
+   "win_rate": -1.0
+  },
+  "index": 3
+ },
+ {
+  "predict_results": {
+   "action_preds": [
+    {
+     "prob": 4.77545072499197e-05,
+     "response": 0,
+     "can_finish": false
+    },
+    {
+     "prob": 0.0008424558909609914,
+     "response": 1,
+     "can_finish": false
+    },
+    {
+     "prob": 0.00048536519170738757,
+     "response": 2,
+     "can_finish": false
+    },
+    {
+     "prob": 0.0008424558909609914,
+     "response": 4,
+     "can_finish": false
+    },
+    {
+     "prob": 2.7567324650590308e-05,
+     "response": 0,
+     "can_finish": false
+    },
+    {
+     "prob": 0.4960269331932068,
+     "response": 1,
+     "can_finish": false
+    },
+    {
+     "prob": 0.005479696672409773,
+     "response": 2,
+     "can_finish": false
+    },
+    {
+     "prob": 0.4960269331932068,
+     "response": 4,
+     "can_finish": false
+    },
+    {
+     "prob": 0.00022088958940003067,
+     "response": 7,
+     "can_finish": false
+    }
+   ],
+   "win_rate": 0.042635828256607056
+  },
+  "index": 4
+ }
+]
