@@ -155,10 +155,14 @@ Against a player that is no policy of the library, the released model of
 that player answers its own seat in the duel and a policy stands in for it
 in the try-outs, which never ask it: `--stand-in POLICY`, by default the
 searching policy itself.  What the search plans against is then the
-stand-in.  `baseline` is the plain game against that player.  Among the
-benchmark's own players a policy is also searched against itself
-(`--policies blue-eyes --opponents blue-eyes`), which no other pair of the
-same name is.
+stand-in.  `--stand-in ygo-agent` puts the model in its own place there: a
+copy of its seat as it stands at the decision plays each try-out, every
+decision of the copy a request to the server, some hundred thousand a game.
+A seat can be copied where it carries the duel's memory itself and the
+server keeps none (`--carried true`, which `--stand-in ygo-agent` implies).
+`baseline` is the plain game against that player.  Among the benchmark's own
+players a policy is also searched against itself (`--policies blue-eyes
+--opponents blue-eyes`), which no other pair of the same name is.
 
 `--foresight true` is not a player but a mark of what luck leaves: every
 alternative is played out in the world as it is, with the real hidden cards

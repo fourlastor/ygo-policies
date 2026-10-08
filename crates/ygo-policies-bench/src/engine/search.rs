@@ -43,13 +43,19 @@ pub struct SearchOptions {
 }
 
 /// The other player of a searched duel when no policy of the library plays
-/// it: the seat that answers for it in the duel, and the policy that stands
-/// in for it in the try-outs.  A try-out never asks that seat: what the
-/// search plans against is the stand-in.
+/// it: the seat that answers for it in the duel, and who plays it in the
+/// try-outs.  That is the policy `stand_in`, and the seat is then never
+/// asked in a try-out: what the search plans against is the stand-in.  Or,
+/// with `itself`, a copy of the seat as it stands at the decision, a new
+/// one for each try-out; `stand_in` then only sits at the table.
 pub struct Outside<'a> {
     pub seat: Box<dyn LiveSeat + 'a>,
     pub stand_in: &'a str,
+    pub itself: bool,
 }
+
+/// The seat whose copies play a seat of the try-outs, and which seat.
+type Itself<'a> = Option<(&'a dyn LiveSeat, usize)>;
 
 /// After the middle stage: far enough ahead to stop there, or too close to go on.
 const EARLY_ACCEPT: f64 = 2.33;
@@ -380,6 +386,7 @@ fn playout<'a>(
     world: Option<(u8, u64)>,
     response: &[u8],
     mut decisions: usize,
+    itself: Itself,
 ) -> Result<Option<u8>> {
     if let Some((viewer, seed)) = world {
         hidden.restore(duel, snapshot, viewer, seed)?;
@@ -410,6 +417,12 @@ fn playout<'a>(
     } else {
         rebuild()?
     };
+    // The outside seat's copy plays its seat from here; the policy at the
+    // table in its place is fed along and what it answers dropped.
+    let mut copy = match itself {
+        Some((live, seat)) => Some((live.fork()?, seat)),
+        None => None,
+    };
     duel.respond(response);
     decisions += 1;
     loop {
@@ -419,14 +432,21 @@ fn playout<'a>(
             if !sent.refresh && sent.bytes[0] == msg::RETRY {
                 return Err("Engine rejected response (MSG_RETRY)".into());
             }
+            let mut its = match &mut copy {
+                Some((copy, _)) => copy.feed(&sent.bytes, duel)?,
+                None => None,
+            };
             if sent.refresh {
                 seats[0].feed_update_pair(&seats[1], &sent.bytes)?;
                 continue;
             }
-            for seat in &seats {
+            for (p, seat) in seats.iter().enumerate() {
                 let given = seat.feed(&sent.bytes)?;
                 if !sent.refresh && given.is_some() {
-                    answer = given;
+                    answer = match &copy {
+                        Some((_, seat)) if *seat == p => Some(its.take().ok_or("The copy did not answer its own prompt")?),
+                        _ => given,
+                    };
                 }
             }
         }
@@ -462,6 +482,7 @@ fn decide(
     decisions: usize,
     counts: &mut [u64; 2],
     log: Option<&mut Vec<serde_json::Value>>,
+    itself: Itself,
 ) -> Result<(usize, serde_json::Value)> {
     let before = counts[0];
     let snapshot = duel.snapshot()?;
@@ -487,7 +508,7 @@ fn decide(
                 let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
                 for index in indices {
                     counts[0] += 1;
-                    let played = playout(duel, &snapshot, setup, logs, &mut prepared, &mut hidden, Some((viewer, seed)), &decision.responses[index], decisions);
+                    let played = playout(duel, &snapshot, setup, logs, &mut prepared, &mut hidden, Some((viewer, seed)), &decision.responses[index], decisions, itself);
                     candidates[index].payoffs.push(match played {
                         Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
                         Ok(None) => Some(0.0),
@@ -582,7 +603,7 @@ fn foresee(
     let mut prepared = PolicyWorlds::new();
     for index in 0..decision.responses.len() {
         counts[0] += 1;
-        match playout(duel, &snapshot, setup, logs, &mut prepared, &mut HiddenWorlds::default(), None, &decision.responses[index], decisions) {
+        match playout(duel, &snapshot, setup, logs, &mut prepared, &mut HiddenWorlds::default(), None, &decision.responses[index], decisions, None) {
             Ok(Some(winner)) if winner == viewer => {
                 chosen = index;
                 break;
@@ -709,7 +730,8 @@ pub fn play_searching(
             }
             if let Some(outside) = &outside {
                 row["model_seats"] = serde_json::json!([{"seat": other, "stats": outside.seat.stats()}]);
-                row["stand_in"] = serde_json::json!(outside.stand_in);
+                // Who played the seat in the try-outs: a policy, or the player itself.
+                row["stand_in"] = serde_json::json!(if outside.itself { names[other] } else { outside.stand_in });
             }
             return Ok(row);
         }
@@ -724,7 +746,7 @@ pub fn play_searching(
                 // The pilot's own answer, played out in the world as it is.
                 counts[0] += 1;
                 let snapshot = duel.snapshot()?;
-                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, &mut PolicyWorlds::new(), &mut HiddenWorlds::default(), None, &answer, decisions)?);
+                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, &mut PolicyWorlds::new(), &mut HiddenWorlds::default(), None, &answer, decisions, None)?);
                 duel.restore(&snapshot)?;
             } else if let Some((described, decision)) = {
                 let described = table.seats[p].search_view()?;
@@ -745,7 +767,8 @@ pub fn play_searching(
                 } else {
                     searched += 1;
                     let log = search.log.then_some(&mut examined);
-                    let (index, seen) = decide(&mut duel, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts, log)?;
+                    let itself: Itself = outside.as_ref().filter(|outside| outside.itself).map(|outside| (&*outside.seat, other));
+                    let (index, seen) = decide(&mut duel, &setup, &table.logs, viewer, &decision, &search, decisions, &mut counts, log, itself)?;
                     if search.log {
                         if let Some(record) = examined.last_mut() {
                             record["decision"] = serde_json::json!(decisions);
@@ -795,12 +818,16 @@ mod tests {
         fn stats(&self) -> serde_json::Value {
             serde_json::Value::Null
         }
+        fn fork(&self) -> Result<Box<dyn LiveSeat + '_>> {
+            Ok(Box::new(Proxy(self.0.fork()?)))
+        }
     }
 
     /// With an outside seat that answers as its stand-in would, a searched
     /// duel is the one searched against the stand-in itself: the same
-    /// try-outs, the same answers changed, the same digest.  Needs the built
-    /// policy library; without it the test says so and passes.
+    /// try-outs, the same answers changed, the same digest.  And so it is
+    /// with copies of that seat in the try-outs in the stand-in's place.
+    /// Needs the built policy library; without it the test says so and passes.
     #[test]
     fn an_outside_seat_that_answers_as_its_stand_in_changes_nothing() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -825,12 +852,20 @@ mod tests {
             let proxy = Proxy(library.seat("first", &cards, other as i32, seed + other as u64).unwrap());
             // The other player is named as the model would be: only the stand-in says who plays it.
             names[other] = "someone";
-            let outside = Outside { seat: Box::new(proxy), stand_in: "first" };
+            let outside = Outside { seat: Box::new(proxy), stand_in: "first", itself: false };
             let stood = play_searching(&core, &decks, [&library; 2], names, &cards, run, search, Some(outside)).unwrap();
             for key in ["digest", "winner", "decisions", "searched", "playouts", "failed_playouts", "deviations"] {
                 assert_eq!(plain[key], stood[key], "{key} of seed {seed}");
             }
             assert_eq!(stood["stand_in"], "first");
+            // The seat's own copies in the try-outs, another policy only sitting at the table.
+            let proxy = Proxy(library.seat("first", &cards, other as i32, seed + other as u64).unwrap());
+            let outside = Outside { seat: Box::new(proxy), stand_in: "blue-eyes", itself: true };
+            let copied = play_searching(&core, &decks, [&library; 2], names, &cards, run, search, Some(outside)).unwrap();
+            for key in ["digest", "winner", "decisions", "searched", "playouts", "failed_playouts", "deviations"] {
+                assert_eq!(plain[key], copied[key], "{key} of seed {seed}, with copies of the seat");
+            }
+            assert_eq!(copied["stand_in"], "someone");
             changed += plain["deviations"].as_array().unwrap().len();
         }
         assert!(changed > 0, "no answer was changed in these duels: the test shows nothing of a search that acts");

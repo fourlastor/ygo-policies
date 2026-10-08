@@ -19,6 +19,11 @@ pub trait LiveSeat {
     fn feed(&mut self, bytes: &[u8], duel: &Duel) -> Result<Option<Vec<u8>>>;
     /// What it has to say of its duel, for the row.
     fn stats(&self) -> serde_json::Value;
+    /// A copy that goes on from here by itself, as a try-out needs one; a
+    /// seat that cannot be copied says so.
+    fn fork(&self) -> Result<Box<dyn LiveSeat + '_>> {
+        Err("this seat cannot be copied".into())
+    }
 }
 
 #[derive(Clone, Copy)]

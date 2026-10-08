@@ -26,7 +26,8 @@ seven games in ten. Against the pilot itself the same search wins 164 of
 - **A small sample first**, to see where this stands.
 - **Only `0546_22750M`.**
 - **If the model itself is to play the try-outs**, that run waits for the
-  faster GPU of the training machine.
+  faster GPU of the training machine. What it needs is built and checked
+  since: [The model itself in the try-outs](#the-model-itself-in-the-try-outs).
 
 ## What was built
 
@@ -121,14 +122,99 @@ answers changed, 52 seconds.
   second 7 ± 5.** One run of 100 deals a seat: to be seen again before it
   is read.
 
-**What would tell the two apart** is the model itself in the try-outs.
-That is some 2,000 try-outs of about 60 requests each for one game, so it
-needs a server that answers many requests at once, on the training
-machine's GPU, and a copy of the model's memory of the duel for each
-try-out. Not built.
+**What would tell the two apart** is the model itself in the try-outs:
+[below](#the-model-itself-in-the-try-outs), built and not yet measured.
 
 **More deals of this run** would narrow the figures and not move them: the
 direction is plain at 13.0 ± 3.3, and so is where it leaves the pilot.
+
+## The model itself in the try-outs
+
+Prepared on 2026-10-09 and checked on small runs. **Not measured: no figure
+below says how the pilot does.**
+
+### What was built
+
+- **A copy of the model's memory for every try-out.** The model's answer
+  depends on what it saw earlier in the duel: a state of its own and its
+  last 32 actions. Through `POST /v1/predict` the server keeps neither: the
+  answer carries them and the seat sends them back with its next request
+  (`--carried true`; [The server](README.md#the-server)). A seat that
+  carries its duel's memory is copied by copying it.
+- **`--stand-in ygo-agent`.** In every try-out a copy of the model's seat as
+  it stood at the decision plays the model's seat, each of its decisions a
+  request to the server. The memory is then carried in the plain game too,
+  so that both games of a row are asked the same way.
+- **Many requests at once**: `serve.py --device gpu --batch N --fronts N`.
+- **One command**, [`kit/search-model.sh`](kit/search-model.sh): it builds
+  the bench, starts the server on the GPU, plays the deals, prints the
+  report and stops the server.
+
+**One limit stays.** A try-out deals the hidden cards again. A copy's memory
+is of the duel as it was played, so in a try-out the model holds another
+hand than the one it remembers drawing; what it is shown at each decision is
+the try-out's table.
+
+### What was checked
+
+| | |
+| --- | --- |
+| The rewritten server answers as the one of steps 2 and 3 did | 2,515 requests of 12 logged games put to it again, through its sessions and with the memory carried: every first choice the same, no probability further off than 1e-16. The bench plays 16 deals of step 2 again with their digests through either way of asking |
+| On a GPU a request's answer does not depend on what shares its batch | 96 requests put at other places among other requests: the same to the last bit. 16 deals played twice: the same games. Not so on a CPU, nor between batches of two sizes, which is why every batch has one size |
+| The GPU against the CPU | 5 first choices of 2,515 differ, each between options that are tied; 14 of 16 games are the same and all 16 have the same winner |
+| Copies of an outside seat in the try-outs change nothing where that seat answers as a policy would | the bench's test `an_outside_seat_that_answers_as_its_stand_in_changes_nothing` |
+| The model in the try-outs: 29 deals with a light search (4, 8 and 16 worlds) on a GTX 1060 | 13,580 try-outs, none failed; 1,197,778 requests in them, none unanswered; 16 searched games with no answer changed, all 16 the plain game answer for answer |
+| `kit/search-model.sh` from start to end | 4 deals with a search of 2 worlds, and 2 deals on a setup made from nothing with `GPU=1` |
+
+### What it costs
+
+- **A try-out asks the server 88 times** (the 29 deals). With the search of
+  the first look (8, 32 and 96 worlds, 2,081 try-outs a game) that is some
+  180,000 requests a game and 36 million for 200 deals. With 4, 8 and 16
+  worlds a game had 468 try-outs and 41,000 requests, the largest 105,000;
+  that search changes 0.55 answers a game where the first look's changes
+  2.4, so it is another, weaker search.
+- **The try-outs of a deal run one after another.** A deal takes its
+  requests times what one request takes, however many deals run beside it,
+  and a run is not over before its longest deal is.
+- **On a GTX 1060**, with 32 deals at once and batches of 32: 13 to 17 ms a
+  request and 1,800 requests a second. Of a batch of 32, the model takes 6.3
+  ms and the handling around it 1.7 ms; of 16, 3.8 and 1.0 ms. The card
+  answers at most some 4,300 requests a second (batches of 48).
+- **From these**, on that card: 200 deals with the light search take about
+  an hour, and with the search of the first look two and a half hours of
+  the card's time at the least, longer for the deals with most try-outs. A
+  faster GPU shortens the model's part of a batch only; the handling, and
+  1.6 ms of a processor for every request in the fronts, stay.
+
+### Running it
+
+On a machine with an NVIDIA GPU, a Rust toolchain and
+[uv](https://docs.astral.sh/uv/):
+
+```sh
+git clone --recurse-submodules -b ygo-agent-benchmark-work REPOSITORY policies-benchmark
+cd policies-benchmark
+GPU=1 bash benchmarks/ygo-agent/kit/setup.sh
+bash benchmarks/ygo-agent/kit/search-model.sh
+```
+
+The third command sets ygo-agent up with JAX's build for CUDA 12 (5 GB
+under `/tmp`, a few minutes, most of them downloads); the fourth plays the
+first 200 deals
+of `measured/22750M-pilot` with the search of the first look and writes the
+rows, the server's log and the report to `benchmarks/ygo-agent/runs/search-model`.
+What it does is set by the environment, as the script's head says:
+
+| | |
+| --- | --- |
+| `GAMES=200 SEED=860000` | the deals |
+| `WORKERS=96` | deals played at once; a worker mostly waits for the server |
+| `BATCH=32` | requests the model answers together. Every batch costs the same, full or not: the server's log says every minute how full they are. Full batches mean the GPU is the limit and a larger batch answers more; batches far from full mean a smaller one answers sooner |
+| `FRONTS=8` | processes of the server that take the requests; one takes some 600 a second |
+| `WORLDS=8 CONFIRM=32 FINAL=96` | the search's stages. Another search than the first look's needs its own run with the pilot standing in, to be compared with: `policy-bench search` with the same three and without `--stand-in` |
+
+The same deals with the pilot standing in are `measured/search-200-model`.
 
 ## The files
 

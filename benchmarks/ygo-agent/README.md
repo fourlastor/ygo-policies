@@ -218,6 +218,36 @@ next section**, they are the reference for every field. `kit/dump_first.py`
 writes what their environment shows the model at the first decisions of any
 game, with their own log of the game beside it.
 
+**Many requests at once.** By itself the model answers one request at a
+time, 4 ms each on a CPU. `--batch N` has it answer the requests that are
+waiting together, `--device gpu` puts it on the GPU, and `--fronts N`
+starts N processes that read the requests and build its input:
+
+```sh
+serve.py --checkpoint checkpoints/0546_22750M.flax_model \
+  --device gpu --batch 48 --fronts 8
+```
+
+A GTX 1060 answers 128 requests together in 18 ms. Every batch is the same
+size, filled up with empty requests, so that on a GPU a request's answer is
+the same to the last bit whatever shares its batch; on a CPU it can differ
+in the last digit. As the server is started under
+[Setting it up](#setting-it-up) it does what it did for every measurement
+of this file.
+
+**A duel without a session.** Beside the three calls of the next section
+there is `POST /v1/predict`, which keeps nothing of a duel in the server:
+the answer carries the duel's memory as `state` (the model's own state and
+the seat's earlier actions), and the client sends it back with its next
+request, `{"input": .., "prev_action_idx": .., "state": ..}`, with no state
+at the duel's first one. An answer that is an `error` carries a state too.
+A client can then go on from one point of a duel in several directions,
+each with its own copy, which is what a search needs
+([Step 3](SEARCH.md)); the bench asks this way with `--carried true`.
+[`kit/check_server.py`](kit/check_server.py) sends the requests of games
+that were played to a running server again, through either protocol, and
+compares the answers.
+
 ## The protocol
 
 Three calls, JSON both ways.
@@ -789,6 +819,8 @@ and a game against the pilot asks 117.
 | [`kit/setup.sh`](kit/setup.sh) | ygo-agent at `26293f8`, built from source, with its cards, scripts, checkpoints and Python environment. |
 | [`kit/build-26293f8.diff`](kit/build-26293f8.diff) | What the build needs on a current Linux: its own Lua 5.4.6, one include, six constructor calls. Nothing of what the environment does. |
 | [`kit/serve.py`](kit/serve.py) | The server. |
+| [`kit/check_server.py`](kit/check_server.py) | The requests of games that were played, put to a running server again and its answers compared. |
+| [`kit/search-model.sh`](kit/search-model.sh) | The pilot with a search against the model, the model itself in the try-outs: server, run and report in one ([Step 3](SEARCH.md)). |
 | [`kit/golden_check.py`](kit/golden_check.py), [`golden.npz`](kit/golden.npz) | The golden test, and what their environment showed and answered in that game. |
 | [`kit/golden-requests.json`](kit/golden-requests.json), [`golden-answers.json`](kit/golden-answers.json) | Four requests in a row and their answers. |
 | [`kit/dump_first.py`](kit/dump_first.py) | What their environment shows the model at the first decisions of a game. |

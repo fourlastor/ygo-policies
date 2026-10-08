@@ -3,11 +3,15 @@
 use crate::engine::{Core, Deck, DuelOptions, PlayOptions, PolicyLibrary, Recorded, Result};
 use serde_json::{json, Value};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet, HashMap},
     io::{Read, Write},
     net::{TcpStream, ToSocketAddrs},
     path::Path,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 use ygo_policies::{
@@ -23,11 +27,93 @@ use ygo_policies_ocgcore::{
     Seat, SqliteCards,
 };
 
+thread_local! {
+    /// This thread's connection to each server, kept open between requests.
+    static LINES: RefCell<HashMap<String, TcpStream>> = RefCell::new(HashMap::new());
+}
+
+#[derive(Clone)]
 struct Http {
     address: String,
     prefix: String,
 }
 impl Http {
+    /// A request over a connection that stays open, one a thread and
+    /// server: for requests that may be sent again, as those of `/v1` may.
+    fn kept(&self, path: &str, body: &Value) -> Result<Value> {
+        let body = body.to_string();
+        // In one piece: a connection that stays open would wait before it
+        // sent a second short one.
+        let mut request = format!(
+            "POST {}{path} HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+            self.prefix,
+            self.address,
+            body.len()
+        )
+        .into_bytes();
+        request.extend_from_slice(body.as_bytes());
+        let mut failed = String::new();
+        for _ in 0..2 {
+            let kept = LINES.with(|lines| lines.borrow_mut().remove(&self.address));
+            let mut stream = match kept {
+                Some(stream) => stream,
+                None => self.connect()?,
+            };
+            match Self::exchange(&mut stream, &request) {
+                Ok((status, answer)) => {
+                    LINES.with(|lines| lines.borrow_mut().insert(self.address.clone(), stream));
+                    let answer: Value = serde_json::from_slice(&answer).map_err(|e| format!("HTTP {status}: {e}"))?;
+                    if status != "200" {
+                        return Err(format!("HTTP {status}: {answer}"));
+                    }
+                    return Ok(answer);
+                }
+                // A connection the server has closed since: once more on a new one.
+                Err(e) => failed = e,
+            }
+        }
+        Err(failed)
+    }
+    fn connect(&self) -> Result<TcpStream> {
+        let addr = self.address.to_socket_addrs().map_err(|e| e.to_string())?.next().ok_or("no server address")?;
+        let stream = TcpStream::connect_timeout(&addr, Duration::from_secs(30)).map_err(|e| e.to_string())?;
+        stream.set_nodelay(true).map_err(|e| e.to_string())?;
+        stream.set_read_timeout(Some(Duration::from_secs(300))).map_err(|e| e.to_string())?;
+        stream.set_write_timeout(Some(Duration::from_secs(300))).map_err(|e| e.to_string())?;
+        Ok(stream)
+    }
+    /// The status and the body of the answer to one request.
+    fn exchange(stream: &mut TcpStream, request: &[u8]) -> Result<(String, Vec<u8>)> {
+        stream.write_all(request).map_err(|e| e.to_string())?;
+        let mut read = Vec::with_capacity(16 * 1024);
+        let mut piece = [0u8; 16 * 1024];
+        let mut more = |read: &mut Vec<u8>| -> Result<()> {
+            let n = stream.read(&mut piece).map_err(|e| e.to_string())?;
+            if n == 0 {
+                return Err("the server closed the connection".into());
+            }
+            read.extend_from_slice(&piece[..n]);
+            Ok(())
+        };
+        let split = loop {
+            if let Some(at) = read.windows(4).position(|w| w == b"\r\n\r\n") {
+                break at;
+            }
+            more(&mut read)?;
+        };
+        let header = String::from_utf8_lossy(&read[..split]).into_owned();
+        let status = header.lines().next().and_then(|l| l.split_whitespace().nth(1)).unwrap_or("").to_owned();
+        let length: usize = header
+            .lines()
+            .filter_map(|l| l.split_once(':'))
+            .find(|(key, _)| key.eq_ignore_ascii_case("content-length"))
+            .and_then(|(_, value)| value.trim().parse().ok())
+            .ok_or("an answer without its length")?;
+        while read.len() < split + 4 + length {
+            more(&mut read)?;
+        }
+        Ok((status, read[split + 4..split + 4 + length].to_vec()))
+    }
     fn new(url: &str) -> Result<Self> {
         let url = url
             .strip_prefix("http://")
@@ -546,15 +632,23 @@ struct ModelSeat {
     trace: Vec<Value>,
     trace_enabled: bool,
     after_reveal: bool,
+    /// The duel's memory where the seat carries it itself (`/v1/predict`)
+    /// and the server keeps none: null before the first request.  A seat
+    /// that carries it can be copied, each copy going its own way.
+    state: Option<Value>,
+    /// Requests of this seat's copies, and those the server could not answer.
+    copies: Arc<[AtomicU64; 2]>,
+    copy: bool,
 }
 impl ModelSeat {
-    fn new(url: &str, me: u8, cards: &Path, trace_enabled: bool) -> Result<Self> {
+    fn new(url: &str, me: u8, cards: &Path, trace_enabled: bool, carried: bool) -> Result<Self> {
         let http = Http::new(url)?;
-        let answer = http.request("POST", "/v0/duels", &json!({}))?;
-        let id = answer["duelId"]
-            .as_str()
-            .ok_or("server did not return duelId")?
-            .to_owned();
+        let id = if carried {
+            String::new()
+        } else {
+            let answer = http.request("POST", "/v0/duels", &json!({}))?;
+            answer["duelId"].as_str().ok_or("server did not return duelId")?.to_owned()
+        };
         let db: Arc<dyn CardDatabase> =
             Arc::new(SqliteCards::open(cards).map_err(|e| e.to_string())?);
         Ok(Self {
@@ -576,6 +670,33 @@ impl ModelSeat {
             trace: Vec::new(),
             trace_enabled,
             after_reveal: false,
+            state: carried.then_some(Value::Null),
+            copies: Arc::new([AtomicU64::new(0), AtomicU64::new(0)]),
+            copy: false,
+        })
+    }
+    /// A copy that goes on from here by itself: what it is asked and what it
+    /// answers leaves this seat as it is.
+    fn fork(&self) -> Result<Self> {
+        let state = self.state.clone().ok_or("a seat whose duel the server keeps cannot be copied: it must carry its memory")?;
+        Ok(Self {
+            http: self.http.clone(),
+            id: String::new(),
+            index: self.index,
+            previous: self.previous,
+            me: self.me,
+            first: self.first.fork().ok_or("the seat's own policy cannot be copied")?,
+            db: self.db.clone(),
+            asked: 0,
+            server_errors: 0,
+            fallbacks: BTreeMap::new(),
+            values: Vec::new(),
+            trace: Vec::new(),
+            trace_enabled: false,
+            after_reveal: self.after_reveal,
+            state: Some(state),
+            copies: self.copies.clone(),
+            copy: true,
         })
     }
     fn fallback(&mut self, reason: String) {
@@ -584,13 +705,32 @@ impl ModelSeat {
     fn predict(&mut self, input: &Value) -> Result<Option<(usize, Value)>> {
         let request = json!({"input":input,"index":self.index,"prev_action_idx":self.previous});
         self.asked += 1;
-        // A lost HTTP response leaves the server's index unknown. Abort that game;
-        // guessing its recurrent state would silently invalidate later decisions.
-        let answer =
-            self.http
-                .request("POST", &format!("/v0/duels/{}/predict", self.id), &request)?;
+        if self.copy {
+            self.copies[0].fetch_add(1, Ordering::Relaxed);
+        }
+        let mut answer = match &self.state {
+            // The memory goes with the request and comes back with the answer,
+            // also with one that is an error.
+            Some(state) => {
+                let mut answer = self.http.kept("/v1/predict", &json!({"input":input,"prev_action_idx":self.previous,"state":state}))?;
+                match answer.get_mut("state").map(Value::take) {
+                    Some(state) if !state.is_null() => self.state = Some(state),
+                    _ => return Err("the server did not return the duel's state".into()),
+                }
+                answer
+            }
+            // A lost HTTP response leaves the server's index unknown. Abort that game;
+            // guessing its recurrent state would silently invalidate later decisions.
+            None => self.http.request("POST", &format!("/v0/duels/{}/predict", self.id), &request)?,
+        };
+        if let Some(members) = answer.as_object_mut() {
+            members.remove("state");
+        }
         if let Some(error) = answer["error"].as_str() {
             self.server_errors += 1;
+            if self.copy {
+                self.copies[1].fetch_add(1, Ordering::Relaxed);
+            }
             self.values.push(None);
             self.fallback(format!(
                 "{}: {}",
@@ -751,7 +891,8 @@ impl ModelSeat {
     }
     fn stats(&self) -> Value {
         json!({"asked":self.asked,"server_errors":self.server_errors,"fallbacks":self.fallbacks.values().sum::<usize>(),
-            "fallback_reasons":self.fallbacks,"win_rates":self.values,"trace":self.trace})
+            "fallback_reasons":self.fallbacks,"win_rates":self.values,"trace":self.trace,
+            "tryout_requests":self.copies[0].load(Ordering::Relaxed),"tryout_errors":self.copies[1].load(Ordering::Relaxed)})
     }
 }
 impl crate::engine::LiveSeat for ModelSeat {
@@ -761,16 +902,21 @@ impl crate::engine::LiveSeat for ModelSeat {
     fn stats(&self) -> Value {
         ModelSeat::stats(self)
     }
+    fn fork(&self) -> Result<Box<dyn crate::engine::LiveSeat + '_>> {
+        Ok(Box::new(ModelSeat::fork(self)?))
+    }
 }
 /// The model's seat for a duel that is played elsewhere: a searched one.
-pub fn seat(server: &str, me: u8, cards: &Path) -> Result<Box<dyn crate::engine::LiveSeat>> {
-    Ok(Box::new(ModelSeat::new(server, me, cards, false)?))
+/// `carried`: the seat carries the duel's memory and can be copied.
+pub fn seat(server: &str, me: u8, cards: &Path, carried: bool) -> Result<Box<dyn crate::engine::LiveSeat>> {
+    Ok(Box::new(ModelSeat::new(server, me, cards, false, carried)?))
 }
 impl Drop for ModelSeat {
     fn drop(&mut self) {
-        let _ = self
-            .http
-            .request("DELETE", &format!("/v0/duels/{}", self.id), &Value::Null);
+        // Only a duel the server keeps is to be let go.
+        if self.state.is_none() {
+            let _ = self.http.request("DELETE", &format!("/v0/duels/{}", self.id), &Value::Null);
+        }
     }
 }
 enum Player<'a> {
@@ -793,6 +939,7 @@ pub fn play(
     cards: &Path,
     run: PlayOptions,
     server: &str,
+    carried: bool,
 ) -> Result<Value> {
     let options = DuelOptions {
         life_points: run.life_points,
@@ -804,7 +951,7 @@ pub fn play(
     let mut seats = Vec::new();
     for (p, name) in names.iter().enumerate() {
         seats.push(if *name == "ygo-agent" {
-            Player::Model(Box::new(ModelSeat::new(server, p as u8, cards, run.trace)?))
+            Player::Model(Box::new(ModelSeat::new(server, p as u8, cards, run.trace, carried)?))
         } else {
             Player::Pilot(library.seat(name, cards, p as i32, run.seed + p as u64)?)
         });
@@ -1343,7 +1490,7 @@ mod tests {
             requests
         });
         let mut model =
-            ModelSeat::new(&url, 0, &root().join("vendor/BabelCdb/cards.cdb"), true).unwrap();
+            ModelSeat::new(&url, 0, &root().join("vendor/BabelCdb/cards.cdb"), true, false).unwrap();
         let input = json!({"action_msg":{"data":{"msg_type":"select_chain","forced":true,"chains":[{},{},{}]}}});
         assert_eq!(model.predict(&input).unwrap().unwrap().0, 1);
         assert!(model.predict(&input).unwrap().is_none());

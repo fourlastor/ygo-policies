@@ -14,6 +14,13 @@
 # about 1.5 GB); nothing is installed into the system.  It needs git, curl,
 # a C++ compiler, CMake and uv.  A step already done is not done again.
 #
+#   GPU=1 bash benchmarks/ygo-agent/kit/setup.sh
+#
+# also installs JAX's build for CUDA 12 with the CUDA libraries it needs
+# (4 GB more; an NVIDIA driver is all the machine must have), for the server
+# to answer many requests at once on the GPU.  The checks at the end still
+# run on the CPU.
+#
 # Why this commit: the latest one (dbf5142, 2024-08-16) numbers 13,472 cards
 # where the checkpoints know 864, and a model there sees other cards than
 # the ones on the table.  26293f8 (2024-07-30) is the last with the list the
@@ -58,8 +65,12 @@ if [ ! -x "$VENV/bin/python" ]; then
 fi
 # JAX is the last version their README allows; the others are of its time.
 # A later tyro takes the `scripts/torch` folder for PyTorch and fails.
+JAX=("jax==0.4.28" "jaxlib==0.4.28")
+if [ -n "${GPU:-}" ]; then
+  JAX+=("jax[cuda12]==0.4.28")
+fi
 (cd "$AGENT" && uv pip install --python "$VENV/bin/python" \
-  "jax==0.4.28" "jaxlib==0.4.28" "flax==0.8.5" "optax==0.2.2" "chex==0.1.86" \
+  "${JAX[@]}" "flax==0.8.5" "optax==0.2.2" "chex==0.1.86" \
   "scipy==1.13.1" "orbax-checkpoint==0.5.20" "numpy==1.26.4" "distrax==0.1.5" \
   "tyro==0.8.5" -e ygoenv -e ygoinf -e .)
 

@@ -226,7 +226,10 @@ fn help() {
   --rules mr1|mr5 (default mr1)\n\
   --server http://127.0.0.1:3013 (required for ygo-agent; MR5 matchup or search)\n\
   --stand-in POLICY (search against ygo-agent: the policy that plays the model's seat in the\n\
-  try-outs, which never ask the server; default: the searching policy itself)\n\
+  try-outs, which never ask the server; default: the searching policy itself; ygo-agent:\n\
+  copies of the model's own seat, every decision of theirs a request)\n\
+  --carried true (ygo-agent: the seat carries the duel's memory and asks /v1/predict; the\n\
+  server keeps no duel, and with --stand-in ygo-agent it is always so)\n\
   matchup --policies blue-eyes --opponents random,first --rules mr5 --games 1000\n\
   matchup --policies ygo-agent --opponents ygo-agent --rules mr5 --server URL\n\
 Deck lists and libraries are never modified. Each pair alternates seats.\n\
@@ -320,6 +323,7 @@ fn run() -> Result<()> {
             "--rules",
             "--server",
             "--stand-in",
+            "--carried",
         ]
         .contains(&key.as_str())
         {
@@ -576,9 +580,16 @@ fn run() -> Result<()> {
         if !has_agent || mode != "search" {
             return Err("--stand-in is for a search against ygo-agent".into());
         }
-        if name == "ygo-agent" || !catalog.contains_key(name) {
+        if !catalog.contains_key(name) {
             return Err(format!("--stand-in {name}: not a policy of the library"));
         }
+    }
+    // The model in its own place in the try-outs: its seat is copied for each,
+    // which only a seat that carries the duel's memory can be.
+    let itself = stand_in == Some("ygo-agent");
+    let carried = flag("--carried", false)? || itself;
+    if carried && !has_agent {
+        return Err("--carried is for ygo-agent".into());
     }
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
@@ -605,7 +616,7 @@ fn run() -> Result<()> {
         "engine": core_path.as_ref().map(|p| file_identity(p)).unwrap_or_else(|| json!({"linked": true})),
         "cards": file_identity(&cards), "scripts": git_revision(&scripts), "core": git_revision(&root.join("vendor/ocgcore")),
         "lua": git_revision(&root.join("vendor/ocgcore/lua/src")), "checkout": git_revision(&root),
-        "baseline": file_identity(&baseline), "candidate": file_identity(&candidate), "stand_in": stand_in,
+        "baseline": file_identity(&baseline), "candidate": file_identity(&candidate), "stand_in": stand_in, "carried": carried,
         "decks": deck_ids, "catalog": catalog, "reference": reference, "planned_jobs": jobs.len()});
     // Refuse accidental truncation of an earlier run; choose another output name.
     let mut file = std::fs::OpenOptions::new()
@@ -652,7 +663,7 @@ fn run() -> Result<()> {
                             let model = names.contains(&"ygo-agent");
                             row["baseline"] = scored(
                                 if model {
-                                    ygo_agent::play(&core, &decks, &candidate, names, cards, options, server.unwrap())
+                                    ygo_agent::play(&core, &decks, &candidate, names, cards, options, server.unwrap(), carried)
                                 } else {
                                     engine::play(&core, &decks, policies, names, cards, options)
                                 },
@@ -663,8 +674,10 @@ fn run() -> Result<()> {
                             let searched = || -> Result<Value> {
                                 let outside = if model {
                                     Some(engine::Outside {
-                                        seat: ygo_agent::seat(server.unwrap(), 1 - seat as u8, cards)?,
-                                        stand_in: stand_in.unwrap_or(a),
+                                        seat: ygo_agent::seat(server.unwrap(), 1 - seat as u8, cards, carried)?,
+                                        // With the model in its own place, the searching policy only sits at the table.
+                                        stand_in: if itself { a } else { stand_in.unwrap_or(a) },
+                                        itself,
                                     })
                                 } else {
                                     None
@@ -691,7 +704,7 @@ fn run() -> Result<()> {
                             };
                             let options = PlayOptions { seed, limit, trace, life_points, record, flags };
                             let game = if names.contains(&"ygo-agent") {
-                                ygo_agent::play(&core, &decks, library, names, cards, options, server.unwrap())
+                                ygo_agent::play(&core, &decks, library, names, cards, options, server.unwrap(), carried)
                             } else {
                                 engine::play(&core, &decks, policies, names, cards, options)
                             };

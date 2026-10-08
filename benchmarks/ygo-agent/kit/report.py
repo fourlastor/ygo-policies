@@ -132,6 +132,13 @@ def searched(name: str, pair: tuple[str, str], rows: list[dict]) -> None:
     quiet = [row for row in done if not row["search"]["deviations"]]
     same = sum(row["search"]["digest"] == row["baseline"]["digest"] for row in quiet)
     print(f"  searched games with no answer changed: {len(quiet)}, of which {same} are the plain game answer for answer")
+    # Where the other player's own copies played the try-outs: what they asked.
+    copies = [seat["stats"] for game in games for seat in game.get("model_seats", [])]
+    in_tryouts = sum(stats.get("tryout_requests", 0) for stats in copies)
+    if in_tryouts:
+        tryouts = sum(game["playouts"] for game in games)
+        print(f"  in the try-outs the model was asked {in_tryouts / count:.0f} times a game, {in_tryouts / max(tryouts, 1):.0f} a try-out; "
+              f"{sum(stats.get('tryout_errors', 0) for stats in copies)} requests not answered")
     print_asked([row[label] for row in done for label in ("baseline", "search")])
 
 
