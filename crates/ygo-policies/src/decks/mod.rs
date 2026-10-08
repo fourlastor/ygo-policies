@@ -66,3 +66,8 @@ pub mod flamvell;
 pub mod nordic;
 pub mod cloudian;
 pub mod volcanic;
+
+pub mod dark_world;
+pub mod worm;
+pub mod chaos;
+pub mod demise;

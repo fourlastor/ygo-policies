@@ -82,6 +82,10 @@ EDOPro already filtered pass through unchanged.
 | `nordic` | Road to Ragnarok | Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin |
 | `cloudian` | Eye of the Storm | Sanctuary/Barrier defense, Fog Counters and Cloudian removal |
 | `volcanic` | Volcanic Aftershock | Shell ammunition, Scattershot wipes and Doomfire battle pressure |
+| `dark-world` | Gates Unopened | Effect discards, early Dark World bosses and Raven Synchros |
+| `worm` | Visitors Beneath | Xex/Yagan, repeated Flips and diverse Worm Zero materials |
+| `chaos` | Between Light and Dark | LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects |
+| `demise` | Armageddon Hour | Demise field wipe, Doom Dozer and Megamorph finishers |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
