@@ -42,6 +42,15 @@ pub struct SearchOptions {
     pub foresight: bool,
 }
 
+/// The other player of a searched duel when no policy of the library plays
+/// it: the seat that answers for it in the duel, and the policy that stands
+/// in for it in the try-outs.  A try-out never asks that seat: what the
+/// search plans against is the stand-in.
+pub struct Outside<'a> {
+    pub seat: Box<dyn LiveSeat + 'a>,
+    pub stand_in: &'a str,
+}
+
 /// After the middle stage: far enough ahead to stop there, or too close to go on.
 const EARLY_ACCEPT: f64 = 2.33;
 const EARLY_REJECT: f64 = 0.67;
@@ -588,6 +597,12 @@ fn foresee(
 
 /// [`play`] with one seat searching (see the module).  Without a
 /// deviation the duel is the one `play` plays, answer for answer.
+///
+/// With `outside` the other seat is answered by that seat and not by a
+/// policy.  Its stand-in sits at the table in its place, fed all the seat is
+/// fed, so that the try-outs have a policy to play it and that policy has
+/// seen the duel; what the stand-in answers in the duel itself is dropped.
+#[allow(clippy::too_many_arguments)]
 pub fn play_searching(
     core: &Core,
     decks: &[Deck; 2],
@@ -596,21 +611,34 @@ pub fn play_searching(
     cards: &Path,
     run: PlayOptions,
     search: SearchOptions,
+    mut outside: Option<Outside>,
 ) -> Result<serde_json::Value> {
     if !core.has_snapshots() {
         return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
+    }
+    if outside.is_some() && (search.validate || search.foresight) {
+        return Err("--validate and --foresight play the other player itself out, which a stand-in is not".into());
     }
     let PlayOptions { seed, limit, life_points, record, .. } = run;
     let options = DuelOptions { life_points, flags: run.flags, ..DuelOptions::seeded(seed) };
     let mut duel = core.deal(&options, decks)?;
     // The duel as it is played, the search's answers in the place of the pilot's.
     let mut recorded = record.then(|| Recorded::dealt(&options, decks));
-    let setup = Setup { policies, names, cards, seed, limit };
+    let other = 1 - search.searcher;
+    // The policies at the table, which are those of the try-outs.
+    let mut seated = names;
+    if let Some(outside) = &outside {
+        seated[other] = outside.stand_in;
+    }
+    let setup = Setup { policies, names: seated, cards, seed, limit };
     let viewer = search.searcher as u8;
     let mut table = Table { seats: Vec::new(), logs: [Vec::new(), Vec::new()] };
     for p in 0..2 {
-        table.seats.push(policies[p].seat(names[p], cards, p as i32, seed + p as u64)?);
+        table.seats.push(policies[p].seat(seated[p], cards, p as i32, seed + p as u64)?);
         table.feed(p, &duel.start_message(p as u8))?;
+    }
+    if let Some(outside) = &mut outside {
+        outside.seat.feed(&duel.start_message(other as u8), &duel)?;
     }
     let mut decisions = 0;
     let mut turns = 0u32;
@@ -627,8 +655,16 @@ pub fn play_searching(
         let mut response: Option<(usize, Vec<u8>, Vec<u8>)> = None;
         for sent in &step.messages {
             let message = &sent.bytes;
+            // The seat answered from outside is fed what its stand-in is fed.
+            let mut given = match &mut outside {
+                Some(outside) => outside.seat.feed(message, &duel)?,
+                None => None,
+            };
             if sent.refresh {
                 table.update(message)?;
+                if given.is_some() {
+                    return Err("The outside seat answered a field update".into());
+                }
                 continue;
             }
             match message[0] {
@@ -643,8 +679,17 @@ pub fn play_searching(
                     if response.is_some() {
                         return Err("Multiple answers in one engine batch".into());
                     }
+                    // The duel's answer is the seat's own, not its stand-in's.
+                    let answer = if outside.is_some() && p == other {
+                        given.take().ok_or("The stand-in answered a prompt the outside seat did not")?
+                    } else {
+                        answer
+                    };
                     response = Some((p, answer, message.to_vec()));
                 }
+            }
+            if given.is_some() {
+                return Err("The outside seat answered a prompt its stand-in did not".into());
             }
         }
         if matches!(step.state, State::Over(_)) || decisions >= limit {
@@ -661,6 +706,10 @@ pub fn play_searching(
                 "predictions": predictions.len(), "mispredicted": mispredicted});
             if let Some(recorded) = &recorded {
                 row["record"] = record_json(recorded, names);
+            }
+            if let Some(outside) = &outside {
+                row["model_seats"] = serde_json::json!([{"seat": other, "stats": outside.seat.stats()}]);
+                row["stand_in"] = serde_json::json!(outside.stand_in);
             }
             return Ok(row);
         }
@@ -729,5 +778,61 @@ pub fn play_searching(
             recorded.responses.push((p as u8, answer));
         }
         decisions += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// A seat of the library behind the door the model's seat comes through.
+    struct Proxy<'a>(LibrarySeat<'a>);
+    impl LiveSeat for Proxy<'_> {
+        fn feed(&mut self, bytes: &[u8], _: &Duel) -> Result<Option<Vec<u8>>> {
+            self.0.feed(bytes)
+        }
+        fn stats(&self) -> serde_json::Value {
+            serde_json::Value::Null
+        }
+    }
+
+    /// With an outside seat that answers as its stand-in would, a searched
+    /// duel is the one searched against the stand-in itself: the same
+    /// try-outs, the same answers changed, the same digest.  Needs the built
+    /// policy library; without it the test says so and passes.
+    #[test]
+    fn an_outside_seat_that_answers_as_its_stand_in_changes_nothing() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let built = root.join("target/release/libygo_policies.so");
+        if !built.exists() {
+            eprintln!("skipped: {} is not built", built.display());
+            return;
+        }
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library = PolicyLibrary::open(&built).unwrap();
+        let deck = Deck::load(&root.join("decks/BlueEyes.ydk")).unwrap();
+        let decks = [deck.clone(), deck];
+        let mut changed = 0;
+        for (seed, searcher) in [(880_001, 0), (880_002, 1), (880_003, 0)] {
+            let run = PlayOptions { seed, limit: 4096, trace: false, life_points: [8000; 2], record: false, flags: DuelOptions::MASTER_RULE_5 };
+            let search = SearchOptions { searcher, stages: [4, 8, 16], z: 1.645, strict: true, log: false, validate: false, foresight: false };
+            let other = 1 - searcher;
+            let mut names = ["blue-eyes"; 2];
+            names[other] = "first";
+            let plain = play_searching(&core, &decks, [&library; 2], names, &cards, run, search, None).unwrap();
+            let proxy = Proxy(library.seat("first", &cards, other as i32, seed + other as u64).unwrap());
+            // The other player is named as the model would be: only the stand-in says who plays it.
+            names[other] = "someone";
+            let outside = Outside { seat: Box::new(proxy), stand_in: "first" };
+            let stood = play_searching(&core, &decks, [&library; 2], names, &cards, run, search, Some(outside)).unwrap();
+            for key in ["digest", "winner", "decisions", "searched", "playouts", "failed_playouts", "deviations"] {
+                assert_eq!(plain[key], stood[key], "{key} of seed {seed}");
+            }
+            assert_eq!(stood["stand_in"], "first");
+            changed += plain["deviations"].as_array().unwrap().len();
+        }
+        assert!(changed > 0, "no answer was changed in these duels: the test shows nothing of a search that acts");
     }
 }

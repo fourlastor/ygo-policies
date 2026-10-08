@@ -150,6 +150,16 @@ What it cannot do, and what it knows that a player would not:
 - Every world starts from the engine's random state at the decision: a coin
   or a die lands as it will in the duel.
 
+Against a player that is no policy of the library, the released model of
+`benchmarks/ygo-agent` (`--opponents ygo-agent --rules mr5 --server URL`),
+that player answers its own seat in the duel and a policy stands in for it
+in the try-outs, which never ask it: `--stand-in POLICY`, by default the
+searching policy itself.  What the search plans against is then the
+stand-in.  `baseline` is the plain game against that player.  Among the
+benchmark's own players a policy is also searched against itself
+(`--policies blue-eyes --opponents blue-eyes`), which no other pair of the
+same name is.
+
 `--foresight true` is not a player but a mark of what luck leaves: every
 alternative is played out in the world as it is, with the real hidden cards
 and the draws to come, and the seat leaves its pilot's answer whenever that

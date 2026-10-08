@@ -10,7 +10,16 @@ use ygo_policies_ocgcore::{
 };
 
 mod search;
-pub use search::{play_searching, SearchOptions};
+pub use search::{play_searching, Outside, SearchOptions};
+
+/// A seat answered from outside the policy library, as the released model's
+/// is.  It is fed every message of the duel, with the duel itself to look
+/// at, and answers its own prompts.
+pub trait LiveSeat {
+    fn feed(&mut self, bytes: &[u8], duel: &Duel) -> Result<Option<Vec<u8>>>;
+    /// What it has to say of its duel, for the row.
+    fn stats(&self) -> serde_json::Value;
+}
 
 #[derive(Clone, Copy)]
 pub struct PlayOptions {

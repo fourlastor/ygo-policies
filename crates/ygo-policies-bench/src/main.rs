@@ -46,16 +46,22 @@ fn names(spec: &str, catalog: &std::collections::HashMap<String, String>) -> Res
     Ok(result)
 }
 
+/// The policies of the ygo-agent benchmark, beside the roster.
+const BENCHMARK_PLAYERS: [&str; 3] = ["blue-eyes", "first", "random"];
+
 /// `first`: the policy that takes seat 0, and so the first turn, in every
 /// game of its pairs.  Otherwise each pair alternates seats.
 fn jobs(pilots: &[String], opponents: &[String], mode: &str, games: usize, seed: u64, first: Option<&str>) -> Vec<Job> {
     let mut pairs = BTreeSet::new();
     for a in pilots {
         for b in opponents {
-            if a == b && mode != "matchup" {
+            // A pair of the same name is a matchup's, and among the benchmark's
+            // own players a search's: the pilot with a search against itself.
+            if a == b && mode != "matchup" && !(mode == "search" && BENCHMARK_PLAYERS.contains(&a.as_str())) {
                 continue;
             }
-            if mode != "compare" && a > b {
+            // A searching pilot keeps its side of each pair, as a compared one does.
+            if mode != "compare" && mode != "search" && a > b {
                 pairs.insert((b.clone(), a.clone()));
             } else {
                 pairs.insert((a.clone(), b.clone()));
@@ -218,7 +224,9 @@ fn help() {
   --first POLICY (that policy goes first in every game; default: seats alternate)\n\
   --lp 8000,4000 (starting Life Points of the first and second player)\n\
   --rules mr1|mr5 (default mr1)\n\
-  --server http://127.0.0.1:3013 (required for ygo-agent; MR5 matchup)\n\
+  --server http://127.0.0.1:3013 (required for ygo-agent; MR5 matchup or search)\n\
+  --stand-in POLICY (search against ygo-agent: the policy that plays the model's seat in the\n\
+  try-outs, which never ask the server; default: the searching policy itself)\n\
   matchup --policies blue-eyes --opponents random,first --rules mr5 --games 1000\n\
   matchup --policies ygo-agent --opponents ygo-agent --rules mr5 --server URL\n\
 Deck lists and libraries are never modified. Each pair alternates seats.\n\
@@ -311,6 +319,7 @@ fn run() -> Result<()> {
             "--which",
             "--rules",
             "--server",
+            "--stand-in",
         ]
         .contains(&key.as_str())
         {
@@ -534,9 +543,7 @@ fn run() -> Result<()> {
             _ => return Err("--lp takes two positive numbers: FIRST,SECOND".into()),
         },
     };
-    // A searching pilot keeps its side of each pair, as a compared one does.
-    let pairing = if mode == "search" { "compare" } else { mode.as_str() };
-    let jobs = jobs(&pilots, &opponents, pairing, games, seed, first);
+    let jobs = jobs(&pilots, &opponents, mode.as_str(), games, seed, first);
     let stages = [number("--worlds", 8)?, number("--confirm", 32)?, number("--final", 96)?];
     let z: f64 = args.get("--z").map_or(Ok(1.645), |v| v.parse().map_err(|_| "Invalid --z".to_string()))?;
     let flag = |key: &str, default: bool| -> Result<bool> {
@@ -557,8 +564,21 @@ fn run() -> Result<()> {
     };
     let has_agent = pilots.iter().chain(&opponents).any(|p| p == "ygo-agent");
     let server = args.get("--server").map(String::as_str);
-    if has_agent && (mode != "matchup" || server.is_none() || flags != engine::DuelOptions::MASTER_RULE_5) {
-        return Err("ygo-agent requires matchup --rules mr5 --server http://HOST:PORT".into());
+    if has_agent && (!["matchup", "search"].contains(&mode.as_str()) || server.is_none() || flags != engine::DuelOptions::MASTER_RULE_5) {
+        return Err("ygo-agent requires matchup or search, --rules mr5 --server http://HOST:PORT".into());
+    }
+    // In a search the model is the other player, and a policy stands in for it in the try-outs.
+    if has_agent && mode == "search" && jobs.iter().any(|j| j.a == "ygo-agent") {
+        return Err("search against ygo-agent: --policies names the policy that searches, --opponents the model".into());
+    }
+    let stand_in = args.get("--stand-in").map(String::as_str);
+    if let Some(name) = stand_in {
+        if !has_agent || mode != "search" {
+            return Err("--stand-in is for a search against ygo-agent".into());
+        }
+        if name == "ygo-agent" || !catalog.contains_key(name) {
+            return Err(format!("--stand-in {name}: not a policy of the library"));
+        }
     }
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
@@ -585,7 +605,7 @@ fn run() -> Result<()> {
         "engine": core_path.as_ref().map(|p| file_identity(p)).unwrap_or_else(|| json!({"linked": true})),
         "cards": file_identity(&cards), "scripts": git_revision(&scripts), "core": git_revision(&root.join("vendor/ocgcore")),
         "lua": git_revision(&root.join("vendor/ocgcore/lua/src")), "checkout": git_revision(&root),
-        "baseline": file_identity(&baseline), "candidate": file_identity(&candidate),
+        "baseline": file_identity(&baseline), "candidate": file_identity(&candidate), "stand_in": stand_in,
         "decks": deck_ids, "catalog": catalog, "reference": reference, "planned_jobs": jobs.len()});
     // Refuse accidental truncation of an earlier run; choose another output name.
     let mut file = std::fs::OpenOptions::new()
@@ -626,10 +646,32 @@ fn run() -> Result<()> {
                         if mode == "search" {
                             let policies = [&candidate, &candidate];
                             let options = PlayOptions { seed, limit, trace: false, life_points, record, flags };
-                            row["baseline"] = scored(engine::play(&core, &decks, policies, names, cards, options), seat);
+                            // Against the model the plain game is the one `matchup` plays, and in the
+                            // searched one the model answers its seat while a policy stands in for it
+                            // in the try-outs.
+                            let model = names.contains(&"ygo-agent");
+                            row["baseline"] = scored(
+                                if model {
+                                    ygo_agent::play(&core, &decks, &candidate, names, cards, options, server.unwrap())
+                                } else {
+                                    engine::play(&core, &decks, policies, names, cards, options)
+                                },
+                                seat,
+                            );
                             let started = std::time::Instant::now();
                             let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log };
-                            row["search"] = scored(engine::play_searching(&core, &decks, policies, names, cards, options, search), seat);
+                            let searched = || -> Result<Value> {
+                                let outside = if model {
+                                    Some(engine::Outside {
+                                        seat: ygo_agent::seat(server.unwrap(), 1 - seat as u8, cards)?,
+                                        stand_in: stand_in.unwrap_or(a),
+                                    })
+                                } else {
+                                    None
+                                };
+                                engine::play_searching(&core, &decks, policies, names, cards, options, search, outside)
+                            };
+                            row["search"] = scored(searched(), seat);
                             row["search"]["seconds"] = json!(started.elapsed().as_secs_f64());
                             tx.send(Ok(row)).map_err(|e| e.to_string())?;
                             continue;
@@ -750,5 +792,22 @@ mod tests {
         assert_eq!(mirror.iter().filter(|j|j.seat==0).count(),5);
         assert!(mirror.iter().all(|j|j.a==j.b));
         assert_eq!(mirror, jobs(&players,&players,"matchup",10,7,None));
+    }
+
+    #[test]
+    fn a_search_pairs_a_benchmark_player_with_itself_on_the_deals_of_its_matchup() {
+        let pilot = vec!["blue-eyes".to_owned()];
+        let mirror = jobs(&pilot, &pilot, "search", 4, 7, None);
+        assert_eq!(mirror.len(), 4);
+        assert_eq!(mirror, jobs(&pilot, &pilot, "matchup", 4, 7, None));
+        // A policy of the roster is not searched against itself, as before,
+        // and the policy that searches keeps its side whatever its name.
+        let roster = vec!["monarch".to_owned()];
+        assert!(jobs(&roster, &roster, "search", 4, 7, None).is_empty());
+        let other = vec!["blackwing".to_owned()];
+        assert!(jobs(&roster, &other, "search", 4, 7, None).iter().all(|j| j.a == "monarch" && j.b == "blackwing"));
+        // Against the model the deals are those of the matchup too.
+        let model = vec!["ygo-agent".to_owned()];
+        assert_eq!(jobs(&pilot, &model, "search", 4, 7, None), jobs(&model, &pilot, "matchup", 4, 7, None));
     }
 }

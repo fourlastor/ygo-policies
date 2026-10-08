@@ -754,6 +754,18 @@ impl ModelSeat {
             "fallback_reasons":self.fallbacks,"win_rates":self.values,"trace":self.trace})
     }
 }
+impl crate::engine::LiveSeat for ModelSeat {
+    fn feed(&mut self, bytes: &[u8], duel: &Duel) -> Result<Option<Vec<u8>>> {
+        ModelSeat::feed(self, bytes, duel)
+    }
+    fn stats(&self) -> Value {
+        ModelSeat::stats(self)
+    }
+}
+/// The model's seat for a duel that is played elsewhere: a searched one.
+pub fn seat(server: &str, me: u8, cards: &Path) -> Result<Box<dyn crate::engine::LiveSeat>> {
+    Ok(Box::new(ModelSeat::new(server, me, cards, false)?))
+}
 impl Drop for ModelSeat {
     fn drop(&mut self) {
         let _ = self

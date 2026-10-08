@@ -15,7 +15,7 @@ that beats a quickly written pilot of the same deck, or not.
    player and a player that always takes the first option.
 2. The model against that pilot, with those two players as the reference.
 3. Only if the model shows competence there: the same pilot with the search
-   on top of it.
+   on top of it. That is [Step 3](SEARCH.md).
 
 **Who does what.** The model's side is done and described here: how to run
 it, a server that shows it what its own environment showed it, and the
@@ -26,7 +26,8 @@ then run by whoever set up the model's side.
 
 **Measured on 2026-10-08:** the checks hold, and the model wins 1,659 of
 2,000 games against the pilot, 83.0% ± 0.8%. See
-[Measured](#measured-2026-10-08).
+[Measured](#measured-2026-10-08). With the search on top the pilot wins
+29.5% ± 3.2% of 200 games where alone it wins 16.5%: [Step 3](SEARCH.md).
 
 Everything said of ygo-agent below was read in its source at commit
 `26293f8` or measured with it on 2026-10-08; where a file is named without a
