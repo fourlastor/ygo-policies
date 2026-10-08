@@ -51,7 +51,7 @@ impl Psychic {
     }
     fn commander(t: &Turn) -> Response {
         let ctx = t.ctx;
-        if !ctx.phase().map_or(false, |p| p.is_damage_step()) || ctx.my_lp() <= 700 {
+        if ctx.my_lp() <= 700 {
             return Response::no();
         }
         let (Some(a), Some(b)) = (ctx.battle_attacker(), ctx.battle_target()) else {
@@ -63,7 +63,7 @@ impl Psychic {
             (b, a)
         };
         let difference = ctx.battle_stat(theirs) - ctx.battle_stat(ours);
-        if ctx.view_data(ours).race & races::PSYCHIC != 0 && difference >= 0 && difference < 100 {
+        if ctx.view_data(ours).race & races::PSYCHIC != 0 && difference >= 0 && difference < 500 {
             Response::new(80.0)
         } else {
             Response::no()
@@ -271,12 +271,29 @@ impl Strategy for Psychic {
             && ctx.my_lp() > 700
             && ctx.face_up_on_field(ctx.me, COMMANDER)
         {
-            100
+            500
         } else {
             0
         }
     }
     fn special_summon(&self, t: &Turn, c: &Choice) -> Option<bool> {
         support::extra_allowed(t, c)
+    }
+    fn announce(&self, t: &Turn) -> Option<usize> {
+        if t.memory.last_activated != Some(COMMANDER) {
+            return None;
+        }
+        let ctx = t.ctx;
+        let (a, b) = (ctx.battle_attacker()?, ctx.battle_target()?);
+        let (ours, theirs) = if a.at.controller == ctx.me {
+            (a, b)
+        } else {
+            (b, a)
+        };
+        let needed = ((ctx.battle_stat(theirs) - ctx.battle_stat(ours)).max(0) / 100 + 1) * 100;
+        t.choices()
+            .filter(|(_, c)| c.kind == ChoiceKind::Announce && c.description >= needed as u64)
+            .min_by_key(|(_, c)| c.description)
+            .map(|(i, _)| i)
     }
 }

@@ -40,6 +40,9 @@ impl Strategy for Fish {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[SNOWMAN]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         if ctx.free_monster_zones(ctx.me) >= 2 {
             if let Some(i) = t.activate_from(KING, Location::MonsterZone) {
@@ -121,6 +124,16 @@ impl Strategy for Fish {
         }
         let code = ctx.canonical(m.code?);
         let src = t.memory.last_activated.map(|k| ctx.canonical(k));
+        if t.decision.hint == Hint::ReturnToHand && src == Some(SALVAGE) {
+            return Some(
+                support::body_score(self, &ctx, code)
+                    + if code == DIVA && !ctx.in_hand(DIVA) {
+                        3000.0
+                    } else {
+                        0.0
+                    },
+            );
+        }
         if t.decision.hint == Hint::SpecialSummon {
             if src == Some(KING) {
                 let selected_tuners = t

@@ -105,7 +105,7 @@ is a floor on what a better pilot of the same deck would gain.
 
 ```bash
 target/release/policy-bench search --policies monarch --opponents existing \
-  --games 64 --workers 20 --output monarch-search.jsonl
+  --games 64 --workers 8 --output monarch-search.jsonl
 ```
 
 At a decision of the searching seat the duel is snapshotted.  Every

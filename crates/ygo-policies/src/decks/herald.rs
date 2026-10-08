@@ -76,6 +76,9 @@ impl Strategy for Herald {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[60694662]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         for code in [PREPARATION, FACTORY] {
             if let Some(i) = t.activate(code) {

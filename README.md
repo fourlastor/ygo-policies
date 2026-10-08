@@ -273,6 +273,9 @@ answers to them, an Infernity pilot that kept cards in its hand, and what a
 search then gave Infernity, Fortune Lady and Draconic Might.
 [Which pilots the search has been run on](benchmarks/search-status.md), and
 which are still to do.
+[The expanded roster's first optimization pass](benchmarks/new-decks-optimization.md)
+records all 39 additions, their search diagnostics and independent before/after
+comparisons, with execution limited to eight workers.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

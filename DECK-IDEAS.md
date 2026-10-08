@@ -50,11 +50,14 @@ Use this file as a backlog, and recheck the pool when changing vendors.
 | `iron-chain` | Rust Never Sleeps | Repairman/Coil recursion, Synchros and opportunistic milling |
 | `malefic` | Eclipse Without End | Supported 4000-ATK summons, Skill Drain and field protection |
 
-These are initial hand-written strategies, with ordinary-duel validation and
-focused decision tests. No policy search was used. See
+Initial implementation used hand-written strategies, ordinary-duel validation
+and focused decision tests, without policy search. See
 [`benchmarks/four-new-decks.md`](benchmarks/four-new-decks.md) and
 [`benchmarks/initial-policy-batches.md`](benchmarks/initial-policy-batches.md) for validation.
-The 32-deck tier list predates these additions; they are not ranked there yet.
+The follow-up [optimization pass](benchmarks/new-decks-optimization.md) completed
+search diagnostics and independent comparisons for all 39 additions, using at
+most eight workers. Twenty-five policies show measured gains; others remain
+unchanged or inconclusive. The [current ranking](DECK-TIER-LIST.md) includes all 71 decks.
 
 ## Inventory status
 
@@ -70,5 +73,6 @@ All 39 additions in this inventory now have initial decks and policies.
 - T.G. Striker/Warwolf/Hyper Librarian, Reborn Tengu and Rescue Rabbit are
   outside this whitelist. Calendar-era assumptions are insufficient.
 
-The implementation queue is complete. Search and measured optimization are
-the next pass; progress is tracked in `benchmarks/search-status.md`.
+The implementation queue and first optimization pass are complete. Remaining
+headroom and search coverage are tracked in
+[`benchmarks/search-status.md`](benchmarks/search-status.md).

@@ -16,8 +16,19 @@ const MONK: u32 = 423585;
 const BLAZE: u32 = 69537999;
 const TRI: u32 = 21420702;
 const FOOLISH: u32 = 81439173;
+const BREAK: u32 = 4178474;
 #[derive(Clone, Default)]
 pub struct Volcanic;
+impl Volcanic {
+    fn removal(t: &Turn) -> Response {
+        let ctx = t.ctx;
+        let cheap = ctx.in_hand(SHELL) || (ctx.in_hand(COUNTER) && !ctx.monsters_banished());
+        support::target(&ctx, BREAK, true)
+            .filter(|c| ctx.threat(c) >= if cheap { 1200 } else { 2300 })
+            .map(|c| Response::targeting(70.0, vec![c.at]))
+            .unwrap_or_else(Response::no)
+    }
+}
 impl Strategy for Volcanic {
     fn value(&self, _: &Ctx, code: u32) -> Option<i32> {
         Some(match code {
@@ -89,6 +100,12 @@ impl Strategy for Volcanic {
                 return t.pick(i);
             }
         }
+        if let Some(i) = t.activate(BREAK) {
+            let r = Self::removal(t);
+            if r.score > 0.0 {
+                return t.pick_targeting(i, r.intent);
+            }
+        }
         None
     }
     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
@@ -113,6 +130,7 @@ impl Strategy for Volcanic {
     fn chain(&mut self, t: &Turn, i: usize) -> Option<Response> {
         Some(match t.ctx.canonical(t.choice(i).code()?) {
             ROCKET | SCATTER | COUNTER | GUARDS | DOOM => Response::new(130.0),
+            BREAK => Self::removal(t),
             SHELL | MONK | BLAZE | TRI | FOOLISH | SLICER => Response::no(),
             _ => return support::chain(t, i),
         })
@@ -168,15 +186,20 @@ impl Strategy for Volcanic {
             });
         }
         if t.decision.hint == Hint::Discard {
-            return Some(
-                if code == SHELL && ctx.count_in(ctx.me, Location::Graveyard, SHELL) == 0 {
-                    5000.0
-                } else if code == SCATTER {
-                    3500.0
+            return Some(if code == SHELL {
+                5000.0
+            } else if code == COUNTER && !ctx.monsters_banished() {
+                4000.0
+            } else if code == SCATTER {
+                // A discard is not an Accelerator wipe; preserve the trio.
+                if ctx.opp_lp() <= 500 && !ctx.monsters_banished() {
+                    6000.0
                 } else {
-                    -value(self, &ctx, Some(code), None) as f64
-                },
-            );
+                    -3500.0
+                }
+            } else {
+                -value(self, &ctx, Some(code), None) as f64
+            });
         }
         if t.decision.hint == Hint::ToDeck && src == Some(GUARDS) {
             return Some(if code == SCATTER {

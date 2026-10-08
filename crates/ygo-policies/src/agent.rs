@@ -325,6 +325,10 @@ pub trait Strategy: Send {
     fn option(&self, t: &Turn) -> Option<usize> {
         None
     }
+    /// Choose a value from an engine-provided announcement prompt.
+    fn announce(&self, t: &Turn) -> Option<usize> {
+        None
+    }
 }
 
 #[derive(Clone)]
@@ -375,6 +379,7 @@ impl<S: Strategy> Policy for Agent<S> {
             DecisionKind::SelectCards | DecisionKind::SelectSum => select(s, &t),
             DecisionKind::SelectToggle => toggle(s, &t),
             DecisionKind::Option => s.option(&t),
+            DecisionKind::Announce => s.announce(&t),
             // No card depends on zones: any zone, at random.
             DecisionKind::Place => Some(t.memory.ties.index(decision.choices.len())),
             _ => None,

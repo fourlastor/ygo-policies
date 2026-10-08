@@ -33,6 +33,9 @@ impl Strategy for Batteryman {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(i) = support::flip(t, &[56839613]) {
+            return Some(i);
+        }
         let ctx = t.ctx;
         for code in [FUEL, INDUSTRIAL] {
             if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(code), Some(Location::Hand)) {

@@ -87,11 +87,25 @@ impl Strategy for GemKnight {
                 return t.pick_targeting(i, vec![c.at]);
             }
         }
-        if let Some(i) = t.activate_from(FUSION, Location::Hand) {
+        // Armadillo adds material before Fusion can consume it from the hand.
+        if let Some(i) = t.find(ChoiceKind::NormalSummon, Some(ARMA), Some(Location::Hand)) {
             return t.pick(i);
         }
-        if let Some(i) = t.activate(POLY) {
-            return t.pick(i);
+        // Attack with an established Fusion before combining it away on an open field.
+        let attack_first = ctx.main1()
+            && t.has(ChoiceKind::EnterBattle)
+            && ctx.monsters(ctx.opp).is_empty()
+            && ctx
+                .monsters(ctx.me)
+                .iter()
+                .any(|c| c.position.face_up && ctx.view_data(c).is_extra() && c.attack >= 2000);
+        if !attack_first {
+            if let Some(i) = t.activate_from(FUSION, Location::Hand) {
+                return t.pick(i);
+            }
+            if let Some(i) = t.activate(POLY) {
+                return t.pick(i);
+            }
         }
         if !ctx.in_hand(FUSION) {
             if let Some(i) = t.activate_from(FUSION, Location::Graveyard) {

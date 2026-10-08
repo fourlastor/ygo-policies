@@ -6,6 +6,8 @@ every addition is queued in [search-status.md](search-status.md). Policies use
 seat-visible observations and engine-provided legal choices. Engine code and
 vendor pointers are unchanged. After the inventory is implemented, a separate
 optimization pass is authorized, with all runs capped at **eight workers**.
+The completed pass and independent results are recorded in
+[new-decks-optimization.md](new-decks-optimization.md).
 
 The first four additions are recorded in [four-new-decks.md](four-new-decks.md).
 Subsequent batches below use ordinary matchup duels, alternating seats, 8000 LP,
@@ -77,8 +79,9 @@ shared cards. [Compact results](initial-batch2.summary.json) and
   High-cost effects retain an LP cushion. 40 Main / 14 Extra.
 
 Shared removal priorities now recognize Coelacanth, Gigaplant and Supervise.
-Psychic Commander currently uses the adapter's default 100-LP announcement;
-its attack estimate and trigger guard use that same 100-point adjustment.
+At initial implementation, Psychic Commander used the adapter's default
+100-LP announcement; its attack estimate and trigger guard used that same
+100-point adjustment. The subsequent optimization pass adds variable payment.
 
 ```sh
 target/release/policy-bench matchup --policies fish,cyber,gemini,psychic \

@@ -24,6 +24,16 @@ impl Strategy for Amazoness {
         })
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        for code in [32807846, 95281259] {
+            if let Some(i) = t.activate(code) {
+                return t.pick(i);
+            }
+        }
+        if !t.ctx.in_hand(VILLAGE) && !t.ctx.face_up_on_field(t.ctx.me, VILLAGE) {
+            if let Some(i) = t.activate(73628505) {
+                return t.pick(i);
+            }
+        }
         for code in [VILLAGE, SPIRIT] {
             if !t.ctx.face_up_on_field(t.ctx.me, code) {
                 if let Some(i) = t.activate(code) {
