@@ -27,10 +27,18 @@
 # checkpoints were trained on, and the one their README's own figures are of.
 set -euo pipefail
 KIT=$(cd "$(dirname "$0")" && pwd)
-AGENT=${AGENT:-/tmp/ygo-agent}
-BUILD=${BUILD:-/tmp/ygo-agent-build}
-VENV=${VENV:-/tmp/ygo-agent-venv}
-SCRIPTS=${SCRIPTS:-/tmp/ygopro-scripts}
+# The steps below work from several folders: a path given from where this
+# script is started is made whole first.
+absolute() {
+  case $1 in
+    /*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$PWD" "$1" ;;
+  esac
+}
+AGENT=$(absolute "${AGENT:-/tmp/ygo-agent}")
+BUILD=$(absolute "${BUILD:-/tmp/ygo-agent-build}")
+VENV=$(absolute "${VENV:-/tmp/ygo-agent-venv}")
+SCRIPTS=$(absolute "${SCRIPTS:-/tmp/ygopro-scripts}")
 COMMIT=26293f82e1e53aabb09b2afd8bb7ccb5b9d91973
 SCRIPTS_COMMIT=44eff41fa27fb15defb95f9e98d9d5c596ed1433
 DATABASE=https://github.com/mycard/ygopro-database/raw/f288cd7d353467eb3816babcbb04620e11f64e8a/locales

@@ -164,7 +164,7 @@ the try-out's table.
 | The GPU against the CPU | 5 first choices of 2,515 differ, each between options that are tied; 14 of 16 games are the same and all 16 have the same winner |
 | Copies of an outside seat in the try-outs change nothing where that seat answers as a policy would | the bench's test `an_outside_seat_that_answers_as_its_stand_in_changes_nothing` |
 | The model in the try-outs: 29 deals with a light search (4, 8 and 16 worlds) on a GTX 1060 | 13,580 try-outs, none failed; 1,197,778 requests in them, none unanswered; 16 searched games with no answer changed, all 16 the plain game answer for answer |
-| `kit/search-model.sh` from start to end | 4 deals with a search of 2 worlds, and 2 deals on a setup made from nothing with `GPU=1`. An interrupt stops the bench and the server with it; a submodule that is not at its pin stops the script before it builds |
+| `kit/search-model.sh` from start to end | 4 deals with a search of 2 worlds, and 2 deals on a setup made from nothing with `GPU=1`. An interrupt stops the bench and the server with it; a submodule that is not at its pin stops the script before it builds. The folders may be given from where the script is started (`OUT`, `AGENT`, `VENV`, and the four of `setup.sh`): a run with all of them so, and one with no `OUT`, give the same rows |
 | A clone made from nothing | cloned with its submodules, built (71 seconds) and run on 2 deals: the rows of the working copy, answer for answer. The engine is pinned one commit after its fork's `master` (`f1a6ec1`, a larger store for a duel): the clone needs that commit on the fork |
 
 ### What it costs
@@ -240,6 +240,10 @@ the run (37 million for the 200 deals) by them. A model that is busy all
 the time with its batches full is the limit itself: a larger `BATCH`
 answers more at once, each request a little later. One that is not busy
 waits for the fronts or for the bench: more `FRONTS`, or more `WORKERS`.
+One that is busy with batches far from full has fewer deals to serve than
+a batch holds, and a smaller `BATCH` answers each sooner: 16 deals at once
+with batches of 32 gave 1,050 requests a second on the GTX 1060, 8 in a
+batch.
 The bench writes a game's row when the game ends and says where it stands
 every 16 games. An interrupted run keeps the rows of the games that ended;
 it cannot be taken up again where it stopped.

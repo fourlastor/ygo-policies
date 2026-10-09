@@ -37,15 +37,23 @@
 set -euo pipefail
 KIT=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$KIT/../../.." && pwd)
-AGENT=${AGENT:-/tmp/ygo-agent}
-VENV=${VENV:-/tmp/ygo-agent-venv}
+# The bench runs from the checkout and the server from ygo-agent's folder: a
+# path given from where this script is started is made whole first.
+absolute() {
+  case $1 in
+    /*) printf '%s\n' "$1" ;;
+    *) printf '%s/%s\n' "$PWD" "$1" ;;
+  esac
+}
+AGENT=$(absolute "${AGENT:-/tmp/ygo-agent}")
+VENV=$(absolute "${VENV:-/tmp/ygo-agent-venv}")
 GAMES=${GAMES:-200} SEED=${SEED:-860000}
 WORKERS=${WORKERS:-96} BATCH=${BATCH:-32}
 CORES=$(nproc)
 FRONTS=${FRONTS:-$((CORES * 2 / 3 > 2 ? CORES * 2 / 3 : 2))}
 WORLDS=${WORLDS:-8} CONFIRM=${CONFIRM:-32} FINAL=${FINAL:-96}
 DEVICE=${DEVICE:-gpu} CHECKPOINT=${CHECKPOINT:-0546_22750M} PORT=${PORT:-3013}
-OUT=${OUT:-$ROOT/benchmarks/ygo-agent/runs/search-model}
+OUT=$(absolute "${OUT:-$ROOT/benchmarks/ygo-agent/runs/search-model}")
 
 if [ ! -f "$AGENT/scripts/checkpoints/$CHECKPOINT.flax_model" ] || [ ! -x "$VENV/bin/python" ]; then
   echo "ygo-agent is not set up in $AGENT with $VENV: run kit/setup.sh first" >&2
