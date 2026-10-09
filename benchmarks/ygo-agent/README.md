@@ -814,6 +814,39 @@ and a game against the pilot asks 117.
   copies of a card in hand) the other one is then taken, and the game goes
   another way from there. The results agree.
 
+## How fast it learns
+
+The released model stands at the end of 22.75 billion steps. What their
+method reaches on the way, measured against the same pilot, says what the
+pilot is worth in games of that training: [`kit/curve.sh`](kit/curve.sh).
+
+```sh
+HOURS=10 bash benchmarks/ygo-agent/kit/curve.sh
+```
+
+- **It trains their way.** `cleanba.py` from scratch, the Blue-Eyes deck
+  against itself, with the settings their README gives for one GPU, for
+  `HOURS`. This is one deck where the released model had many, so it should
+  learn this matchup sooner than that training did.
+- **It keeps checkpoints as it goes.** Their trainer saves every 2^20 steps
+  and keeps the last two. The script copies one after about 1, 2, 3, 5, 7,
+  10, 14, 20 ... million steps, and the last.
+- **It plays each one twice.** Against the pilot, 400 games on the deals of
+  `22750M-pilot` through `serve.py`, and against the released model, 256
+  games in their own environment (`battle.py`).
+- **It prints the curve**: steps, games and hours of training against the
+  share of the games won, and where the model passes half the games against
+  the pilot. Games are estimated from the game lengths their trainer logs.
+
+`TRAIN=0` measures what a run has kept without training, also beside a run
+that is still going (then with `DEVICE=cpu`). The script's head lists the
+rest.
+
+**Not yet run on a card that makes it worth reading.** Tried here on a GTX
+1060, which trains 1,100 steps a second: after two minutes and 143,000
+steps, about 600 games, the model wins 1 game in 40 against the pilot and
+none of 16 against the released model.
+
 ## The kit
 
 | File | What it is |
@@ -831,4 +864,5 @@ and a game against the pilot asks 117.
 | [`kit/scan_revealed.py`](kit/scan_revealed.py) | What their environment shows a seat of the opponent's hidden cards, and after a reveal. |
 | [`kit/check_checks.py`](kit/check_checks.py) | Checks 1 to 4 from the summaries of the two runs they need. |
 | [`kit/report.py`](kit/report.py) | The results from the rows: the model's share by seat, and two runs deal by deal. |
+| [`kit/curve.sh`](kit/curve.sh), [`curve.py`](kit/curve.py) | Their trainer from scratch on the Blue-Eyes deck, its checkpoints against the pilot and the released model, and the curve ([How fast it learns](#how-fast-it-learns)). |
 | [`kit/BlueEyes.ydk`](kit/BlueEyes.ydk) | The deck. |
