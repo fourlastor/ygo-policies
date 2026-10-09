@@ -32,7 +32,7 @@ struct Job {
 
 fn names(spec: &str, catalog: &std::collections::HashMap<String, String>) -> Result<Vec<String>> {
     let mut result: Vec<_> = match spec {
-        "all" => catalog.keys().filter(|n| !["blue-eyes", "ygo-agent", "first", "random"].contains(&n.as_str())).cloned().collect(),
+        "all" => catalog.keys().filter(|n| n.as_str() != "ygo-agent" && !BENCHMARK_PLAYERS.contains(&n.as_str())).cloned().collect(),
         "existing" => EXISTING.split(',').map(str::to_owned).collect(),
         _ => spec.split(',').map(str::to_owned).collect(),
     };
@@ -47,7 +47,7 @@ fn names(spec: &str, catalog: &std::collections::HashMap<String, String>) -> Res
 }
 
 /// The policies of the ygo-agent benchmark, beside the roster.
-const BENCHMARK_PLAYERS: [&str; 3] = ["blue-eyes", "first", "random"];
+const BENCHMARK_PLAYERS: [&str; 4] = ["blue-eyes", "blue-eyes-improved", "first", "random"];
 
 /// `first`: the policy that takes seat 0, and so the first turn, in every
 /// game of its pairs.  Otherwise each pair alternates seats.
@@ -372,7 +372,7 @@ fn run() -> Result<()> {
         .map_err(|e| e.to_string())?;
         if rows.iter().any(|r| r["a"] == r["b"]
             || [r["a"].as_str().unwrap_or(""), r["b"].as_str().unwrap_or("")]
-                .iter().any(|n| ["blue-eyes", "first", "random", "ygo-agent"].contains(n))) {
+                .iter().any(|n| *n == "ygo-agent" || BENCHMARK_PLAYERS.contains(n))) {
             return ygo_agent::summary(&rows, &metadata, &input.with_extension("summary.json"));
         }
         return report::ranking(
@@ -771,7 +771,7 @@ fn run() -> Result<()> {
     } else if mode == "compare" {
         report::comparison(&results, &output.with_extension("summary.json"))
     } else if mode == "matchup" && (pilots.iter().chain(&opponents)
-        .any(|n| ["blue-eyes", "first", "random", "ygo-agent"].contains(&n.as_str()))
+        .any(|n| n == "ygo-agent" || BENCHMARK_PLAYERS.contains(&n.as_str()))
         || results.iter().any(|r| r["a"] == r["b"])) {
         ygo_agent::summary(&results, &metadata, &output.with_extension("summary.json"))
     } else {
@@ -786,6 +786,13 @@ fn run() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn improved_blue_eyes_remains_outside_the_wc2011_roster() {
+        let catalog = [("blue-eyes", "BlueEyes"), ("blue-eyes-improved", "BlueEyes"), ("monarch", "Emperor, Arise!")]
+            .into_iter().map(|(id, deck)| (id.to_owned(), deck.to_owned())).collect();
+        assert_eq!(super::names("all", &catalog).unwrap(), vec!["monarch"]);
+        assert_eq!(super::names("blue-eyes,blue-eyes-improved", &catalog).unwrap().len(), 2);
+    }
     use super::*;
     #[test]
     fn round_robin_is_unique_balanced_and_subset_stable() {

@@ -1,0 +1,398 @@
+   Compiling ygo-policies v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies)
+   Compiling ygo-policies-ocgcore v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies-ocgcore)
+   Compiling ygo-policies-edopro v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies-edopro)
+   Compiling ygo-policies-duel v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies-duel)
+   Compiling ygo-policies-bench v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench)
+   Compiling ygo-policies-ffi v0.1.0 (/home/daniele/Documents/yugioh-policies/crates/ygo-policies-ffi)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.76s
+     Running unittests src/lib.rs (target/debug/deps/ygo_policies-3c01f9821730bd2c)
+
+running 135 tests
+test knowledge::tests::conditions_on_the_attacker ... ok
+test knowledge::tests::the_pool_table_is_sorted_by_code ... ok
+test reference::tests::first_plays_before_declining ... ok
+test tests::attacking_directly_follows_the_plan ... ok
+test tests::a_bounce_is_not_a_card_lost ... ok
+test tests::a_forced_battle_attacks ... ok
+test reference::tests::random_is_reproducible_and_visits_all_options ... ok
+test tests::a_turn_that_cannot_end_enters_battle ... ok
+test tests::arcana_sets_up_solidarity_for_hidden_fairies_and_counts_its_boost ... ok
+test tests::arcana_ruler_can_replace_an_outclassed_board ... ok
+test tests::burn_turtle_recruits_another_blocker_before_exposing_princess ... ok
+test tests::burn_cannon_waits_past_two_standbys_but_takes_lethal ... ok
+test tests::blackwing_plays_what_the_search_found ... ok
+test tests::crystal_malefic_can_live_under_the_opponents_field_spell ... ok
+test tests::countdown_covers_a_turn_once_unless_negated ... ok
+test tests::crystal_abundance_clears_two_opposing_cards ... ok
+test tests::countdown_sets_one_cover_at_a_time ... ok
+test tests::crystal_recruits_ruby_for_two_companions_with_room_for_the_swarm ... ok
+test tests::crystal_tree_spends_one_counter_and_counts_its_own_freed_zone ... ok
+test tests::crystal_uses_a_spare_ruby_but_prefers_pegasus ... ok
+test tests::burn_turtle_attacks_when_clear_and_sets_when_outclassed ... ok
+test tests::crystal_release_adds_damage_on_an_open_field ... ok
+test tests::destiny_uses_graveyard_setup_and_d_chain_with_a_payoff ... ok
+test tests::dragunity_prefers_legionnaire_with_aklys_against_a_large_monster ... ok
+test tests::dragunity_uses_ravine_with_one_card_left_to_discard ... ok
+test tests::dragunity_uses_icarus_only_with_two_opposing_cards ... ok
+test tests::dragunity_uses_vajrayana_to_extend_with_phalanx ... ok
+test tests::face_down_cards_reveal_no_facts ... ok
+test tests::blackwing_uses_a_set_card_before_it_is_destroyed ... ok
+test tests::destiny_defender_stalls_and_can_complete_three_tributes ... ok
+test tests::gladiator_prefers_gyzarus_removal_when_both_contact_fusions_are_offered ... ok
+test tests::forbidden_chalice_is_played ... ok
+test tests::draconic_might_plays_what_the_search_found ... ok
+test tests::destiny_doom_lord_removes_a_lone_wall_without_turning_away_first ... ok
+test tests::gishki_can_use_meditation_in_its_own_open_main_window ... ok
+test tests::gravekeeper_does_not_cycle_treasure_into_its_own_necrovalley_lock ... ok
+test tests::dragunity_draws_with_a_single_non_phalanx_tuner ... ok
+test tests::gladiator_uses_prisma_when_its_copied_name_enables_a_combo ... ok
+test tests::gravekeeper_recognizes_visionarys_single_gravekeeper_tribute ... ok
+test tests::fortune_lady_uses_its_normal_summon ... ok
+test tests::gishki_recovers_a_spare_ritual_monster ... ok
+test tests::gishki_flips_ariel_for_its_search ... ok
+test tests::dragunity_discards_its_first_phalanx_for_the_equip_engine ... ok
+test tests::free_traps_come_before_solemn_ones_and_torrential_waits_for_two ... ok
+test tests::gishki_uses_tetrogre_in_its_main_phase ... ok
+test tests::gladiator_hand_searches_differ_from_tag_in_choices ... ok
+test tests::harpie_falcon_returns_set_backrow_before_an_attacker ... ok
+test tests::harpie_destroys_hunting_ground_before_its_own_live_backrow ... ok
+test tests::gishki_searches_the_missing_ritual_piece ... ok
+test tests::harpie_keeps_queen_as_a_monster_without_backrow_to_hunt ... ok
+test tests::gravekeeper_deploys_its_last_hand_monster_before_royal_tribute ... ok
+test tests::gladiator_uses_darius_and_bestiari_to_prepare_gyzarus ... ok
+test tests::gladiator_tags_into_equeste_to_recover_war_chariot ... ok
+test tests::gladiator_normal_summons_murmillo_to_enable_test_tiger ... ok
+test tests::harpie_revives_a_single_lady_in_main_phase ... ok
+test tests::harpie_party_rebuilds_an_empty_field_or_revives_multiple_ladies ... ok
+test tests::harpie_waits_for_opposing_backrow_before_using_hunting_ground ... ok
+test tests::heroes_summons_stratos_before_spending_it_as_fusion_material ... ok
+test tests::heroes_values_absolute_zeros_leaving_field_effect_when_choosing_a_fusion ... ok
+test tests::karakuri_position_targets_consider_the_resulting_position ... ok
+test tests::karakuri_normal_summons_the_tuner_for_a_shogun ... ok
+test tests::karakuri_special_summons_cyber_dragon_before_its_normal_summon ... ok
+test tests::karakuri_flips_sazank_only_with_an_enemy_target ... ok
+test tests::level_up_never_levels_down ... ok
+test tests::heroes_preserves_a_winning_fusion_but_fuses_when_it_is_outmatched ... ok
+test tests::machina_summons_cyber_dragon_before_filling_its_empty_field ... ok
+test tests::lightsworn_judgment_dragon_accepts_two_turns_of_deck_but_not_one ... ok
+test tests::lightsworn_revives_wulf_as_an_attacker_instead_of_valuing_it_as_a_discard ... ok
+test tests::morphtronic_does_not_plan_to_equip_cord_to_power_tool ... ok
+test tests::lightsworn_summons_judgment_dragon_before_adding_more_millers ... ok
+test tests::machina_uses_troopers_boost_with_a_battle_phase_and_a_deck_reserve ... ok
+test tests::lightsworn_revives_plaguespreader_only_with_a_hand_card_and_synchro_route ... ok
+test tests::morphtronic_power_tool_starts_in_attack_to_use_its_equips ... ok
+test tests::morphtronic_equips_cord_before_changing_position_and_aims_at_enemy_backrow ... ok
+test tests::lightsworn_flips_ryko_for_removal_but_preserves_its_deck_budget ... ok
+test tests::lightsworn_uses_compulsory_on_an_extra_deck_monster_before_it_attacks ... ok
+test tests::morphtronic_prioritizes_scopen_with_a_partner_then_celfon ... ok
+test tests::ojama_blue_searches_an_engine_before_hurricane ... ok
+test tests::ojama_country_revives_fusions_and_exposes_the_stat_swap ... ok
+test tests::machina_keeps_its_own_machines_but_contact_fuses_with_the_opponents ... ok
+test tests::infernity_plays_toward_an_empty_hand ... ok
+test tests::monarch_plays_what_the_search_found ... ok
+test tests::probed_facts_decide_battles ... ok
+test tests::probed_facts_decide_what_effects_reach ... ok
+test tests::every_registered_policy_answers_within_range ... ok
+test tests::lock_removal_spares_our_own_locks ... ok
+test tests::lightsworn_uses_judgment_wipe_for_a_lone_threat_without_spending_a_better_board ... ok
+test tests::machina_discards_fortress_before_spending_two_searching_machines ... ok
+test tests::pyramid_energy_selects_attack_to_win_battle_and_defense_to_save_a_blocker ... ok
+test tests::pyramid_turtle_recruits_reaper_in_defense_against_large_attackers ... ok
+test tests::pyramid_does_not_tribute_its_large_sphinxes_for_weaker_ones ... ok
+test tests::pyramid_keeps_sphinx_face_up_through_open_main_phase_windows ... ok
+test tests::registry_ids_are_unique ... ok
+test tests::quickdraw_junk_synchron_revives_a_non_tuner ... ok
+test tests::quickdraw_discards_level_eater_for_its_junk_warrior_line ... ok
+test tests::samurai_activates_another_united_before_the_next_summon ... ok
+test tests::rock_block_still_preserves_rocks_for_upkeep_under_skill_drain ... ok
+test tests::rock_block_summons_barbaros_beside_an_existing_monster_without_tributes ... ok
+test tests::red_eyes_darkness_metal_banishes_the_cheapest_dragon ... ok
+test tests::rock_block_ad_changer_exposes_weak_defense_before_battle ... ok
+test tests::quickdraw_uses_hand_and_graveyard_tuners_for_small_synchros ... ok
+test tests::rock_block_oppression_negates_the_opponent_but_not_our_own_summon ... ok
+test tests::samurai_normal_summons_a_tuner_only_when_it_connects_to_its_extra_deck ... ok
+test tests::quick_play_spells_are_set ... ok
+test tests::rock_block_uses_grand_mole_against_large_monsters_unless_drained ... ok
+test tests::rules_every_deck_shares ... ok
+test tests::samurai_searches_a_tuner_or_a_free_summon_using_the_public_normal_summon_state ... ok
+test tests::watt_dragonfly_recruits_replacement_blockers_under_pressure ... ok
+test tests::samurai_kageki_brings_a_tuner_before_another_attacker ... ok
+test tests::watt_summons_in_defense_on_the_opponents_turn ... ok
+test tests::samurai_revives_kagemusha_to_make_a_synchro_instead_of_waiting_for_a_tuner ... ok
+test tests::x_saber_flips_a_second_body_for_faultroll ... ok
+test tests::skill_drain_switches_card_facts_off ... ok
+test tests::x_saber_negates_small_summons_with_saber_hole ... ok
+test tests::solemn_cards_weigh_their_price ... ok
+test tests::watt_sets_small_blockers_instead_of_ending_with_them_in_hand ... ok
+test tests::spellcaster_counts_mage_power_from_hand_and_from_its_set_zone ... ok
+test tests::watt_turns_direct_attackers_toward_larger_blockers ... ok
+test tests::x_saber_searches_a_small_body_when_faultroll_is_already_in_hand ... ok
+test tests::watt_prefers_replacement_blockers_but_takes_lethal_direct_damage ... ok
+test tests::x_saber_uses_one_for_one_before_its_normal_summon ... ok
+test tests::x_saber_sets_pashuul_without_a_synchro_play ... ok
+test tests::the_fool_coin_decides_who_cannot_target_it ... ok
+test tests::zones_are_chosen_at_random_per_seed ... ok
+test tests::tele_dad_mills_plaguespreader_instead_of_stranding_both_malicious ... ok
+test tests::spellcaster_flips_for_draw_removal_and_useful_counters ... ok
+test tests::ties_are_broken_at_random_and_reproducibly ... ok
+test tests::verdict_summons_barbaros_without_tributes ... ok
+test tests::toon_table_searches_world_once_then_playable_monsters ... ok
+test tests::the_weakest_attacks_first_and_the_answer_waits_for_the_strongest ... ok
+test tests::toon_defense_is_ready_early_but_declines_lethal_redirection ... ok
+test tests::watt_direct_attack_does_not_leave_a_monster_target_in_memory ... ok
+test tests::watt_cash_in_cube_only_when_the_permanent_bonus_is_larger ... ok
+test tests::spellcaster_unites_to_break_a_wall_without_reducing_open_field_damage ... ok
+test tests::spellcaster_equips_attackers_even_when_they_already_win ... ok
+
+test result: ok. 135 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/blue_eyes_improved.rs (target/debug/deps/blue_eyes_improved-cf6b8db98904650a)
+
+running 3 tests
+test alternative_summons_before_trade_in_can_discard_its_reveal ... ok
+test recovery_precedes_revival_and_targets_the_missing_summon_piece ... ok
+test prime_breaks_a_defense_wall_but_does_not_replace_attackers_for_a_small_target ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/exodia_deck.rs (target/debug/deps/exodia_deck-e63fc6b710a2f6eb)
+
+running 1 test
+test exodia_list_respects_wc2011_pool_and_limits ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/exodia_policy.rs (target/debug/deps/exodia_policy-c1824df7bf41faf9)
+
+running 8 tests
+test multiple_hearts_chain_without_overdrawing ... ok
+test other_strategies_keep_the_repeated_action_guard ... ok
+test end_phase_discards_spare_cards_instead_of_exodia ... ok
+test duality_takes_the_winning_fifth_piece ... ok
+test underdog_keeps_drawing_after_three_activations ... ok
+test pieces_and_hand_protection_are_never_normal_summoned_or_set ... ok
+test attack_locks_and_hearts_leave_room_for_reload ... ok
+test reload_restarts_the_draw_phase_after_hearts_resolve ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/harpie_deck.rs (target/debug/deps/harpie_deck-5ab0498507199605)
+
+running 1 test
+test harpie_list_respects_wc2011_pool_and_shared_name_limit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/policy_bench-6f7f5713cd52384c)
+
+running 16 tests
+test knowledge::tests::a_plain_battle_reads_as_plain ... ok
+test report::tests::bradley_terry_is_centered_and_respects_results ... ok
+test report::tests::failed_or_incomplete_runs_cannot_publish_a_tier_list ... ok
+test tests::a_search_pairs_a_benchmark_player_with_itself_on_the_deals_of_its_matchup ... ok
+test tests::mirrors_have_one_job_per_deal_and_alternate_the_named_player ... ok
+test knowledge::tests::conditions_are_read_from_the_attackers_tried ... ok
+test knowledge::tests::what_a_battle_shows ... ok
+test report::tests::paired_statistics_use_within_seed_changes ... ok
+test tests::round_robin_is_unique_balanced_and_subset_stable ... ok
+test ygo_agent::tests::hidden_cards_keep_no_identity_or_statistics_and_descriptions_convert ... ok
+test tests::improved_blue_eyes_remains_outside_the_wc2011_roster ... ok
+test ygo_agent::tests::the_golden_idle_prompt_translates_in_the_same_order ... ok
+test ygo_agent::tests::server_indices_survive_errors_and_single_option_history ... ok
+test ygo_agent::tests::deck_order_is_hidden_but_search_candidates_keep_their_engine_places ... ok
+test ygo_agent::tests::staged_golden_table_matches_every_visible_field ... ok
+test engine::search::tests::an_outside_seat_that_answers_as_its_stand_in_changes_nothing ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 59.39s
+
+     Running unittests src/lib.rs (target/debug/deps/ygo_policies_duel-42ea4279134ed630)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/duel.rs (target/debug/deps/duel-f7f9245e3d3d5563)
+
+running 3 tests
+test a_snapshot_brings_the_duel_back_and_a_swap_changes_it ... ok
+test a_stepped_duel_ends_and_its_record_plays_it_again ... ok
+test exodia_stall_with_large_synchro_searches_finishes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/new_deck_policies.rs (target/debug/deps/new_deck_policies-cd937b23234cf77f)
+
+running 72 tests
+test banishment_turns_off_gusto_recruitment_and_enables_dd_returns ... ok
+test chain_burn_extends_its_own_chain_with_a_different_draw_card ... ok
+test amazoness_queen_protects_swords_woman_until_skill_drain ... ok
+test dark_world_needs_effect_discards_not_costs ... ok
+test allure_banishes_scout_plane_not_survivor_for_a_free_return ... ok
+test chain_burn_preserves_chain_uniqueness_for_its_waiting_payoffs ... ok
+test catsith_is_not_discarded_when_our_removal_takes_its_only_safe_target ... ok
+test benkei_deploys_ben_kei_before_equipping_cyber_dragon ... ok
+test cloudians_never_choose_face_up_defense ... ok
+test copy_plant_changes_level_to_open_a_better_synchro ... ok
+test counter_fairies_search_sanctuary_and_accept_vandalgyon_from_hand ... ok
+test deckout_flips_its_needle_worm_with_taiyou ... ok
+test demise_does_not_wipe_our_doom_dozer_over_an_empty_opposing_field ... ok
+test destiny_board_releases_messenger_for_the_last_message ... ok
+test chaos_veiler_targets_the_opponents_current_field_effect ... ok
+test alien_uses_fiendish_chain_on_the_visible_effect_source ... ok
+test cyber_holds_power_bond_without_a_safe_attack_window ... ok
+test fabled_can_stack_its_independent_discard_triggers ... ok
+test every_policy_sees_gusto_reflection_but_only_sphreez_is_indestructible ... ok
+test fabled_discards_for_triggers_but_does_not_treat_sending_as_discarding ... ok
+test alien_recovers_swords_with_golgar ... ok
+test agents_search_venus_before_redundant_earth ... ok
+test destiny_board_protects_its_spirit_messages ... ok
+test gemini_resummons_gigaplant_to_unlock_its_effect ... ok
+test counter_fairies_negate_the_opponents_link_only ... ok
+test iron_chain_preserves_graveyard_for_repairman_when_boost_is_unneeded ... ok
+test fish_recruitment_prefers_an_oyster_after_selecting_a_tuner ... ok
+test gem_knight_searches_before_spending_armadillo_as_fusion_material ... ok
+test gusto_revives_a_gulldos_step_toward_sphreez ... ok
+test gusto_does_not_sacrifice_recruiters_into_damage_prevention ... ok
+test herald_dawn_recovers_fairy_instead_of_treating_recovery_as_a_cost ... ok
+test gusto_rams_only_when_public_sphreez_reflects_damage ... ok
+test garden_is_activated_after_summoning_the_initial_attacker ... ok
+test iron_chain_prefers_a_live_junk_combo_then_a_defensive_ryko ... ok
+test jurrac_does_not_meteor_an_unopposed_board ... ok
+test fabled_uses_ragin_with_an_empty_hand ... ok
+test genex_keeps_its_only_body_when_normal_summon_is_spent ... ok
+test gem_knight_attacks_before_spending_an_existing_fusion_as_material ... ok
+test industrial_strength_does_not_destroy_our_backrow_to_hit_a_monster ... ok
+test legal_honest_choice_does_not_require_a_damage_step_phase_message ... ok
+test hidden_armory_waits_for_a_body_instead_of_locking_out_ben_kei ... ok
+test macro_activates_banishment_before_tributing_survivor ... ok
+test gusto_turns_a_legal_defense_position_recruiter_toward_reflected_damage ... ok
+test genex_birdman_keeps_a_non_tuner_for_the_synchro ... ok
+test macro_does_not_summon_a_monarch_into_its_own_empty_opposing_field ... ok
+test gusto_summons_sphreez_before_generic_synchros ... ok
+test jurrac_plans_a_shrink_battle_only_when_the_spell_can_work ... ok
+test ice_barrier_searches_a_new_name_for_triangle ... ok
+test naturia_deploys_antjaw_face_up_for_opposing_special_summons ... ok
+test nordic_changes_tanngnjostr_to_recruit_even_against_a_larger_monster ... ok
+test new_flip_policies_use_a_free_flip_summon ... ok
+test malefic_requires_a_field_spell_or_skill_drain ... ok
+test piercing_into_a_defending_gusto_still_reflects_lethal_damage ... ok
+test naturia_only_tributes_bamboo_over_a_naturia ... ok
+test laval_miller_sends_a_non_handmaiden_before_the_handmaiden ... ok
+test new_synchro_policies_stack_their_independent_summon_trigger ... ok
+test nurse_waits_for_simochi_to_resolve_before_gift_card ... ok
+test psychic_commander_pays_the_smallest_amount_that_wins_the_battle ... ok
+test reptilianne_tributes_the_opponents_zero_attack_monster_first ... ok
+test scrapstorm_is_held_under_macro ... ok
+test psychic_jumper_does_not_give_away_a_boss_for_a_weak_monster ... ok
+test spirit_holds_dark_dust_when_it_would_wipe_our_better_board ... ok
+test unicore_knowledge_tracks_public_hand_counts_and_skill_drain ... ok
+test prismaura_sends_recoverable_fusion_before_a_monster_material ... ok
+test opponents_avoid_lethal_reflected_damage ... ok
+test worm_xex_mills_yagan_before_a_generic_worm ... ok
+test venom_does_not_mill_vennominaga_with_snake_rain ... ok
+test zombie_master_spends_mezuki_before_a_live_master ... ok
+test snowman_is_not_flipped_into_only_facedown_opponents ... ok
+test volcanic_holds_accelerator_when_rocket_can_win_the_battle ... ok
+test volcanic_uses_raigeki_break_with_shell_ammunition ... ok
+test new_registered_lists_are_legal_and_have_scripts ... ok
+
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src/lib.rs (target/debug/deps/ygo_policies_edopro-61b25757affec520)
+
+running 1 test
+test ydk::tests::sections ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/edopro_bot-6aac71c8ca6254fe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/session.rs (target/debug/deps/session-6c1d8b64ad733fc6)
+
+running 1 test
+test joins_a_room_and_plays_its_own_seat ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (target/debug/deps/ygo_policies-3b2c581e06564988)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ygo_policies_ocgcore-db82a1c64364327b)
+
+running 11 tests
+test decision::tests::at_least_sum_rejects_redundant_material ... ok
+test decision::tests::exact_sum_only_offers_completable_picks ... ok
+test redact::tests::cards_reaching_a_hidden_place_lose_their_code ... ok
+test decision::tests::zero_card_selection_can_finish_immediately ... ok
+test decision::tests::card_selection_offers_finish_once_the_minimum_is_met ... ok
+test projection::tests::the_normal_summon_is_used_once_a_turn ... ok
+test redact::tests::prompts_blank_the_other_players_cards ... ok
+test redact::tests::prompts_reach_only_their_player ... ok
+test redact::tests::the_other_players_draws_are_hidden_unless_face_up ... ok
+test redact::tests::queries_of_hidden_cards_keep_only_their_position ... ok
+test redact::tests::typed_updates_match_wire_redaction_for_every_visibility_case ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/arcana.rs (target/debug/deps/arcana-287b4dc15242831c)
+
+running 9 tests
+test registered_coin_survives_control_change_but_not_reset_or_slot_reuse ... ok
+test silent_reversal_invalidates_the_old_hint_but_negation_does_not ... ok
+test toss_source_is_the_resolving_link_and_old_tosses_expire ... ok
+test heads_fool_cannot_be_repaired_by_our_targeting_traps ... ok
+test reversal_uses_the_public_registered_effect_not_an_unrelated_last_toss ... ok
+test arcana_call_uses_the_same_coin_with_the_donors_effect_and_restores_it ... ok
+test second_coin_toss_keeps_good_results_and_retries_bad_ones_from_either_seat ... ok
+test arcana_call_selects_the_recipient_then_the_donor_without_banishing_itself ... ok
+test chariot_is_set_without_retry_support_and_a_battle_flip_can_attack_later ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/card_constants.rs (target/debug/deps/card_constants-7eb7cac89c0d40dd)
+
+running 1 test
+test card_constants_are_canonical ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/traces.rs (target/debug/deps/traces-7b51d1883dd96f8e)
+
+running 2 tests
+test all_registered_policies_fork_with_independent_history_and_random_state ... ok
+test projection_matches_ocgcore_snapshots ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.18s
+
+   Doc-tests ygo_policies
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ygo_policies_duel
+
+running 1 test
+test crates/ygo-policies-duel/src/lib.rs - (line 26) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+   Doc-tests ygo_policies_edopro
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ygo_policies_ocgcore
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

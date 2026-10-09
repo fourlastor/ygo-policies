@@ -1,0 +1,30 @@
+{
+  "failures": 0,
+  "matchups": [
+    {
+      "baseline": 0.4990234375,
+      "candidate": 0.57421875,
+      "delta": 0.0751953125,
+      "identical": 418,
+      "improved": 113,
+      "limits": 0,
+      "opponent": "blue-eyes",
+      "paired_95_half_width": 0.022916848268995333,
+      "pairs": 1024,
+      "policy": "blue-eyes-improved",
+      "regressed": 36
+    }
+  ],
+  "overall": {
+    "baseline": 0.4990234375,
+    "candidate": 0.57421875,
+    "delta": 0.0751953125,
+    "identical": 418,
+    "improved": 113,
+    "limits": 0,
+    "paired_95_half_width": 0.022916848268995333,
+    "pairs": 1024,
+    "regressed": 36
+  },
+  "pairs": 1024
+}

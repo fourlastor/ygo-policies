@@ -1,0 +1,26 @@
+{
+  "recovery": {
+    "source_sha256": "d2b9cf1739df2d3910b8a9d363a2b9ec92c16129ec21543a551d180b41eedb05",
+    "library_sha256": "35a9be93669c3159e71abde98255cd9b956064a12abd9e56a0340b70a5a2533b",
+    "accepted": true,
+    "patch_from_original": "benchmarks/blue-eyes-improvement/variants/recovery.patch"
+  },
+  "summon-first": {
+    "source_sha256": "1db82e82005db00db1b5267f7bdd446cafba1911c915df60e866f30b662fb5ff",
+    "library_sha256": "ef1a8190d6eaed77917fd13f23caa7a3b77324a7c462c5b88442a12cd904d1aa",
+    "accepted": true,
+    "patch_from_original": "benchmarks/blue-eyes-improvement/variants/summon-first.patch"
+  },
+  "defense-wall": {
+    "source_sha256": "fccd08de9949e5686d7951c653b3d8cc2f41b1d0145ea87d883788644c388193",
+    "library_sha256": "d7b44deb8adf5c44f3c8c1659e73f821ad1d0e4970d42174b82dd75995e92883",
+    "accepted": true,
+    "patch_from_original": "benchmarks/blue-eyes-improvement/variants/defense-wall.patch"
+  },
+  "veiler": {
+    "source_sha256": "730931cb7ecc3d5fdd05d785caeabb3f6153cb898cc6eff18a17ef86bc51d85b",
+    "library_sha256": "e4a9f166b507fe4253de88bac3ac7b7ff09d77264d150df0e17305278e7ecf19",
+    "accepted": false,
+    "patch_from_original": "benchmarks/blue-eyes-improvement/variants/veiler.patch"
+  }
+}

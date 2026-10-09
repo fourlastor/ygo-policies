@@ -140,6 +140,7 @@ pub mod registry {
     /// Players for the MR5 benchmark, separate from the WC2011 deck roster.
     pub const BENCHMARK_PLAYERS: &[Entry] = &[
         entry!("blue-eyes", blue_eyes::BlueEyes),
+        entry!("blue-eyes-improved", blue_eyes_improved::BlueEyes),
         Entry { id: "first", deck: "BlueEyes", build: |_, _| Box::new(crate::reference::First) },
         Entry { id: "random", deck: "BlueEyes", build: |_, seed| Box::new(crate::reference::Random(crate::agent::TieBreak::new(seed))) },
     ];

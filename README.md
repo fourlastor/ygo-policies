@@ -257,6 +257,11 @@ target/release/policy-bench round-robin --policies all --games 256 \
   --output tournament.jsonl --markdown DECK-TIER-LIST.md
 ```
 
+For the MR5 Blue-Eyes list, `blue-eyes` preserves the original pilot and
+`blue-eyes-improved` adds rules validated against that fixed opponent. Both
+use `decks/BlueEyes.ydk` and remain outside the WC2011 `all` roster. See the
+[search findings, paired results and commands](benchmarks/blue-eyes-improvement/README.md).
+
 See the [benchmark crate guide](crates/ygo-policies-bench/README.md) for paired
 comparisons, custom pools, saved-run ranking and reproducibility details, and
 for [replaying a duel](crates/ygo-policies-bench/README.md#replaying-a-recorded-duel)

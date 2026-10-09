@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-09",
+  "branch": "codex/blue-eyes-improvement",
+  "remote_integrated": {
+    "origin/main": "1b85b633277d650311a7bd1f370bfa77c56c0495",
+    "origin/ygo-agent-benchmark-work": "d413ae0fa8c1f850fb3add1cda05f80ec1565432"
+  },
+  "source_base_commit": "6f2c7c476ed02a4f3490b56572d778e412a1bf51",
+  "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+  "sha256": {
+    "crates/ygo-policies/src/decks/blue_eyes.rs": "41a57727053ef7ff467b9dfb11a156a66abb5c3752d964e56a0ca13ea8385e79",
+    "crates/ygo-policies/src/decks/blue_eyes_improved.rs": "5a06c0378747ccb6e4a59c0c07b3fdd418a9b4cc61b9c890fdc16f2689105581",
+    "decks/BlueEyes.ydk": "fcef44b1bd30e3a398fe076626bce2baa705aa56a2b7d2e28cd180b2a6d071e6",
+    "Cargo.lock": "ab91eff5e9e1875f81f3d607b9fee0edda045550d5fadb3037c50aeccfe73033",
+    "vendor/BabelCdb/cards.cdb": "3530f406ba92b0f8d5699aa107e95158a1f1b4816f8f5ca2dd82c490301ef632",
+    "target/release/policy-bench": "3b308cc8328c55f595e4265155da7b7e16a2c4493b677e8bb77b2ab5de32a97f",
+    "/tmp/blue-eyes-improvement/baseline.so": "648116094e8345d422321301084b483444d8048dd448f4543b721ae8bf6431bf",
+    "/tmp/blue-eyes-improvement/final.so": "9c0a6f0f6f4002a39a2e06e306d6172d57dbe438294431d1ecbbe9795bfc805b"
+  }
+}

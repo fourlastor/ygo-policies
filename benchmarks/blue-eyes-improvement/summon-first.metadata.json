@@ -1,0 +1,172 @@
+{
+  "arguments": {
+    "--baseline": "/tmp/blue-eyes-improvement/recovery.so",
+    "--candidate": "/tmp/blue-eyes-improvement/summon-first.so",
+    "--games": "1024",
+    "--limit": "8192",
+    "--opponents": "blue-eyes",
+    "--output": "benchmarks/blue-eyes-improvement/summon-first.jsonl",
+    "--policies": "blue-eyes-improved",
+    "--rules": "mr5",
+    "--seed": "4300000",
+    "--workers": "4"
+  },
+  "baseline": {
+    "bytes": 92523224,
+    "fnv1a64": "12276dbd87d155e2",
+    "path": "/tmp/blue-eyes-improvement/recovery.so"
+  },
+  "candidate": {
+    "bytes": 92522352,
+    "fnv1a64": "abac2c2c866a72f4",
+    "path": "/tmp/blue-eyes-improvement/summon-first.so"
+  },
+  "cards": {
+    "bytes": 7958528,
+    "fnv1a64": "766ac6cf2385af85",
+    "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+  },
+  "carried": false,
+  "catalog": {
+    "agents": "Heaven's Dispatch",
+    "alien": "Visitors from Beyond",
+    "amazoness": "Queens of the Wild",
+    "arcana": "Arcana Force Fortune",
+    "batteryman": "Full Charge",
+    "benkei": "A Thousand Blades",
+    "blackwing": "Blackwing Assassin",
+    "blue-eyes": "BlueEyes",
+    "blue-eyes-improved": "BlueEyes",
+    "burn": "Burn Princess",
+    "chain-burn": "Chain Reaction",
+    "chaos": "Between Light and Dark",
+    "cloudian": "Eye of the Storm",
+    "countdown": "Claudi-oh's Countdown",
+    "counter-fairy": "Heaven's Rebuttal",
+    "crystal": "12 Crystal Beast - Rainbow",
+    "cyber": "Power Surge",
+    "dark-world": "Gates Unopened",
+    "deckout": "Last Page",
+    "demise": "Armageddon Hour",
+    "destiny-board": "The Final Sentence",
+    "destiny-hero": "Destiny HEROes",
+    "draconic-might": "Draconic Might",
+    "dragunity": "Dragunity Flight",
+    "exodia": "Astra's Exodia",
+    "fabled": "Fabled Encore",
+    "first": "BlueEyes",
+    "fish": "Tidal Assembly",
+    "flamvell": "Ashes to Inferno",
+    "fortune-lady": "Fortune Ladies",
+    "garden": "Garden of Thorns",
+    "gem-knight": "Prismatic Forge",
+    "gemini": "Second Bloom",
+    "genex": "Clockwork Current",
+    "gishki": "Undersea Ceremony",
+    "gladiator": "Fight, Gladiators!",
+    "gravekeeper": "Gravekeeper's Tomb",
+    "gusto": "Gusto's Reprisal",
+    "harpie": "Harpie Sisters",
+    "herald": "Herald's Veto",
+    "heroes": "Fusion Heroes",
+    "ice-barrier": "Winter Parliament",
+    "infernity": "Infernity Infinity",
+    "iron-chain": "Rust Never Sleeps",
+    "jurrac": "Footprints in Fire",
+    "karakuri": "Karakuri Workshop",
+    "lightsworn": "Lightsworn Judgment",
+    "machina": "Machina Gadgets",
+    "macro-dd": "D.D. Border Patrol",
+    "malefic": "Eclipse Without End",
+    "monarch": "Emperor, Arise!",
+    "morphtronic": "01 Morphtronic - Straight Up",
+    "naturia": "The Quiet Grove",
+    "nordic": "Road to Ragnarok",
+    "nurse": "A Bitter Cure",
+    "ojama": "Ojama Brigade",
+    "psychic": "Mind Over Matter",
+    "pyramid": "Pyramid of Light",
+    "quickdraw-plant": "Quickdraw Plants",
+    "random": "BlueEyes",
+    "reptilianne": "The Still Gaze",
+    "rock-block": "06 Koaki Meiru - Rock Block",
+    "scrap": "Scrap Renaissance",
+    "six-samurai": "Legendary Six Samurai",
+    "spellcaster": "14 - Spellcaster's Command",
+    "spirit": "Passing Spirits",
+    "tele-dad": "Tele-DAD",
+    "toon": "Toon Kingdom",
+    "venom": "Crown of Venom",
+    "verdict": "Claudi-oh's Verdict",
+    "volcanic": "Volcanic Aftershock",
+    "watt": "Watt Grid",
+    "worm": "Visitors Beneath",
+    "x-saber": "X-Sabers",
+    "ygo-agent": "BlueEyes",
+    "zombie": "Graveyard Shift"
+  },
+  "checkout": {
+    "commit": "6f2c7c476ed02a4f3490b56572d778e412a1bf51",
+    "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+    "status": "M crates/ygo-policies-bench/src/main.rs\n M crates/ygo-policies/src/decks/mod.rs\n M crates/ygo-policies/src/lib.rs\n?? AMBER-REPORT.md\n?? benchmarks/blue-eyes-improvement/\n?? benchmarks/vendor-update-2026-10-06/\n?? crates/ygo-policies/src/decks/blue_eyes_improved.rs"
+  },
+  "core": {
+    "commit": "f1a6ec196aa17309d147eafa9865cdab430f549b",
+    "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+    "status": ""
+  },
+  "decision_limit": 8192,
+  "decks": {
+    "blue-eyes": {
+      "bytes": 647,
+      "fnv1a64": "5ef7fe2f32915cb8",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+    },
+    "blue-eyes-improved": {
+      "bytes": 647,
+      "fnv1a64": "5ef7fe2f32915cb8",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+    }
+  },
+  "engine": {
+    "linked": true
+  },
+  "first": null,
+  "games_per_matchup": 1024,
+  "life_points": [
+    8000,
+    8000
+  ],
+  "lua": {
+    "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+    "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+    "status": ""
+  },
+  "mode": "compare",
+  "planned_jobs": 1024,
+  "policy_seed": "engine seed + seat",
+  "reference": [
+    "blackwing",
+    "burn",
+    "crystal",
+    "dragunity",
+    "gishki",
+    "gladiator",
+    "heroes",
+    "infernity",
+    "lightsworn",
+    "monarch",
+    "morphtronic",
+    "rock-block",
+    "spellcaster"
+  ],
+  "rules": "MasterRule5 (0x2E800)",
+  "scripts": {
+    "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+    "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+    "status": ""
+  },
+  "seed": 4300000,
+  "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed",
+  "stand_in": null
+}

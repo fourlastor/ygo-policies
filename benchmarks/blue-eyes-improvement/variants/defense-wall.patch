@@ -1,0 +1,61 @@
+--- a/crates/ygo-policies/src/decks/blue_eyes_improved.rs
++++ b/crates/ygo-policies/src/decks/blue_eyes_improved.rs
+@@ -1,4 +1,4 @@
+-//! A small pilot for ygo-agent's released Blue-Eyes list.
++//! Search-guided pilot for the same Blue-Eyes list; `blue_eyes` stays the baseline.
+ use super::support;
+ use crate::agent::{Response, Strategy, Turn};
+ use crate::ctx::Ctx;
+@@ -46,18 +46,35 @@
+ 
+     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+         let ctx = t.ctx;
+-        // Draw/search first, then deploy dragons. The engine supplies all legality.
+-        for code in [CONSONANCE, TRADE, SHRINE, MELODY, RETURN, 2295440] {
+-            if let Some(i) = t.activate(code) {
+-                return t.pick(i);
+-            }
+-        }
++        // Recover the missing half of Alternative's hand summon before revival
++        // spends it. Ancients can also recover Alternative with Blue already held.
++        let recover = if ctx.in_hand(ALTERNATIVE) && !ctx.in_hand(BLUE) {
++            Some(BLUE)
++        } else if ctx.in_hand(BLUE) && !ctx.in_hand(ALTERNATIVE) {
++            Some(ALTERNATIVE)
++        } else {
++            None
++        };
++        if let Some(target) = recover.and_then(|code| {
++            ctx.graveyard(ctx.me).into_iter().find(|c| ctx.is(c, code))
++        }) {
++            if let Some(i) = t.find(ChoiceKind::Activate, Some(ANCIENTS), Some(Location::Graveyard)) {
++                return t.pick_targeting(i, vec![target.at]);
++            }
++        }
++        // Use the revealed Blue-Eyes before a draw spell can discard it.
+         if let Some(i) = t.find(
+             ChoiceKind::SpecialSummon,
+             Some(ALTERNATIVE),
+             Some(Location::Hand),
+         ) {
+             return t.pick(i);
++        }
++        // Draw/search next, then deploy the remaining dragons.
++        for code in [CONSONANCE, TRADE, SHRINE, MELODY, RETURN, 2295440] {
++            if let Some(i) = t.activate(code) {
++                return t.pick(i);
++            }
+         }
+         for (i, c) in t.choices() {
+             if c.kind != ChoiceKind::Activate {
+@@ -132,7 +149,9 @@
+                     SPIRIT => 6000,
+                     AZURE => 5500,
+                     ARMOR => 5000,
+-                    PRIME if ctx.opp_best_attack() >= 3000 => 4800,
++                    // A 3000-DEF wall also stops Blue-Eyes. Prime can beat it
++                    // and supplies the material for Full Armor's follow-up.
++                    PRIME if ctx.monsters(ctx.opp).iter().any(|c| ctx.battle_stat(c) >= 3000) => 4800,
+                     HARBINGER if ctx.obs.turn == 1 || !ctx.main1() => 4500,
+                     LINKURIBOH
+                         if ctx

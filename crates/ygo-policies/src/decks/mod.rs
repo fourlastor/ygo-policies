@@ -81,3 +81,4 @@ pub mod reptilianne;
 pub mod iron_chain;
 pub mod malefic;
 pub mod blue_eyes;
+pub mod blue_eyes_improved;
