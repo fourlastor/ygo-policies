@@ -20,6 +20,12 @@
 #   FRONTS=                 processes of the server that take the requests:
 #                           two thirds of this machine's processors
 #   WORLDS=8 CONFIRM=32 FINAL=96   the search's stages; fewer worlds, fewer requests
+#   STAND_IN=ygo-agent      who plays the model's seat in the try-outs: the
+#                           model itself, or a policy such as blue-eyes.  With
+#                           a policy the run is the one to compare with, deal
+#                           by deal: on the same server the plain games of
+#                           the two runs are the same games (minutes, not
+#                           hours: a try-out then asks the server nothing)
 #   DEVICE=gpu              cpu works, twenty times slower
 #   CHECKPOINT=0546_22750M  PORT=3013
 #   OUT=benchmarks/ygo-agent/runs/search-model   where the rows and the report go
@@ -52,6 +58,7 @@ WORKERS=${WORKERS:-96} BATCH=${BATCH:-32}
 CORES=$(nproc)
 FRONTS=${FRONTS:-$((CORES * 2 / 3 > 2 ? CORES * 2 / 3 : 2))}
 WORLDS=${WORLDS:-8} CONFIRM=${CONFIRM:-32} FINAL=${FINAL:-96}
+STAND_IN=${STAND_IN:-ygo-agent}
 DEVICE=${DEVICE:-gpu} CHECKPOINT=${CHECKPOINT:-0546_22750M} PORT=${PORT:-3013}
 OUT=$(absolute "${OUT:-$ROOT/benchmarks/ygo-agent/runs/search-model}")
 
@@ -95,7 +102,7 @@ grep '^serving' "$OUT/server.log" || { echo "the server does not answer: see $OU
 
 echo "$GAMES deals, $WORKERS at once; the server says how far it is every minute in $OUT/server.log"
 (cd "$ROOT" && target/release/policy-bench search --rules mr5 \
-  --policies blue-eyes --opponents ygo-agent --stand-in ygo-agent \
+  --policies blue-eyes --opponents ygo-agent --stand-in "$STAND_IN" --carried true \
   --server "http://127.0.0.1:$PORT" --games "$GAMES" --seed "$SEED" --workers "$WORKERS" \
   --worlds "$WORLDS" --confirm "$CONFIRM" --final "$FINAL" \
   --record true --output "$OUT/search-model.jsonl")

@@ -224,9 +224,20 @@ What it does is set by the environment, as the script's head says:
 | `WORKERS=96` | deals played at once; a worker mostly waits for the server |
 | `BATCH=32` | requests the model answers together. Every batch costs the same, full or not |
 | `FRONTS` | processes of the server that take the requests: two thirds of the machine's processors unless it is set |
+| `STAND_IN=ygo-agent` | who plays the model's seat in the try-outs: the model itself, or a policy such as `blue-eyes` |
 | `WORLDS=8 CONFIRM=32 FINAL=96` | the search's stages. Another search than the first look's needs its own run with the pilot standing in, to be compared with: `policy-bench search` with the same three and without `--stand-in` |
 
 The same deals with the pilot standing in are `measured/search-200-model`.
+That run was played on a CPU server, and the model breaks ties between
+options it rates alike (two copies of a card) differently there: of the
+first 91 deals a GPU run finished, 52 have the same plain game as in it.
+For a comparison deal by deal, play the stand-in on the same server, where
+the plain games are the same games (4 of 4 in a check), in some twenty
+minutes:
+
+```sh
+STAND_IN=blue-eyes OUT=benchmarks/ygo-agent/runs/search-standin bash benchmarks/ygo-agent/kit/search-model.sh
+```
 
 **How fast a run goes** shows in the server's log, `server.log` beside the
 rows, a line a minute:
