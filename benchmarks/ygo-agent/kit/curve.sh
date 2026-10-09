@@ -35,6 +35,11 @@
 #                           learning rate.  A card that runs out of memory
 #                           takes more MINIBATCHES
 #   GAMES=400 SEED=860000   the games of a checkpoint against the pilot
+#   PILOT=blue-eyes         the policy it plays them against
+#   ROWS=pilot              the folder of OUT those games' rows go to.  With
+#                           TRAIN=0 and another name, the checkpoints a run
+#                           kept are measured again beside the first time:
+#                           against another pilot, or another version of one
 #   MIRROR=256              its games against the released model; 0 for none
 #   WORKERS=32 BATCH=32 FRONTS=   as in search-model.sh
 #   DEVICE=gpu              the server's and battle.py's; cpu works, slower
@@ -58,6 +63,7 @@ OUT=$(absolute "${OUT:-$ROOT/benchmarks/ygo-agent/runs/curve}")
 TRAIN=${TRAIN:-1} HOURS=${HOURS:-10} STEPS=${STEPS:-}
 ENVS=${ENVS:-16} MINIBATCHES=${MINIBATCHES:-8} RATE=${RATE:-1e-4}
 GAMES=${GAMES:-400} SEED=${SEED:-860000} MIRROR=${MIRROR:-256}
+PILOT=${PILOT:-blue-eyes} ROWS=${ROWS:-pilot}
 WORKERS=${WORKERS:-32} BATCH=${BATCH:-32}
 CORES=$(nproc)
 FRONTS=${FRONTS:-$((CORES * 2 / 3 > 2 ? CORES * 2 / 3 : 2))}
@@ -83,7 +89,13 @@ if grep -q '^[-+U]' <<< "$pins"; then
   echo "  git -C $ROOT submodule update --init --recursive" >&2
   exit 1
 fi
-mkdir -p "$OUT/checkpoints" "$OUT/saved" "$OUT/pilot" "$OUT/mirror"
+case $ROWS in
+  */* | checkpoints | saved | mirror | '')
+    echo "ROWS names a folder of its own in $OUT" >&2
+    exit 1
+    ;;
+esac
+mkdir -p "$OUT/checkpoints" "$OUT/saved" "$OUT/$ROWS" "$OUT/mirror"
 
 if [ "$TRAIN" != 0 ]; then
   if [ -e "$OUT/train.log" ]; then
@@ -149,16 +161,16 @@ fi
 
 (cd "$ROOT" && cargo build --release -p ygo-policies-bench -p ygo-policies-ffi)
 
-echo "2. Each checkpoint against the pilot, $GAMES games"
+echo "2. Each checkpoint against $PILOT, $GAMES games"
 for kept in "$OUT/checkpoints"/*.flax_model; do
   [ -e "$kept" ] || { echo "no checkpoint in $OUT/checkpoints" >&2; exit 1; }
   name=$(basename "$kept" .flax_model)
-  rows="$OUT/pilot/$name.jsonl"
+  rows="$OUT/$ROWS/$name.jsonl"
   [ -e "$rows" ] && continue
   # The server on this checkpoint, stopped again when its games are played.
   (cd "$AGENT/scripts" && exec "$VENV/bin/python" -u "$KIT/serve.py" \
     --checkpoint "$kept" --port "$PORT" --device "$DEVICE" --batch "$BATCH" \
-    --fronts "$FRONTS") > "$OUT/pilot/$name.server.log" 2>&1 &
+    --fronts "$FRONTS") > "$OUT/$ROWS/$name.server.log" 2>&1 &
   server=$!
   trap 'kill "$server" 2> /dev/null || true' EXIT
   for _ in $(seq 1 150); do
@@ -166,15 +178,15 @@ for kept in "$OUT/checkpoints"/*.flax_model; do
       break
     fi
     if ! kill -0 "$server" 2> /dev/null; then
-      echo "the server did not start: see $OUT/pilot/$name.server.log" >&2
+      echo "the server did not start: see $OUT/$ROWS/$name.server.log" >&2
       exit 1
     fi
     sleep 2
   done
-  grep -q '^serving' "$OUT/pilot/$name.server.log" \
-    || { echo "the server does not answer: see $OUT/pilot/$name.server.log" >&2; exit 1; }
+  grep -q '^serving' "$OUT/$ROWS/$name.server.log" \
+    || { echo "the server does not answer: see $OUT/$ROWS/$name.server.log" >&2; exit 1; }
   (cd "$ROOT" && target/release/policy-bench matchup --rules mr5 \
-    --policies ygo-agent --opponents blue-eyes --server "http://127.0.0.1:$PORT" \
+    --policies ygo-agent --opponents "$PILOT" --server "http://127.0.0.1:$PORT" \
     --carried true --games "$GAMES" --seed "$SEED" --workers "$WORKERS" \
     --output "$rows.part") | tail -1 | sed "s/^/   $name: /"
   mv "$rows.part" "$rows"
@@ -203,5 +215,7 @@ if [ "$MIRROR" != 0 ]; then
   done
 fi
 
-python3 "$KIT/curve.py" "$OUT" | tee "$OUT/report.txt"
-echo "The checkpoints, the rows and this report are in $OUT."
+report=report.txt
+[ "$ROWS" = pilot ] || report="report-$ROWS.txt"
+python3 "$KIT/curve.py" "$OUT" --rows "$ROWS" | tee "$OUT/$report"
+echo "The checkpoints, the rows and this report ($report) are in $OUT."

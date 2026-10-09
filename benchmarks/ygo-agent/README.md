@@ -842,6 +842,18 @@ HOURS=10 bash benchmarks/ygo-agent/kit/curve.sh
 that is still going (then with `DEVICE=cpu`). The script's head lists the
 rest.
 
+**The checkpoints are what a run costs; what they are measured against can
+change.** The pilot here is the low-effort one of step 2, and the games
+their training needs to pass it are a floor on what a tuned pilot is worth.
+With `TRAIN=0 ROWS=NAME` the checkpoints a run kept are played again and
+the rows go to a folder `NAME` of the run beside the first ones, with a
+report of their own: against another policy (`PILOT=ID`), or against the
+pilot as the checkout then has it.
+
+```sh
+TRAIN=0 ROWS=pilot-tuned bash benchmarks/ygo-agent/kit/curve.sh
+```
+
 **Not yet run on a card that makes it worth reading.** Tried here on a GTX
 1060, which trains 1,100 steps a second: after two minutes and 143,000
 steps, about 600 games, the model wins 1 game in 40 against the pilot and

@@ -1,12 +1,14 @@
 """The curve of a run of `curve.sh`: what ygo-agent's trainer reached after so
 many steps, against the pilot and against its own released model.
 
-    python3 benchmarks/ygo-agent/kit/curve.py RUN
+    python3 benchmarks/ygo-agent/kit/curve.py RUN [--rows FOLDER]
 
 RUN is the folder the run left: `kept.tsv` (the steps of each checkpoint kept
 and the seconds of training until then), `train.log` (their trainer's lines),
 `pilot/*.jsonl` (the rows of each checkpoint's games against the pilot) and
 `mirror/*.txt` (what battle.py said of its games against the released model).
+`--rows` names another folder of RUN than `pilot`: the same checkpoints
+measured against another pilot, or another version of one.
 
 Games are estimated: their trainer says every few updates how many steps the
 games that ended lately took, and a stretch of steps is divided by that.
@@ -21,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from report import load, outcome  # noqa: E402
+from report import MODEL, load, outcome  # noqa: E402
 
 SAID = re.compile(r"^global_step=(\d+), avg_return=\S+ avg_length=(\d+)")
 WON = re.compile(r"win_rate=([0-9.]+)")
@@ -52,13 +54,15 @@ def games_at(told: list[tuple[int, float]], steps: int) -> float | None:
     return high + (high - low) * (steps - after) / (after - before)
 
 
-def against_the_pilot(rows: Path) -> tuple[float, int, int] | None:
+def against_the_pilot(rows: Path, pilots: set[str]) -> tuple[float, int, int] | None:
     """What the model got (a game without a winner counts half), the games
-    that were played, and those that failed."""
+    that were played, and those that failed.  The policies it met are added
+    to `pilots`."""
     if not rows.exists():
         return None
     got = played = failed = 0.0
-    for games in load(rows).values():
+    for sides, games in load(rows).items():
+        pilots.update(side for side in sides if side != MODEL)
         for row in games:
             result = outcome(row)
             if result is None:
@@ -94,7 +98,7 @@ def crossing(points: list[tuple[int, float]], level: float = 0.5) -> tuple[int, 
     return None
 
 
-def report(run: Path) -> None:
+def report(run: Path, rows: str = "pilot") -> None:
     kept = [
         (int(steps), int(seconds))
         for steps, seconds in (
@@ -103,17 +107,15 @@ def report(run: Path) -> None:
     ]
     told = games_until(run / "train.log")
     print(f"ygo-agent's trainer from scratch on the Blue-Eyes deck against itself: {run}")
-    print(
-        f"  {'steps':>13}  {'games':>9}  {'hours':>6}   "
-        f"{'against the pilot':<28}  against the released model"
-    )
+    lines: list[str] = []
+    pilots: set[str] = set()
     points: list[tuple[int, float]] = []
     reached: dict[int, tuple[float | None, int]] = {}
     for steps, seconds in kept:
         name = f"steps-{steps:012d}"
         games = games_at(told, steps)
         reached[steps] = (games, seconds)
-        pilot = against_the_pilot(run / "pilot" / f"{name}.jsonl")
+        pilot = against_the_pilot(run / rows / f"{name}.jsonl", pilots)
         model = against_the_model(run / "mirror" / f"{name}.txt")
         if pilot is None:
             pilot_said = "not played"
@@ -123,10 +125,16 @@ def report(run: Path) -> None:
             pilot_said += f" ({failed} failed)" if failed else ""
             points.append((steps, got / played))
         model_said = "not played" if model is None else share(model[0], model[1])
-        print(
+        lines.append(
             f"  {steps:>13,}  {'-' if games is None else format(round(games), ','):>9}  "
             f"{seconds / 3600:6.2f}   {pilot_said:<28}  {model_said}"
         )
+    print(f"the pilot: {', '.join(sorted(pilots)) or 'not played'} (the rows of `{rows}`)")
+    print(
+        f"  {'steps':>13}  {'games':>9}  {'hours':>6}   "
+        f"{'against the pilot':<28}  against the released model"
+    )
+    print("\n".join(lines))
     if not points:
         return
     print()
@@ -153,6 +161,14 @@ def report(run: Path) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    arguments = sys.argv[1:]
+    folder = "pilot"
+    if "--rows" in arguments:
+        place = arguments.index("--rows")
+        if place + 1 >= len(arguments):
+            sys.exit(__doc__)
+        folder = arguments[place + 1]
+        del arguments[place : place + 2]
+    if len(arguments) != 1:
         sys.exit(__doc__)
-    report(Path(sys.argv[1]))
+    report(Path(arguments[0]), folder)
