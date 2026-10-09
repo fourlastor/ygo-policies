@@ -5,8 +5,9 @@ many steps, against the pilot and against its own released model.
 
 RUN is the folder the run left: `kept.tsv` (the steps of each checkpoint kept
 and the seconds of training until then), `train.log` (their trainer's lines),
-`pilot/*.jsonl` (the rows of each checkpoint's games against the pilot) and
-`mirror/*.txt` (what battle.py said of its games against the released model).
+`pilot/*.jsonl` (the rows of each checkpoint's games against the pilot, and
+`released-*.jsonl`, the released model's on the same deals) and `mirror/*.txt`
+(what battle.py said of its games against the released model).
 `--rows` names another folder of RUN than `pilot`: the same checkpoints
 measured against another pilot, or another version of one.
 
@@ -129,12 +130,24 @@ def report(run: Path, rows: str = "pilot") -> None:
             f"  {steps:>13,}  {'-' if games is None else format(round(games), ','):>9}  "
             f"{seconds / 3600:6.2f}   {pilot_said:<28}  {model_said}"
         )
+    # Where the curve is heading: the released model against the same pilot.
+    heading = []
+    for released in sorted((run / rows).glob("released-*.jsonl")):
+        got, played, failed = against_the_pilot(released, pilots)
+        said = f"{got:g} of {played}, {share(got / played, played).strip()}" if played else "none"
+        heading.append(
+            f"the released model ({released.stem.removeprefix('released-')}) on the same "
+            f"deals: {said}" + (f" ({failed} failed)" if failed else "")
+        )
     print(f"the pilot: {', '.join(sorted(pilots)) or 'not played'} (the rows of `{rows}`)")
     print(
         f"  {'steps':>13}  {'games':>9}  {'hours':>6}   "
         f"{'against the pilot':<28}  against the released model"
     )
     print("\n".join(lines))
+    if heading:
+        print()
+        print("\n".join(heading))
     if not points:
         return
     print()

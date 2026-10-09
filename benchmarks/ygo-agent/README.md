@@ -833,7 +833,8 @@ HOURS=10 bash benchmarks/ygo-agent/kit/curve.sh
   10, 14, 20 ... million steps, and the last.
 - **It plays each one twice.** Against the pilot, 400 games on the deals of
   `22750M-pilot` through `serve.py`, and against the released model, 256
-  games in their own environment (`battle.py`).
+  games in their own environment (`battle.py`). The released model plays
+  the pilot on the same 400 deals too: where the curve is heading.
 - **It prints the curve**: steps, games and hours of training against the
   share of the games won, and where the model passes half the games against
   the pilot. Games are estimated from the game lengths their trainer logs.
@@ -850,8 +851,17 @@ the rows go to a folder `NAME` of the run beside the first ones, with a
 report of their own: against another policy (`PILOT=ID`), or against the
 pilot as the checkout then has it.
 
+`blue-eyes-improved` is the pilot with four rules more, each one pointed
+to by a search and kept for what it won on other deals
+([the first three](../blue-eyes-improvement/README.md),
+[the fourth](../blue-eyes-depth2/README.md)). With the same deck it wins
+61.1% ± 0.5% of 8,192 games against `blue-eyes`, which is unchanged: every
+figure of this document is of `blue-eyes`. What the improved one takes from
+the model is not measured yet; this measures it, and a run's checkpoints
+against it:
+
 ```sh
-TRAIN=0 ROWS=pilot-tuned bash benchmarks/ygo-agent/kit/curve.sh
+TRAIN=0 PILOT=blue-eyes-improved ROWS=pilot-improved bash benchmarks/ygo-agent/kit/curve.sh
 ```
 
 **Not yet run on a card that makes it worth reading.** Tried here on a GTX

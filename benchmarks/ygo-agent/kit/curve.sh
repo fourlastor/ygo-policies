@@ -11,7 +11,8 @@
 #    it is written: after about 1, 2, 3, 5, 7, 10, 14, 20 ... million steps,
 #    each two fifths further than the one before, and the last.
 # 2. Plays every checkpoint kept against the pilot on the deals of
-#    measured/22750M-pilot.
+#    measured/22750M-pilot, and the released model on the same deals: where
+#    the curve is heading.
 # 3. Plays every checkpoint kept against the released model in their own
 #    environment (battle.py).
 # 4. Prints the curve: steps, games and hours of training against the share
@@ -35,7 +36,8 @@
 #                           learning rate.  A card that runs out of memory
 #                           takes more MINIBATCHES
 #   GAMES=400 SEED=860000   the games of a checkpoint against the pilot
-#   PILOT=blue-eyes         the policy it plays them against
+#   PILOT=blue-eyes         the policy it plays them against: the pilot of
+#                           step 2, or blue-eyes-improved
 #   ROWS=pilot              the folder of OUT those games' rows go to.  With
 #                           TRAIN=0 and another name, the checkpoints a run
 #                           kept are measured again beside the first time:
@@ -161,15 +163,14 @@ fi
 
 (cd "$ROOT" && cargo build --release -p ygo-policies-bench -p ygo-policies-ffi)
 
-echo "2. Each checkpoint against $PILOT, $GAMES games"
-for kept in "$OUT/checkpoints"/*.flax_model; do
-  [ -e "$kept" ] || { echo "no checkpoint in $OUT/checkpoints" >&2; exit 1; }
-  name=$(basename "$kept" .flax_model)
-  rows="$OUT/$ROWS/$name.jsonl"
-  [ -e "$rows" ] && continue
-  # The server on this checkpoint, stopped again when its games are played.
+# play NAME FILE: the model saved in FILE against the pilot, its rows under
+# NAME in the folder of ROWS.  The server is on that model while its games
+# are played, and stopped again.
+play() {
+  local name=$1 rows="$OUT/$ROWS/$1.jsonl"
+  [ -e "$rows" ] && return 0
   (cd "$AGENT/scripts" && exec "$VENV/bin/python" -u "$KIT/serve.py" \
-    --checkpoint "$kept" --port "$PORT" --device "$DEVICE" --batch "$BATCH" \
+    --checkpoint "$2" --port "$PORT" --device "$DEVICE" --batch "$BATCH" \
     --fronts "$FRONTS") > "$OUT/$ROWS/$name.server.log" 2>&1 &
   server=$!
   trap 'kill "$server" 2> /dev/null || true' EXIT
@@ -193,7 +194,14 @@ for kept in "$OUT/checkpoints"/*.flax_model; do
   kill "$server" 2> /dev/null || true
   wait "$server" 2> /dev/null || true
   trap - EXIT
+}
+
+echo "2. Each checkpoint against $PILOT, $GAMES games, and the released model"
+for kept in "$OUT/checkpoints"/*.flax_model; do
+  [ -e "$kept" ] || { echo "no checkpoint in $OUT/checkpoints" >&2; exit 1; }
+  play "$(basename "$kept" .flax_model)" "$kept"
 done
+play "released-$CHECKPOINT" "$AGENT/scripts/checkpoints/$CHECKPOINT.flax_model"
 
 if [ "$MIRROR" != 0 ]; then
   echo "3. Each checkpoint against the released model, $MIRROR games"
