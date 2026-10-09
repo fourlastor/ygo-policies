@@ -32,6 +32,10 @@ pub struct SearchOptions {
     /// Write every decision examined, with the situation it was taken in and
     /// how each alternative did in the first-stage worlds.
     pub log: bool,
+    /// With `log`: also try the alternatives where the pilot's answer wins
+    /// every first-stage world, so that the log holds how each of them did
+    /// there.  None can be ahead, and the answer given is the same.
+    pub log_all: bool,
     /// Search nothing: at each decision, play the pilot's answer out in the
     /// world as it is, and check that it ends as the duel itself does.
     pub validate: bool,
@@ -498,9 +502,10 @@ fn decide(
         let mut prepared = PolicyWorlds::new();
         // The pilot's answer goes first.  Where it wins every first-stage
         // world no alternative can be ahead of it, so none is tried: the
-        // answer is the one the full stage would keep.
+        // answer is the one the full stage would keep.  A log asked for all
+        // of them has them tried there all the same, and nothing comes of it.
         for pilot_pass in [true, false] {
-            if !pilot_pass && won_everywhere {
+            if !pilot_pass && won_everywhere && !(search.log_all && log.is_some()) {
                 break;
             }
             for world in done..total {
@@ -844,7 +849,7 @@ mod tests {
         let mut changed = 0;
         for (seed, searcher) in [(880_001, 0), (880_002, 1), (880_003, 0)] {
             let run = PlayOptions { seed, limit: 4096, trace: false, life_points: [8000; 2], record: false, flags: DuelOptions::MASTER_RULE_5 };
-            let search = SearchOptions { searcher, stages: [4, 8, 16], z: 1.645, strict: true, log: false, validate: false, foresight: false };
+            let search = SearchOptions { searcher, stages: [4, 8, 16], z: 1.645, strict: true, log: false, log_all: false, validate: false, foresight: false };
             let other = 1 - searcher;
             let mut names = ["blue-eyes"; 2];
             names[other] = "first";

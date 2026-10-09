@@ -199,6 +199,13 @@ This is the material for a pilot's rules: `seen` shows the positions where
 another answer won clearly more often, and `examined` how often the same
 choice came up without mattering.
 
+`--log full` is `--log true` with the alternatives also tried where the
+pilot's answer won every first-stage world (`skipped`), so that `first` and
+`played` hold how each of them did there.  None can be ahead of an answer
+that won every world, so the search gives the answers it would have given:
+the games and their digests are those of any other run, with a tenth to a
+fifth more playouts.
+
 `--record true` adds a `record` to each duel of the row: all it takes to
 play that duel again, in the form [`replay`](#replaying-a-recorded-duel)
 reads: the seed, both Decks as they were dealt, and every answer with the
