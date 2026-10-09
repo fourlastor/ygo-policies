@@ -1,0 +1,333 @@
+{
+  "failures": 0,
+  "games": 2000,
+  "matchups": [
+    {
+      "a": "blue-eyes-improved",
+      "b": "ygo-agent",
+      "by_seat": [
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 1000,
+          "losses": 768,
+          "score": 0.232,
+          "standard_error": 0.013348258313353095,
+          "win_share": 0.232,
+          "wins": 232
+        },
+        {
+          "draws": 0,
+          "failures": 0,
+          "games": 1000,
+          "losses": 781,
+          "score": 0.219,
+          "standard_error": 0.013078187947877183,
+          "win_share": 0.219,
+          "wins": 219
+        }
+      ],
+      "draws": 0,
+      "failures": 0,
+      "games": 2000,
+      "losses": 1549,
+      "model": {
+        "asked": 231453,
+        "calibration": [
+          {
+            "band": [
+              0.0,
+              0.1
+            ],
+            "decisions": 10758,
+            "draws": 0,
+            "mean_prediction": 0.04341888968763708,
+            "observed_win_share": 0.28090723182747723,
+            "wins": 3022
+          },
+          {
+            "band": [
+              0.1,
+              0.2
+            ],
+            "decisions": 7514,
+            "draws": 0,
+            "mean_prediction": 0.15156257959290453,
+            "observed_win_share": 0.2990417886611658,
+            "wins": 2247
+          },
+          {
+            "band": [
+              0.2,
+              0.3
+            ],
+            "decisions": 9249,
+            "draws": 0,
+            "mean_prediction": 0.253084455970713,
+            "observed_win_share": 0.46556384473997187,
+            "wins": 4306
+          },
+          {
+            "band": [
+              0.3,
+              0.4
+            ],
+            "decisions": 13073,
+            "draws": 0,
+            "mean_prediction": 0.35224433998648325,
+            "observed_win_share": 0.6082001070909508,
+            "wins": 7951
+          },
+          {
+            "band": [
+              0.4,
+              0.5
+            ],
+            "decisions": 16647,
+            "draws": 0,
+            "mean_prediction": 0.4520420557374821,
+            "observed_win_share": 0.704451252477924,
+            "wins": 11727
+          },
+          {
+            "band": [
+              0.5,
+              0.6
+            ],
+            "decisions": 19699,
+            "draws": 0,
+            "mean_prediction": 0.5496174527163027,
+            "observed_win_share": 0.7838976597796843,
+            "wins": 15442
+          },
+          {
+            "band": [
+              0.6,
+              0.7
+            ],
+            "decisions": 20414,
+            "draws": 0,
+            "mean_prediction": 0.6496384362769989,
+            "observed_win_share": 0.845743117468404,
+            "wins": 17265
+          },
+          {
+            "band": [
+              0.7,
+              0.8
+            ],
+            "decisions": 20548,
+            "draws": 0,
+            "mean_prediction": 0.751099057063382,
+            "observed_win_share": 0.90140159626241,
+            "wins": 18522
+          },
+          {
+            "band": [
+              0.8,
+              0.9
+            ],
+            "decisions": 26323,
+            "draws": 0,
+            "mean_prediction": 0.8545010258149889,
+            "observed_win_share": 0.9574136686547886,
+            "wins": 25202
+          },
+          {
+            "band": [
+              0.9,
+              1.0
+            ],
+            "decisions": 63441,
+            "draws": 0,
+            "mean_prediction": 0.9625876188110023,
+            "observed_win_share": 0.9931274727699753,
+            "wins": 63005
+          }
+        ],
+        "fallback_games_by_kind": {},
+        "fallback_reasons": {},
+        "fallbacks": 0,
+        "mirror_draws": 0,
+        "second_seat_win_share": null,
+        "server_error_rate": 0.0,
+        "server_errors": 0
+      },
+      "score": 0.2255,
+      "standard_error": 0.009344777953488247,
+      "win_share": 0.2255,
+      "wins": 451
+    }
+  ],
+  "metadata": {
+    "arguments": {
+      "--carried": "true",
+      "--games": "2000",
+      "--opponents": "blue-eyes-improved",
+      "--output": "/home/daniele/Documents/yugioh-policies/benchmarks/ygo-agent/runs/anchor-2000/blue-eyes-improved.jsonl.part",
+      "--policies": "ygo-agent",
+      "--rules": "mr5",
+      "--seed": "860000",
+      "--server": "http://127.0.0.1:3043",
+      "--workers": "32"
+    },
+    "baseline": {
+      "bytes": 92537488,
+      "fnv1a64": "85d3645f2d071b39",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../target/release/libygo_policies.so"
+    },
+    "candidate": {
+      "bytes": 92537488,
+      "fnv1a64": "85d3645f2d071b39",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../target/release/libygo_policies.so"
+    },
+    "cards": {
+      "bytes": 7958528,
+      "fnv1a64": "766ac6cf2385af85",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/BabelCdb/cards.cdb"
+    },
+    "carried": true,
+    "catalog": {
+      "agents": "Heaven's Dispatch",
+      "alien": "Visitors from Beyond",
+      "amazoness": "Queens of the Wild",
+      "arcana": "Arcana Force Fortune",
+      "batteryman": "Full Charge",
+      "benkei": "A Thousand Blades",
+      "blackwing": "Blackwing Assassin",
+      "blue-eyes": "BlueEyes",
+      "blue-eyes-improved": "BlueEyes",
+      "burn": "Burn Princess",
+      "chain-burn": "Chain Reaction",
+      "chaos": "Between Light and Dark",
+      "cloudian": "Eye of the Storm",
+      "countdown": "Claudi-oh's Countdown",
+      "counter-fairy": "Heaven's Rebuttal",
+      "crystal": "12 Crystal Beast - Rainbow",
+      "cyber": "Power Surge",
+      "dark-world": "Gates Unopened",
+      "deckout": "Last Page",
+      "demise": "Armageddon Hour",
+      "destiny-board": "The Final Sentence",
+      "destiny-hero": "Destiny HEROes",
+      "draconic-might": "Draconic Might",
+      "dragunity": "Dragunity Flight",
+      "exodia": "Astra's Exodia",
+      "fabled": "Fabled Encore",
+      "first": "BlueEyes",
+      "fish": "Tidal Assembly",
+      "flamvell": "Ashes to Inferno",
+      "fortune-lady": "Fortune Ladies",
+      "garden": "Garden of Thorns",
+      "gem-knight": "Prismatic Forge",
+      "gemini": "Second Bloom",
+      "genex": "Clockwork Current",
+      "gishki": "Undersea Ceremony",
+      "gladiator": "Fight, Gladiators!",
+      "gravekeeper": "Gravekeeper's Tomb",
+      "gusto": "Gusto's Reprisal",
+      "harpie": "Harpie Sisters",
+      "herald": "Herald's Veto",
+      "heroes": "Fusion Heroes",
+      "ice-barrier": "Winter Parliament",
+      "infernity": "Infernity Infinity",
+      "iron-chain": "Rust Never Sleeps",
+      "jurrac": "Footprints in Fire",
+      "karakuri": "Karakuri Workshop",
+      "lightsworn": "Lightsworn Judgment",
+      "machina": "Machina Gadgets",
+      "macro-dd": "D.D. Border Patrol",
+      "malefic": "Eclipse Without End",
+      "monarch": "Emperor, Arise!",
+      "morphtronic": "01 Morphtronic - Straight Up",
+      "naturia": "The Quiet Grove",
+      "nordic": "Road to Ragnarok",
+      "nurse": "A Bitter Cure",
+      "ojama": "Ojama Brigade",
+      "psychic": "Mind Over Matter",
+      "pyramid": "Pyramid of Light",
+      "quickdraw-plant": "Quickdraw Plants",
+      "random": "BlueEyes",
+      "reptilianne": "The Still Gaze",
+      "rock-block": "06 Koaki Meiru - Rock Block",
+      "scrap": "Scrap Renaissance",
+      "six-samurai": "Legendary Six Samurai",
+      "spellcaster": "14 - Spellcaster's Command",
+      "spirit": "Passing Spirits",
+      "tele-dad": "Tele-DAD",
+      "toon": "Toon Kingdom",
+      "venom": "Crown of Venom",
+      "verdict": "Claudi-oh's Verdict",
+      "volcanic": "Volcanic Aftershock",
+      "watt": "Watt Grid",
+      "worm": "Visitors Beneath",
+      "x-saber": "X-Sabers",
+      "ygo-agent": "BlueEyes",
+      "zombie": "Graveyard Shift"
+    },
+    "checkout": {
+      "commit": "0234b2f39e6e4568307903e9ab2cde9759263f7e",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../..",
+      "status": "?? AMBER-REPORT.md\n?? benchmarks/vendor-update-2026-10-06/"
+    },
+    "core": {
+      "commit": "f1a6ec196aa17309d147eafa9865cdab430f549b",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore",
+      "status": ""
+    },
+    "decision_limit": 4096,
+    "decks": {
+      "blue-eyes-improved": {
+        "bytes": 647,
+        "fnv1a64": "5ef7fe2f32915cb8",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+      },
+      "ygo-agent": {
+        "bytes": 647,
+        "fnv1a64": "5ef7fe2f32915cb8",
+        "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../decks/BlueEyes.ydk"
+      }
+    },
+    "engine": {
+      "linked": true
+    },
+    "first": null,
+    "games_per_matchup": 2000,
+    "life_points": [
+      8000,
+      8000
+    ],
+    "lua": {
+      "commit": "6e22fedb74cf0c9b6656e9fce8b7331db847c605",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/ocgcore/lua/src",
+      "status": ""
+    },
+    "mode": "matchup",
+    "planned_jobs": 2000,
+    "policy_seed": "engine seed + seat",
+    "reference": [
+      "blackwing",
+      "burn",
+      "crystal",
+      "dragunity",
+      "gishki",
+      "gladiator",
+      "heroes",
+      "infernity",
+      "lightsworn",
+      "monarch",
+      "morphtronic",
+      "rock-block",
+      "spellcaster"
+    ],
+    "rules": "MasterRule5 (0x2E800)",
+    "scripts": {
+      "commit": "37f270dc813a12d123707ae255f2bda7922999c4",
+      "path": "/home/daniele/Documents/yugioh-policies/crates/ygo-policies-bench/../../vendor/CardScripts",
+      "status": ""
+    },
+    "seed": 860000,
+    "shuffle": "SplitMix64 Fisher-Yates v1; stable pair-name seed",
+    "stand_in": null
+  }
+}

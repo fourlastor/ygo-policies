@@ -26,8 +26,11 @@ then run by whoever set up the model's side.
 
 **Measured on 2026-10-08:** the checks hold, and the model wins 1,659 of
 2,000 games against the pilot, 83.0% ± 0.8%. See
-[Measured](#measured-2026-10-08). With the search on top the pilot wins
-29.5% ± 3.2% of 200 games where alone it wins 16.5%: [Step 3](SEARCH.md).
+[Measured](#measured-2026-10-08). Against the pilot as it was improved the
+day after, `blue-eyes-improved`, it wins 77.5% ± 0.9%. With the search on
+top the first pilot wins 29.5% ± 3.2% of 200 games where alone it wins
+16.5%, and 38.0% ± 3.4% with the model itself in the search's try-outs:
+[Step 3](SEARCH.md).
 
 Everything said of ygo-agent below was read in its source at commit
 `26293f8` or measured with it on 2026-10-08; where a file is named without a
@@ -789,6 +792,20 @@ is the third, near the first: 100 million games give a player well past a
 quick pilot, which still takes one game in six from it. Whether the same
 pilot with a search on top reaches it is the next rung.
 
+**Against the improved pilot, 2026-10-09.** `blue-eyes-improved` is the
+pilot with four rules more ([How fast it learns](#how-fast-it-learns)); it
+wins 61.1% of its games against `blue-eyes`. The same model wins 1,549 of
+2,000 games against it, 77.5% ± 0.9%, going first 768 of 1,000 and second
+781. The improved pilot takes 22.6% of the games where the first takes
+17.0%: 5.5 ± 1.3 points.
+
+- Both figures are of one server on one day (16 fronts, the duels carried
+  by the bench, `--workers 32`). On it the games against `blue-eyes` gave
+  the table's 1,659 again, 834 and 825 by seat.
+- The two are not played on the same deals: a matchup's deals follow the
+  names of its players as well as the seed, so the difference is between
+  two samples of 2,000.
+
 ### Running it again
 
 One server a run, each on its own port, and the commands of the section
@@ -804,6 +821,7 @@ and a game against the pilot asks 117.
 | `16500M-pilot` | `0546_16500M` (`975e673a`) | `blue-eyes` | 1,000 | 860000 |
 | `11300M-pilot` | `0546_11300M` (`25035d28`) | `blue-eyes` | 1,000 | 860000 |
 | `22750M-pilot-as-committed` | `0546_22750M`, the bench built at `9e595de` | `blue-eyes` | 1,000 | 860000 |
+| `22750M-pilot-improved` | `0546_22750M`, the bench at `0234b2f`, `serve.py --batch 32 --fronts 16` and `--carried true` | `blue-eyes-improved` | 2,000 | 860000 |
 
 - The metadata of these runs names the checkout as `9e595de` with
   `ygo_agent.rs` modified: they ran before the change to the seat was
@@ -856,9 +874,9 @@ to by a search and kept for what it won on other deals
 ([the first three](../blue-eyes-improvement/README.md),
 [the fourth](../blue-eyes-depth2/README.md)). With the same deck it wins
 61.1% ± 0.5% of 8,192 games against `blue-eyes`, which is unchanged: every
-figure of this document is of `blue-eyes`. What the improved one takes from
-the model is not measured yet; this measures it, and a run's checkpoints
-against it:
+figure of this document is of `blue-eyes` unless it names the other. The
+released model wins 77.5% ± 0.9% of 2,000 games against the improved one
+([The result](#the-result)). A run's checkpoints against it:
 
 ```sh
 TRAIN=0 PILOT=blue-eyes-improved ROWS=pilot-improved bash benchmarks/ygo-agent/kit/curve.sh
