@@ -164,28 +164,40 @@ the try-out's table.
 | The GPU against the CPU | 5 first choices of 2,515 differ, each between options that are tied; 14 of 16 games are the same and all 16 have the same winner |
 | Copies of an outside seat in the try-outs change nothing where that seat answers as a policy would | the bench's test `an_outside_seat_that_answers_as_its_stand_in_changes_nothing` |
 | The model in the try-outs: 29 deals with a light search (4, 8 and 16 worlds) on a GTX 1060 | 13,580 try-outs, none failed; 1,197,778 requests in them, none unanswered; 16 searched games with no answer changed, all 16 the plain game answer for answer |
-| `kit/search-model.sh` from start to end | 4 deals with a search of 2 worlds, and 2 deals on a setup made from nothing with `GPU=1` |
+| `kit/search-model.sh` from start to end | 4 deals with a search of 2 worlds, and 2 deals on a setup made from nothing with `GPU=1`. An interrupt stops the bench and the server with it; a submodule that is not at its pin stops the script before it builds |
+| A clone made from nothing | cloned with its submodules, built (71 seconds) and run on 2 deals: the rows of the working copy, answer for answer. The engine is pinned one commit after its fork's `master` (`f1a6ec1`, a larger store for a duel): the clone needs that commit on the fork |
 
 ### What it costs
 
 - **A try-out asks the server 88 times** (the 29 deals). With the search of
   the first look (8, 32 and 96 worlds, 2,081 try-outs a game) that is some
-  180,000 requests a game and 36 million for 200 deals. With 4, 8 and 16
+  180,000 requests a game and 37 million for 200 deals. With 4, 8 and 16
   worlds a game had 468 try-outs and 41,000 requests, the largest 105,000;
   that search changes 0.55 answers a game where the first look's changes
   2.4, so it is another, weaker search.
 - **The try-outs of a deal run one after another.** A deal takes its
   requests times what one request takes, however many deals run beside it,
   and a run is not over before its longest deal is.
-- **On a GTX 1060**, with 32 deals at once and batches of 32: 13 to 17 ms a
-  request and 1,800 requests a second. Of a batch of 32, the model takes 6.3
-  ms and the handling around it 1.7 ms; of 16, 3.8 and 1.0 ms. The card
-  answers at most some 4,300 requests a second (batches of 48).
-- **From these**, on that card: 200 deals with the light search take about
-  an hour, and with the search of the first look two and a half hours of
-  the card's time at the least, longer for the deals with most try-outs. A
-  faster GPU shortens the model's part of a batch only; the handling, and
-  1.6 ms of a processor for every request in the fronts, stay.
+- **On a GTX 1060 with 24 processors**, 96 deals at once and batches of 32
+  (the script's settings): 2,800 requests a second with 16 fronts, the
+  batches 29 full and the model busy 99% of the time; 2,320 a second with 8
+  fronts, the batches 19 full. A batch of 29 takes 10.3 ms, some 6 of them
+  the model on the card and the rest the handling around it in the server's
+  first process: that process is what limits the run there. Beside it a
+  request takes 2.1 ms of a processor in the bench and 2.1 ms in the fronts,
+  12 processors busy in all. With 32 deals at once: 1,800 a second, 13 to
+  17 ms a request.
+- **From these**, on that machine, reckoned and not run: the 200 deals with
+  the search of the first look ask 37 million times (416,168 try-outs with
+  the pilot standing in), which is 3.7 hours at 2,800 a second and about
+  four and a half to five with the long games left at the end. The largest
+  game had 8,176 try-outs, 720,000 requests one after another: two to
+  three hours by itself. The first games end after some ten minutes, half
+  of them after two hours. With the light search, 8 million requests:
+  about an hour.
+- **A faster GPU shortens the model's part of a batch only**, 6 ms of 10
+  there. The handling and the processors' work stay, so a machine with
+  slower processors can be slower with a faster card.
 
 ### Running it
 
@@ -210,11 +222,27 @@ What it does is set by the environment, as the script's head says:
 | --- | --- |
 | `GAMES=200 SEED=860000` | the deals |
 | `WORKERS=96` | deals played at once; a worker mostly waits for the server |
-| `BATCH=32` | requests the model answers together. Every batch costs the same, full or not: the server's log says every minute how full they are. Full batches mean the GPU is the limit and a larger batch answers more; batches far from full mean a smaller one answers sooner |
-| `FRONTS=8` | processes of the server that take the requests; one takes some 600 a second |
+| `BATCH=32` | requests the model answers together. Every batch costs the same, full or not |
+| `FRONTS` | processes of the server that take the requests: two thirds of the machine's processors unless it is set |
 | `WORLDS=8 CONFIRM=32 FINAL=96` | the search's stages. Another search than the first look's needs its own run with the pilot standing in, to be compared with: `policy-bench search` with the same three and without `--stand-in` |
 
 The same deals with the pilot standing in are `measured/search-200-model`.
+
+**How fast a run goes** shows in the server's log, `server.log` beside the
+rows, a line a minute:
+
+```
+311364 requests put to the model in 10693 batches (29.1 a batch); since the last line 2804 a second, the model busy 99% of the time
+```
+
+The requests a second say how long the run takes: divide the requests of
+the run (37 million for the 200 deals) by them. A model that is busy all
+the time with its batches full is the limit itself: a larger `BATCH`
+answers more at once, each request a little later. One that is not busy
+waits for the fronts or for the bench: more `FRONTS`, or more `WORKERS`.
+The bench writes a game's row when the game ends and says where it stands
+every 16 games. An interrupted run keeps the rows of the games that ended;
+it cannot be taken up again where it stopped.
 
 ## The files
 

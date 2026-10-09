@@ -233,7 +233,9 @@ size, filled up with empty requests, so that on a GPU a request's answer is
 the same to the last bit whatever shares its batch; on a CPU it can differ
 in the last digit. As the server is started under
 [Setting it up](#setting-it-up) it does what it did for every measurement
-of this file.
+of this file. `--report S` has it say every S seconds how many requests
+were put to the model and in how many batches, how many a second since its
+last line, and what part of that time the model was busy.
 
 **A duel without a session.** Beside the three calls of the next section
 there is `POST /v1/predict`, which keeps nothing of a duel in the server:

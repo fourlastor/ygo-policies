@@ -482,7 +482,8 @@ def serve(args: argparse.Namespace) -> None:
             gathered.put(requests.get())
 
     threading.Thread(target=gather, daemon=True).start()
-    asked = batches = 0
+    asked = batches = last = 0
+    busy = 0.0
     reported = time.time()
     while True:
         waiting = [gathered.get()]
@@ -491,14 +492,24 @@ def serve(args: argparse.Namespace) -> None:
                 waiting.append(gathered.get_nowait())
             except queue.Empty:
                 break
+        started = time.time()
         results = model.answer([(shown, rstate) for _, _, shown, rstate in waiting])
         for (number, ticket, _, _), result in zip(waiting, results, strict=True):
             answers[number].put((ticket, result))
+        now = time.time()
+        busy += now - started
         asked += len(waiting)
         batches += 1
-        if args.report and time.time() - reported >= args.report:
-            print(f"{asked} requests put to the model in {batches} batches ({asked / batches:.1f} a batch)", flush=True)
-            reported = time.time()
+        if args.report and now - reported >= args.report:
+            # A model that is busy all the time is what limits the run;
+            # one that is not waits for the fronts or for whoever asks.
+            print(
+                f"{asked} requests put to the model in {batches} batches ({asked / batches:.1f} a batch); "
+                f"since the last line {(asked - last) / (now - reported):.0f} a second, "
+                f"the model busy {100 * busy / (now - reported):.0f}% of the time",
+                flush=True,
+            )
+            reported, last, busy = now, asked, 0.0
 
 
 def main() -> None:
