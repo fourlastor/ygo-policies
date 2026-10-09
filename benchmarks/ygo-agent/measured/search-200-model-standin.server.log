@@ -1,0 +1,20 @@
+serving checkpoints/0546_22750M.flax_model on http://127.0.0.1:3013 (card ids off, history of declined actions: skip; gpu, 32 at a time, 13 fronts)
+12634 requests put to the model in 2249 batches (5.6 a batch); since the last line 211 a second, the model busy 63% of the time
+14196 requests put to the model in 3638 batches (3.9 a batch); since the last line 26 a second, the model busy 55% of the time
+15877 requests put to the model in 5026 batches (3.2 a batch); since the last line 28 a second, the model busy 54% of the time
+18151 requests put to the model in 6776 batches (2.7 a batch); since the last line 38 a second, the model busy 68% of the time
+21404 requests put to the model in 9039 batches (2.4 a batch); since the last line 54 a second, the model busy 84% of the time
+23609 requests put to the model in 10754 batches (2.2 a batch); since the last line 37 a second, the model busy 66% of the time
+25742 requests put to the model in 12404 batches (2.1 a batch); since the last line 36 a second, the model busy 66% of the time
+28069 requests put to the model in 14245 batches (2.0 a batch); since the last line 39 a second, the model busy 71% of the time
+30258 requests put to the model in 16037 batches (1.9 a batch); since the last line 36 a second, the model busy 73% of the time
+32433 requests put to the model in 17758 batches (1.8 a batch); since the last line 36 a second, the model busy 69% of the time
+34665 requests put to the model in 19660 batches (1.8 a batch); since the last line 37 a second, the model busy 75% of the time
+35852 requests put to the model in 20731 batches (1.7 a batch); since the last line 20 a second, the model busy 41% of the time
+37015 requests put to the model in 21831 batches (1.7 a batch); since the last line 19 a second, the model busy 33% of the time
+38044 requests put to the model in 22841 batches (1.7 a batch); since the last line 17 a second, the model busy 22% of the time
+39022 requests put to the model in 23782 batches (1.6 a batch); since the last line 16 a second, the model busy 17% of the time
+39918 requests put to the model in 24646 batches (1.6 a batch); since the last line 15 a second, the model busy 13% of the time
+41003 requests put to the model in 25711 batches (1.6 a batch); since the last line 18 a second, the model busy 15% of the time
+41943 requests put to the model in 26651 batches (1.6 a batch); since the last line 15 a second, the model busy 7% of the time
+42447 requests put to the model in 27155 batches (1.6 a batch); since the last line 8 a second, the model busy 2% of the time

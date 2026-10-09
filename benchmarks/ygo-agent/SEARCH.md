@@ -14,6 +14,12 @@ search the pilot wins 59 of 200 games against the model where alone it wins
 seven games in ten. Against the pilot itself the same search wins 164 of
 200.
 
+**The model itself in the try-outs, 2026-10-09, the same 200 deals: closer,
+and still not.** With the model playing its own seat in the search's
+try-outs the pilot wins 76 of 200, 38.0% ± 3.4%. That is 9.5 ± 3.4 points
+more than with the pilot standing in for it on the same server (57 of 200),
+and the model still wins six games in ten.
+
 ## Decided on 2026-10-08
 
 - **In the search's try-outs the model's seat is played by a stand-in, the
@@ -122,16 +128,79 @@ answers changed, 52 seconds.
   second 7 ± 5.** One run of 100 deals a seat: to be seen again before it
   is read.
 
-**What would tell the two apart** is the model itself in the try-outs:
-[below](#the-model-itself-in-the-try-outs), built and not yet measured.
+**What would tell the two apart** is the model itself in the try-outs,
+measured [below](#what-it-measured): both hold.
 
 **More deals of this run** would narrow the figures and not move them: the
 direction is plain at 13.0 ± 3.3, and so is where it leaves the pilot.
 
 ## The model itself in the try-outs
 
-Prepared on 2026-10-09 and checked on small runs. **Not measured: no figure
-below says how the pilot does.**
+Built and measured on 2026-10-09.
+
+### What it measured
+
+The first 200 deals of `measured/22750M-pilot` again, the search of the
+first look, on a machine with an RTX 4070 SUPER and 20 processor threads
+(`kit/search-model.sh` as it is). Two runs on that one server: the model
+itself in the try-outs, and the pilot standing in for it. All 200 plain
+games are the same game in the two.
+
+| The pilot against the model | Alone | With the search | Deal by deal |
+| --- | ---: | ---: | --- |
+| **the model itself in the try-outs** | 33 of 200, 16.5% ± 2.6% | **76 of 200, 38.0% ± 3.4%** | +21.5 ± 3.3 points: 48 deals turned its way, 5 against |
+| the pilot standing in, on the same server | 33 of 200, 16.5% ± 2.6% | 57 of 200, 28.5% ± 3.2% | +12.0 ± 3.2 points: 34 deals turned its way, 10 against |
+| **the first over the second** | | | **+9.5 ± 3.4 points**: 34 deals its way, 15 against |
+
+| By seat | Alone | The model itself | The pilot standing in |
+| --- | ---: | ---: | ---: |
+| going first | 17 of 100 | 43 of 100 | 34 of 100 |
+| going second | 16 of 100 | 33 of 100 | 23 of 100 |
+
+| By the length of the plain game | Alone | The model itself | The pilot standing in |
+| --- | ---: | ---: | ---: |
+| the 66 shortest, 3 to 5 turns | 8 | 15 | 12 |
+| the 67 between, 5 to 7 turns | 12 | 26 | 22 |
+| the 67 longest, 7 to 18 turns | 13 | 35 | 23 |
+
+**What the search did** in a game with the model itself: 39 decisions
+searched, 1,980 try-outs, 1.66 answers changed. With the pilot standing in:
+40 searched, 2,086 try-outs, 2.42 changed. A searched game in which no
+answer was changed is the plain game answer for answer in both runs (80 and
+34 games).
+
+**What it says:**
+
+- **Planning against the model's own answers is worth 9.5 ± 3.4 points.**
+  That is the first of the two explanations of the first look: the search
+  with the pilot standing in plans against answers it does not meet.
+- **The second explanation holds for the rest.** Given the model's own
+  answers the pilot with a search wins 38.0% ± 3.4% and the model 62%.
+  Against the pilot, where the search also plans against the right answers,
+  it wins 82%.
+- **It changes fewer answers and spoils fewer games.** Of the 33 deals the
+  pilot wins alone, the search with the model itself loses 5 and the one
+  with the stand-in 10. Of the 167 the pilot loses alone, it wins 48
+  against 34.
+- **The gain grows with the length of the game**: 7 deals more in the
+  shortest third, 22 in the longest.
+- **The seats differ as in the first look**: going first the search with
+  the model itself is worth 26.0 ± 4.8 points, going second 17.0 ± 4.5;
+  with the stand-in 17.0 ± 4.3 and 7.0 ± 4.8. These are the first look's
+  deals, so this is the same sample seen again, not a second one.
+- **The search is given what a player at the table does not have**: the
+  other player's policy, asked 181,000 times a game. The figure says what
+  a wrong picture of the opponent costs this search. It is not a player
+  that could sit down at a game. The hidden cards are still dealt again in
+  every try-out.
+
+One run of 200 deals: the difference between the two is 2.8 of its
+standard errors.
+
+**A report of the rows so far is not a sample of the run.** The games that
+end first are the short ones, which the searching side mostly loses. After
+165 of the 200 deals this run stood at 30.3% with the search, and it ended
+at 38.0%: the search won 26 of the last 35 deals.
 
 ### What was built
 
@@ -178,6 +247,14 @@ the try-out's table.
 - **The try-outs of a deal run one after another.** A deal takes its
   requests times what one request takes, however many deals run beside it,
   and a run is not over before its longest deal is.
+- **The run that was measured** (an RTX 4070 SUPER, 20 processor threads,
+  the script's settings) took 4 hours 51 minutes. The try-outs asked 36.2
+  million times, 181,060 a game, and 32.4 million of those requests reached
+  the model: a decision with one option is answered without it. The server
+  took 2,100 requests a second for most of the run, in batches of 8, its
+  first process busy 93% of the time; over the last half hour, with few
+  deals left, 720 a second. The largest game had 9,632 try-outs and lasted
+  the whole run. The same deals with the pilot standing in took 19 minutes.
 - **On a GTX 1060 with 24 processors**, 96 deals at once and batches of 32
   (the script's settings): 2,800 requests a second with 16 fronts, the
   batches 29 full and the model busy 99% of the time; 2,320 a second with 8
@@ -229,11 +306,11 @@ What it does is set by the environment, as the script's head says:
 
 The same deals with the pilot standing in are `measured/search-200-model`.
 That run was played on a CPU server, and the model breaks ties between
-options it rates alike (two copies of a card) differently there: of the
-first 91 deals a GPU run finished, 52 have the same plain game as in it.
-For a comparison deal by deal, play the stand-in on the same server, where
-the plain games are the same games (4 of 4 in a check), in some twenty
-minutes:
+options it rates alike (two copies of a card) differently there: 116 of
+the 200 deals have the same plain game as in the measured GPU run. For a
+comparison deal by deal, play the stand-in on the same server, where the
+plain games are the same games (all 200 in the measured runs), in some
+twenty minutes:
 
 ```sh
 STAND_IN=blue-eyes OUT=benchmarks/ygo-agent/runs/search-standin bash benchmarks/ygo-agent/kit/search-model.sh
@@ -265,7 +342,12 @@ it cannot be taken up again where it stopped.
 | --- | --- |
 | `search-200-model.jsonl.gz`, `.metadata.json` | the pilot with a search against the model |
 | `search-200-pilot.jsonl.gz`, `.metadata.json` | the pilot with a search against the pilot |
+| `search-200-model-itself.jsonl.gz`, `.metadata.json`, `.server.log` | the pilot with a search against the model, the model itself in the try-outs (2026-10-09) |
+| `search-200-model-standin.jsonl.gz`, `.metadata.json`, `.server.log` | the same deals on the same server with the pilot standing in |
 
-The metadata of both names the checkout as `b424d29` with files modified:
-they ran before this step was committed. The bench as committed plays the
-first 8 deals of the run against the model again with the same digests.
+The metadata of the first two names the checkout as `b424d29` with files
+modified: they ran before this step was committed. The bench as committed
+plays the first 8 deals of the run against the model again with the same
+digests. The last two ran at `2b3fd33` and `d413ae0`, which differ in the
+kit's scripts and not in the bench; their metadata names
+`kit/golden-answers.json` as modified on that machine.
