@@ -1,0 +1,40 @@
+{
+  "games_per_version": 8192,
+  "total_duels": 16384,
+  "earlier_search_development_and_validation_seed_overlap": 0,
+  "seats": {
+    "0": {
+      "pairs": 4096,
+      "baseline_wins": 2236.0,
+      "candidate_wins": 2272.0,
+      "delta": 0.0087890625,
+      "paired_95_half_width": 0.004582420702863301
+    },
+    "1": {
+      "pairs": 4096,
+      "baseline_wins": 2702.0,
+      "candidate_wins": 2731.0,
+      "delta": 0.007080078125,
+      "paired_95_half_width": 0.0038522885637950863
+    }
+  },
+  "baseline": {
+    "wins": 4938,
+    "draws": 0,
+    "losses": 3254,
+    "failures": 0,
+    "limits": 0
+  },
+  "candidate": {
+    "wins": 5003,
+    "draws": 0,
+    "losses": 3189,
+    "failures": 0,
+    "limits": 0
+  },
+  "workspace_tests": {
+    "passed": 267,
+    "failed": 0,
+    "ignored": 0
+  }
+}

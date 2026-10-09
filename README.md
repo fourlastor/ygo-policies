@@ -261,6 +261,8 @@ For the MR5 Blue-Eyes list, `blue-eyes` preserves the original pilot and
 `blue-eyes-improved` adds rules validated against that fixed opponent. Both
 use `decks/BlueEyes.ydk` and remain outside the WC2011 `all` roster. See the
 [search findings, paired results and commands](benchmarks/blue-eyes-improvement/README.md).
+The [depth-two follow-up](benchmarks/blue-eyes-depth2/README.md) checks further
+rules and adds a cheaper Full Armor summon route.
 
 See the [benchmark crate guide](crates/ygo-policies-bench/README.md) for paired
 comparisons, custom pools, saved-run ranking and reproducibility details, and

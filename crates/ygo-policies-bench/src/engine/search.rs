@@ -1,4 +1,4 @@
-//! A one-step search on top of a pilot.
+//! A one- or two-decision search on top of a pilot.
 //!
 //! One seat is played by its policy and a search: at each of its decisions
 //! the duel is snapshotted, every alternative the policy listed is tried in
@@ -24,6 +24,11 @@ pub struct SearchOptions {
     /// Worlds every alternative has been tried in after each stage.  Only
     /// alternatives ahead of the pilot's answer go on to the next stage.
     pub stages: [usize; 3],
+    /// Search this decision only (1), or also the next eligible decision of
+    /// the same seat in each rollout (2). Other prompts remain the pilot's.
+    pub depth: usize,
+    /// Maximum worlds in the second decision's independent hidden-card search.
+    pub inner_worlds: usize,
     /// How far ahead (paired z) an alternative must be after the last stage.
     pub z: f64,
     /// Leave decisions to the pilot while the other player has a face-down
@@ -60,6 +65,14 @@ pub struct Outside<'a> {
 
 /// The seat whose copies play a seat of the try-outs, and which seat.
 type Itself<'a> = Option<(&'a dyn LiveSeat, usize)>;
+
+#[derive(Default)]
+struct SearchCounts {
+    playouts: u64,
+    failed: u64,
+    continuations: u64,
+    continuation_changes: u64,
+}
 
 /// After the middle stage: far enough ahead to stop there, or too close to go on.
 const EARLY_ACCEPT: f64 = 2.33;
@@ -391,6 +404,8 @@ fn playout<'a>(
     response: &[u8],
     mut decisions: usize,
     itself: Itself,
+    mut continuation: Option<SearchOptions>,
+    counts: &mut SearchCounts,
 ) -> Result<Option<u8>> {
     if let Some((viewer, seed)) = world {
         hidden.restore(duel, snapshot, viewer, seed)?;
@@ -427,6 +442,10 @@ fn playout<'a>(
         Some((live, seat)) => Some((live.fork()?, seat)),
         None => None,
     };
+    // Only depth two needs branch histories. Its next search rebuilds the
+    // seats from the messages of this branch, including newly observed draws.
+    let mut branch_logs = continuation.map(|_| logs.clone());
+    let mut chain = false; // A nested search is entered only outside a chain.
     duel.respond(response);
     decisions += 1;
     loop {
@@ -435,6 +454,19 @@ fn playout<'a>(
         for sent in &step.messages {
             if !sent.refresh && sent.bytes[0] == msg::RETRY {
                 return Err("Engine rejected response (MSG_RETRY)".into());
+            }
+            if !sent.refresh {
+                match sent.bytes[0] {
+                    msg::CHAINING => chain = true,
+                    msg::CHAIN_END => chain = false,
+                    _ => {}
+                }
+            }
+            if let Some(logs) = &mut branch_logs {
+                for log in logs {
+                    log.extend_from_slice(&(sent.bytes.len() as u32).to_le_bytes());
+                    log.extend_from_slice(&sent.bytes);
+                }
             }
             let mut its = match &mut copy {
                 Some((copy, _)) => copy.feed(&sent.bytes, duel)?,
@@ -447,10 +479,11 @@ fn playout<'a>(
             for (p, seat) in seats.iter().enumerate() {
                 let given = seat.feed(&sent.bytes)?;
                 if !sent.refresh && given.is_some() {
-                    answer = match &copy {
+                    let given = match &copy {
                         Some((_, seat)) if *seat == p => Some(its.take().ok_or("The copy did not answer its own prompt")?),
                         _ => given,
                     };
+                    answer = given.map(|given| (p, given));
                 }
             }
         }
@@ -462,7 +495,40 @@ fn playout<'a>(
             return Ok(winner.filter(|w| *w < 2));
         }
         match answer {
-            Some(given) => {
+            Some((p, mut given)) => {
+                if let Some(search) = continuation {
+                    if p == search.searcher && !chain
+                        && !(search.strict && duel.monsters().iter().any(|m| {
+                            m.controller != p as u8 && m.position & position::FACEDOWN != 0
+                        }))
+                    {
+                        let described = seats[p].search_view()?;
+                        if let Some(listed) = listed(&described, &given) {
+                            counts.continuations += 1;
+                            // Independent worlds at the second information set,
+                            // never the best action with this world's cards known.
+                            let nested = SearchOptions {
+                                depth: 1,
+                                stages: [search.inner_worlds.min(4), search.inner_worlds.min(8), search.inner_worlds],
+                                log: false, log_all: false, ..search
+                            };
+                            let nested_setup = Setup {
+                                seed: world.map_or(setup.seed, |(_, seed)| seed) ^ 0xA0761D6478BD642F,
+                                ..*setup
+                            };
+                            let (index, _) = decide(duel, &nested_setup, branch_logs.as_ref().unwrap(),
+                                p as u8, &listed, &nested, decisions, counts, None, None)?;
+                            if index != 0 {
+                                counts.continuation_changes += 1;
+                                given = listed.responses[index].clone();
+                            }
+                            // Exactly one additional searched decision, even if
+                            // it keeps the pilot's response. Then finish normally.
+                            continuation = None;
+                            branch_logs = None;
+                        }
+                    }
+                }
                 duel.respond(&given);
                 decisions += 1;
             }
@@ -484,11 +550,13 @@ fn decide(
     decision: &Listed,
     search: &SearchOptions,
     decisions: usize,
-    counts: &mut [u64; 2],
+    counts: &mut SearchCounts,
     log: Option<&mut Vec<serde_json::Value>>,
     itself: Itself,
 ) -> Result<(usize, serde_json::Value)> {
-    let before = counts[0];
+    let before = counts.playouts;
+    let continuations_before = counts.continuations;
+    let changes_before = counts.continuation_changes;
     let snapshot = duel.snapshot()?;
     let mut hidden = HiddenWorlds::default();
     let mut candidates: Vec<Candidate> = (0..decision.responses.len()).map(|index| Candidate { index, payoffs: vec![] }).collect();
@@ -512,13 +580,14 @@ fn decide(
                 let seed = setup.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15) ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
                 let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
                 for index in indices {
-                    counts[0] += 1;
-                    let played = playout(duel, &snapshot, setup, logs, &mut prepared, &mut hidden, Some((viewer, seed)), &decision.responses[index], decisions, itself);
+                    counts.playouts += 1;
+                    let played = playout(duel, &snapshot, setup, logs, &mut prepared, &mut hidden, Some((viewer, seed)), &decision.responses[index], decisions, itself,
+                        (search.depth == 2).then_some(*search), counts);
                     candidates[index].payoffs.push(match played {
                         Ok(Some(winner)) => Some(if winner == viewer { 1.0 } else { -1.0 }),
                         Ok(None) => Some(0.0),
                         Err(_) => {
-                            counts[1] += 1;
+                            counts.failed += 1;
                             None
                         }
                     });
@@ -586,7 +655,9 @@ fn decide(
             })
             .collect();
         log.push(serde_json::json!({"kind": decision.kind, "labels": decision.labels, "first": record, "played": played,
-            "worlds": candidates[0].payoffs.len(), "playouts": counts[0] - before, "chosen": chosen,
+            "worlds": candidates[0].payoffs.len(), "playouts": counts.playouts - before, "chosen": chosen,
+            "continuations": counts.continuations - continuations_before,
+            "continuation_changes": counts.continuation_changes - changes_before,
             "skipped": won_everywhere}));
     }
     Ok((candidates[chosen].index, seen))
@@ -601,20 +672,20 @@ fn foresee(
     viewer: u8,
     decision: &Listed,
     decisions: usize,
-    counts: &mut [u64; 2],
+    counts: &mut SearchCounts,
 ) -> Result<usize> {
     let snapshot = duel.snapshot()?;
     let mut chosen = 0;
     let mut prepared = PolicyWorlds::new();
     for index in 0..decision.responses.len() {
-        counts[0] += 1;
-        match playout(duel, &snapshot, setup, logs, &mut prepared, &mut HiddenWorlds::default(), None, &decision.responses[index], decisions, None) {
+        counts.playouts += 1;
+        match playout(duel, &snapshot, setup, logs, &mut prepared, &mut HiddenWorlds::default(), None, &decision.responses[index], decisions, None, None, counts) {
             Ok(Some(winner)) if winner == viewer => {
                 chosen = index;
                 break;
             }
             Ok(_) => {}
-            Err(_) => counts[1] += 1,
+            Err(_) => counts.failed += 1,
         }
     }
     duel.restore(&snapshot)?;
@@ -639,6 +710,12 @@ pub fn play_searching(
     search: SearchOptions,
     mut outside: Option<Outside>,
 ) -> Result<serde_json::Value> {
+    if !(1..=2).contains(&search.depth) || search.inner_worlds == 0 {
+        return Err("search depth must be 1 or 2, and inner worlds must be positive".into());
+    }
+    if search.depth == 2 && (outside.is_some() || search.foresight || search.validate) {
+        return Err("depth two supports native policy searches, not outside seats, foresight or validation mode".into());
+    }
     if !core.has_snapshots() {
         return Err("the engine given as --core has no arena snapshots or no hidden-card swap, which a search needs".into());
     }
@@ -672,7 +749,8 @@ pub fn play_searching(
     let mut chain = false;
     // Decisions searched, left to the pilot in a chain or facing a
     // face-down monster, playouts, failed playouts.
-    let (mut searched, mut in_chain, mut facing_set, mut counts) = (0u64, 0u64, 0u64, [0u64; 2]);
+    let (mut searched, mut in_chain, mut facing_set) = (0u64, 0u64, 0u64);
+    let mut counts = SearchCounts::default();
     let mut deviations = Vec::new();
     let mut examined: Vec<serde_json::Value> = Vec::new();
     let mut predictions: Vec<Option<u8>> = Vec::new();
@@ -728,7 +806,9 @@ pub fn play_searching(
             let mut row = serde_json::json!({"winner": winner, "reason": reason, "turns": turns, "decisions": decisions,
                 "limit": winner.is_none(), "digest": format!("{digest:016x}"), "searched": searched, "in_chain": in_chain,
                 "facing_set": facing_set,
-                "playouts": counts[0], "failed_playouts": counts[1], "deviations": deviations, "examined": examined,
+                "depth": search.depth, "inner_worlds": search.inner_worlds,
+                "playouts": counts.playouts, "failed_playouts": counts.failed, "deviations": deviations, "examined": examined,
+                "continuations": counts.continuations, "continuation_changes": counts.continuation_changes,
                 "predictions": predictions.len(), "mispredicted": mispredicted});
             if let Some(recorded) = &recorded {
                 row["record"] = record_json(recorded, names);
@@ -749,9 +829,9 @@ pub fn play_searching(
         if p == search.searcher {
             if search.validate {
                 // The pilot's own answer, played out in the world as it is.
-                counts[0] += 1;
+                counts.playouts += 1;
                 let snapshot = duel.snapshot()?;
-                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, &mut PolicyWorlds::new(), &mut HiddenWorlds::default(), None, &answer, decisions, None)?);
+                predictions.push(playout(&mut duel, &snapshot, &setup, &table.logs, &mut PolicyWorlds::new(), &mut HiddenWorlds::default(), None, &answer, decisions, None, None, &mut counts)?);
                 duel.restore(&snapshot)?;
             } else if let Some((described, decision)) = {
                 let described = table.seats[p].search_view()?;
@@ -814,6 +894,35 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    #[test]
+    fn two_decision_search_restores_branches_and_is_repeatable() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let built = root.join("target/release/libygo_policies.so");
+        if !built.exists() {
+            eprintln!("skipped: {} is not built", built.display());
+            return;
+        }
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library = PolicyLibrary::open(&built).unwrap();
+        let deck = Deck::load(&root.join("decks/BlueEyes.ydk")).unwrap();
+        let decks = [deck.clone(), deck];
+        let run = PlayOptions { seed: 880_001, limit: 128, trace: false, life_points: [8000; 2], record: true, flags: DuelOptions::MASTER_RULE_5 };
+        let search = SearchOptions {
+            searcher: 0, depth: 2, inner_worlds: 2, stages: [2; 3],
+            z: 1.645, strict: true, log: true, log_all: false, validate: false, foresight: false,
+        };
+        let play = || play_searching(&core, &decks, [&library; 2], ["blue-eyes-improved", "blue-eyes"], &cards, run, search, None).unwrap();
+        let first = play();
+        let repeated = play();
+        assert_eq!(first, repeated);
+        assert_eq!(first["failed_playouts"], 0);
+        let nested = first["continuations"].as_u64().unwrap();
+        assert!(nested > 0, "the second level was never searched");
+        assert!(first["playouts"].as_u64().unwrap() > nested);
+        assert!(first["examined"].as_array().unwrap().iter().any(|e| e["continuations"].as_u64().unwrap() > 0));
+    }
+
     /// A seat of the library behind the door the model's seat comes through.
     struct Proxy<'a>(LibrarySeat<'a>);
     impl LiveSeat for Proxy<'_> {
@@ -849,7 +958,7 @@ mod tests {
         let mut changed = 0;
         for (seed, searcher) in [(880_001, 0), (880_002, 1), (880_003, 0)] {
             let run = PlayOptions { seed, limit: 4096, trace: false, life_points: [8000; 2], record: false, flags: DuelOptions::MASTER_RULE_5 };
-            let search = SearchOptions { searcher, stages: [4, 8, 16], z: 1.645, strict: true, log: false, log_all: false, validate: false, foresight: false };
+            let search = SearchOptions { searcher, depth: 1, inner_worlds: 16, stages: [4, 8, 16], z: 1.645, strict: true, log: false, log_all: false, validate: false, foresight: false };
             let other = 1 - searcher;
             let mut names = ["blue-eyes"; 2];
             names[other] = "first";

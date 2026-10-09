@@ -243,6 +243,8 @@ probe writes what the engine did, monster by monster, as JSON lines (--output).\
 search plays each game twice on the same seed: the pilot alone, and the pilot with a\n\
 one-step search at each of its decisions (see the bench README).\n\
   --worlds 8 --confirm 32 --final 96 (worlds tried after each stage)\n\
+  --depth 1|2 (default 1; depth 2 also searches the next eligible own decision)\n\
+  --inner-worlds 16 (depth 2 sample budget at that second decision; native policies only)\n\
   --z 1.645 (how far ahead of the pilot's answer an alternative must be)\n\
   --strict false (also search while the other player has a face-down monster, which\n\
   the worlds cannot deal again: the search then sees what it is)\n\
@@ -313,6 +315,8 @@ fn run() -> Result<()> {
             "--duel",
             "--recheck",
             "--worlds",
+            "--depth",
+            "--inner-worlds",
             "--confirm",
             "--final",
             "--z",
@@ -550,6 +554,8 @@ fn run() -> Result<()> {
         },
     };
     let jobs = jobs(&pilots, &opponents, mode.as_str(), games, seed, first);
+    let depth = number("--depth", 1)?;
+    let inner_worlds = number("--inner-worlds", 16)?;
     let stages = [number("--worlds", 8)?, number("--confirm", 32)?, number("--final", 96)?];
     let z: f64 = args.get("--z").map_or(Ok(1.645), |v| v.parse().map_err(|_| "Invalid --z".to_string()))?;
     let flag = |key: &str, default: bool| -> Result<bool> {
@@ -597,6 +603,12 @@ fn run() -> Result<()> {
     let carried = flag("--carried", false)? || itself;
     if carried && !has_agent {
         return Err("--carried is for ygo-agent".into());
+    }
+    if mode == "search" && (!(1..=2).contains(&depth) || inner_worlds == 0) {
+        return Err("--depth must be 1 or 2 and --inner-worlds must be positive".into());
+    }
+    if mode == "search" && depth == 2 && (has_agent || foresight || validate) {
+        return Err("--depth 2 requires native policies and cannot combine with --foresight or --validate".into());
     }
     if mode == "search" && (stages[0] == 0 || stages[0] > stages[1] || stages[1] > stages[2]) {
         return Err("search needs --worlds <= --confirm <= --final".into());
@@ -677,7 +689,7 @@ fn run() -> Result<()> {
                                 seat,
                             );
                             let started = std::time::Instant::now();
-                            let search = SearchOptions { searcher: seat, stages, z, validate, strict, foresight, log, log_all };
+                            let search = SearchOptions { searcher: seat, depth, inner_worlds, stages, z, validate, strict, foresight, log, log_all };
                             let searched = || -> Result<Value> {
                                 let outside = if model {
                                     Some(engine::Outside {

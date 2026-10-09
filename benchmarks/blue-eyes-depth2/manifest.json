@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-09",
+  "base_commit": "ca1690fd2b9b38231d5eae9493330404884cc9dd",
+  "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+  "sha256": {
+    "crates/ygo-policies/src/decks/blue_eyes.rs": "41a57727053ef7ff467b9dfb11a156a66abb5c3752d964e56a0ca13ea8385e79",
+    "crates/ygo-policies/src/decks/blue_eyes_improved.rs": "9210b0d01a1670aefd5d7dc8337430989ef8b8dc08f6fcc7d65bca6d3257c178",
+    "crates/ygo-policies-bench/src/engine/search.rs": "328b9ba6bd9ea867eca68a9cfde17d60147a478a06fa52fe9548a8a00d939f23",
+    "crates/ygo-policies-bench/src/main.rs": "7fd61b990087a57f0795958490cd2a3013e22a9666a8f8e02176c95ec7b019a7",
+    "Cargo.lock": "ab91eff5e9e1875f81f3d607b9fee0edda045550d5fadb3037c50aeccfe73033",
+    "decks/BlueEyes.ydk": "fcef44b1bd30e3a398fe076626bce2baa705aa56a2b7d2e28cd180b2a6d071e6",
+    "target/release/policy-bench": "94ad08990ac66a073ce2d210198a0ec98be022a5f9abc73ff2532c769df12c4a",
+    "/tmp/blue-eyes-depth2/before.so": "9c0a6f0f6f4002a39a2e06e306d6172d57dbe438294431d1ecbbe9795bfc805b",
+    "/tmp/blue-eyes-depth2/armor-route-guarded.so": "ceabfa1d87ccc10015d97a4853e363a6eb6a7c96c38ece0f36014729db10c477"
+  },
+  "measured_benchmark_sha256": "94ad08990ac66a073ce2d210198a0ec98be022a5f9abc73ff2532c769df12c4a",
+  "final_benchmark_sha256": "089669a8699b859ff06e920f656a076c366bbfced8b438bf38765a02465f4dcd"
+}

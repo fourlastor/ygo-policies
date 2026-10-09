@@ -1,0 +1,17 @@
+{
+  "armor-route": {
+    "source_sha256": "aa04dfd8234a5dda5a66c6701f9cc873cc8f0c127012caa65968ad9b778afe89",
+    "library_sha256": "608177fb4310dc15e1a83fe028ad23ca6c826ec6d507fd9de93066a3650cc56d",
+    "accepted": false
+  },
+  "ancients-first": {
+    "source_sha256": "19ae175e88452ce8c6ffcd331f5d9ffab42e1e9be430ab7b14802de3e0e3437d",
+    "library_sha256": "78f09a22f9a74db5c5526d7e8528f095b77d0714b5c41bd08683cfd71669ead8",
+    "accepted": false
+  },
+  "armor-route-guarded": {
+    "source_sha256": "9210b0d01a1670aefd5d7dc8337430989ef8b8dc08f6fcc7d65bca6d3257c178",
+    "library_sha256": "ceabfa1d87ccc10015d97a4853e363a6eb6a7c96c38ece0f36014729db10c477",
+    "accepted": true
+  }
+}

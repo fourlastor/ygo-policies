@@ -152,7 +152,20 @@ impl Strategy for BlueEyes {
                 let rank = match c.code()? {
                     SPIRIT => 6000,
                     AZURE => 5500,
-                    ARMOR => 5000,
+                    // Overlay Prime instead of spending three Level 8 bodies
+                    // directly on Full Armor. The two-material route leaves
+                    // another dragon available to attack or make Harbinger.
+                    ARMOR
+                        if ctx.face_up_on_field(ctx.me, PRIME)
+                            || t.find(
+                                ChoiceKind::SpecialSummon,
+                                Some(PRIME),
+                                Some(Location::Extra),
+                            )
+                            .is_none() =>
+                    {
+                        5000
+                    }
                     // A 3000-DEF wall also stops Blue-Eyes. Prime can beat it
                     // and supplies the material for Full Armor's follow-up.
                     PRIME

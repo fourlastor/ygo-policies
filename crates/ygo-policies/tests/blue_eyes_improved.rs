@@ -8,6 +8,7 @@ const RETURN: u32 = 6853254;
 const TRADE: u32 = 38120068;
 const PRIME: u32 = 31801517;
 const AZURE: u32 = 40908371;
+const ARMOR: u32 = 39030163;
 
 fn observation() -> Observation {
     Observation {
@@ -150,4 +151,40 @@ fn prime_breaks_a_defense_wall_but_does_not_replace_attackers_for_a_small_target
     obs.cards[3].defense = 2000;
     let mut p = registry::create("blue-eyes-improved", Arc::new(MemoryCards::default())).unwrap();
     assert_eq!(p.choose(&obs, &d), 1);
+}
+
+#[test]
+fn full_armor_uses_the_two_material_prime_route() {
+    let mut obs = observation();
+    obs.cards = vec![
+        card(BLUE, Location::MonsterZone, 0),
+        card(BLUE, Location::MonsterZone, 1),
+        card(BLUE, Location::MonsterZone, 2),
+        card(ARMOR, Location::Extra, 0),
+        card(PRIME, Location::Extra, 1),
+    ];
+    let mut opponent = card(BLUE, Location::MonsterZone, 0);
+    opponent.at.controller = 1;
+    obs.cards.push(opponent);
+    let d = idle(vec![
+        choice(ChoiceKind::SpecialSummon, Some(&obs.cards[3])),
+        choice(ChoiceKind::SpecialSummon, Some(&obs.cards[4])),
+        choice(ChoiceKind::EndTurn, None),
+    ]);
+    let mut p = registry::create("blue-eyes-improved", Arc::new(MemoryCards::default())).unwrap();
+    assert_eq!(
+        p.choose(&obs, &d),
+        1,
+        "keep the third dragon instead of using three materials"
+    );
+    obs.cards[0].code = Some(PRIME);
+    let mut p = registry::create("blue-eyes-improved", Arc::new(MemoryCards::default())).unwrap();
+    assert_eq!(p.choose(&obs, &d), 0, "overlay the existing Prime");
+    obs.cards[0].code = Some(BLUE);
+    let without_prime = idle(vec![
+        choice(ChoiceKind::SpecialSummon, Some(&obs.cards[3])),
+        choice(ChoiceKind::EndTurn, None),
+    ]);
+    let mut p = registry::create("blue-eyes-improved", Arc::new(MemoryCards::default())).unwrap();
+    assert_eq!(p.choose(&obs, &without_prime), 0, "keep the direct route when Prime cannot be summoned");
 }

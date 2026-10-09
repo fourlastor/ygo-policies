@@ -1,0 +1,142 @@
+{
+  "games": 2,
+  "baseline_wins": 0.0,
+  "search_wins": 1.0,
+  "failures": 0,
+  "limits": 0,
+  "playouts": 9572,
+  "failed_playouts": 0,
+  "continuations": 644,
+  "continuation_changes": 59,
+  "deviations": 4,
+  "groups": [
+    {
+      "from": {
+        "code": 71039903,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 45644898,
+        "kind": "Activate"
+      },
+      "from_card": "The White Stone of Ancients",
+      "to_card": "Master with Eyes of Blue",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336610599,
+          "decision": 242,
+          "from": {
+            "code": 71039903,
+            "kind": "Activate"
+          },
+          "gain": 1.5,
+          "kind": "Idle",
+          "to": {
+            "code": 45644898,
+            "kind": "Activate"
+          },
+          "turn": 4,
+          "worlds": 4,
+          "z": 3.0
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 71039903,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": null,
+        "kind": "EnterBattle"
+      },
+      "from_card": "The White Stone of Ancients",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336610599,
+          "decision": 249,
+          "from": {
+            "code": 71039903,
+            "kind": "Activate"
+          },
+          "gain": 0.75,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EnterBattle"
+          },
+          "turn": 4,
+          "worlds": 8,
+          "z": 2.0493901531919194
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "Attack"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336610599,
+          "decision": 252,
+          "from": {
+            "code": 38517737,
+            "kind": "Attack"
+          },
+          "gain": 1.5,
+          "kind": "Battle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 4,
+          "worlds": 4,
+          "z": 3.0
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 39030163,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": 63767246,
+        "kind": "SpecialSummon"
+      },
+      "from_card": "Galaxy-Eyes Full Armor Photon Dragon",
+      "to_card": "Number 38: Hope Harbinger Dragon Titanic Galaxy",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336610599,
+          "decision": 516,
+          "from": {
+            "code": 39030163,
+            "kind": "SpecialSummon"
+          },
+          "gain": 0.75,
+          "kind": "Idle",
+          "to": {
+            "code": 63767246,
+            "kind": "SpecialSummon"
+          },
+          "turn": 8,
+          "worlds": 8,
+          "z": 2.0493901531919194
+        }
+      ]
+    }
+  ]
+}

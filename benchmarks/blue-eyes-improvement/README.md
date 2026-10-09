@@ -1,5 +1,9 @@
 # Blue-Eyes: search-guided policy improvement
 
+This records the first iteration at commit `ca1690f`; check out that commit
+to reproduce this version. The [depth-two follow-up](../blue-eyes-depth2/README.md)
+records the next change and its independent validation.
+
 Measured on 2026-10-09. `blue-eyes-improved` wins **4,859 / 8,192 games
 (59.31%)** against the unchanged `blue-eyes` policy. On the identical deals,
 seats and policy seeds, the original copy wins 4,105 / 8,192 (50.11%).

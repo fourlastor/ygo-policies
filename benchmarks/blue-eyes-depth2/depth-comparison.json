@@ -1,0 +1,10 @@
+{
+  "games": 16,
+  "identical_plain_games": 16,
+  "depth1_wins": 13.0,
+  "depth2_wins": 13.0,
+  "depth2_improved": 0,
+  "depth2_regressed": 0,
+  "paired_delta": 0.0,
+  "paired_95_half_width": 0.0
+}

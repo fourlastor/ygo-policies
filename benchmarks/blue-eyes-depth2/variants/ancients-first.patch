@@ -1,0 +1,16 @@
+--- a/crates/ygo-policies/src/decks/blue_eyes_improved.rs
++++ b/crates/ygo-policies/src/decks/blue_eyes_improved.rs
+@@ -129,6 +129,13 @@
+     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
+         let ctx = t.ctx;
+         Some(match (c.kind, c.code()?) {
++            // With a dragon established, Ancients converts the Normal Summon
++            // into an End Phase dragon through Sage or a Synchro material.
++            (ChoiceKind::NormalSummon, ANCIENTS)
++                if ctx.monsters(ctx.me).iter().any(|c| {
++                    c.position.face_up && c.level == 8
++                        && matches!(c.code, Some(BLUE | ALTERNATIVE | WHITE))
++                }) => Some(4000.0),
+             (ChoiceKind::NormalSummon, SAGE) => Some(3500.0),
+             (ChoiceKind::NormalSummon, ANCIENTS | LEGEND | MASTER) => Some(2200.0),
+             (ChoiceKind::NormalSummon, BLUE | WHITE) => None,

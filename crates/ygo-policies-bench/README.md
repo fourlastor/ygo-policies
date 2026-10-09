@@ -125,6 +125,23 @@ dropped; one far ahead after `--confirm` is taken there.  The pilot's answer
 is tried first: where it wins every first-stage world, as in about half of a
 Blackwing's decisions, no alternative can be ahead and none is tried.
 
+`--depth 2` also searches the same seat's next eligible decision inside every
+root rollout. Forced prompts, target selections, open chains and (in strict
+mode) positions facing a face-down monster remain the pilot's; the opponent
+always uses its fixed policy. After that second decision both policies finish
+the duel normally. This is two decision points, not two turns or opponent
+minimax. The default `--depth 1` retains the original search.
+
+The second decision gets a fresh hidden-card search from that branch's message
+history, using only what the seat has observed there. It does not pick the
+best action with the rollout's hidden cards known. `--inner-worlds 16` controls
+its maximum samples, with stages min(4,N), min(8,N), N and the same z threshold.
+Root samples still use `--worlds`, `--confirm` and `--final`. Nested search is
+expensive; start with a few games. It currently supports native policy opponents
+and cannot combine with outside/model seats, `--foresight` or `--validate`.
+Rows and examined decisions report `continuations` and `continuation_changes`;
+`playouts` and `failed_playouts` include both levels.
+
 Within a decision, hidden-card inventory and each world's exact swap sequence
 are cached. Each world's policy histories are replayed once per stage, then
 copied independently for its alternatives, preserving policy memory and random

@@ -1,0 +1,13 @@
+{
+  "games": 4,
+  "baseline_wins": 3.0,
+  "search_wins": 3.0,
+  "failures": 0,
+  "limits": 0,
+  "playouts": 1632,
+  "failed_playouts": 0,
+  "continuations": 0,
+  "continuation_changes": 0,
+  "deviations": 0,
+  "groups": []
+}

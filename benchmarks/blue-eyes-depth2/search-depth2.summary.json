@@ -1,0 +1,831 @@
+{
+  "games": 16,
+  "baseline_wins": 12.0,
+  "search_wins": 13.0,
+  "failures": 0,
+  "limits": 0,
+  "playouts": 148440,
+  "failed_playouts": 0,
+  "continuations": 8964,
+  "continuation_changes": 438,
+  "deviations": 26,
+  "groups": [
+    {
+      "from": {
+        "code": 71039903,
+        "kind": "NormalSummon"
+      },
+      "to": {
+        "code": 23434538,
+        "kind": "NormalSummon"
+      },
+      "from_card": "The White Stone of Ancients",
+      "to_card": "Maxx \"C\"",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710603,
+          "decision": 46,
+          "from": {
+            "code": 71039903,
+            "kind": "NormalSummon"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 23434538,
+            "kind": "NormalSummon"
+          },
+          "turn": 2,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": 71039903,
+        "kind": "SetMonster"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": "The White Stone of Ancients",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710605,
+          "decision": 33,
+          "from": {
+            "code": 38517737,
+            "kind": "SpecialSummon"
+          },
+          "gain": 0.5,
+          "kind": "Idle",
+          "to": {
+            "code": 71039903,
+            "kind": "SetMonster"
+          },
+          "turn": 2,
+          "worlds": 16,
+          "z": 1.7320508075688774
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 63356631,
+        "kind": "SetSpellTrap"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Phoenix Wing Wind Blast",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710602,
+          "decision": 18,
+          "from": {
+            "code": 63356631,
+            "kind": "SetSpellTrap"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 1,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 63767246,
+        "kind": "SpecialSummon"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": "Number 38: Hope Harbinger Dragon Titanic Galaxy",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710602,
+          "decision": 71,
+          "from": {
+            "code": 38517737,
+            "kind": "Activate"
+          },
+          "gain": 1.25,
+          "kind": "Idle",
+          "to": {
+            "code": 63767246,
+            "kind": "SpecialSummon"
+          },
+          "turn": 3,
+          "worlds": 8,
+          "z": 3.415650255319866
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 8240199,
+        "kind": "NormalSummon"
+      },
+      "to": {
+        "code": 71039903,
+        "kind": "NormalSummon"
+      },
+      "from_card": "Sage with Eyes of Blue",
+      "to_card": "The White Stone of Ancients",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710601,
+          "decision": 213,
+          "from": {
+            "code": 8240199,
+            "kind": "NormalSummon"
+          },
+          "gain": 0.625,
+          "kind": "Idle",
+          "to": {
+            "code": 71039903,
+            "kind": "NormalSummon"
+          },
+          "turn": 4,
+          "worlds": 16,
+          "z": 2.0761369963434992
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 39030163,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": null,
+        "kind": "EnterBattle"
+      },
+      "from_card": "Galaxy-Eyes Full Armor Photon Dragon",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710599,
+          "decision": 189,
+          "from": {
+            "code": 39030163,
+            "kind": "SpecialSummon"
+          },
+          "gain": 1.0,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EnterBattle"
+          },
+          "turn": 4,
+          "worlds": 8,
+          "z": 2.6457513110645907
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38120068,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 63356631,
+        "kind": "SetSpellTrap"
+      },
+      "from_card": "Trade-In",
+      "to_card": "Phoenix Wing Wind Blast",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710600,
+          "decision": 90,
+          "from": {
+            "code": 38120068,
+            "kind": "Activate"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 63356631,
+            "kind": "SetSpellTrap"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 41620959,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 39701395,
+        "kind": "SetSpellTrap"
+      },
+      "from_card": "Dragon Shrine",
+      "to_card": "Cards of Consonance",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710600,
+          "decision": 108,
+          "from": {
+            "code": 41620959,
+            "kind": "Activate"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 39701395,
+            "kind": "SetSpellTrap"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": 8240199,
+        "kind": "NormalSummon"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": "Sage with Eyes of Blue",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710607,
+          "decision": 46,
+          "from": {
+            "code": 38517737,
+            "kind": "SpecialSummon"
+          },
+          "gain": 1.25,
+          "kind": "Idle",
+          "to": {
+            "code": 8240199,
+            "kind": "NormalSummon"
+          },
+          "turn": 2,
+          "worlds": 8,
+          "z": 3.415650255319866
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": null,
+      "count": 2,
+      "examples": [
+        {
+          "seed": 336710607,
+          "decision": 59,
+          "from": {
+            "code": 38517737,
+            "kind": "SpecialSummon"
+          },
+          "gain": 0.625,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 2,
+          "worlds": 16,
+          "z": 2.6111648393354674
+        },
+        {
+          "seed": 336710608,
+          "decision": 12,
+          "from": {
+            "code": 38517737,
+            "kind": "SpecialSummon"
+          },
+          "gain": 1.0,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 1,
+          "worlds": 8,
+          "z": 2.6457513110645907
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 8240199,
+        "kind": "SetMonster"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": "Sage with Eyes of Blue",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710607,
+          "decision": 137,
+          "from": {
+            "code": 38517737,
+            "kind": "Activate"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 8240199,
+            "kind": "SetMonster"
+          },
+          "turn": 4,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 59822133,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Blue-Eyes Spirit Dragon",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710610,
+          "decision": 37,
+          "from": {
+            "code": 59822133,
+            "kind": "SpecialSummon"
+          },
+          "gain": 1.0,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 1,
+          "worlds": 8,
+          "z": 2.6457513110645907
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 79814787,
+        "kind": "NormalSummon"
+      },
+      "to": {
+        "code": 43898403,
+        "kind": "SetSpellTrap"
+      },
+      "from_card": "The White Stone of Legend",
+      "to_card": "Twin Twisters",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710604,
+          "decision": 2,
+          "from": {
+            "code": 79814787,
+            "kind": "NormalSummon"
+          },
+          "gain": 0.625,
+          "kind": "Idle",
+          "to": {
+            "code": 43898403,
+            "kind": "SetSpellTrap"
+          },
+          "turn": 1,
+          "worlds": 16,
+          "z": 2.0761369963434992
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 41620959,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 8240199,
+        "kind": "SetMonster"
+      },
+      "from_card": "Dragon Shrine",
+      "to_card": "Sage with Eyes of Blue",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710604,
+          "decision": 116,
+          "from": {
+            "code": 41620959,
+            "kind": "Activate"
+          },
+          "gain": 0.5,
+          "kind": "Idle",
+          "to": {
+            "code": 8240199,
+            "kind": "SetMonster"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 2.23606797749979
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 48800175,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 38517737,
+        "kind": "Activate"
+      },
+      "from_card": "The Melody of Awakening Dragon",
+      "to_card": "Blue-Eyes Alternative White Dragon",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710604,
+          "decision": 127,
+          "from": {
+            "code": 48800175,
+            "kind": "Activate"
+          },
+          "gain": 0.75,
+          "kind": "Idle",
+          "to": {
+            "code": 38517737,
+            "kind": "Activate"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 3.0
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 45644898,
+        "kind": "NormalSummon"
+      },
+      "to": {
+        "code": 97268402,
+        "kind": "NormalSummon"
+      },
+      "from_card": "Master with Eyes of Blue",
+      "to_card": "Effect Veiler",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710606,
+          "decision": 24,
+          "from": {
+            "code": 45644898,
+            "kind": "NormalSummon"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 97268402,
+            "kind": "NormalSummon"
+          },
+          "turn": 1,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 40908371,
+        "kind": "ChangePosition"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Azure-Eyes Silver Dragon",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710606,
+          "decision": 114,
+          "from": {
+            "code": 40908371,
+            "kind": "ChangePosition"
+          },
+          "gain": 1.0,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 3,
+          "worlds": 8,
+          "z": 2.6457513110645907
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": null,
+        "kind": "Pass"
+      },
+      "to": {
+        "code": 59822133,
+        "kind": "Activate"
+      },
+      "from_card": null,
+      "to_card": "Blue-Eyes Spirit Dragon",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710606,
+          "decision": 236,
+          "from": {
+            "code": null,
+            "kind": "Pass"
+          },
+          "gain": 0.625,
+          "kind": "Chain",
+          "to": {
+            "code": 59822133,
+            "kind": "Activate"
+          },
+          "turn": 5,
+          "worlds": 16,
+          "z": 2.0761369963434992
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 39030163,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": 31801517,
+        "kind": "SpecialSummon"
+      },
+      "from_card": "Galaxy-Eyes Full Armor Photon Dragon",
+      "to_card": "Number 62: Galaxy-Eyes Prime Photon Dragon",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710608,
+          "decision": 125,
+          "from": {
+            "code": 39030163,
+            "kind": "SpecialSummon"
+          },
+          "gain": 0.5,
+          "kind": "Idle",
+          "to": {
+            "code": 31801517,
+            "kind": "SpecialSummon"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 2.23606797749979
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 41620959,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": null,
+        "kind": "EndTurn"
+      },
+      "from_card": "Dragon Shrine",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710612,
+          "decision": 9,
+          "from": {
+            "code": 41620959,
+            "kind": "Activate"
+          },
+          "gain": 1.0,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EndTurn"
+          },
+          "turn": 1,
+          "worlds": 8,
+          "z": 2.6457513110645907
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 48800175,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 71039903,
+        "kind": "NormalSummon"
+      },
+      "from_card": "The Melody of Awakening Dragon",
+      "to_card": "The White Stone of Ancients",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710612,
+          "decision": 118,
+          "from": {
+            "code": 48800175,
+            "kind": "Activate"
+          },
+          "gain": 0.75,
+          "kind": "Idle",
+          "to": {
+            "code": 71039903,
+            "kind": "NormalSummon"
+          },
+          "turn": 3,
+          "worlds": 16,
+          "z": 3.0
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": null,
+        "kind": "EnterBattle"
+      },
+      "to": {
+        "code": 2978414,
+        "kind": "SpecialSummon"
+      },
+      "from_card": null,
+      "to_card": "Number 46: Dragluon",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710612,
+          "decision": 301,
+          "from": {
+            "code": null,
+            "kind": "EnterBattle"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 2978414,
+            "kind": "SpecialSummon"
+          },
+          "turn": 5,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38517737,
+        "kind": "SpecialSummon"
+      },
+      "to": {
+        "code": 40908371,
+        "kind": "ChangePosition"
+      },
+      "from_card": "Blue-Eyes Alternative White Dragon",
+      "to_card": "Azure-Eyes Silver Dragon",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710613,
+          "decision": 200,
+          "from": {
+            "code": 38517737,
+            "kind": "SpecialSummon"
+          },
+          "gain": 0.625,
+          "kind": "Idle",
+          "to": {
+            "code": 40908371,
+            "kind": "ChangePosition"
+          },
+          "turn": 4,
+          "worlds": 16,
+          "z": 2.0761369963434992
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 39701395,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": null,
+        "kind": "EnterBattle"
+      },
+      "from_card": "Cards of Consonance",
+      "to_card": null,
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710613,
+          "decision": 211,
+          "from": {
+            "code": 39701395,
+            "kind": "Activate"
+          },
+          "gain": 1.25,
+          "kind": "Idle",
+          "to": {
+            "code": null,
+            "kind": "EnterBattle"
+          },
+          "turn": 4,
+          "worlds": 8,
+          "z": 3.415650255319866
+        }
+      ]
+    },
+    {
+      "from": {
+        "code": 38120068,
+        "kind": "Activate"
+      },
+      "to": {
+        "code": 8240199,
+        "kind": "NormalSummon"
+      },
+      "from_card": "Trade-In",
+      "to_card": "Sage with Eyes of Blue",
+      "count": 1,
+      "examples": [
+        {
+          "seed": 336710611,
+          "decision": 75,
+          "from": {
+            "code": 38120068,
+            "kind": "Activate"
+          },
+          "gain": 0.375,
+          "kind": "Idle",
+          "to": {
+            "code": 8240199,
+            "kind": "NormalSummon"
+          },
+          "turn": 2,
+          "worlds": 16,
+          "z": 1.8605210188381267
+        }
+      ]
+    }
+  ]
+}
