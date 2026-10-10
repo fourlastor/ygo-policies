@@ -88,17 +88,22 @@ fi
   --device "$DEVICE" --batch "$BATCH" --fronts "$FRONTS" --report 60) > "$OUT/server.log" 2>&1 &
 server=$!
 trap 'kill "$server" 2> /dev/null || true' EXIT
-for _ in $(seq 1 150); do
-  if curl -s -m 2 "http://127.0.0.1:$PORT/" > /dev/null 2>&1; then
-    break
-  fi
+# The server says that it is serving once all its fronts are up. The first of
+# them answers a moment before that: an answer is not the sign.
+for _ in $(seq 1 600); do
+  grep -q '^serving' "$OUT/server.log" && break
   if ! kill -0 "$server" 2> /dev/null; then
-    echo "the server did not start: see $OUT/server.log" >&2
+    echo "the server did not start; the end of $OUT/server.log:" >&2
+    tail -5 "$OUT/server.log" >&2
     exit 1
   fi
-  sleep 2
+  sleep 0.5
 done
-grep '^serving' "$OUT/server.log" || { echo "the server does not answer: see $OUT/server.log" >&2; exit 1; }
+if ! grep '^serving' "$OUT/server.log"; then
+  echo "the server is not up after five minutes; the end of $OUT/server.log:" >&2
+  tail -5 "$OUT/server.log" >&2
+  exit 1
+fi
 
 echo "$GAMES deals, $WORKERS at once; the server says how far it is every minute in $OUT/server.log"
 (cd "$ROOT" && target/release/policy-bench search --rules mr5 \
