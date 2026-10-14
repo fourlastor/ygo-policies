@@ -68,6 +68,18 @@ ordinary plain play by themselves.
 
 ## Development evidence
 
+The [fresh v17 fast-roster screen](fast-roster-v17/report.md) used 32 iterations
+with the answer-reuse host and v16 policy library, default weights and 16 paired
+mirrors on each of the 71 decks. Across the required 70 decks excluding Countdown,
+plain Generic won 385/1,120 (34.4%) and search won 564/1,120 (50.4%): +15.98 points,
+paired normal 95% interval [+12.59, +19.37]. Search reached an observed 55% on
+30/70 decks, versus 5/70 for plain; only Cyber and Herald reached a pointwise
+Wilson lower bound above 55%. This is development evidence with small per-deck
+samples, not simultaneous qualification or unseen-deck validation. All 2,272
+games completed, with zero errors, live caps, failed/unresolved searches or
+proposal cutoffs. Crystal regressed from 10/16 to 5/16 and is a follow-up diagnostic.
+The fast setting requires `--mcts-iterations 32`; the CLI default remains 128.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain
