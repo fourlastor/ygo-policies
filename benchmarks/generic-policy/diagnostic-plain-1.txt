@@ -1,0 +1,271 @@
+row 1, the game duel: blackwing against generic, seed 1810259039, 17 turns, won by blackwing
+   blackwing draws Mystical Space Typhoon, Mystical Space Typhoon, Threatening Roar, Blackwing - Sirocco the Dawn, Blackwing - Bora the Spear
+   generic draws Blackwing - Jin the Rain Shadow, Blackwing - Zephyros the Elite, Threatening Roar, Dimensional Prison, Trap Hole
+
+== Turn 1: blackwing ==
+   blackwing (8000 LP): hand [Mystical Space Typhoon, Mystical Space Typhoon, Threatening Roar, Blackwing - Sirocco the Dawn, Blackwing - Bora the Spear]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [Blackwing - Jin the Rain Shadow, Blackwing - Zephyros the Elite, Threatening Roar, Dimensional Prison, Trap Hole]; monsters [-]; Spells/Traps [-]
+   blackwing draws Blackwing - Gale the Whirlwind
+ - Standby Phase
+ - Main Phase 1
+   blackwing Normal Summons Blackwing - Bora the Spear
+   blackwing Special Summons Blackwing - Gale the Whirlwind
+   blackwing's Blackwing - Bora the Spear is used as material
+   blackwing's Blackwing - Gale the Whirlwind is used as material
+   blackwing Special Summons Blackwing Armor Master
+   blackwing Sets Mystical Space Typhoon
+   (blackwing could activate Mystical Space Typhoon and does not)
+   blackwing Sets Mystical Space Typhoon
+   blackwing Sets Threatening Roar
+ - End Phase
+
+== Turn 2: generic ==
+   generic (8000 LP): hand [Blackwing - Jin the Rain Shadow, Blackwing - Zephyros the Elite, Threatening Roar, Dimensional Prison, Trap Hole]; monsters [-]; Spells/Traps [-]
+   blackwing (8000 LP): hand [Blackwing - Sirocco the Dawn]; monsters [Blackwing Armor Master (ATK)]; Spells/Traps [Mystical Space Typhoon (Set), Mystical Space Typhoon (Set), Threatening Roar (Set)]
+   generic draws Book of Moon
+   (generic could activate Book of Moon and does not)
+   (blackwing could activate Mystical Space Typhoon, Threatening Roar and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Blackwing - Zephyros the Elite
+   generic activates Book of Moon [the Spell & Trap Zone]
+       targeting blackwing's Blackwing Armor Master
+   blackwing's Blackwing Armor Master changes to face-down Defense Position
+ - Battle Phase
+   blackwing activates Threatening Roar [the Spell & Trap Zone]
+   (blackwing could activate Mystical Space Typhoon and does not)
+ - Main Phase 2
+   generic Sets Threatening Roar
+   generic Sets Dimensional Prison
+   generic Sets Trap Hole
+ - End Phase
+   blackwing activates Mystical Space Typhoon [the Spell & Trap Zone]
+       targeting generic's Trap Hole
+   generic's Trap Hole is destroyed
+   blackwing activates Mystical Space Typhoon [the Spell & Trap Zone]
+       targeting generic's Threatening Roar
+   generic's Threatening Roar is destroyed
+
+== Turn 3: blackwing ==
+   blackwing (8000 LP): hand [Blackwing - Sirocco the Dawn]; monsters [Blackwing Armor Master (Set)]; Spells/Traps [-]
+   generic (8000 LP): hand [Blackwing - Jin the Rain Shadow]; monsters [Blackwing - Zephyros the Elite (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   blackwing draws Trap Hole
+ - Standby Phase
+ - Main Phase 1
+   blackwing's Blackwing Armor Master is Tributed
+   blackwing Normal Summons Blackwing - Sirocco the Dawn
+   (blackwing could activate Blackwing - Sirocco the Dawn and does not)
+ - Battle Phase
+   blackwing's Blackwing - Sirocco the Dawn attacks Blackwing - Zephyros the Elite
+   generic activates Dimensional Prison [the Spell & Trap Zone]
+       targeting blackwing's Blackwing - Sirocco the Dawn
+   blackwing's Blackwing - Sirocco the Dawn goes to the banished pile
+ - Main Phase 2
+   blackwing Sets Trap Hole
+ - End Phase
+
+== Turn 4: generic ==
+   generic (8000 LP): hand [Blackwing - Jin the Rain Shadow]; monsters [Blackwing - Zephyros the Elite (ATK)]; Spells/Traps [-]
+   blackwing (8000 LP): hand [-]; monsters [-]; Spells/Traps [Trap Hole (Set)]
+   generic draws Mystical Space Typhoon
+ - Standby Phase
+ - Main Phase 1
+   generic activates Mystical Space Typhoon [the Spell & Trap Zone]
+       targeting blackwing's Trap Hole
+   blackwing's Trap Hole is destroyed
+   generic Normal Summons Blackwing - Jin the Rain Shadow
+ - Battle Phase
+   generic's Blackwing - Jin the Rain Shadow attacks directly
+       blackwing takes 600 damage: 7400 LP
+   generic's Blackwing - Zephyros the Elite attacks directly
+       blackwing takes 1600 damage: 5800 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 5: blackwing ==
+   blackwing (5800 LP): hand [-]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   blackwing draws Torrential Tribute
+ - Standby Phase
+ - Main Phase 1
+   blackwing Sets Torrential Tribute
+ - End Phase
+
+== Turn 6: generic ==
+   generic (8000 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   blackwing (5800 LP): hand [-]; monsters [-]; Spells/Traps [Torrential Tribute (Set)]
+   generic draws Blackwing - Jin the Rain Shadow
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Blackwing - Jin the Rain Shadow
+   blackwing activates Torrential Tribute [the Spell & Trap Zone]
+   generic's Blackwing - Zephyros the Elite is destroyed
+   generic's Blackwing - Jin the Rain Shadow is destroyed
+   generic's Blackwing - Jin the Rain Shadow is destroyed
+ - End Phase
+
+== Turn 7: blackwing ==
+   blackwing (5800 LP): hand [-]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [-]; monsters [-]; Spells/Traps [-]
+   blackwing draws Blackwing - Jin the Rain Shadow
+ - Standby Phase
+ - Main Phase 1
+   blackwing Normal Summons Blackwing - Jin the Rain Shadow
+ - Battle Phase
+   blackwing's Blackwing - Jin the Rain Shadow attacks directly
+       generic takes 600 damage: 7400 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 8: generic ==
+   generic (7400 LP): hand [-]; monsters [-]; Spells/Traps [-]
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   generic draws Blackwing - Sirocco the Dawn
+ - Standby Phase
+ - Main Phase 1
+ - End Phase
+
+== Turn 9: blackwing ==
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   generic (7400 LP): hand [Blackwing - Sirocco the Dawn]; monsters [-]; Spells/Traps [-]
+   blackwing draws Blackwing - Zephyros the Elite
+ - Standby Phase
+ - Main Phase 1
+   blackwing Normal Summons Blackwing - Zephyros the Elite
+ - Battle Phase
+   blackwing's Blackwing - Jin the Rain Shadow attacks directly
+       generic takes 600 damage: 6800 LP
+   blackwing's Blackwing - Zephyros the Elite attacks directly
+       generic takes 1600 damage: 5200 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 10: generic ==
+   generic (5200 LP): hand [Blackwing - Sirocco the Dawn]; monsters [-]; Spells/Traps [-]
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   generic draws Blackwing - Jin the Rain Shadow
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Blackwing - Jin the Rain Shadow
+ - End Phase
+
+== Turn 11: blackwing ==
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [-]
+   generic (5200 LP): hand [Blackwing - Sirocco the Dawn]; monsters [Blackwing - Jin the Rain Shadow (Set)]; Spells/Traps [-]
+   blackwing draws Seven Tools of the Bandit
+ - Standby Phase
+ - Main Phase 1
+ - Battle Phase
+ - Main Phase 2
+   blackwing Sets Seven Tools of the Bandit
+ - End Phase
+
+== Turn 12: generic ==
+   generic (5200 LP): hand [Blackwing - Sirocco the Dawn]; monsters [Blackwing - Jin the Rain Shadow (Set)]; Spells/Traps [-]
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [Seven Tools of the Bandit (Set)]
+   generic draws Blackwing - Sirocco the Dawn
+ - Standby Phase
+ - Main Phase 1
+   generic's Blackwing - Jin the Rain Shadow is Tributed
+   generic Normal Summons Blackwing - Sirocco the Dawn
+   generic activates Blackwing - Sirocco the Dawn [the Monster Zone]
+       targeting generic's Blackwing - Sirocco the Dawn
+   generic activates Blackwing - Zephyros the Elite [the Graveyard]
+   generic's Blackwing - Sirocco the Dawn goes to the hand
+   generic Special Summons Blackwing - Zephyros the Elite
+       generic takes 400 damage: 4800 LP
+ - Battle Phase
+ - Main Phase 2
+ - End Phase
+
+== Turn 13: blackwing ==
+   blackwing (5800 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [Seven Tools of the Bandit (Set)]
+   generic (4800 LP): hand [Blackwing - Sirocco the Dawn, Blackwing - Sirocco the Dawn]; monsters [Blackwing - Zephyros the Elite (ATK)]; Spells/Traps [-]
+   blackwing draws Bottomless Trap Hole
+ - Standby Phase
+ - Main Phase 1
+ - Battle Phase
+   blackwing's Blackwing - Zephyros the Elite attacks Blackwing - Zephyros the Elite
+   blackwing's Blackwing - Zephyros the Elite is destroyed by battle
+   generic's Blackwing - Zephyros the Elite is destroyed by battle
+   blackwing's Blackwing - Jin the Rain Shadow attacks directly
+       generic takes 600 damage: 4200 LP
+ - Main Phase 2
+   blackwing activates Blackwing - Zephyros the Elite [the Graveyard]
+   blackwing's Blackwing - Jin the Rain Shadow goes to the hand
+   blackwing Special Summons Blackwing - Zephyros the Elite
+       blackwing takes 400 damage: 5400 LP
+   blackwing Normal Summons Blackwing - Jin the Rain Shadow
+   blackwing Sets Bottomless Trap Hole
+ - End Phase
+
+== Turn 14: generic ==
+   generic (4200 LP): hand [Blackwing - Sirocco the Dawn, Blackwing - Sirocco the Dawn]; monsters [-]; Spells/Traps [-]
+   blackwing (5400 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Seven Tools of the Bandit (Set)]
+   generic draws Blackwing - Blizzard the Far North
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Blackwing - Blizzard the Far North
+ - End Phase
+
+== Turn 15: blackwing ==
+   blackwing (5400 LP): hand [-]; monsters [Blackwing - Zephyros the Elite (ATK), Blackwing - Jin the Rain Shadow (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Seven Tools of the Bandit (Set)]
+   generic (4200 LP): hand [Blackwing - Sirocco the Dawn, Blackwing - Sirocco the Dawn]; monsters [Blackwing - Blizzard the Far North (Set)]; Spells/Traps [-]
+   blackwing draws Blackwing - Kalut the Moon Shadow
+ - Standby Phase
+ - Main Phase 1
+   blackwing Normal Summons Blackwing - Kalut the Moon Shadow
+   blackwing's Blackwing - Zephyros the Elite is used as material
+   blackwing's Blackwing - Kalut the Moon Shadow is used as material
+   blackwing's Blackwing - Jin the Rain Shadow is used as material
+   blackwing Special Summons Black-Winged Dragon
+ - Battle Phase
+   blackwing's Black-Winged Dragon attacks Blackwing - Blizzard the Far North
+   generic's Blackwing - Blizzard the Far North changes to Defense Position
+   generic's Blackwing - Blizzard the Far North is destroyed by battle
+ - Main Phase 2
+ - End Phase
+
+== Turn 16: generic ==
+   generic (4200 LP): hand [Blackwing - Sirocco the Dawn, Blackwing - Sirocco the Dawn]; monsters [-]; Spells/Traps [-]
+   blackwing (5400 LP): hand [-]; monsters [Black-Winged Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Seven Tools of the Bandit (Set)]
+   generic draws Black Whirlwind
+ - Standby Phase
+ - Main Phase 1
+   generic activates Black Whirlwind [the Spell & Trap Zone]
+ - End Phase
+
+== Turn 17: blackwing ==
+   blackwing (5400 LP): hand [-]; monsters [Black-Winged Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Seven Tools of the Bandit (Set)]
+   generic (4200 LP): hand [Blackwing - Sirocco the Dawn, Blackwing - Sirocco the Dawn]; monsters [-]; Spells/Traps [Black Whirlwind]
+   blackwing draws Blackwing - Shura the Blue Flame
+ - Standby Phase
+ - Main Phase 1
+   blackwing Normal Summons Blackwing - Shura the Blue Flame
+ - Battle Phase
+   blackwing's Blackwing - Shura the Blue Flame attacks directly
+       generic takes 1800 damage: 2400 LP
+   blackwing's Black-Winged Dragon attacks directly
+       generic takes 2800 damage: -400 LP
+
+blackwing wins: Life Points.
+
+Cards when each turn ends (hand / Set / face-up Spells and Traps / monsters / LP):
+ turn  blackwing                    generic
+    1  1 / 3 / 0 / 1 / 8000         5 / 0 / 0 / 0 / 8000
+    2  1 / 0 / 0 / 1 / 8000         1 / 1 / 0 / 1 / 8000
+    3  0 / 1 / 0 / 0 / 8000         1 / 0 / 0 / 1 / 8000
+    4  0 / 0 / 0 / 0 / 5800         0 / 0 / 0 / 2 / 8000
+    5  0 / 1 / 0 / 0 / 5800         0 / 0 / 0 / 2 / 8000
+    6  0 / 0 / 0 / 0 / 5800         0 / 0 / 0 / 0 / 8000
+    7  0 / 0 / 0 / 1 / 5800         0 / 0 / 0 / 0 / 7400
+    8  0 / 0 / 0 / 1 / 5800         1 / 0 / 0 / 0 / 7400
+    9  0 / 0 / 0 / 2 / 5800         1 / 0 / 0 / 0 / 5200
+   10  0 / 0 / 0 / 2 / 5800         1 / 0 / 0 / 1 / 5200
+   11  0 / 1 / 0 / 2 / 5800         1 / 0 / 0 / 1 / 5200
+   12  0 / 1 / 0 / 2 / 5800         2 / 0 / 0 / 1 / 4800
+   13  0 / 2 / 0 / 2 / 5400         2 / 0 / 0 / 0 / 4200
+   14  0 / 2 / 0 / 2 / 5400         2 / 0 / 0 / 1 / 4200
+   15  0 / 2 / 0 / 1 / 5400         2 / 0 / 0 / 0 / 4200
+   16  0 / 2 / 0 / 1 / 5400         2 / 0 / 1 / 0 / 4200
+   17  0 / 2 / 0 / 2 / 5400         2 / 0 / 1 / 0 / -400

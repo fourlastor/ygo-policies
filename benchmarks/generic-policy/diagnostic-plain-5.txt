@@ -1,0 +1,172 @@
+row 5, the game duel: infernity against generic, seed 1751983389, 9 turns, won by infernity
+   infernity draws Plaguespreader Zombie, Infernity Archfiend, Infernity Archfiend, Dust Tornado, Infernity Guardian
+   generic draws Dark Grepher, Glow-Up Bulb, Infernity Mirage, Divine Wrath, Infernity Archfiend
+
+== Turn 1: infernity ==
+   infernity (8000 LP): hand [Plaguespreader Zombie, Infernity Archfiend, Infernity Archfiend, Dust Tornado, Infernity Guardian]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Divine Wrath, Infernity Archfiend]; monsters [-]; Spells/Traps [-]
+   infernity draws Infernity Archfiend
+ - Standby Phase
+ - Main Phase 1
+   infernity Sets Dust Tornado
+   infernity Normal Summons Infernity Archfiend
+ - End Phase
+
+== Turn 2: generic ==
+   generic (8000 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Divine Wrath, Infernity Archfiend]; monsters [-]; Spells/Traps [-]
+   infernity (8000 LP): hand [Plaguespreader Zombie, Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Infernity Archfiend (ATK)]; Spells/Traps [Dust Tornado (Set)]
+   generic draws Infernity Beetle
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Infernity Archfiend
+ - Battle Phase
+ - Main Phase 2
+   generic Sets Divine Wrath
+ - End Phase
+   infernity activates Dust Tornado [the Spell & Trap Zone]
+       targeting generic's Divine Wrath
+   generic's Divine Wrath is destroyed
+
+== Turn 3: infernity ==
+   infernity (8000 LP): hand [Plaguespreader Zombie, Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Infernity Archfiend (ATK)]; Spells/Traps [-]
+   generic (8000 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Infernity Beetle]; monsters [Infernity Archfiend (ATK)]; Spells/Traps [-]
+   infernity draws Dimensional Prison
+ - Standby Phase
+ - Main Phase 1
+   infernity Sets Dimensional Prison
+   infernity Normal Summons Plaguespreader Zombie
+   infernity's Infernity Archfiend is used as material
+   infernity's Plaguespreader Zombie is used as material
+   infernity Special Summons Gaia Knight, the Force of Earth
+ - Battle Phase
+   infernity's Gaia Knight, the Force of Earth attacks Infernity Archfiend
+       generic takes 800 damage: 7200 LP
+   generic's Infernity Archfiend is destroyed by battle
+ - Main Phase 2
+ - End Phase
+
+== Turn 4: generic ==
+   generic (7200 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Infernity Beetle]; monsters [-]; Spells/Traps [-]
+   infernity (8000 LP): hand [Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   generic draws Infernity Archfiend
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Infernity Archfiend
+ - Battle Phase
+ - Main Phase 2
+ - End Phase
+
+== Turn 5: infernity ==
+   infernity (8000 LP): hand [Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   generic (7200 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Infernity Beetle]; monsters [Infernity Archfiend (ATK)]; Spells/Traps [-]
+   infernity draws Infernity Beetle
+ - Standby Phase
+ - Main Phase 1
+   infernity Normal Summons Infernity Beetle
+   infernity's Gaia Knight, the Force of Earth is used as material
+   infernity's Infernity Beetle is used as material
+   infernity Special Summons Infernity Doom Dragon
+ - Battle Phase
+   infernity's Infernity Doom Dragon attacks Infernity Archfiend
+       generic takes 1200 damage: 6000 LP
+   generic's Infernity Archfiend is destroyed by battle
+ - Main Phase 2
+ - End Phase
+
+== Turn 6: generic ==
+   generic (6000 LP): hand [Dark Grepher, Glow-Up Bulb, Infernity Mirage, Infernity Beetle]; monsters [-]; Spells/Traps [-]
+   infernity (8000 LP): hand [Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Infernity Doom Dragon (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   generic draws Infernity Avenger
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Dark Grepher
+ - End Phase
+
+== Turn 7: infernity ==
+   infernity (8000 LP): hand [Infernity Archfiend, Infernity Guardian, Infernity Archfiend]; monsters [Infernity Doom Dragon (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   generic (6000 LP): hand [Glow-Up Bulb, Infernity Mirage, Infernity Beetle, Infernity Avenger]; monsters [Dark Grepher (Set)]; Spells/Traps [-]
+   infernity draws Infernity Launcher
+ - Standby Phase
+ - Main Phase 1
+   infernity activates Infernity Launcher [the Spell & Trap Zone]
+   infernity activates Infernity Launcher [the Spell & Trap Zone]
+   infernity sends from the hand to the Graveyard Infernity Guardian
+   infernity Normal Summons Infernity Archfiend
+   infernity activates Plaguespreader Zombie [the Graveyard]
+   infernity's Infernity Archfiend: the hand to the Deck
+   infernity Special Summons Plaguespreader Zombie
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Dark Grepher
+   generic's Dark Grepher is destroyed
+   infernity activates Infernity Launcher [the Spell & Trap Zone]
+   infernity's Infernity Launcher is sent to the Graveyard as a cost
+       targeting infernity's a card in the Graveyard
+       targeting infernity's a card in the Graveyard
+   infernity Special Summons Infernity Beetle
+   infernity Special Summons Infernity Archfiend
+   infernity: use Infernity Archfiend? yes
+   infernity activates Infernity Archfiend [the Monster Zone]
+   infernity's Infernity Force: the Deck to the hand
+ - Battle Phase
+   infernity's Plaguespreader Zombie attacks directly
+       generic takes 400 damage: 5600 LP
+   infernity's Infernity Beetle attacks directly
+       generic takes 1200 damage: 4400 LP
+   infernity's Infernity Archfiend attacks directly
+       generic takes 1800 damage: 2600 LP
+   infernity's Infernity Archfiend attacks directly
+       generic takes 1800 damage: 800 LP
+ - Main Phase 2
+   infernity Sets Infernity Force
+   infernity's Plaguespreader Zombie is used as material
+   infernity's Infernity Archfiend is used as material
+   infernity Special Summons Brionac, Dragon of the Ice Barrier
+   infernity activates Infernity Beetle [the Monster Zone]
+   infernity's Infernity Beetle is Tributed
+   infernity Special Summons Infernity Beetle
+   infernity Special Summons Infernity Beetle
+   infernity's Brionac, Dragon of the Ice Barrier is used as material
+   infernity's Infernity Beetle is used as material
+   infernity Special Summons Infernity Doom Dragon
+ - End Phase
+
+== Turn 8: generic ==
+   generic (800 LP): hand [Glow-Up Bulb, Infernity Mirage, Infernity Beetle, Infernity Avenger]; monsters [-]; Spells/Traps [-]
+   infernity (8000 LP): hand [-]; monsters [Infernity Doom Dragon (ATK), Infernity Beetle (ATK), Infernity Doom Dragon (ATK), Infernity Archfiend (ATK)]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   generic draws Dimensional Prison
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Glow-Up Bulb
+   generic Sets Dimensional Prison
+ - End Phase
+
+== Turn 9: infernity ==
+   infernity (8000 LP): hand [-]; monsters [Infernity Doom Dragon (ATK), Infernity Beetle (ATK), Infernity Doom Dragon (ATK), Infernity Archfiend (ATK)]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   generic (800 LP): hand [Infernity Mirage, Infernity Beetle, Infernity Avenger]; monsters [Glow-Up Bulb (Set)]; Spells/Traps [Dimensional Prison (Set)]
+   infernity draws Dark Hole
+ - Standby Phase
+ - Main Phase 1
+ - Battle Phase
+   infernity's Infernity Doom Dragon attacks Glow-Up Bulb
+   generic activates Dimensional Prison [the Spell & Trap Zone]
+       targeting infernity's Infernity Doom Dragon
+   infernity's Infernity Doom Dragon goes to the banished pile
+   infernity's Infernity Doom Dragon attacks Glow-Up Bulb
+   generic's Glow-Up Bulb changes to Defense Position
+   generic's Glow-Up Bulb is destroyed by battle
+   infernity's Infernity Beetle attacks directly
+       generic takes 1200 damage: -400 LP
+
+infernity wins: Life Points.
+
+Cards when each turn ends (hand / Set / face-up Spells and Traps / monsters / LP):
+ turn  infernity                    generic
+    1  4 / 1 / 0 / 1 / 8000         5 / 0 / 0 / 0 / 8000
+    2  4 / 0 / 0 / 1 / 8000         4 / 0 / 0 / 1 / 8000
+    3  3 / 1 / 0 / 1 / 8000         4 / 0 / 0 / 0 / 7200
+    4  3 / 1 / 0 / 1 / 8000         4 / 0 / 0 / 1 / 7200
+    5  3 / 1 / 0 / 1 / 8000         4 / 0 / 0 / 0 / 6000
+    6  3 / 1 / 0 / 1 / 8000         4 / 0 / 0 / 1 / 6000
+    7  0 / 2 / 0 / 4 / 8000         4 / 0 / 0 / 0 / 800
+    8  0 / 2 / 0 / 4 / 8000         3 / 1 / 0 / 1 / 800
+    9  1 / 2 / 0 / 3 / 8000         3 / 0 / 0 / 0 / -400

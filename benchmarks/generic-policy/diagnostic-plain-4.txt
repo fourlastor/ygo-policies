@@ -1,0 +1,395 @@
+row 4, the game duel: generic against infernity, seed 1751983388, 22 turns, won by infernity
+   generic draws Infernity Beetle, Infernity Guardian, Infernity Mirage, Dimensional Prison, Infernity Mirage
+   infernity draws Infernity Archfiend, Glow-Up Bulb, Dark Grepher, Foolish Burial, Torrential Tribute
+
+== Turn 1: generic ==
+   generic (8000 LP): hand [Infernity Beetle, Infernity Guardian, Infernity Mirage, Dimensional Prison, Infernity Mirage]; monsters [-]; Spells/Traps [-]
+   infernity (8000 LP): hand [Infernity Archfiend, Glow-Up Bulb, Dark Grepher, Foolish Burial, Torrential Tribute]; monsters [-]; Spells/Traps [-]
+   generic draws Infernity Beetle
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Infernity Guardian
+   generic Sets Dimensional Prison
+ - End Phase
+
+== Turn 2: infernity ==
+   infernity (8000 LP): hand [Infernity Archfiend, Glow-Up Bulb, Dark Grepher, Foolish Burial, Torrential Tribute]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [Infernity Beetle, Infernity Mirage, Infernity Mirage, Infernity Beetle]; monsters [Infernity Guardian (ATK)]; Spells/Traps [Dimensional Prison (Set)]
+   infernity draws Bottomless Trap Hole
+ - Standby Phase
+ - Main Phase 1
+   infernity Sets Torrential Tribute
+   infernity Sets Bottomless Trap Hole
+   infernity activates Foolish Burial [the Spell & Trap Zone]
+   infernity's Infernity Archfiend: the Deck to the Graveyard
+   infernity Normal Summons Infernity Archfiend
+ - Battle Phase
+   infernity's Infernity Archfiend attacks Infernity Guardian
+   generic activates Dimensional Prison [the Spell & Trap Zone]
+       targeting infernity's Infernity Archfiend
+   infernity's Infernity Archfiend goes to the banished pile
+ - Main Phase 2
+ - End Phase
+
+== Turn 3: generic ==
+   generic (8000 LP): hand [Infernity Beetle, Infernity Mirage, Infernity Mirage, Infernity Beetle]; monsters [Infernity Guardian (ATK)]; Spells/Traps [-]
+   infernity (8000 LP): hand [Glow-Up Bulb, Dark Grepher]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set), Torrential Tribute (Set)]
+   generic draws Infernity Force
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Infernity Beetle
+   infernity activates Torrential Tribute [the Spell & Trap Zone]
+   generic's Infernity Beetle is destroyed
+   generic's Infernity Guardian is destroyed
+   generic Sets Infernity Force
+ - End Phase
+
+== Turn 4: infernity ==
+   infernity (8000 LP): hand [Glow-Up Bulb, Dark Grepher]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set)]
+   generic (8000 LP): hand [Infernity Mirage, Infernity Mirage, Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity draws Forbidden Chalice
+ - Standby Phase
+ - Main Phase 1
+   infernity Sets Forbidden Chalice
+   infernity Normal Summons Dark Grepher
+ - Battle Phase
+   infernity's Dark Grepher attacks directly
+       generic takes 1700 damage: 6300 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 5: generic ==
+   generic (6300 LP): hand [Infernity Mirage, Infernity Mirage, Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [Glow-Up Bulb]; monsters [Dark Grepher (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Foolish Burial
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Infernity Mirage
+   generic activates Foolish Burial [the Spell & Trap Zone]
+   generic's Infernity Mirage: the Deck to the Graveyard
+ - End Phase
+
+== Turn 6: infernity ==
+   infernity (8000 LP): hand [Glow-Up Bulb]; monsters [Dark Grepher (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (6300 LP): hand [Infernity Mirage, Infernity Beetle]; monsters [Infernity Mirage (Set)]; Spells/Traps [Infernity Force (Set)]
+   infernity draws Infernity Necromancer
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   infernity activates Dark Grepher [the Monster Zone]
+   infernity discards Infernity Necromancer
+   infernity's Infernity Archfiend: the Deck to the Graveyard
+   infernity Normal Summons Glow-Up Bulb
+   infernity's Glow-Up Bulb is used as material
+   infernity's Dark Grepher is used as material
+   infernity Special Summons Ally of Justice Catastor
+   infernity activates Glow-Up Bulb [the Graveyard]
+   infernity's Dark Hole: the Deck to the Graveyard
+   infernity Special Summons Glow-Up Bulb
+   infernity's Ally of Justice Catastor is used as material
+   infernity's Glow-Up Bulb is used as material
+   infernity Special Summons Gaia Knight, the Force of Earth
+ - Battle Phase
+   infernity's Gaia Knight, the Force of Earth attacks Infernity Mirage
+   generic's Infernity Mirage changes to Defense Position
+   generic's Infernity Mirage is destroyed by battle
+ - Main Phase 2
+ - End Phase
+
+== Turn 7: generic ==
+   generic (6300 LP): hand [Infernity Mirage, Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Bottomless Trap Hole
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Infernity Mirage
+   generic Sets Bottomless Trap Hole
+ - End Phase
+
+== Turn 8: infernity ==
+   infernity (8000 LP): hand [-]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (6300 LP): hand [Infernity Beetle]; monsters [Infernity Mirage (Set)]; Spells/Traps [Bottomless Trap Hole (Set), Infernity Force (Set)]
+   infernity draws Stygian Street Patrol
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   infernity Normal Summons Stygian Street Patrol
+   generic activates Bottomless Trap Hole [the Spell & Trap Zone]
+   infernity's Stygian Street Patrol is destroyed
+ - Battle Phase
+   infernity's Gaia Knight, the Force of Earth attacks Infernity Mirage
+   generic's Infernity Mirage changes to Defense Position
+   generic's Infernity Mirage is destroyed by battle
+ - Main Phase 2
+ - End Phase
+
+== Turn 9: generic ==
+   generic (6300 LP): hand [Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Infernity Beetle
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Infernity Beetle
+ - End Phase
+
+== Turn 10: infernity ==
+   infernity (8000 LP): hand [-]; monsters [Gaia Knight, the Force of Earth (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (6300 LP): hand [Infernity Beetle]; monsters [Infernity Beetle (Set)]; Spells/Traps [Infernity Force (Set)]
+   infernity draws Plaguespreader Zombie
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   infernity Normal Summons Plaguespreader Zombie
+   infernity's Gaia Knight, the Force of Earth is used as material
+   infernity's Plaguespreader Zombie is used as material
+   infernity Special Summons Infernity Doom Dragon
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Infernity Beetle
+   generic's Infernity Beetle is destroyed
+ - Battle Phase
+ - Main Phase 2
+ - End Phase
+
+== Turn 11: generic ==
+   generic (6300 LP): hand [Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [Infernity Doom Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Infernity Necromancer
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Infernity Necromancer
+ - End Phase
+
+== Turn 12: infernity ==
+   infernity (8000 LP): hand [-]; monsters [Infernity Doom Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (6300 LP): hand [Infernity Beetle]; monsters [Infernity Necromancer (Set)]; Spells/Traps [Infernity Force (Set)]
+   infernity draws Stygian Street Patrol
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   infernity activates Plaguespreader Zombie [the Graveyard]
+   infernity's Stygian Street Patrol: the hand to the Deck
+   infernity Special Summons Plaguespreader Zombie
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Infernity Necromancer
+   generic's Infernity Necromancer is destroyed
+ - Battle Phase
+   infernity's Plaguespreader Zombie attacks directly
+       generic takes 400 damage: 5900 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 13: generic ==
+   generic (5900 LP): hand [Infernity Beetle]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [Plaguespreader Zombie (ATK), Infernity Doom Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Torrential Tribute
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Infernity Beetle
+   generic Sets Torrential Tribute
+ - End Phase
+
+== Turn 14: infernity ==
+   infernity (8000 LP): hand [-]; monsters [Plaguespreader Zombie (ATK), Infernity Doom Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (5900 LP): hand [-]; monsters [Infernity Beetle (Set)]; Spells/Traps [Torrential Tribute (Set), Infernity Force (Set)]
+   infernity draws Stygian Street Patrol
+   (infernity could activate Forbidden Chalice and does not)
+ - Standby Phase
+ - Main Phase 1
+   infernity Normal Summons Stygian Street Patrol
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Infernity Beetle
+   generic activates Torrential Tribute [the Spell & Trap Zone] (chain link 2)
+   infernity's Plaguespreader Zombie is destroyed
+   infernity's Stygian Street Patrol is destroyed
+   infernity's Infernity Doom Dragon is destroyed
+   generic's Infernity Beetle is destroyed
+ - End Phase
+
+== Turn 15: generic ==
+   generic (5900 LP): hand [-]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic draws Dimensional Prison
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Dimensional Prison
+ - End Phase
+
+== Turn 16: infernity ==
+   infernity (8000 LP): hand [-]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set), Forbidden Chalice (Set)]
+   generic (5900 LP): hand [-]; monsters [-]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   infernity draws Infernity Force
+ - Standby Phase
+ - Main Phase 1
+   infernity Sets Infernity Force
+ - End Phase
+
+== Turn 17: generic ==
+   generic (5900 LP): hand [-]; monsters [-]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   infernity (8000 LP): hand [-]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set), Infernity Force (Set), Forbidden Chalice (Set)]
+   generic draws Infernity Launcher
+ - Standby Phase
+ - Main Phase 1
+   generic activates Infernity Launcher [the Spell & Trap Zone]
+   generic activates Infernity Launcher [the Spell & Trap Zone]
+   generic's Infernity Launcher is sent to the Graveyard as a cost
+       targeting generic's a card in the Graveyard
+       targeting generic's a card in the Graveyard
+   generic Special Summons Infernity Necromancer
+   generic Special Summons Infernity Guardian
+   generic activates Infernity Necromancer [the Monster Zone]
+       targeting generic's a card in the Graveyard
+   infernity activates Forbidden Chalice [the Spell & Trap Zone] (chain link 2)
+       targeting generic's Infernity Necromancer
+       chain link 1 is negated
+ - Battle Phase
+   generic's Infernity Necromancer attacks directly
+       infernity takes 400 damage: 7600 LP
+   generic's Infernity Guardian attacks directly
+       infernity takes 1200 damage: 6400 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 18: infernity ==
+   infernity (6400 LP): hand [-]; monsters [-]; Spells/Traps [Bottomless Trap Hole (Set), Infernity Force (Set)]
+   generic (5900 LP): hand [-]; monsters [Infernity Necromancer (ATK), Infernity Guardian (ATK)]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   infernity draws Monster Reborn
+ - Standby Phase
+ - Main Phase 1
+   infernity activates Monster Reborn [the Spell & Trap Zone]
+       targeting infernity's a card in the Graveyard
+   infernity Special Summons Infernity Doom Dragon
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Infernity Guardian
+ - Battle Phase
+ - Main Phase 2
+ - End Phase
+
+== Turn 19: generic ==
+   generic (5900 LP): hand [-]; monsters [Infernity Necromancer (ATK), Infernity Guardian (ATK)]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   infernity (6400 LP): hand [-]; monsters [Infernity Doom Dragon (ATK)]; Spells/Traps [Bottomless Trap Hole (Set), Infernity Force (Set)]
+   generic draws Infernity Avenger
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Infernity Avenger
+   generic activates Infernity Necromancer [the Monster Zone]
+       targeting generic's a card in the Graveyard
+   generic Special Summons Infernity Beetle
+   generic's Infernity Necromancer is used as material
+   generic's Infernity Avenger is used as material
+   generic's Infernity Guardian is used as material
+   generic Special Summons Infernity Doom Dragon
+   generic activates Infernity Doom Dragon [the Monster Zone]
+       targeting infernity's Infernity Doom Dragon
+   infernity activates Bottomless Trap Hole [the Spell & Trap Zone] (chain link 2)
+   generic's Infernity Doom Dragon is destroyed
+   infernity's Infernity Doom Dragon is destroyed
+       infernity takes 1500 damage: 4900 LP
+ - End Phase
+
+== Turn 20: infernity ==
+   infernity (4900 LP): hand [-]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   generic (5900 LP): hand [-]; monsters [Infernity Beetle (DEF)]; Spells/Traps [Dimensional Prison (Set), Infernity Force (Set)]
+   infernity draws Infernity Launcher
+ - Standby Phase
+ - Main Phase 1
+   infernity activates Infernity Launcher [the Spell & Trap Zone]
+   infernity activates Infernity Launcher [the Spell & Trap Zone]
+   infernity's Infernity Launcher is sent to the Graveyard as a cost
+       targeting infernity's a card in the Graveyard
+       targeting infernity's a card in the Graveyard
+   infernity Special Summons Infernity Doom Dragon
+   infernity Special Summons Infernity Archfiend
+   infernity: use Infernity Archfiend? yes
+   infernity activates Infernity Archfiend [the Monster Zone]
+   infernity's Infernity Mirage: the Deck to the hand
+   infernity activates Stygian Street Patrol [the Graveyard]
+   infernity's Stygian Street Patrol: the Graveyard to the banished pile
+   infernity Special Summons Infernity Mirage
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Infernity Beetle
+   generic's Infernity Beetle is destroyed
+       generic takes 600 damage: 5300 LP
+   infernity activates Infernity Mirage [the Monster Zone]
+   infernity's Infernity Mirage is Tributed
+       targeting infernity's a card in the Graveyard
+       targeting infernity's a card in the Graveyard
+   infernity Special Summons Infernity Archfiend
+   infernity Special Summons Infernity Necromancer
+   infernity: use Infernity Archfiend? yes
+   infernity activates Infernity Archfiend [the Monster Zone]
+   infernity's Infernity Beetle: the Deck to the hand
+   infernity Normal Summons Infernity Beetle
+   (infernity could activate Infernity Beetle and does not)
+ - Battle Phase
+   infernity's Infernity Beetle attacks directly
+   (generic could activate Dimensional Prison and does not)
+       generic takes 1200 damage: 4100 LP
+   infernity's Infernity Archfiend attacks directly
+       generic takes 1800 damage: 2300 LP
+   infernity's Infernity Archfiend attacks directly
+       generic takes 1800 damage: 500 LP
+ - Main Phase 2
+   infernity's Infernity Necromancer is used as material
+   infernity's Infernity Beetle is used as material
+   infernity's Infernity Archfiend is used as material
+   infernity Special Summons Trishula, Dragon of the Ice Barrier
+   infernity: use Trishula, Dragon of the Ice Barrier? yes
+   infernity activates Trishula, Dragon of the Ice Barrier [the Monster Zone]
+   generic's Dimensional Prison goes to the banished pile
+   generic's Infernity Launcher: the Graveyard to the banished pile
+ - End Phase
+
+== Turn 21: generic ==
+   generic (500 LP): hand [-]; monsters [-]; Spells/Traps [Infernity Force (Set)]
+   infernity (4900 LP): hand [-]; monsters [Infernity Doom Dragon (ATK), Trishula, Dragon of the Ice Barrier (ATK), Infernity Archfiend (ATK)]; Spells/Traps [Infernity Force (Set)]
+   generic draws Monster Reborn
+ - Standby Phase
+ - Main Phase 1
+   generic activates Monster Reborn [the Spell & Trap Zone]
+       targeting infernity's a card in the Graveyard
+   generic Special Summons Gaia Knight, the Force of Earth
+ - End Phase
+
+== Turn 22: infernity ==
+   infernity (4900 LP): hand [-]; monsters [Infernity Doom Dragon (ATK), Trishula, Dragon of the Ice Barrier (ATK), Infernity Archfiend (ATK)]; Spells/Traps [Infernity Force (Set)]
+   generic (500 LP): hand [-]; monsters [Gaia Knight, the Force of Earth (DEF)]; Spells/Traps [Infernity Force (Set)]
+   infernity draws Dark Grepher
+ - Standby Phase
+ - Main Phase 1
+   infernity Normal Summons Dark Grepher
+   infernity activates Infernity Doom Dragon [the Monster Zone]
+       targeting generic's Gaia Knight, the Force of Earth
+   generic's Gaia Knight, the Force of Earth is destroyed
+       generic takes 1300 damage: -800 LP
+
+infernity wins: Life Points.
+
+Cards when each turn ends (hand / Set / face-up Spells and Traps / monsters / LP):
+ turn  generic                      infernity
+    1  4 / 1 / 0 / 1 / 8000         5 / 0 / 0 / 0 / 8000
+    2  4 / 0 / 0 / 1 / 8000         2 / 2 / 0 / 0 / 8000
+    3  3 / 1 / 0 / 0 / 8000         2 / 1 / 0 / 0 / 8000
+    4  3 / 1 / 0 / 0 / 6300         1 / 2 / 0 / 1 / 8000
+    5  2 / 1 / 0 / 1 / 6300         1 / 2 / 0 / 1 / 8000
+    6  2 / 1 / 0 / 0 / 6300         0 / 2 / 0 / 1 / 8000
+    7  1 / 2 / 0 / 1 / 6300         0 / 2 / 0 / 1 / 8000
+    8  1 / 1 / 0 / 0 / 6300         0 / 2 / 0 / 1 / 8000
+    9  1 / 1 / 0 / 1 / 6300         0 / 2 / 0 / 1 / 8000
+   10  1 / 1 / 0 / 0 / 6300         0 / 2 / 0 / 1 / 8000
+   11  1 / 1 / 0 / 1 / 6300         0 / 2 / 0 / 1 / 8000
+   12  1 / 1 / 0 / 0 / 5900         0 / 2 / 0 / 2 / 8000
+   13  0 / 2 / 0 / 1 / 5900         0 / 2 / 0 / 2 / 8000
+   14  0 / 1 / 0 / 0 / 5900         0 / 2 / 0 / 0 / 8000
+   15  0 / 2 / 0 / 0 / 5900         0 / 2 / 0 / 0 / 8000
+   16  0 / 2 / 0 / 0 / 5900         0 / 3 / 0 / 0 / 8000
+   17  0 / 2 / 0 / 2 / 5900         0 / 2 / 0 / 0 / 6400
+   18  0 / 2 / 0 / 2 / 5900         0 / 2 / 0 / 1 / 6400
+   19  0 / 2 / 0 / 1 / 5900         0 / 1 / 0 / 0 / 4900
+   20  0 / 1 / 0 / 0 / 500          0 / 1 / 0 / 3 / 4900
+   21  0 / 1 / 0 / 1 / 500          0 / 1 / 0 / 3 / 4900
+   22  0 / 1 / 0 / 0 / -800         0 / 1 / 0 / 4 / 4900

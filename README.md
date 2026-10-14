@@ -25,7 +25,7 @@ one of the specialist strategies below. It is available through the normal
 registry/FFI; an optional engine-hosted Monte Carlo search adds bounded lookahead.
 It is deliberately outside the fixed deck catalog. See
 [generic policy and measured limitations](benchmarks/generic-policy/README.md).
-The requested 55% mirror-win target is an evaluation criterion, not a guarantee.
+It has not met the requested 55% mirror-win target; see the linked evaluation before using it as a replacement.
 
 | id | deck (`decks/`) | plan |
 | --- | --- | --- |

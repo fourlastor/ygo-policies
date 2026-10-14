@@ -1,0 +1,760 @@
+Draw { player: 0, cards: [(213326, 10), (36484016, 10), (86915847, 10), (79109599, 10), (75434695, 10)] }
+Draw { player: 1, cards: [(69884162, 10), (45906428, 10), (75434695, 10), (48130397, 10), (75434695, 10)] }
+NewTurn { player: 0 }
+NewPhase { phase: 1 }
+Hint { kind: 1, player: 0, data: 27 }
+Draw { player: 0, cards: [(14943837, 10)] }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 0 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 1 player=1 [255, 255, 255, 255]
+NewPhase { phase: 2 }
+NewPhase { phase: 4 }
+SelectIdle(Idle { player: 0, summon: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 3, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 4, position: 0 }, value: 0 }, Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, value: 0 }], special_summon: [], reposition: [], set_monster: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 3, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 4, position: 0 }, value: 0 }, Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, value: 0 }], set_spell_trap: [Offered { code: 213326, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 36484016, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }], activate: [Effect { code: 213326, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, description: 0 }, Effect { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 3, position: 0 }, description: 82952426881024 }], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 2 player=0 [5, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 213326 }
+SelectPlace { player: 0, count: 1, blocked: 4294959359, disable: false }
+ANSWER 3 player=0 [0, 8, 1]
+Move { code: 213326, from: Loc { controller: 0, location: 2, sequence: 0, position: 10 }, to: Loc { controller: 0, location: 8, sequence: 1, position: 5 }, reason: 33555456 }
+Chaining { code: 213326, loc: Loc { controller: 0, location: 8, sequence: 1, position: 5 }, controller: 0, location: 8, sequence: 1, description: 0, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 4 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 5 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 0, data: 506 }
+SelectCard(Cards { player: 0, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 40044919, loc: Loc { controller: 0, location: 1, sequence: 32, position: 8 }, value: 0 }, Offered { code: 9327502, loc: Loc { controller: 0, location: 1, sequence: 27, position: 8 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 1, sequence: 25, position: 8 }, value: 0 }, Offered { code: 9327502, loc: Loc { controller: 0, location: 1, sequence: 23, position: 8 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 1, sequence: 22, position: 8 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 1, sequence: 20, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 14, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 9, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 8, position: 8 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 1, sequence: 4, position: 8 }, value: 0 }, Offered { code: 89312388, loc: Loc { controller: 0, location: 1, sequence: 0, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 6 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+Move { code: 40044919, from: Loc { controller: 0, location: 1, sequence: 32, position: 8 }, to: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, reason: 64 }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 6, description: 225 }
+ConfirmCards { player: 1, cards: [(40044919, Loc { controller: 0, location: 2, sequence: 5, position: 0 })] }
+ShuffleHand { player: 0, codes: [36484016, 86915847, 79109599, 40044919, 75434695, 14943837] }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 3, position: 10 }, kind: 6, description: 225 }
+Other(32)
+ChainSolved { link: 1 }
+Move { code: 213326, from: Loc { controller: 0, location: 8, sequence: 1, position: 5 }, to: Loc { controller: 0, location: 16, sequence: 0, position: 5 }, reason: 1024 }
+ChainEnd
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 3, position: 10 }, kind: 7, description: 225 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 7 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 8 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }, Offered { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 2, sequence: 3, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 4, position: 0 }, value: 0 }, Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, value: 0 }], special_summon: [], reposition: [], set_monster: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }, Offered { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 2, sequence: 3, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 4, position: 0 }, value: 0 }, Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, value: 0 }], set_spell_trap: [Offered { code: 36484016, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }], activate: [Effect { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, description: 82952426881024 }], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 9 player=0 [0, 0, 2, 0]
+Hint { kind: 3, player: 0, data: 40044919 }
+SelectPlace { player: 0, count: 1, blocked: 4294967264, disable: false }
+ANSWER 10 player=0 [0, 4, 4]
+Move { code: 40044919, from: Loc { controller: 0, location: 2, sequence: 3, position: 10 }, to: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, reason: 64 }
+Summoning { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 } }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 11 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 12 player=1 [255, 255, 255, 255]
+Summoned
+SelectEffectYesNo { player: 0, code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, description: 221 }
+ANSWER 13 player=0 [1, 0, 0, 0]
+Chaining { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, controller: 0, location: 4, sequence: 4, description: 41990139936768, size: 1 }
+SelectOption { player: 0, options: [41990139936770] }
+ANSWER 14 player=0 [0, 0, 0, 0]
+Hint { kind: 4, player: 0, data: 41990139936770 }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 15 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 16 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 0, data: 506 }
+SelectCard(Cards { player: 0, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 75434695, loc: Loc { controller: 0, location: 1, sequence: 31, position: 8 }, value: 0 }, Offered { code: 9327502, loc: Loc { controller: 0, location: 1, sequence: 30, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 29, position: 8 }, value: 0 }, Offered { code: 9327502, loc: Loc { controller: 0, location: 1, sequence: 28, position: 8 }, value: 0 }, Offered { code: 89312388, loc: Loc { controller: 0, location: 1, sequence: 27, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 18, position: 8 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 1, sequence: 14, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 0, location: 1, sequence: 9, position: 8 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 1, sequence: 4, position: 8 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 1, sequence: 3, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 17 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 6, 0, 0, 0]
+Move { code: 69884162, from: Loc { controller: 0, location: 1, sequence: 14, position: 8 }, to: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, reason: 64 }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 6, description: 225 }
+ConfirmCards { player: 1, cards: [(69884162, Loc { controller: 0, location: 2, sequence: 5, position: 0 })] }
+ShuffleHand { player: 0, codes: [36484016, 14943837, 79109599, 75434695, 86915847, 69884162] }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 6, description: 225 }
+Other(32)
+ChainSolved { link: 1 }
+ChainEnd
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 7, description: 225 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 18 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 19 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 36484016, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }], activate: [Effect { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, description: 82952426881024 }], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 20 player=0 [5, 0, 0, 0]
+Chaining { code: 79109599, loc: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, controller: 0, location: 2, sequence: 2, description: 82952426881024, size: 1 }
+Move { code: 79109599, from: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 0, location: 16, sequence: 1, position: 5 }, reason: 16512 }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 21 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 22 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 0, data: 506 }
+SelectCard(Cards { player: 0, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 27847700, loc: Loc { controller: 0, location: 1, sequence: 22, position: 8 }, value: 0 }, Offered { code: 27847700, loc: Loc { controller: 0, location: 1, sequence: 12, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 23 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+Move { code: 27847700, from: Loc { controller: 0, location: 1, sequence: 22, position: 8 }, to: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, reason: 64 }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 6, description: 225 }
+ConfirmCards { player: 1, cards: [(27847700, Loc { controller: 0, location: 2, sequence: 5, position: 0 })] }
+ShuffleHand { player: 0, codes: [86915847, 69884162, 14943837, 75434695, 36484016, 27847700] }
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 6, description: 225 }
+Other(32)
+ChainSolved { link: 1 }
+ChainEnd
+CardHint { loc: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, kind: 7, description: 225 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 24 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 25 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 36484016, loc: Loc { controller: 0, location: 2, sequence: 4, position: 0 }, value: 0 }, Offered { code: 27847700, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, value: 0 }], activate: [Effect { code: 27847700, loc: Loc { controller: 0, location: 2, sequence: 5, position: 0 }, description: 1170 }], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 26 player=0 [5, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 27847700 }
+SelectPlace { player: 0, count: 1, blocked: 4294959359, disable: false }
+ANSWER 27 player=0 [0, 8, 2]
+Move { code: 27847700, from: Loc { controller: 0, location: 2, sequence: 5, position: 10 }, to: Loc { controller: 0, location: 8, sequence: 2, position: 5 }, reason: 64 }
+Chaining { code: 27847700, loc: Loc { controller: 0, location: 8, sequence: 2, position: 5 }, controller: 0, location: 8, sequence: 2, description: 1170, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 28 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 29 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 0, data: 509 }
+SelectCard(Cards { player: 0, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 22061412, loc: Loc { controller: 0, location: 64, sequence: 8, position: 8 }, value: 0 }, Offered { code: 22061412, loc: Loc { controller: 0, location: 64, sequence: 7, position: 8 }, value: 0 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 64, sequence: 6, position: 8 }, value: 0 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 64, sequence: 5, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 0, location: 64, sequence: 4, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 0, location: 64, sequence: 3, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 30 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 511 }
+SelectUnselect(Cards { player: 0, cancelable: true, finishable: false, min: 2, max: 2, cards: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 0, position: 10 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 2, sequence: 1, position: 10 }, value: 0 }, Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 3, position: 10 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, value: 0 }], fixed: [] })
+ANSWER 31 player=0 [1, 0, 0, 0, 2, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 511 }
+SelectUnselect(Cards { player: 0, cancelable: false, finishable: false, min: 2, max: 2, cards: [Offered { code: 69884162, loc: Loc { controller: 0, location: 2, sequence: 1, position: 10 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 0, location: 2, sequence: 3, position: 10 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, value: 0 }], fixed: [Offered { code: 14943837, loc: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, value: 0 }] })
+ANSWER 32 player=0 [1, 0, 0, 0, 1, 0, 0, 0]
+Move { code: 14943837, from: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 0, location: 16, sequence: 2, position: 5 }, reason: 262216 }
+Move { code: 75434695, from: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 0, location: 16, sequence: 3, position: 5 }, reason: 262216 }
+Hint { kind: 3, player: 0, data: 3642509 }
+SelectPlace { player: 0, count: 1, blocked: 4294967280, disable: false }
+ANSWER 33 player=0 [0, 4, 2]
+SelectPosition { player: 0, code: 3642509, positions: 5 }
+ANSWER 34 player=0 [1, 0, 0, 0]
+Move { code: 3642509, from: Loc { controller: 0, location: 64, sequence: 6, position: 8 }, to: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, reason: 2048 }
+SpecialSummoning { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 1 } }
+Summoned
+ChainSolved { link: 1 }
+Move { code: 27847700, from: Loc { controller: 0, location: 8, sequence: 2, position: 5 }, to: Loc { controller: 0, location: 16, sequence: 4, position: 5 }, reason: 1024 }
+ChainEnd
+Chaining { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, controller: 0, location: 4, sequence: 2, description: 3819447517184, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 35 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 36 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+ChainSolved { link: 1 }
+ChainEnd
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 37 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 38 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 36484016, loc: Loc { controller: 0, location: 2, sequence: 2, position: 0 }, value: 0 }], activate: [], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 39 player=0 [4, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 36484016 }
+SelectPlace { player: 0, count: 1, blocked: 4294959359, disable: false }
+ANSWER 40 player=0 [0, 8, 2]
+Move { code: 36484016, from: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 0, location: 8, sequence: 2, position: 10 }, reason: 33555456 }
+Set { code: 36484016, loc: Loc { controller: 0, location: 8, sequence: 2, position: 10 } }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 41 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 42 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [], activate: [], battle_phase: false, end_phase: true, shuffle_hand: true })
+ANSWER 43 player=0 [7, 0, 0, 0]
+Hint { kind: 1, player: 1, data: 23 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 44 player=1 [255, 255, 255, 255]
+NewPhase { phase: 512 }
+NewTurn { player: 1 }
+NewPhase { phase: 1 }
+Hint { kind: 1, player: 1, data: 27 }
+Draw { player: 1, cards: [(33550694, 10)] }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 3, position: 10 }, description: 1170 }] }
+ANSWER 45 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 46 player=0 [255, 255, 255, 255]
+Hint { kind: 1, player: 1, data: 20 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 3, position: 10 }, description: 1170 }] }
+ANSWER 47 player=1 [255, 255, 255, 255]
+NewPhase { phase: 2 }
+Hint { kind: 1, player: 1, data: 21 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 3, position: 10 }, description: 1170 }] }
+ANSWER 48 player=1 [255, 255, 255, 255]
+NewPhase { phase: 4 }
+SelectIdle(Idle { player: 1, summon: [Offered { code: 69884162, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 4, position: 0 }, value: 0 }], special_summon: [], reposition: [], set_monster: [Offered { code: 69884162, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 4, position: 0 }, value: 0 }], set_spell_trap: [Offered { code: 45906428, loc: Loc { controller: 1, location: 2, sequence: 1, position: 0 }, value: 0 }, Offered { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 3, position: 0 }, value: 0 }, Offered { code: 33550694, loc: Loc { controller: 1, location: 2, sequence: 5, position: 0 }, value: 0 }], activate: [Effect { code: 33550694, loc: Loc { controller: 1, location: 2, sequence: 5, position: 0 }, description: 0 }, Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 3, position: 0 }, description: 1170 }], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 49 player=1 [3, 0, 1, 0]
+Hint { kind: 3, player: 1, data: 75434695 }
+SelectPlace { player: 1, count: 1, blocked: 4294967264, disable: false }
+ANSWER 50 player=1 [1, 4, 0]
+Move { code: 75434695, from: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, reason: 33555456 }
+Set { code: 75434695, loc: Loc { controller: 1, location: 4, sequence: 0, position: 8 } }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, description: 1170 }] }
+ANSWER 51 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 52 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 45906428, loc: Loc { controller: 1, location: 2, sequence: 1, position: 0 }, value: 0 }, Offered { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, value: 0 }, Offered { code: 33550694, loc: Loc { controller: 1, location: 2, sequence: 4, position: 0 }, value: 0 }], activate: [Effect { code: 33550694, loc: Loc { controller: 1, location: 2, sequence: 4, position: 0 }, description: 0 }, Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, description: 1170 }], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 53 player=1 [5, 0, 0, 0]
+Move { code: 33550694, from: Loc { controller: 1, location: 2, sequence: 4, position: 10 }, to: Loc { controller: 1, location: 8, sequence: 5, position: 5 }, reason: 33555456 }
+Chaining { code: 33550694, loc: Loc { controller: 1, location: 8, sequence: 5, position: 5 }, controller: 1, location: 8, sequence: 5, description: 0, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 54 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, description: 1170 }] }
+ANSWER 55 player=1 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+ChainSolved { link: 1 }
+ChainEnd
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, description: 1170 }] }
+ANSWER 56 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 57 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 45906428, loc: Loc { controller: 1, location: 2, sequence: 1, position: 0 }, value: 0 }, Offered { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, value: 0 }], activate: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 0 }, description: 1170 }, Effect { code: 33550694, loc: Loc { controller: 1, location: 8, sequence: 5, position: 0 }, description: 35180452511744 }], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 58 player=1 [5, 0, 1, 0]
+Chaining { code: 33550694, loc: Loc { controller: 1, location: 8, sequence: 5, position: 5 }, controller: 1, location: 8, sequence: 5, description: 35180452511744, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 59 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, description: 1170 }] }
+ANSWER 60 player=1 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 1, data: 509 }
+SelectCard(Cards { player: 1, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 22061412, loc: Loc { controller: 1, location: 64, sequence: 8, position: 8 }, value: 0 }, Offered { code: 22061412, loc: Loc { controller: 1, location: 64, sequence: 7, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 1, location: 64, sequence: 4, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 1, location: 64, sequence: 3, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 61 player=1 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 511 }
+SelectUnselect(Cards { player: 1, cancelable: true, finishable: false, min: 2, max: 2, cards: [Offered { code: 69884162, loc: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 3, position: 10 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 62 player=1 [1, 0, 0, 0, 0, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 511 }
+SelectUnselect(Cards { player: 1, cancelable: false, finishable: false, min: 2, max: 2, cards: [Offered { code: 75434695, loc: Loc { controller: 1, location: 2, sequence: 3, position: 10 }, value: 0 }, Offered { code: 75434695, loc: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, value: 0 }], fixed: [Offered { code: 69884162, loc: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, value: 0 }] })
+ANSWER 63 player=1 [1, 0, 0, 0, 0, 0, 0, 0]
+Move { code: 69884162, from: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, to: Loc { controller: 1, location: 32, sequence: 0, position: 5 }, reason: 262216 }
+Move { code: 75434695, from: Loc { controller: 1, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 1, location: 32, sequence: 1, position: 5 }, reason: 262216 }
+Hint { kind: 3, player: 1, data: 22061412 }
+SelectPlace { player: 1, count: 1, blocked: 4294967265, disable: false }
+ANSWER 64 player=1 [1, 4, 4]
+SelectPosition { player: 1, code: 22061412, positions: 5 }
+ANSWER 65 player=1 [4, 0, 0, 0]
+Move { code: 22061412, from: Loc { controller: 1, location: 64, sequence: 8, position: 8 }, to: Loc { controller: 1, location: 4, sequence: 4, position: 4 }, reason: 2048 }
+SpecialSummoning { code: 22061412, loc: Loc { controller: 1, location: 4, sequence: 4, position: 4 } }
+Summoned
+ChainSolved { link: 1 }
+ChainEnd
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 1, position: 10 }, description: 1170 }] }
+ANSWER 66 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 67 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 45906428, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 1, position: 0 }, value: 0 }], activate: [Effect { code: 45906428, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, description: 1170 }, Effect { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 1, position: 0 }, description: 1170 }, Effect { code: 33550694, loc: Loc { controller: 1, location: 8, sequence: 5, position: 0 }, description: 35180452511744 }], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 68 player=1 [5, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 45906428 }
+SelectPlace { player: 1, count: 1, blocked: 4294959359, disable: false }
+ANSWER 69 player=1 [1, 8, 1]
+Move { code: 45906428, from: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, to: Loc { controller: 1, location: 8, sequence: 1, position: 5 }, reason: 33555456 }
+Chaining { code: 45906428, loc: Loc { controller: 1, location: 8, sequence: 1, position: 5 }, controller: 1, location: 8, sequence: 1, description: 1170, size: 1 }
+Chained { link: 1 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 70 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 71 player=1 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Hint { kind: 3, player: 1, data: 509 }
+SelectCard(Cards { player: 1, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 22061412, loc: Loc { controller: 1, location: 64, sequence: 7, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 1, location: 64, sequence: 4, position: 8 }, value: 0 }, Offered { code: 16304628, loc: Loc { controller: 1, location: 64, sequence: 3, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 72 player=1 [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 511 }
+SelectUnselect(Cards { player: 1, cancelable: true, finishable: false, min: 2, max: 2, cards: [Offered { code: 75434695, loc: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, value: 0 }, Offered { code: 22061412, loc: Loc { controller: 1, location: 4, sequence: 4, position: 4 }, value: 0 }], fixed: [] })
+ANSWER 73 player=1 [1, 0, 0, 0, 0, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 511 }
+SelectUnselect(Cards { player: 1, cancelable: false, finishable: false, min: 2, max: 2, cards: [Offered { code: 22061412, loc: Loc { controller: 1, location: 4, sequence: 4, position: 4 }, value: 0 }], fixed: [Offered { code: 75434695, loc: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, value: 0 }] })
+ANSWER 74 player=1 [1, 0, 0, 0, 0, 0, 0, 0]
+Move { code: 75434695, from: Loc { controller: 1, location: 4, sequence: 0, position: 8 }, to: Loc { controller: 1, location: 32, sequence: 2, position: 5 }, reason: 262216 }
+Move { code: 22061412, from: Loc { controller: 1, location: 4, sequence: 4, position: 4 }, to: Loc { controller: 1, location: 32, sequence: 3, position: 5 }, reason: 262216 }
+Hint { kind: 3, player: 1, data: 16304628 }
+SelectPlace { player: 1, count: 1, blocked: 4294967264, disable: false }
+ANSWER 75 player=1 [1, 4, 1]
+SelectPosition { player: 1, code: 16304628, positions: 5 }
+ANSWER 76 player=1 [4, 0, 0, 0]
+Move { code: 16304628, from: Loc { controller: 1, location: 64, sequence: 3, position: 8 }, to: Loc { controller: 1, location: 4, sequence: 1, position: 4 }, reason: 2048 }
+SpecialSummoning { code: 16304628, loc: Loc { controller: 1, location: 4, sequence: 1, position: 4 } }
+Summoned
+ChainSolved { link: 1 }
+Move { code: 45906428, from: Loc { controller: 1, location: 8, sequence: 1, position: 5 }, to: Loc { controller: 1, location: 16, sequence: 0, position: 5 }, reason: 1024 }
+ChainEnd
+Chaining { code: 16304628, loc: Loc { controller: 1, location: 4, sequence: 1, position: 4 }, controller: 1, location: 4, sequence: 1, description: 17096641609728, size: 1 }
+Hint { kind: 3, player: 1, data: 514 }
+SelectCard(Cards { player: 1, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, value: 0 }], fixed: [] })
+ANSWER 77 player=1 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+BecomeTarget { cards: [Loc { controller: 0, location: 4, sequence: 2, position: 1 }] }
+Chained { link: 1 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 78 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 79 player=1 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+ChainSolved { link: 1 }
+ChainEnd
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 80 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 81 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [Offered { code: 48130397, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }], activate: [], battle_phase: true, end_phase: true, shuffle_hand: false })
+ANSWER 82 player=1 [4, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 48130397 }
+SelectPlace { player: 1, count: 1, blocked: 4294959359, disable: false }
+ANSWER 83 player=1 [1, 8, 4]
+Move { code: 48130397, from: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, to: Loc { controller: 1, location: 8, sequence: 4, position: 10 }, reason: 33555456 }
+Set { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 10 } }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 84 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 85 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [], activate: [], battle_phase: true, end_phase: true, shuffle_hand: false })
+ANSWER 86 player=1 [7, 0, 0, 0]
+Hint { kind: 1, player: 0, data: 23 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 87 player=0 [255, 255, 255, 255]
+NewPhase { phase: 512 }
+NewTurn { player: 0 }
+NewPhase { phase: 1 }
+Hint { kind: 1, player: 0, data: 27 }
+Draw { player: 0, cards: [(5318639, 10)] }
+SelectChain { player: 0, forced: false, triggers: false, chains: [Effect { code: 5318639, loc: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, description: 5576997208064 }] }
+ANSWER 88 player=0 [0, 0, 0, 0]
+Hint { kind: 3, player: 0, data: 5318639 }
+SelectPlace { player: 0, count: 1, blocked: 4294960383, disable: false }
+ANSWER 89 player=0 [0, 8, 0]
+Move { code: 5318639, from: Loc { controller: 0, location: 2, sequence: 2, position: 10 }, to: Loc { controller: 0, location: 8, sequence: 0, position: 5 }, reason: 33555456 }
+Chaining { code: 5318639, loc: Loc { controller: 0, location: 8, sequence: 0, position: 5 }, controller: 0, location: 8, sequence: 0, description: 5576997208064, size: 1 }
+Hint { kind: 3, player: 0, data: 502 }
+SelectCard(Cards { player: 0, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 36484016, loc: Loc { controller: 0, location: 8, sequence: 2, position: 10 }, value: 0 }, Offered { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 10 }, value: 0 }, Offered { code: 33550694, loc: Loc { controller: 1, location: 8, sequence: 5, position: 5 }, value: 0 }], fixed: [] })
+ANSWER 90 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+BecomeTarget { cards: [Loc { controller: 1, location: 8, sequence: 5, position: 5 }] }
+Chained { link: 1 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 91 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 92 player=0 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+Move { code: 33550694, from: Loc { controller: 1, location: 8, sequence: 5, position: 5 }, to: Loc { controller: 1, location: 16, sequence: 1, position: 5 }, reason: 65 }
+ChainSolved { link: 1 }
+Move { code: 5318639, from: Loc { controller: 0, location: 8, sequence: 0, position: 5 }, to: Loc { controller: 0, location: 16, sequence: 5, position: 5 }, reason: 1024 }
+ChainEnd
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 93 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 94 player=1 [255, 255, 255, 255]
+NewPhase { phase: 2 }
+NewPhase { phase: 4 }
+SelectIdle(Idle { player: 0, summon: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }], special_summon: [], reposition: [Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], set_monster: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }], set_spell_trap: [], activate: [], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 95 player=0 [0, 0, 1, 0]
+Hint { kind: 3, player: 0, data: 69884162 }
+SelectPlace { player: 0, count: 1, blocked: 4294967284, disable: false }
+ANSWER 96 player=0 [0, 4, 0]
+Move { code: 69884162, from: Loc { controller: 0, location: 2, sequence: 1, position: 10 }, to: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, reason: 64 }
+Summoning { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 1 } }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 97 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 98 player=1 [255, 255, 255, 255]
+Summoned
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 99 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 100 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], set_monster: [], set_spell_trap: [], activate: [], battle_phase: true, end_phase: true, shuffle_hand: false })
+ANSWER 101 player=0 [6, 0, 0, 0]
+Hint { kind: 1, player: 1, data: 23 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 102 player=1 [255, 255, 255, 255]
+NewPhase { phase: 8 }
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 0 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], main2: true, end_phase: true })
+ANSWER 103 player=0 [1, 0, 1, 0]
+Hint { kind: 3, player: 0, data: 549 }
+SelectCard(Cards { player: 0, cancelable: true, finishable: false, min: 1, max: 1, cards: [Offered { code: 16304628, loc: Loc { controller: 1, location: 4, sequence: 1, position: 4 }, value: 0 }], fixed: [] })
+ANSWER 104 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, target: Some(Loc { controller: 1, location: 4, sequence: 1, position: 4 }) }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 105 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 106 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 107 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 108 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 109 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 110 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 111 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 112 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 113 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 114 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, attack: 2800, defense: 2200, target: Some(Loc { controller: 1, location: 4, sequence: 1, position: 4 }), target_attack: 2200, target_defense: 2600 }
+Hint { kind: 1, player: 0, data: 43 }
+Hint { kind: 1, player: 1, data: 43 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 115 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 116 player=1 [255, 255, 255, 255]
+Move { code: 16304628, from: Loc { controller: 1, location: 4, sequence: 1, position: 4 }, to: Loc { controller: 1, location: 16, sequence: 2, position: 5 }, reason: 33 }
+Hint { kind: 1, player: 0, data: 44 }
+Hint { kind: 1, player: 1, data: 44 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 117 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 118 player=1 [255, 255, 255, 255]
+DamageStepEnd
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 1 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 1 }], main2: true, end_phase: true })
+ANSWER 119 player=0 [1, 0, 1, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, target: None }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 120 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 121 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 122 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 123 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 124 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 125 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 126 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 127 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 128 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 129 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, attack: 1800, defense: 300, target: None, target_attack: 0, target_defense: 0 }
+Damage { player: 1, amount: 1800 }
+Hint { kind: 1, player: 0, data: 43 }
+Hint { kind: 1, player: 1, data: 43 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 130 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 131 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 44 }
+Hint { kind: 1, player: 1, data: 44 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 132 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 133 player=1 [255, 255, 255, 255]
+DamageStepEnd
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 1 }], main2: true, end_phase: true })
+ANSWER 134 player=0 [1, 0, 0, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, target: None }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 135 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 136 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 137 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 138 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 139 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 140 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 141 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 142 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 143 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 144 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, attack: 1900, defense: 1300, target: None, target_attack: 0, target_defense: 0 }
+Damage { player: 1, amount: 1900 }
+Hint { kind: 1, player: 0, data: 43 }
+Hint { kind: 1, player: 1, data: 43 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 145 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 146 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 44 }
+Hint { kind: 1, player: 1, data: 44 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 147 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 148 player=1 [255, 255, 255, 255]
+DamageStepEnd
+SelectBattle(Battle { player: 0, activate: [], attack: [], main2: true, end_phase: true })
+ANSWER 149 player=0 [2, 0, 0, 0]
+Hint { kind: 1, player: 1, data: 29 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 150 player=1 [255, 255, 255, 255]
+NewPhase { phase: 256 }
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [], activate: [], battle_phase: false, end_phase: true, shuffle_hand: false })
+ANSWER 151 player=0 [7, 0, 0, 0]
+Hint { kind: 1, player: 1, data: 23 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 152 player=1 [255, 255, 255, 255]
+NewPhase { phase: 512 }
+NewTurn { player: 1 }
+NewPhase { phase: 1 }
+Hint { kind: 1, player: 1, data: 27 }
+Draw { player: 1, cards: [(89312388, 10)] }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 10 }, description: 1170 }] }
+ANSWER 153 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 154 player=0 [255, 255, 255, 255]
+Hint { kind: 1, player: 1, data: 20 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 10 }, description: 1170 }] }
+ANSWER 155 player=1 [255, 255, 255, 255]
+NewPhase { phase: 2 }
+Hint { kind: 1, player: 1, data: 21 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 10 }, description: 1170 }] }
+ANSWER 156 player=1 [255, 255, 255, 255]
+NewPhase { phase: 4 }
+SelectIdle(Idle { player: 1, summon: [Offered { code: 89312388, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }], special_summon: [], reposition: [], set_monster: [Offered { code: 89312388, loc: Loc { controller: 1, location: 2, sequence: 0, position: 0 }, value: 0 }], set_spell_trap: [], activate: [Effect { code: 48130397, loc: Loc { controller: 1, location: 8, sequence: 4, position: 0 }, description: 1170 }], battle_phase: true, end_phase: true, shuffle_hand: false })
+ANSWER 157 player=1 [0, 0, 0, 0]
+Hint { kind: 3, player: 1, data: 89312388 }
+SelectPlace { player: 1, count: 1, blocked: 4294967264, disable: false }
+ANSWER 158 player=1 [1, 4, 0]
+Move { code: 89312388, from: Loc { controller: 1, location: 2, sequence: 0, position: 10 }, to: Loc { controller: 1, location: 4, sequence: 0, position: 1 }, reason: 33555456 }
+Summoning { code: 89312388, loc: Loc { controller: 1, location: 4, sequence: 0, position: 1 } }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 159 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 160 player=0 [255, 255, 255, 255]
+Summoned
+SelectChain { player: 1, forced: false, triggers: false, chains: [Effect { code: 89312388, loc: Loc { controller: 1, location: 4, sequence: 0, position: 1 }, description: 93650826559488 }] }
+ANSWER 161 player=1 [0, 0, 0, 0]
+Chaining { code: 89312388, loc: Loc { controller: 1, location: 4, sequence: 0, position: 1 }, controller: 1, location: 4, sequence: 0, description: 93650826559488, size: 1 }
+Hint { kind: 3, player: 1, data: 526 }
+SelectCard(Cards { player: 1, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 74711057, loc: Loc { controller: 1, location: 64, sequence: 8, position: 8 }, value: 0 }, Offered { code: 74711057, loc: Loc { controller: 1, location: 64, sequence: 7, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 162 player=1 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+ConfirmCards { player: 0, cards: [(74711057, Loc { controller: 1, location: 64, sequence: 8, position: 0 })] }
+Hint { kind: 3, player: 1, data: 504 }
+SelectCard(Cards { player: 1, cancelable: false, finishable: false, min: 1, max: 1, cards: [Offered { code: 75434695, loc: Loc { controller: 1, location: 1, sequence: 18, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 1, location: 1, sequence: 17, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 1, location: 1, sequence: 10, position: 8 }, value: 0 }, Offered { code: 37195861, loc: Loc { controller: 1, location: 1, sequence: 4, position: 8 }, value: 0 }], fixed: [] })
+ANSWER 163 player=1 [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+Move { code: 37195861, from: Loc { controller: 1, location: 1, sequence: 17, position: 8 }, to: Loc { controller: 1, location: 16, sequence: 3, position: 5 }, reason: 128 }
+Other(32)
+Chained { link: 1 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 164 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 165 player=1 [255, 255, 255, 255]
+ChainSolving { link: 1 }
+ChainSolved { link: 1 }
+ChainEnd
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 166 player=1 [255, 255, 255, 255]
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 167 player=0 [255, 255, 255, 255]
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [], activate: [], battle_phase: true, end_phase: true, shuffle_hand: false })
+ANSWER 168 player=1 [6, 0, 0, 0]
+Hint { kind: 1, player: 0, data: 23 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 169 player=0 [255, 255, 255, 255]
+NewPhase { phase: 8 }
+SelectBattle(Battle { player: 1, activate: [], attack: [Offered { code: 89312388, loc: Loc { controller: 1, location: 4, sequence: 0, position: 0 }, value: 0 }], main2: true, end_phase: true })
+ANSWER 170 player=1 [2, 0, 0, 0]
+Hint { kind: 1, player: 0, data: 29 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 171 player=0 [255, 255, 255, 255]
+NewPhase { phase: 256 }
+SelectIdle(Idle { player: 1, summon: [], special_summon: [], reposition: [], set_monster: [], set_spell_trap: [], activate: [], battle_phase: false, end_phase: true, shuffle_hand: false })
+ANSWER 172 player=1 [7, 0, 0, 0]
+Hint { kind: 1, player: 0, data: 23 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 173 player=0 [255, 255, 255, 255]
+NewPhase { phase: 512 }
+NewTurn { player: 0 }
+NewPhase { phase: 1 }
+Hint { kind: 1, player: 0, data: 27 }
+Draw { player: 0, cards: [(44095762, 10)] }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 174 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 175 player=1 [255, 255, 255, 255]
+NewPhase { phase: 2 }
+NewPhase { phase: 4 }
+SelectIdle(Idle { player: 0, summon: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }, Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 0 }], special_summon: [], reposition: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 0 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], set_monster: [Offered { code: 86915847, loc: Loc { controller: 0, location: 2, sequence: 0, position: 0 }, value: 0 }], set_spell_trap: [Offered { code: 44095762, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }], activate: [], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 176 player=0 [0, 0, 1, 0]
+CardHint { loc: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, kind: 6, description: 64 }
+Summoning { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 1 } }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 177 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 178 player=1 [255, 255, 255, 255]
+Summoned
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 179 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 180 player=1 [255, 255, 255, 255]
+SelectIdle(Idle { player: 0, summon: [], special_summon: [], reposition: [Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], set_monster: [], set_spell_trap: [Offered { code: 44095762, loc: Loc { controller: 0, location: 2, sequence: 1, position: 0 }, value: 0 }], activate: [], battle_phase: true, end_phase: true, shuffle_hand: true })
+ANSWER 181 player=0 [6, 0, 0, 0]
+Hint { kind: 1, player: 1, data: 23 }
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 182 player=1 [255, 255, 255, 255]
+NewPhase { phase: 8 }
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 0 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 0 }, Offered { code: 40044919, loc: Loc { controller: 0, location: 4, sequence: 4, position: 0 }, value: 0 }], main2: true, end_phase: true })
+ANSWER 183 player=0 [1, 0, 2, 0]
+Hint { kind: 3, player: 0, data: 549 }
+SelectCard(Cards { player: 0, cancelable: true, finishable: false, min: 1, max: 1, cards: [Offered { code: 89312388, loc: Loc { controller: 1, location: 4, sequence: 0, position: 1 }, value: 0 }], fixed: [] })
+ANSWER 184 player=0 [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, target: Some(Loc { controller: 1, location: 4, sequence: 0, position: 1 }) }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 185 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 186 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 187 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 188 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 189 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 190 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 191 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 192 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 193 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 194 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 4, position: 1 }, attack: 1800, defense: 300, target: Some(Loc { controller: 1, location: 4, sequence: 0, position: 1 }), target_attack: 1700, target_defense: 1100 }
+Damage { player: 1, amount: 100 }
+Hint { kind: 1, player: 0, data: 43 }
+Hint { kind: 1, player: 1, data: 43 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 195 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 196 player=1 [255, 255, 255, 255]
+Move { code: 89312388, from: Loc { controller: 1, location: 4, sequence: 0, position: 1 }, to: Loc { controller: 1, location: 16, sequence: 4, position: 5 }, reason: 33 }
+Hint { kind: 1, player: 0, data: 44 }
+Hint { kind: 1, player: 1, data: 44 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 197 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 198 player=1 [255, 255, 255, 255]
+DamageStepEnd
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 69884162, loc: Loc { controller: 0, location: 4, sequence: 0, position: 0 }, value: 1 }, Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 1 }], main2: true, end_phase: true })
+ANSWER 199 player=0 [1, 0, 0, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, target: None }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 200 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 201 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 202 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 203 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 204 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 205 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 206 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 207 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 208 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 209 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 0, position: 1 }, attack: 1900, defense: 1300, target: None, target_attack: 0, target_defense: 0 }
+Damage { player: 1, amount: 1900 }
+Hint { kind: 1, player: 0, data: 43 }
+Hint { kind: 1, player: 1, data: 43 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 210 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 211 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 44 }
+Hint { kind: 1, player: 1, data: 44 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 212 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 213 player=1 [255, 255, 255, 255]
+DamageStepEnd
+SelectBattle(Battle { player: 0, activate: [], attack: [Offered { code: 3642509, loc: Loc { controller: 0, location: 4, sequence: 2, position: 0 }, value: 1 }], main2: true, end_phase: true })
+ANSWER 214 player=0 [1, 0, 0, 0]
+Attack { attacker: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, target: None }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 215 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 216 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 24 }
+Hint { kind: 1, player: 1, data: 24 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 217 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 218 player=1 [255, 255, 255, 255]
+Other(113)
+Hint { kind: 1, player: 0, data: 40 }
+Hint { kind: 1, player: 1, data: 40 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 219 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 220 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 41 }
+Hint { kind: 1, player: 1, data: 41 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 221 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 222 player=1 [255, 255, 255, 255]
+Hint { kind: 1, player: 0, data: 42 }
+Hint { kind: 1, player: 1, data: 42 }
+SelectChain { player: 0, forced: false, triggers: false, chains: [] }
+ANSWER 223 player=0 [255, 255, 255, 255]
+SelectChain { player: 1, forced: false, triggers: false, chains: [] }
+ANSWER 224 player=1 [255, 255, 255, 255]
+BattleResult { attacker: Loc { controller: 0, location: 4, sequence: 2, position: 1 }, attack: 2800, defense: 2200, target: None, target_attack: 0, target_defense: 0 }
+Damage { player: 1, amount: 2800 }
+Win { player: 0, reason: 1 }
