@@ -45,6 +45,12 @@ YgoPolicy *ygo_policy_clone(const YgoPolicy *policy);
    Optional in older libraries; ordinary seats avoid the snapshot overhead. */
 int32_t ygo_policy_enable_response_overrides(YgoPolicy *policy);
 
+/* Stop override checkpoints after committing the final searched response.
+   Preserves the committed policy, RNG and pending answer. Search tails using
+   this API must reject MSG_RETRY instead of feeding it. 0 on success, -1 on
+   error. Optional in older libraries. */
+int32_t ygo_policy_disable_response_overrides(YgoPolicy *policy);
+
 /* Install public printed effect descriptors, keyed by card code, before the
    first selection prompt. Forks inherit them. JSON never contains live hidden
    state. 0 on success, -1 on invalid JSON/unsupported policy/late replacement.

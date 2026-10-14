@@ -150,6 +150,19 @@ impl Seat {
         Ok(())
     }
 
+    /// Stop saving policy checkpoints for future response overrides. The actual
+    /// committed policy, pending answer and RNG are preserved; alternate-choice
+    /// checkpoints are discarded. Call only after committing the last searched
+    /// response, when future prompts will use the policy's own answers. Search
+    /// callers must reject MSG_RETRY before feeding it, since ordinary fallback
+    /// behavior does not commit an alternate action through a saved checkpoint.
+    pub fn disable_response_overrides(&mut self) {
+        self.response_overrides = false;
+        self.before_choice = None;
+        self.pending_sequential = None;
+        self.selection_alternatives.clear();
+    }
+
     /// Replace the pending response with another offered response. Restores
     /// the policy from before its original choice, then commits the action
     /// actually sent to the engine. Errors leave the pending answer unchanged.
@@ -411,7 +424,7 @@ impl Seat {
 #[cfg(test)]
 mod override_tests {
     use super::*;
-    use std::sync::Mutex;
+    use std::sync::{atomic::{AtomicUsize, Ordering}, Mutex};
     use ygo_policies::cards::MemoryCards;
     use wire::{location, msg, position, query, Writer};
 
@@ -419,6 +432,7 @@ mod override_tests {
     struct RecordingPolicy {
         committed: Vec<usize>,
         observed: Arc<Mutex<Vec<Vec<usize>>>>,
+        forks: Arc<AtomicUsize>,
     }
 
     impl Policy for RecordingPolicy {
@@ -427,7 +441,10 @@ mod override_tests {
             self.committed.push(100);
             0
         }
-        fn fork(&self) -> Option<Box<dyn Policy>> { Some(Box::new(self.clone())) }
+        fn fork(&self) -> Option<Box<dyn Policy>> {
+            self.forks.fetch_add(1, Ordering::Relaxed);
+            Some(Box::new(self.clone()))
+        }
         fn commit_choice(&mut self, _obs: &Observation, _decision: &Decision, index: usize) -> bool {
             self.committed.push(index);
             true
@@ -435,9 +452,15 @@ mod override_tests {
     }
 
     fn seat() -> (Seat, Arc<Mutex<Vec<Vec<usize>>>>) {
+        let (seat, observed, _) = counted_seat();
+        (seat, observed)
+    }
+
+    fn counted_seat() -> (Seat, Arc<Mutex<Vec<Vec<usize>>>>, Arc<AtomicUsize>) {
         let observed = Arc::new(Mutex::new(Vec::new()));
-        let policy = RecordingPolicy { committed: Vec::new(), observed: observed.clone() };
-        (Seat::new(Box::new(policy), Arc::new(MemoryCards::default()), Some(0)), observed)
+        let forks = Arc::new(AtomicUsize::new(0));
+        let policy = RecordingPolicy { committed: Vec::new(), observed: observed.clone(), forks: forks.clone() };
+        (Seat::new(Box::new(policy), Arc::new(MemoryCards::default()), Some(0)), observed, forks)
     }
 
     fn prompt() -> Vec<u8> {
@@ -521,6 +544,66 @@ mod override_tests {
         branch.feed(&prompt()).unwrap();
         seat.feed(&prompt()).unwrap();
         assert_eq!(*observed.lock().unwrap(), vec![vec![], vec![1], vec![100]]);
+    }
+
+    #[test]
+    fn plain_tail_preserves_committed_memory_and_answers_without_policy_forks() {
+        let (mut reference, observed, forks) = counted_seat();
+        reference.enable_response_overrides().unwrap();
+        reference.feed(&prompt()).unwrap();
+        reference.override_response(&1i32.to_le_bytes()).unwrap();
+        let mut plain = reference.fork().unwrap();
+        plain.disable_response_overrides();
+        plain.disable_response_overrides();
+        assert_eq!(plain.last_answer().unwrap().choice, 1);
+        assert!(plain.before_choice.is_none());
+        assert!(plain.pending_sequential.is_none());
+        assert!(plain.selection_alternatives.is_empty());
+        assert!(reference.response_overrides);
+        assert!(!plain.response_overrides);
+        forks.store(0, Ordering::Relaxed);
+        for message in [prompt(), select_two(), prompt(), vec![msg::NEW_TURN, 0], prompt()] {
+            observed.lock().unwrap().clear();
+            let before = forks.load(Ordering::Relaxed);
+            let actual = plain.feed(&message).unwrap();
+            assert_eq!(forks.load(Ordering::Relaxed), before);
+            let actual_memory = observed.lock().unwrap().clone();
+            observed.lock().unwrap().clear();
+            let expected = reference.feed(&message).unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(*observed.lock().unwrap(), actual_memory);
+            let extra = usize::from(actual.is_some()) + usize::from(message[0] == msg::SELECT_CARD);
+            assert_eq!(forks.load(Ordering::Relaxed) - before, extra);
+            assert_eq!(plain.observation(), reference.observation());
+            let (actual, expected) = (plain.last_answer().unwrap(), reference.last_answer().unwrap());
+            assert_eq!(actual.choice, expected.choice);
+            assert_eq!(actual.responses, expected.responses);
+            assert_eq!(actual.picks, expected.picks);
+            assert_eq!(actual.decision, expected.decision);
+        }
+        assert_eq!(forks.load(Ordering::Relaxed), 5,
+            "four pre-choice and one sequential post-choice fork are absent in the plain tail");
+    }
+
+    #[test]
+    fn disabling_after_sequential_override_preserves_selected_memory() {
+        let (mut reference, observed, forks) = counted_seat();
+        reference.enable_response_overrides().unwrap();
+        reference.feed(&select_two()).unwrap();
+        let responses = reference.alternative_responses(6).unwrap();
+        reference.override_response(&responses[1]).unwrap();
+        let mut plain = reference.fork().unwrap();
+        plain.disable_response_overrides();
+        assert_eq!(plain.last_answer().unwrap().picks, Some(vec![2, 0]));
+        assert_eq!(plain.last_answer().unwrap().responses, reference.last_answer().unwrap().responses);
+        assert!(plain.selection_alternatives.is_empty());
+        forks.store(0, Ordering::Relaxed);
+        observed.lock().unwrap().clear();
+        let actual = plain.feed(&prompt()).unwrap();
+        assert_eq!(forks.load(Ordering::Relaxed), 0);
+        assert_eq!(actual, reference.feed(&prompt()).unwrap());
+        assert_eq!(*observed.lock().unwrap(), vec![vec![2, 100], vec![2, 100]]);
+        assert_eq!(forks.load(Ordering::Relaxed), 1);
     }
 
     #[test]

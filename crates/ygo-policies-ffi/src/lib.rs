@@ -159,6 +159,19 @@ pub unsafe extern "C" fn ygo_policy_enable_response_overrides(policy: *mut YgoPo
     })
 }
 
+/// Stop future override checkpoints after the final searched response has been
+/// committed. Keeps the committed policy, RNG and pending response unchanged.
+/// Search tails using this API must reject MSG_RETRY rather than feed it.
+/// # Safety
+/// `policy` is a live handle and is not used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_disable_response_overrides(policy: *mut YgoPolicy) -> i32 {
+    guarded(-1, || {
+        handle(policy)?.seat.disable_response_overrides();
+        Ok(0)
+    })
+}
+
 /// Install public effect-definition metadata before the first decision.
 /// # Safety
 /// `policy` is live; `profiles_json` is a NUL-terminated JSON object keyed by code.
@@ -523,5 +536,27 @@ mod tests {
         assert_eq!(child.answer()["choice"], 1);
         assert_eq!(parent.response(), 5u32.to_le_bytes());
         assert_eq!(parent.answer(), expected);
+    }
+
+    #[test]
+    fn disabling_checkpoints_keeps_pending_response_and_future_generic_choices() {
+        let plain = TestHandle::generic();
+        assert_eq!(plain.install(&profiles(true)), 0);
+        assert_eq!(unsafe { ygo_policy_enable_response_overrides(plain.0) }, 0);
+        assert_eq!(plain.feed(&idle_prompt()), 1);
+        let end_turn = 7u32.to_le_bytes();
+        assert_eq!(unsafe { ygo_policy_override_response(plain.0, end_turn.as_ptr(), end_turn.len()) }, 0);
+        let reference = plain.fork();
+        let before = plain.answer();
+        assert_eq!(unsafe { ygo_policy_disable_response_overrides(plain.0) }, 0);
+        assert_eq!(plain.response(), end_turn);
+        assert_eq!(plain.answer(), before);
+        for message in [vec![msg::NEW_TURN, 0], idle_prompt(), vec![msg::CHAIN_END], idle_prompt()] {
+            assert_eq!(plain.feed(&message), reference.feed(&message));
+            assert_eq!(plain.response(), reference.response());
+            assert_eq!(plain.answer(), reference.answer());
+        }
+        assert_eq!(unsafe { ygo_policy_disable_response_overrides(std::ptr::null_mut()) }, -1);
+        assert!(last_error().contains("NULL"));
     }
 }

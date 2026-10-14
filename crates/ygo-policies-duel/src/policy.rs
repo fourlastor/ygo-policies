@@ -27,6 +27,7 @@ pub struct PolicyLibrary {
     search_view: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
     observation: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
     enable_response_overrides: Option<unsafe extern "C" fn(Handle) -> i32>,
+    disable_response_overrides: Option<unsafe extern "C" fn(Handle) -> i32>,
     override_response: Option<unsafe extern "C" fn(Handle, *const u8, usize) -> i32>,
     alternative_responses: Option<unsafe extern "C" fn(Handle, usize) -> *const c_char>,
     set_effect_profiles: Option<unsafe extern "C" fn(Handle, *const c_char) -> i32>,
@@ -70,6 +71,7 @@ impl PolicyLibrary {
                 search_view: symbol(&library, b"ygo_policy_search_view_json").ok(),
                 observation: symbol(&library, b"ygo_policy_observation_json").ok(),
                 enable_response_overrides: symbol(&library, b"ygo_policy_enable_response_overrides").ok(),
+                disable_response_overrides: symbol(&library, b"ygo_policy_disable_response_overrides").ok(),
                 override_response: symbol(&library, b"ygo_policy_override_response").ok(),
                 alternative_responses: symbol(&library, b"ygo_policy_alternative_responses_json").ok(),
                 set_effect_profiles: symbol(&library, b"ygo_policy_set_effect_profiles_json").ok(),
@@ -147,6 +149,18 @@ impl LibrarySeat<'_> {
             .ok_or("policy library has no response override API")?;
         match unsafe { enable(self.handle) } {
             0 => Ok(()),
+            _ => Err(self.library.last_error()),
+        }
+    }
+
+    /// Stop checkpointing after the final searched response is committed.
+    /// The committed policy and RNG remain unchanged. Only for plain rollout
+    /// tails which reject MSG_RETRY before feeding it. Returns false for older
+    /// libraries, which safely retain their ordinary checkpoint behavior.
+    pub fn disable_response_overrides(&self) -> Result<bool> {
+        let Some(disable) = self.library.disable_response_overrides else { return Ok(false); };
+        match unsafe { disable(self.handle) } {
+            0 => Ok(true),
             _ => Err(self.library.last_error()),
         }
     }

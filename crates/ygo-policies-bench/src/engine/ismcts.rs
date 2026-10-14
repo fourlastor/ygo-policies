@@ -136,6 +136,12 @@ pub(super) struct Stats {
     #[cfg(test)]
     caller_snapshots: usize,
     #[cfg(test)]
+    tail_checkpoint_disables: usize,
+    #[cfg(test)]
+    uncheckpointed_prompts: usize,
+    #[cfg(test)]
+    history_digests: Vec<Path>,
+    #[cfg(test)]
     caller_restores: usize,
     #[cfg(test)]
     world_restores: usize,
@@ -464,7 +470,7 @@ struct Trial {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn simulate<const LEGACY_HORIZON: bool>(
+fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     duel: &mut Duel,
     seats: &[LibrarySeat<'_>],
     viewer: u8,
@@ -492,6 +498,7 @@ fn simulate<const LEGACY_HORIZON: bool>(
     let mut turn = root_original["observation"]["turn"].as_u64().unwrap_or(0);
     let mut path = Path::default();
     let mut tree_active = true;
+    let mut plain_tail = false;
     let mut first = true;
     let mut chain = !root_original["observation"]["chain"]
         .as_array()
@@ -572,6 +579,19 @@ fn simulate<const LEGACY_HORIZON: bool>(
                 }
             }
             seats[pending_player].override_response(&response)?;
+            // This action has already committed the exact selected policy
+            // state. A search rollout never returns to the tree after its one
+            // expansion; an empty frozen policy likewise makes no later edits.
+            // Keep checkpoints for nonempty frozen policies, including misses.
+            let no_more_overrides = match &mode {
+                Mode::Search { .. } => !tree_active,
+                Mode::Frozen(policy) => policy.choices.is_empty(),
+            };
+            if !KEEP_TAIL_CHECKPOINTS && !plain_tail && no_more_overrides {
+                plain_tail = seats[pending_player].disable_response_overrides()?;
+                #[cfg(test)]
+                { stats.tail_checkpoint_disables += usize::from(plain_tail); }
+            }
             if mode.tracks_history(tree_active) {
                 path.own_response(&response);
             }
@@ -593,6 +613,8 @@ fn simulate<const LEGACY_HORIZON: bool>(
             for sent in &step.messages {
                 if mode.tracks_history(tree_active) {
                     path.message(&sent.bytes, viewer)?;
+                    #[cfg(test)]
+                    stats.history_digests.push(path);
                 }
                 if sent.refresh {
                     seats[0].feed_update_pair(&seats[1], &sent.bytes)?;
@@ -608,6 +630,8 @@ fn simulate<const LEGACY_HORIZON: bool>(
                 }
                 for (player, seat) in seats.iter().enumerate() {
                     if let Some(given) = seat.feed(&sent.bytes)? {
+                        #[cfg(test)]
+                        { stats.uncheckpointed_prompts += usize::from(plain_tail && player == viewer as usize); }
                         if answer.replace((player, given)).is_some() {
                             return Err("Multiple ISMCTS answers in one batch".into());
                         }
@@ -683,7 +707,7 @@ pub(super) fn search(
     deadline: Option<Instant>,
     evaluator: &dyn Fn(&Value, u8) -> f64,
 ) -> Result<SearchResult> {
-    search_impl::<false>(
+    search_impl::<false, false>(
         duel,
         worlds,
         viewer,
@@ -699,7 +723,7 @@ pub(super) fn search(
 // The true specialization is instantiated only by native differential tests.
 // Production has no runtime switch and always skips pre-horizon observations.
 #[allow(clippy::too_many_arguments)]
-fn search_impl<const LEGACY_HORIZON: bool>(
+fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     duel: &mut Duel,
     worlds: &[World<'_>],
     viewer: u8,
@@ -730,7 +754,7 @@ fn search_impl<const LEGACY_HORIZON: bool>(
             stats.simulations += 1;
             #[cfg(test)]
             stats.root_trials.push((root_action, world_index));
-            match simulate::<LEGACY_HORIZON>(
+            match simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS>(
                 duel,
                 &world.seats,
                 viewer,
@@ -817,7 +841,7 @@ pub(super) fn evaluate_frozen(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
-    evaluate_frozen_impl::<false, true>(
+    evaluate_frozen_impl::<false, true, false>(
         duel,
         world,
         viewer,
@@ -850,7 +874,7 @@ pub(super) fn evaluate_frozen_in_place(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
-    evaluate_frozen_impl::<false, false>(
+    evaluate_frozen_impl::<false, false, false>(
         duel,
         world,
         viewer,
@@ -866,7 +890,7 @@ pub(super) fn evaluate_frozen_in_place(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn evaluate_frozen_impl<const LEGACY_HORIZON: bool, const RESTORE_CALLER: bool>(
+fn evaluate_frozen_impl<const LEGACY_HORIZON: bool, const RESTORE_CALLER: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     duel: &mut Duel,
     world: &World<'_>,
     viewer: u8,
@@ -897,7 +921,7 @@ fn evaluate_frozen_impl<const LEGACY_HORIZON: bool, const RESTORE_CALLER: bool>(
             stats.world_restores += 1;
         }
         stats.simulations = 1;
-        simulate::<LEGACY_HORIZON>(
+        simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS>(
             duel,
             &world.seats,
             viewer,
@@ -949,6 +973,10 @@ mod tests {
         let mut legacy = legacy.clone();
         optimized.observation_reads = 0;
         legacy.observation_reads = 0;
+        optimized.tail_checkpoint_disables = 0;
+        legacy.tail_checkpoint_disables = 0;
+        optimized.uncheckpointed_prompts = 0;
+        legacy.uncheckpointed_prompts = 0;
         // Includes exact response traces, world allocations, failures, caps
         // and completed/terminal counts, not only the winning root action.
         assert_eq!(optimized, legacy);
@@ -1344,7 +1372,19 @@ mod tests {
         assert_eq!(world.seats[0].last_answer().unwrap(), original);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy = search_impl::<true>(
+        let retained = search_impl::<false, true>(
+            &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
+        ).unwrap();
+        assert_search_equivalent(&first, &retained);
+        assert!(first.stats.tail_checkpoint_disables > 0);
+        assert!(first.stats.uncheckpointed_prompts > 0);
+        assert_eq!(retained.stats.tail_checkpoint_disables, 0);
+        assert_eq!(retained.stats.uncheckpointed_prompts, 0);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        eprintln!("plain search tails: {} pre-choice checkpoints omitted across {} identical simulations",
+            first.stats.uncheckpointed_prompts, first.stats.simulations);
+        let legacy = search_impl::<true, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -1377,7 +1417,7 @@ mod tests {
         assert_eq!(replayed.stats.mismatches, 0);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_replayed = evaluate_frozen_impl::<true, true>(
+        let legacy_replayed = evaluate_frozen_impl::<true, true, false>(
             &mut duel,
             &world,
             0,
@@ -1412,7 +1452,7 @@ mod tests {
         assert_eq!(failed.value, None);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed = evaluate_frozen_impl::<true, true>(
+        let legacy_failed = evaluate_frozen_impl::<true, true, false>(
             &mut duel,
             &world,
             0,
@@ -1457,7 +1497,7 @@ mod tests {
         );
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed_search = search_impl::<true>(
+        let legacy_failed_search = search_impl::<true, false>(
             &mut duel,
             &worlds,
             0,
@@ -1508,7 +1548,7 @@ mod tests {
             .all(|action| action.attempts > 0));
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_capped = search_impl::<true>(
+        let legacy_capped = search_impl::<true, false>(
             &mut duel,
             &worlds,
             0,
@@ -1542,7 +1582,7 @@ mod tests {
             .unwrap();
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
-            let legacy = search_impl::<true>(
+            let legacy = search_impl::<true, false>(
                 &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
             )
             .unwrap();
@@ -1697,7 +1737,21 @@ mod tests {
             );
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
+            let retained = evaluate_frozen_impl::<false, true, true>(
+                &mut duel, trial_world, 0, &original, response, decisions, 1024,
+                *options, *deadline, evaluate, policy,
+            ).unwrap();
+            let actual = references.last().unwrap();
+            assert_evaluation_equivalent(actual, &retained);
+            assert_eq!(retained.stats.tail_checkpoint_disables, 0);
+            assert_eq!(retained.stats.uncheckpointed_prompts, 0);
+            if !policy.choices.is_empty() {
+                assert_eq!(actual.stats.tail_checkpoint_disables, 0);
+            }
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
         }
+        assert!(references.iter().any(|trial| trial.stats.uncheckpointed_prompts > 0));
         // This is the same restoration boundary as choose_mcts: all work is
         // captured first, then the live root is restored before handling it.
         let result = (|| -> Result<Vec<Evaluation>> {
@@ -1935,7 +1989,7 @@ mod tests {
                 .unwrap();
                 assert_eq!(next_bytes(&mut duel), expected);
                 duel.restore(&world.snapshot).unwrap();
-                let legacy = search_impl::<true>(
+                let legacy = search_impl::<true, false>(
                     &mut duel,
                     std::slice::from_ref(&world),
                     viewer,
