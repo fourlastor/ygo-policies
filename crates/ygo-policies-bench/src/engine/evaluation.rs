@@ -20,6 +20,7 @@ use ygo_policies::cards::{
 use ygo_policies::ctx::Ctx;
 use ygo_policies::generic::alternate;
 use ygo_policies::generic::knowledge::{self as card_knowledge, CounterRecipients, CounterTiming, DamageShield};
+use ygo_policies::generic::requirements;
 use ygo_policies::knowledge::{Burn, Fate, ALWAYS};
 use ygo_policies::model::{CardRef, CardView, Coin, CoinEffect, Location, Observation, Phase, Position};
 use ygo_policies::tactics;
@@ -96,8 +97,12 @@ impl Evaluator {
                         .map_err(|_| "invalid effect type")?,
                     range: u16::try_from(effect["range"].as_u64().ok_or("effect range missing")?)
                         .map_err(|_| "invalid effect range")?,
+                    event: u32::try_from(effect["event"].as_u64().unwrap_or(0))
+                        .map_err(|_| "invalid effect event")?,
+                    description: effect["description"].as_u64().unwrap_or(0),
+                    flags: effect["flags"].as_u64().unwrap_or(0),
                     has_cost: effect["has_cost"].as_bool().unwrap_or(false),
-                    ..Effect::default()
+                    card_target: effect["card_target"].as_bool().unwrap_or(false),
                 });
             }
             parsed.insert(code, effects);
@@ -128,10 +133,13 @@ impl Evaluator {
             let side = &mut sides[player as usize];
             let bodies: Vec<_> = observation.pile(player, Location::MonsterZone).collect();
             let body_count = bodies.len();
+            let hand_size = observation.pile_size(player, Location::Hand);
             let mut victory_pieces = 0u8;
             for card in observation.cards.iter().filter(|card| card.at.controller == player) {
                 let data = ctx.view_data(card);
                 let effects = card.code.map(|code| profiles.effects(code)).unwrap_or(&[]);
+                let code = card.code.map(|code| ctx.canonical(code)).unwrap_or(0);
+                let available = || available_effects(effects, code, hand_size);
                 match card.at.location {
                     Location::Hand => {
                         side[0] += 1.0;
@@ -139,10 +147,10 @@ impl Evaluator {
                             victory_pieces |= 1 << piece;
                         }
                         if data.is_monster() && data.tributes() as usize > body_count {
-                            let self_summon = effects.iter().any(|effect| effect.range & HAND != 0 && effect.category & SUMMON != 0);
+                            let self_summon = available().any(|effect| effect.range & HAND != 0 && effect.category & SUMMON != 0);
                             if !self_summon { side[1] -= 0.65; }
                         }
-                        side[6] += effect_access(effects, HAND, None, data.is_spell() || data.is_trap());
+                        side[6] += effect_access(available(), HAND, None, data.is_spell() || data.is_trap());
                     }
                     Location::MonsterZone => {
                         side[0] += if data.is(types::TOKEN) { 0.3 } else { 1.0 };
@@ -157,24 +165,24 @@ impl Evaluator {
                             side[5] += 0.1 * f64::from((facts.immune | facts.unaffected | facts.untargetable).count_ones());
                             if ctx.battle_proof(card) { side[5] += 0.45; }
                             if !ctx.effects_drained() {
-                                side[6] += effect_access(effects, MONSTER, Some(card.at.sequence), false);
-                                side[5] += quick_interaction(effects, MONSTER, card.at.sequence);
+                                side[6] += effect_access(available(), MONSTER, Some(card.at.sequence), false);
+                                side[5] += quick_interaction(available(), MONSTER, card.at.sequence);
                             }
                         }
                     }
                     Location::SpellTrapZone => {
                         side[0] += 1.0;
-                        let native_access = effect_access(effects, BACKROW, Some(card.at.sequence), true);
+                        let native_access = effect_access(available(), BACKROW, Some(card.at.sequence), true);
                         let known_access = known_backrow_access(&ctx, card);
                         side[6] += native_access.max(known_access);
-                        side[5] += quick_interaction(effects, BACKROW, card.at.sequence);
+                        side[5] += quick_interaction(available(), BACKROW, card.at.sequence);
                     }
                     Location::Graveyard => {
                         // Ordinary spent cards are not another hand. A small
                         // pool of monster targets is useful, but graveyard
                         // activation ranges are substantially more informative.
                         if data.is_monster() { side[4] += 0.025; }
-                        let reusable = effects.iter().filter(|effect| effect.range & GRAVE != 0 && effect.effect_type & ACTIVATED != 0
+                        let reusable = available().filter(|effect| effect.range & GRAVE != 0 && effect.effect_type & ACTIVATED != 0
                             && effect.category & (REMOVE | ACCESS | SUMMON | INTERACT | category::DAMAGE | category::RECOVER) != 0)
                             .map(|effect| (if effect.effect_type & IGNITION != 0 { 0.35 } else { 0.2 })
                                 * if effect.has_cost { 0.6 } else { 1.0 })
@@ -224,6 +232,12 @@ impl Evaluator {
     }
 }
 
+/// Unknown requirements remain optimistic priors. Known conditions apply to
+/// their precise effect slot, never to every effect printed on the same card.
+fn available_effects(effects: &[Effect], code: u32, hand_size: u32) -> impl Iterator<Item = &Effect> {
+    effects.iter().filter(move |effect| requirements::hand_condition_allows(code, effect, hand_size))
+}
+
 fn known_backrow_access(ctx: &Ctx<'_>, card: &CardView) -> f64 {
     if !card.position.face_up { return 0.0; }
     let Some(code) = card.code.map(|code| ctx.canonical(code)) else { return 0.0; };
@@ -246,8 +260,8 @@ fn known_backrow_access(ctx: &Ctx<'_>, card: &CardView) -> f64 {
     if users[card.at.controller as usize] > users[(1 - card.at.controller) as usize] { 0.2 } else { 0.0 }
 }
 
-fn effect_access(effects: &[Effect], location: u16, sequence: Option<u32>, activate_here: bool) -> f64 {
-    effects.iter().filter(|effect| effect.effect_type & ACTIVATED != 0
+fn effect_access<'a>(effects: impl IntoIterator<Item = &'a Effect>, location: u16, sequence: Option<u32>, activate_here: bool) -> f64 {
+    effects.into_iter().filter(|effect| effect.effect_type & ACTIVATED != 0
         && (sequence.map_or_else(|| range::normalize(effect.range) & location != 0,
             |sequence| range::matches_at(effect.range, location, sequence))
             || (activate_here && effect.effect_type & kind::ACTIVATE != 0)))
@@ -261,8 +275,8 @@ fn effect_access(effects: &[Effect], location: u16, sequence: Option<u32>, activ
         }).fold(0.0, f64::max)
 }
 
-fn quick_interaction(effects: &[Effect], location: u16, sequence: u32) -> f64 {
-    effects.iter().filter(|effect| effect.effect_type & QUICK != 0 && range::matches_at(effect.range, location, sequence))
+fn quick_interaction<'a>(effects: impl IntoIterator<Item = &'a Effect>, location: u16, sequence: u32) -> f64 {
+    effects.into_iter().filter(|effect| effect.effect_type & QUICK != 0 && range::matches_at(effect.range, location, sequence))
         .map(|effect| if effect.category & (REMOVE | INTERACT) != 0 {
             if effect.has_cost { 0.25 } else { 0.4 }
         } else { 0.0 }).fold(0.0, f64::max)
@@ -299,7 +313,10 @@ impl BattleProtection {
         // Exact disable ordering is not observable. A visible suppressor is
         // enough to avoid claiming guaranteed protection from a field trap.
         let field_traps_suppressed = ctx.obs.cards.iter().any(|source| {
-            source.at.location.is_field() && source.position.face_up
+            let data = ctx.view_data(source);
+            let active_zone = data.is_monster() && source.at.location == Location::MonsterZone
+                || (data.is_spell() || data.is_trap()) && source.at.location == Location::SpellTrapZone;
+            active_zone && source.position.face_up
                 && !(source.at.location == Location::MonsterZone && drained)
                 && source.code.is_some_and(|code| card_knowledge::profile(ctx.canonical(code)).negates_field_traps)
         });
@@ -544,6 +561,98 @@ mod tests {
     }
 
     #[test]
+    fn profile_loading_preserves_effect_slot_and_condition_metadata() {
+        let mut evaluator = evaluator();
+        let effect = Effect { category: category::SPECIAL_SUMMON, effect_type: IGNITION,
+            range: MONSTER, event: 1102, description: (3u64 << 20) | 1,
+            flags: 0x4000, has_cost: true, card_target: true };
+        evaluator.set_profiles(&json!({"3":[{"category":effect.category,"effect_type":effect.effect_type,
+            "range":effect.range,"event":effect.event,"description":effect.description,"flags":effect.flags,
+            "has_cost":effect.has_cost,"card_target":effect.card_target}]})).unwrap();
+        assert_eq!(evaluator.profiles.as_ref().unwrap().effects(3), &[effect]);
+    }
+
+    #[test]
+    fn known_empty_hand_requirement_filters_only_the_unavailable_effect_prior() {
+        let mut evaluator = evaluator();
+        let mirage = 86197239u32;
+        evaluator.set_profiles(&json!({mirage.to_string():[{
+            "category":category::SPECIAL_SUMMON,"effect_type":IGNITION,"range":MONSTER,
+            "description":u64::from(mirage) << 20,"event":0,"has_cost":true
+        }]})).unwrap();
+        let mut value = observation(vec![card(0,"MonsterZone",mirage,0),card(0,"Hand",3,0)]);
+        assert_eq!(evaluator.features(&value,0)[6],0.0);
+        value["cards"].as_array_mut().unwrap().pop();
+        assert_eq!(evaluator.features(&value,0)[6],0.12,
+            "empty hand satisfies the known requirement, without proving targets or costs");
+
+        // Unknown conditions still retain their usual prior; an unrelated
+        // description is not evidence for this exact card's documented slot.
+        value["cards"].as_array_mut().unwrap().push(card(0,"Hand",3,0));
+        evaluator.set_profiles(&json!({mirage.to_string():[{
+            "category":category::SPECIAL_SUMMON,"effect_type":IGNITION,"range":MONSTER,
+            "description":(u64::from(mirage) << 20) | 1,"event":0,"has_cost":true
+        }]})).unwrap();
+        assert_eq!(evaluator.features(&value,0)[6],0.12);
+    }
+
+    #[test]
+    fn launcher_installation_and_hand_dump_are_not_gated_with_its_revival_slot() {
+        let mut evaluator = evaluator();
+        let launcher = 66957584u32;
+        let slot = u64::from(launcher) << 20;
+        evaluator.set_profiles(&json!({launcher.to_string():[
+            {"category":0,"effect_type":kind::ACTIVATE,"range":0,"description":0,"event":1002},
+            {"category":category::TO_GRAVE,"effect_type":IGNITION,"range":BACKROW,"description":slot,"event":0},
+            {"category":category::SPECIAL_SUMMON,"effect_type":IGNITION,"range":BACKROW,"description":slot | 1,"event":0,"has_cost":true}
+        ]})).unwrap();
+        let effects = evaluator.profiles.as_ref().unwrap().effects(launcher);
+        let with_hand: Vec<_> = available_effects(effects,launcher,1).map(|effect| effect.description).collect();
+        assert_eq!(with_hand,vec![0,slot]);
+        assert_eq!(available_effects(effects,launcher,0).count(),3);
+        let mut value = observation(vec![card(0,"SpellTrapZone",launcher,0),card(0,"Hand",3,0)]);
+        assert_eq!(evaluator.features(&value,0)[6],0.0);
+        value["cards"].as_array_mut().unwrap().pop();
+        assert_eq!(evaluator.features(&value,0)[6],0.12);
+    }
+
+    #[test]
+    fn grave_revival_requirement_does_not_blanket_gate_archfiends_draw_trigger() {
+        let mut evaluator = evaluator();
+        let avenger = 85475641u32;
+        let archfiend = 99177923u32;
+        evaluator.set_profiles(&json!({
+            avenger.to_string():[{"category":category::SPECIAL_SUMMON,"effect_type":0x82,"range":GRAVE,
+                "description":u64::from(avenger) << 20,"event":1140}],
+            archfiend.to_string():[{"category":category::SPECIAL_SUMMON,"effect_type":0x82,"range":HAND,
+                "description":u64::from(archfiend) << 20,"event":1110,"has_cost":true}]
+        })).unwrap();
+        let mut value = observation(vec![card(0,"Graveyard",avenger,0),card(0,"Hand",archfiend,0)]);
+        assert_eq!(evaluator.features(&value,0)[4],0.0);
+        assert_eq!(evaluator.features(&value,0)[6],0.12,
+            "the hand-draw condition concerns the previous hand and is not currently-empty");
+        value["cards"].as_array_mut().unwrap().pop();
+        assert_eq!(evaluator.features(&value,0)[4],0.2);
+    }
+
+    #[test]
+    fn opposing_effect_requirements_use_public_hand_count_without_private_identities() {
+        let mut evaluator = evaluator();
+        let mirage = 86197239u32;
+        evaluator.set_profiles(&json!({mirage.to_string():[{
+            "category":category::SPECIAL_SUMMON,"effect_type":IGNITION,"range":MONSTER,
+            "description":u64::from(mirage) << 20,"event":0,"has_cost":true
+        }]})).unwrap();
+        let mut value = observation(vec![card(1,"MonsterZone",mirage,0),card(1,"Hand",3,0)]);
+        assert_eq!(evaluator.features(&value,0)[6],0.0);
+        let before = evaluator.features(&value,0);
+        value["cards"][1]["code"] = json!(4);
+        assert_eq!(evaluator.features(&value,0),before);
+        value["cards"].as_array_mut().unwrap().pop();
+        assert_eq!(evaluator.features(&value,0)[6],-0.12);
+    }
+
+    #[test]
     fn symbolic_field_ranges_preserve_access_and_quick_interaction_priors() {
         for (base, symbolic, sequence) in [(BACKROW, range::FIELD, 5), (BACKROW, range::PENDULUM, 0),
             (BACKROW, range::SPELL_TRAP_MAIN, 0), (MONSTER, range::MONSTER_MAIN, 0),
@@ -604,6 +713,7 @@ mod tests {
             (53239672, types::TRAP | types::CONTINUOUS, 0),
             (56433456, types::SPELL | types::FIELD, 0),
             (51452091, types::TRAP | types::CONTINUOUS, 0),
+            (77585513, types::MONSTER | types::EFFECT, 0),
             (69750546, types::MONSTER | types::EFFECT, 0),
         ] {
             cards.0.insert(code, CardData { code, kind, race, ..Default::default() });
@@ -651,12 +761,23 @@ mod tests {
     #[test]
     fn visible_field_trap_suppression_prevents_claiming_barrier_immunity() {
         let evaluator = protection_evaluator();
+        let protected = |value: &Value| {
+            let obs = visible_observation(value, 0);
+            let ctx = Ctx::new(&obs, evaluator.cards.as_ref());
+            BattleProtection::from_public_board(&ctx).prevents(&ctx, 1, None, 1)
+        };
         let mut value = observation(vec![card(0,"MonsterZone",1,2600),
             card(1,"MonsterZone",16197610,800),card(1,"SpellTrapZone",53239672,0)]);
         value["phase"] = json!("Main1");
         assert_eq!(evaluator.features(&value,0)[8],0.0);
         value["cards"].as_array_mut().unwrap().push(card(0,"SpellTrapZone",51452091,0));
         assert!(evaluator.features(&value,0)[8] > 0.0);
+        value["cards"][3]["at"]["location"] = json!("MonsterZone");
+        assert!(protected(&value), "a trap treated as a monster has no backrow suppression");
+        value["cards"][3]["code"] = json!(77585513);
+        assert!(!protected(&value), "Jinzo suppresses traps in the Monster Zone");
+        value["cards"][3]["at"]["location"] = json!("SpellTrapZone");
+        assert!(protected(&value), "equipped Jinzo has no monster-zone suppression");
     }
 
     #[test]

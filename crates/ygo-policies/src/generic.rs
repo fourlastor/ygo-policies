@@ -9,7 +9,12 @@
 pub mod alternate;
 mod conversion;
 pub mod knowledge;
+mod materials;
+pub mod requirements;
+mod transactions;
 pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
+pub use materials::SUPPORTED_CODES as MATERIAL_SUPPORTED_CODES;
+pub use transactions::SUPPORTED_CODES as TRANSACTION_SUPPORTED_CODES;
 
 use crate::agent::{Response, Strategy, Turn};
 use crate::cards::{effect_categories as cat, effect_events as event, effect_locations as range,
@@ -92,7 +97,8 @@ impl Generic {
             let from_grave = effect.range & range::GRAVEYARD != 0
                 && effect.effect_type & effect_type::ACTION != 0;
             let on_arrival = effect.event == event::TO_GRAVE
-                && effect.effect_type & effect_type::TRIGGER != 0;
+                && effect.effect_type & effect_type::TRIGGER != 0
+                && requirements::arrival_requirement(ctx.canonical(code), effect).is_none();
             if !from_grave && !on_arrival {
                 return None;
             }
@@ -149,6 +155,7 @@ impl Generic {
     /// Exact source facts constrain a legal transaction without guessing its
     /// cost from printed Level or treating unrelated modes as interchangeable.
     fn known_activation_allowed(t: &Turn, choice: &Choice) -> bool {
+        if transactions::allow_activation(t, choice) == Some(false) { return false; }
         let ctx = t.ctx;
         let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return true };
         let triggered = matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. });
@@ -338,6 +345,16 @@ impl Strategy for Generic {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         if let Some(index) = alternate::main_phase(t) { return Some(index); }
+        // Empty-hand and draw-to-a-limit effects sometimes require backrow
+        // to leave the hand first. Only advance a visible, source-backed
+        // payoff; ordinary decks keep the shared setting order.
+        if let Some(index) = t.choices().find(|(index, choice)| {
+            t.fresh(*index) && choice.kind == ChoiceKind::SetSpellTrap
+                && choice.code().is_some_and(|code| self.set_spell_trap(t, code) != Some(false))
+                && requirements::set_before_payoff(t, choice)
+        }).map(|(index, _)| index) {
+            return t.pick(index);
+        }
         // A summon-triggered engine has to be installed before the event it
         // rewards. The setup card's activation itself often has category zero.
         if let Some(index) = t.choices().find(|(i, _)| self.setup_before_summon(t, *i)).map(|(i, _)| i) {
@@ -526,7 +543,9 @@ impl Strategy for Generic {
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
         if let Some(score) = alternate::select(t, member) { return Some(score); }
+        if let Some(score) = materials::material_score(t, member) { return Some(score); }
         if let Some(score) = conversion::material_score(t, member) { return Some(score); }
+        if let Some(score) = transactions::select(t, member) { return Some(score); }
         let code = member.code?;
         let ctx = t.ctx;
         let hint = t.decision.hint;
@@ -545,8 +564,9 @@ impl Strategy for Generic {
         }
         let worth = Self::body_value(&ctx, code) as f64;
         if matches!(hint, Hint::ToGraveyard | Hint::Discard | Hint::FusionMaterial | Hint::SynchroMaterial | Hint::Tribute | Hint::Release) {
-            let grave = Self::grave_utility(&ctx, code);
-            if grave > 0.0 || hint == Hint::ToGraveyard && member.at.location == Location::Deck {
+            let arrival = requirements::arrival_value(t, member);
+            let grave = arrival.unwrap_or_else(|| Self::grave_utility(&ctx, code));
+            if arrival.is_some() || grave > 0.0 || hint == Hint::ToGraveyard && member.at.location == Location::Deck {
                 // Deck-to-grave is setup, while a field/hand cost also loses
                 // its current body or hand option. Do not conflate the two.
                 let loss = if member.at.location == Location::Deck { worth * 0.1 } else { worth };
@@ -585,6 +605,10 @@ impl Strategy for Generic {
             }
         }
         None
+    }
+
+    fn continue_optional_selection(&self, t: &Turn) -> bool {
+        materials::continue_optional_selection(t)
     }
 
     fn yes_no(&self, t: &Turn) -> Option<bool> {
@@ -741,6 +765,115 @@ mod tests {
             choice(ChoiceKind::Pass, None, Location::Other),
         ]);
         assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &chain), 1);
+    }
+
+    #[test]
+    fn discard_trigger_credit_depends_on_the_actual_origin_and_reason() {
+        let discarded = 82888408;
+        let inert = 900006001;
+        let database = profiled(vec![
+            CardData { code: discarded, kind: types::MONSTER | types::EFFECT | types::TUNER,
+                attack: 1000, defense: 400, level: 2, ..CardData::default() },
+            CardData { code: inert, kind: types::MONSTER, attack: 400, level: 2, ..CardData::default() },
+        ], [(discarded, vec![EffectDescriptor {
+            category: cat::SPECIAL_SUMMON, effect_type: effect_type::TRIGGER,
+            event: event::TO_GRAVE, description: knowledge::description(discarded, 0),
+            ..EffectDescriptor::default()
+        }])].into());
+        for (hint, location, expected) in [
+            (Hint::Discard, Location::Hand, 0),
+            (Hint::ToGraveyard, Location::Hand, 1),
+            (Hint::ToGraveyard, Location::Deck, 1),
+            (Hint::SynchroMaterial, Location::MonsterZone, 1),
+            (Hint::FusionMaterial, Location::Hand, 1),
+        ] {
+            let mut obs = observation();
+            let candidates = [discarded, inert].into_iter().enumerate().map(|(sequence, code)| {
+                let mut view = on_field(code, 0, location, Position::FACE_UP_ATTACK);
+                view.at.sequence = sequence as u32;
+                view.attack = database.card(code).unwrap().attack;
+                view.defense = database.card(code).unwrap().defense;
+                obs.cards.push(view);
+                let mut candidate = choice(ChoiceKind::Cards, Some(code), location);
+                candidate.card.as_mut().unwrap().at.sequence = sequence as u32;
+                candidate.members.push(candidate.card.take().unwrap());
+                candidate
+            }).collect();
+            let mut prompt = decision(DecisionKind::SelectCards, candidates);
+            prompt.hint = hint;
+            prompt.minimum = 1;
+            prompt.maximum = 1;
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), expected, "{hint:?} from {location:?}");
+        }
+    }
+
+    #[test]
+    fn early_backrow_setting_requires_a_visible_empty_hand_payoff() {
+        let spell = 900006011;
+        let target = 900006012;
+        let engine = 66957584;
+        let database = profiled(vec![
+            CardData { code: spell, kind: types::SPELL, ..CardData::default() },
+            CardData { code: target, kind: types::MONSTER, level: 4, setcodes: vec![0xb], ..CardData::default() },
+            CardData { code: engine, kind: types::SPELL | types::CONTINUOUS, ..CardData::default() },
+        ], EffectProfiles::default());
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SetSpellTrap, Some(spell), Location::Hand),
+            choice(ChoiceKind::Activate, Some(spell), Location::Hand),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        for active in [false, true] {
+            let mut obs = observation();
+            obs.cards.push(on_field(spell, 0, Location::Hand, Position::FACE_UP_ATTACK));
+            obs.cards.push(on_field(target, 0, Location::Graveyard, Position::FACE_UP_ATTACK));
+            if active { obs.cards.push(on_field(engine, 0, Location::SpellTrapZone, Position::FACE_UP_ATTACK)); }
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), usize::from(!active));
+        }
+    }
+
+    #[test]
+    fn opponent_draw_spell_does_not_treat_our_only_board_as_a_draw_engine() {
+        let source = 35480699;
+        let body = 900006021;
+        let database = profiled(vec![
+            CardData { code: source, kind: types::SPELL | types::QUICKPLAY, ..CardData::default() },
+            CardData { code: body, kind: types::MONSTER, attack: 1800, level: 4, ..CardData::default() },
+        ], [(source, vec![EffectDescriptor { category: cat::DRAW,
+            effect_type: effect_type::ACTIVATE, ..EffectDescriptor::default() }])].into());
+        for enemy in [false, true] {
+            let mut obs = observation();
+            obs.cards.push(on_field(body, 0, Location::MonsterZone, Position::FACE_UP_ATTACK));
+            if enemy { obs.cards.push(on_field(body, 1, Location::MonsterZone, Position::FACE_UP_ATTACK)); }
+            for kind in [DecisionKind::Idle, DecisionKind::Chain { triggers: false, forced: false }] {
+                let end = if kind == DecisionKind::Idle { ChoiceKind::EndTurn } else { ChoiceKind::Pass };
+                let prompt = decision(kind, vec![choice(ChoiceKind::Activate, Some(source), Location::Hand), choice(end, None, Location::Other)]);
+                assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), usize::from(!enemy));
+            }
+        }
+    }
+
+    #[test]
+    fn sole_attacker_is_preserved_when_its_costly_removal_replaces_a_safe_battle() {
+        let source = 10026986;
+        let enemy = 900006031;
+        let database = profiled(vec![
+            CardData { code: source, kind: types::MONSTER | types::EFFECT, attack: 2700, defense: 1100,
+                level: 8, race: crate::cards::races::REPTILE, setcodes: vec![0x3e], ..CardData::default() },
+            CardData { code: enemy, kind: types::MONSTER, attack: 1200, defense: 500, level: 4, ..CardData::default() },
+        ], EffectProfiles::default());
+        let mut obs = observation();
+        let mut king = on_field(source, 0, Location::MonsterZone, Position::FACE_UP_ATTACK);
+        king.attack = 2700;
+        king.defense = 1100;
+        let mut target = on_field(enemy, 1, Location::MonsterZone, Position::FACE_UP_ATTACK);
+        target.attack = 1200;
+        target.defense = 500;
+        obs.cards.extend([king, target]);
+        let mut action = choice(ChoiceKind::Activate, Some(source), Location::MonsterZone);
+        action.description = knowledge::description(source, 1);
+        let prompt = decision(DecisionKind::Idle, vec![action,
+            choice(ChoiceKind::EnterBattle, None, Location::Other), choice(ChoiceKind::EndTurn, None, Location::Other)]);
+        assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &prompt), 1);
     }
 
     #[test]
