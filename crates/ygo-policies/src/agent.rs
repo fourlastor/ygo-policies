@@ -18,6 +18,12 @@ pub trait Policy: Send {
     /// Return an index into `decision.choices`.
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize;
 
+    /// Attach public, printed effect descriptors before play. These describe
+    /// card definitions, never a hidden hand or live activation conditions.
+    fn set_effect_profiles(&mut self, _profiles: crate::cards::EffectProfiles) -> bool {
+        false
+    }
+
     /// Commit an externally chosen legal action on the state from immediately
     /// before `choose`. Search must restore that state first: applying this to
     /// the already chosen policy would retain the discarded action's memory.
@@ -370,6 +376,11 @@ impl<S: Strategy> Agent<S> {
 }
 
 impl<S: Strategy> Policy for Agent<S> {
+    fn set_effect_profiles(&mut self, profiles: crate::cards::EffectProfiles) -> bool {
+        self.db = Arc::new(crate::cards::ProfiledCards::new(self.db.clone(), profiles));
+        true
+    }
+
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize {
         if decision.choices.is_empty() {
             return 0;

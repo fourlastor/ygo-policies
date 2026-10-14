@@ -8,6 +8,9 @@
 //! arrangement or the engine's future random stream.
 use super::search::{HiddenWorlds, Listed, Table};
 use super::*;
+use super::planner::{self, PlannedAction, PlannerOptions, PlannerResult};
+use super::evaluation::Evaluator;
+use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug)]
@@ -27,6 +30,10 @@ pub struct FastOptions {
     pub millis: u64,
     /// Skip search when the opponent has an unsampleable face-down monster.
     pub strict: bool,
+    /// Attach public registered-effect metadata to the generic pilot.
+    pub effects: bool,
+    /// Transaction-complete beam proposals, evaluated unchanged across worlds.
+    pub planner: Option<PlannerOptions>,
 }
 
 #[derive(Default)]
@@ -42,6 +49,16 @@ struct Stats {
     incomplete_worlds: u64,
     failed_searches: u64,
     unsafe_selection: u64,
+    proposal_nodes: u64,
+    proposal_leaves: u64,
+    proposal_improvements: u64,
+    proposal_completed_prefixes: u64,
+    proposal_responses: u64,
+    plan_evaluations: u64,
+    plan_applied: u64,
+    plan_mismatches: u64,
+    live_plan_applied: u64,
+    live_plan_mismatches: u64,
     errors: Vec<String>,
 }
 
@@ -197,6 +214,8 @@ struct Context<'a> {
     seed: u64,
     limit: usize,
     options: FastOptions,
+    profiles: Option<serde_json::Value>,
+    evaluator: Option<Evaluator>,
 }
 
 /// Build a generic opponent from public events only. Replaying the real
@@ -215,6 +234,7 @@ fn public_opponent<'a>(
         player as i32,
         context.seed ^ (decisions as u64).wrapping_mul(0xD1B54A32D192ED03),
     )?;
+    if let Some(profiles) = &context.profiles { seat.set_effect_profiles(profiles)?; }
     seat.feed_buffer(&public_history(&logs[player])?)?;
     Ok(seat)
 }
@@ -661,6 +681,128 @@ fn choose(
     ))
 }
 
+/// Build each proposal in a separate world, then compare the fixed executable
+/// proposals on common validation worlds. No validation-world maximization.
+fn choose_plan(
+    duel: &mut Duel,
+    context: &Context<'_>,
+    table: &Table<'_>,
+    listed: &Listed,
+    decisions: usize,
+    stats: &mut Stats,
+) -> Result<(usize, usize, f64, Vec<PlannedAction>)> {
+    let options = context.options.planner.ok_or("Missing planner options")?;
+    let evaluator = context.evaluator.as_ref().ok_or("Missing planner evaluator")?;
+    let evaluate = |observation: &serde_json::Value, viewer| evaluator.value(observation, viewer);
+    let root = duel.snapshot()?;
+    let deadline = (context.options.millis > 0)
+        .then(|| Instant::now() + Duration::from_millis(context.options.millis));
+    let known = pending_known_slots(&table.seats[context.viewer as usize].last_answer()?, context.viewer);
+    let mut hidden = HiddenWorlds::with_known(known);
+    // Candidate zero is always the actual plain pilot. Optimizing its root
+    // action's continuation creates a separate candidate, never a new control.
+    let responses: Vec<_> = std::iter::once(&listed.responses[0]).chain(&listed.responses).collect();
+    let mut totals = vec![0.0; responses.len()];
+    let mut plans = vec![Vec::new(); responses.len()];
+    let mut complete = 0;
+    let mut remaining = context.options.max_playouts;
+    let result = (|| -> Result<()> {
+        let opponent = public_opponent(context, &table.logs, decisions)?;
+        // Keep at least one complete paired validation round. All candidates
+        // receive the same proposal cap, so early candidates cannot consume it.
+        let count = responses.len();
+        let reserve = count.saturating_mul(context.options.worlds);
+        let proposal_cap = options.nodes.min(remaining.saturating_sub(reserve) / count);
+        // Reserve half the remaining wall budget for paired validation, then
+        // split proposal time evenly. A single costly root cannot consume it.
+        let proposal_slice = deadline.map(|end| end.saturating_duration_since(Instant::now())
+            / (2 * count.saturating_sub(1).max(1)) as u32);
+        if proposal_cap > 0 {
+            let proposal_seed = context.seed
+                ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15)
+                ^ 0xA0761D6478BD642F;
+            hidden.restore(duel, &root, context.viewer, proposal_seed)?;
+            duel.reseed(proposal_seed ^ 0x94D049BB133111EB)?;
+            let seats = prepare(duel, context, table, &opponent)?;
+            let sampled = duel.snapshot()?;
+            for (index, response) in responses.iter().enumerate().skip(1) {
+                if expired(deadline) { break; }
+                duel.restore(&sampled)?;
+                let proposal_deadline = proposal_slice.map(|slice| (Instant::now() + slice).min(deadline.unwrap()));
+                let proposed = planner::evaluate(duel, &seats, context.viewer, response,
+                    decisions, context.limit, PlannerOptions { nodes: proposal_cap, ..options },
+                    proposal_deadline, &evaluate)?;
+                remaining = remaining.saturating_sub(proposed.nodes);
+                stats.proposal_nodes += proposed.nodes as u64;
+                stats.proposal_leaves += proposed.leaves as u64;
+                stats.proposal_improvements += proposed.improved_leaves as u64;
+                stats.proposal_completed_prefixes += proposed.completed_prefixes as u64;
+                stats.proposal_responses += proposed.responses as u64;
+                record_planner(&proposed, stats);
+                if proposed.value.is_some() { plans[index] = proposed.plan; }
+            }
+        }
+        for world in 0..context.options.worlds {
+            if remaining < count || expired(deadline) {
+                stats.budget_exhausted += 1;
+                break;
+            }
+            // This seed stream is disjoint from the proposal world.
+            let world_seed = context.seed
+                ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15)
+                ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
+            hidden.restore(duel, &root, context.viewer, world_seed)?;
+            duel.reseed(world_seed ^ 0x94D049BB133111EB)?;
+            let seats = prepare(duel, context, table, &opponent)?;
+            let sampled = duel.snapshot()?;
+            let mut scores = Vec::with_capacity(count);
+            for (index, response) in responses.iter().enumerate() {
+                if expired(deadline) { break; }
+                duel.restore(&sampled)?;
+                let validation = if context.options.horizon == 0 {
+                    planner::evaluate_plan_terminal
+                } else { planner::evaluate_plan };
+                let evaluated = validation(duel, &seats, context.viewer, response,
+                    decisions, context.limit, PlannerOptions { nodes: 1, ..options },
+                    deadline, &evaluate, &plans[index])?;
+                remaining = remaining.saturating_sub(1);
+                stats.plan_evaluations += 1;
+                stats.playouts += 1;
+                stats.plan_applied += evaluated.plan_applied as u64;
+                stats.plan_mismatches += evaluated.plan_mismatches as u64;
+                record_planner(&evaluated, stats);
+                if evaluated.value.is_none() { stats.unresolved_playouts += 1; }
+                stats.truncated_playouts += u64::from(evaluated.value.is_some() && !evaluated.terminal);
+                scores.push(evaluated.value);
+            }
+            if scores.len() == count && scores.iter().all(Option::is_some) {
+                let baseline = scores[0].unwrap();
+                for (total, score) in totals.iter_mut().zip(scores) {
+                    *total += score.unwrap() - baseline;
+                }
+                complete += 1;
+            } else { stats.incomplete_worlds += 1; }
+        }
+        Ok(())
+    })();
+    duel.restore(&root)?;
+    if let Err(error) = result {
+        stats.failed_searches += 1;
+        stats.error(error);
+        return Ok((0, 0, 0.0, Vec::new()));
+    }
+    let best = best_candidate(&totals, complete);
+    let gain = if complete == 0 { 0.0 } else { totals[best] / complete as f64 };
+    // An unvalidated proposal must never leak into live play.
+    let plan = if complete == 0 { Vec::new() } else { std::mem::take(&mut plans[best]) };
+    Ok((best.saturating_sub(1), complete, gain, plan))
+}
+
+fn record_planner(result: &PlannerResult, stats: &mut Stats) {
+    stats.failed_playouts += result.failed as u64;
+    for error in &result.errors { stats.error(error.clone()); }
+}
+
 fn latency(values: &[f64]) -> serde_json::Value {
     let mut sorted = values.to_vec();
     sorted.sort_by(f64::total_cmp);
@@ -687,6 +829,12 @@ pub fn play_fast(
     run: PlayOptions,
     fast: FastOptions,
 ) -> Result<serde_json::Value> {
+    if fast.planner.is_some_and(|p| p.width == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0) {
+        return Err("Beam width/actions/nodes/decisions must be positive".into());
+    }
+    if fast.planner.is_some() && fast.depth != 1 {
+        return Err("Nested rollout depth does not apply to beam planning".into());
+    }
     if fast.max_playouts > 0 && ![1, 2].contains(&fast.depth) {
         return Err("Generic search depth must be 1 or 2".into());
     }
@@ -714,7 +862,7 @@ pub fn play_fast(
         limit,
         life_points,
         record,
-        ..
+        trace,
     } = run;
     let options = DuelOptions {
         life_points,
@@ -726,6 +874,13 @@ pub fn play_fast(
         seats: Vec::new(),
         logs: [Vec::new(), Vec::new()],
     };
+    // Definitions are public rules. Extract only our deck's card definitions;
+    // this enrichment does not require knowing the opponent's deck list.
+    let profiles = if fast.effects {
+        let codes: Vec<_> = decks[fast.searcher].main.iter()
+            .chain(&decks[fast.searcher].extra).copied().collect();
+        Some(core.effect_profiles(&codes)?)
+    } else { None };
     for player in 0..2 {
         table.seats.push(policies[player].seat(
             names[player],
@@ -733,11 +888,19 @@ pub fn play_fast(
             player as i32,
             seed + player as u64,
         )?);
+        if names[player] == "generic" {
+            if let Some(profiles) = &profiles { table.seats[player].set_effect_profiles(profiles)?; }
+        }
         if player == fast.searcher && fast.max_playouts > 0 {
             table.seats[player].enable_response_overrides()?;
         }
         table.feed(player, &duel.start_message(player as u8))?;
     }
+    let evaluator = if fast.planner.is_some() {
+        let mut evaluator = Evaluator::open(cards)?;
+        if let Some(profiles) = &profiles { evaluator.set_profiles(profiles)?; }
+        Some(evaluator)
+    } else { None };
     let context = Context {
         library: policies[fast.searcher],
         cards,
@@ -745,12 +908,16 @@ pub fn play_fast(
         seed,
         limit,
         options: fast,
+        profiles,
+        evaluator,
     };
     let mut stats = Stats::default();
     let (mut decisions, mut turns, mut digest, mut chain) =
         (0usize, 0u32, 0xcbf29ce484222325u64, false);
     let (mut in_chain, mut facing_set) = (0u64, 0u64);
+    let mut traces = Vec::new();
     let mut deviations = Vec::new();
+    let mut plan: VecDeque<PlannedAction> = VecDeque::new();
     let mut decision_ms: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
     let mut search_decision_ms: Vec<f64> = Vec::new();
     loop {
@@ -796,7 +963,13 @@ pub fn play_fast(
                 "unresolved_playouts": stats.unresolved_playouts,
                 "budget_exhausted": stats.budget_exhausted, "incomplete_worlds": stats.incomplete_worlds,
                 "failed_searches": stats.failed_searches, "unsafe_selections": stats.unsafe_selection, "search_errors": stats.errors,
-                "in_chain": in_chain, "facing_set": facing_set, "deviations": deviations,
+                "proposal_nodes": stats.proposal_nodes, "proposal_leaves": stats.proposal_leaves,
+                "proposal_improvements": stats.proposal_improvements,
+                "proposal_completed_prefixes": stats.proposal_completed_prefixes,
+                "proposal_responses": stats.proposal_responses, "plan_evaluations": stats.plan_evaluations,
+                "plan_applied": stats.plan_applied, "plan_mismatches": stats.plan_mismatches,
+                "live_plan_applied": stats.live_plan_applied, "live_plan_mismatches": stats.live_plan_mismatches,
+                "in_chain": in_chain, "facing_set": facing_set, "deviations": deviations, "trace": traces,
                 "latency_ms": latency(&decision_ms[fast.searcher]), "decision_ms": decision_ms[fast.searcher],
                 "search_latency_ms": latency(&search_decision_ms), "search_decision_ms": search_decision_ms,
                 "soft_budget_overruns": if fast.millis == 0 { 0 } else { search_decision_ms.iter().filter(|ms| **ms > fast.millis as f64).count() },
@@ -816,32 +989,51 @@ pub fn play_fast(
         let mut searched_this_decision = false;
         if player == fast.searcher && fast.max_playouts > 0 {
             let started = Instant::now();
-            let described = table.seats[player].alternative_responses(fast.max_candidates)?;
-            if let Some(listed) = candidates(
-                &described,
-                &answer,
-                fast.max_candidates.min(fast.max_playouts),
-            ) {
-                if chain {
-                    in_chain += 1;
-                } else if fast.strict
-                    && duel.monsters().iter().any(|m| {
-                        m.controller != context.viewer && m.position & position::FACEDOWN != 0
-                    })
-                {
-                    facing_set += 1;
-                } else if unsafe_selection(&described, context.viewer) {
-                    stats.unsafe_selection += 1;
-                } else {
-                    stats.searched += 1;
-                    searched_this_decision = true;
-                    let (chosen, worlds, gain) =
-                        choose(&mut duel, &context, &table, &listed, decisions, &mut stats)?;
-                    if chosen != 0 {
-                        answer = listed.responses[chosen].clone();
+            // Consume saved continuation BEFORE active-chain guards. Only the
+            // original visible prompt and exact offered action authorize replay.
+            let original = table.seats[player].last_answer()?;
+            let mut replayed = false;
+            if let Some(action) = plan.front() {
+                if action.signature == planner::prompt_signature(&original) {
+                    let expanded = table.seats[player].alternative_responses(12)?;
+                    if let Some(planned) = planner::resolve_action(action, &expanded) {
+                        answer = planned;
                         table.seats[player].override_response(&answer)?;
-                        deviations.push(serde_json::json!({"decision": decisions, "turn": turns, "kind": listed.kind,
-                            "from": listed.labels[0], "to": listed.labels[chosen], "worlds": worlds, "gain": gain}));
+                        plan.pop_front();
+                        stats.live_plan_applied += 1;
+                        replayed = true;
+                    }
+                }
+                if !replayed {
+                    plan.clear();
+                    stats.live_plan_mismatches += 1;
+                }
+            }
+            if !replayed {
+                let expanded_limit = if fast.planner.is_some() { 12 } else { fast.max_candidates };
+                let described = table.seats[player].alternative_responses(expanded_limit)?;
+                if let Some(listed) = candidates(&described, &answer,
+                    fast.max_candidates.min(fast.max_playouts)) {
+                    if chain { in_chain += 1; }
+                    else if fast.strict && duel.monsters().iter().any(|m| {
+                        m.controller != context.viewer && m.position & position::FACEDOWN != 0
+                    }) { facing_set += 1; }
+                    else if unsafe_selection(&described, context.viewer) { stats.unsafe_selection += 1; }
+                    else {
+                        stats.searched += 1;
+                        searched_this_decision = true;
+                        let (chosen, worlds, gain) = if fast.planner.is_some() {
+                            let (chosen, worlds, gain, continuation) = choose_plan(
+                                &mut duel, &context, &table, &listed, decisions, &mut stats)?;
+                            plan = continuation.into();
+                            (chosen, worlds, gain)
+                        } else { choose(&mut duel, &context, &table, &listed, decisions, &mut stats)? };
+                        if chosen != 0 {
+                            answer = listed.responses[chosen].clone();
+                            table.seats[player].override_response(&answer)?;
+                            deviations.push(serde_json::json!({"decision": decisions, "turn": turns, "kind": listed.kind,
+                                "from": listed.labels[0], "to": listed.labels[chosen], "worlds": worlds, "gain": gain}));
+                        }
                     }
                 }
             }
@@ -854,6 +1046,7 @@ pub fn play_fast(
         for byte in message.iter().chain(&answer) {
             digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
         }
+        if trace { traces.push(table.seats[player].last_answer()?); }
         duel.respond(&answer);
         if let Some(recorded) = &mut recorded {
             recorded.responses.push((player as u8, answer));
@@ -998,6 +1191,8 @@ mod tests {
             horizon: 8,
             millis: 0,
             strict: true,
+            effects: false,
+            planner: None,
         };
         let first = play_fast(
             &core,
@@ -1038,5 +1233,65 @@ mod tests {
             .unwrap();
         assert_eq!(left, 0);
         assert_eq!(winner.map(u64::from), first["winner"].as_u64());
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first; native beam integration"]
+    fn beam_adapter_executes_validated_plans_and_replays_deterministically() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library_path = std::env::var_os("YGO_PLANNER_TEST_LIBRARY")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join(format!(
+                "target/release/{}ygo_policies{}",
+                std::env::consts::DLL_PREFIX,
+                std::env::consts::DLL_SUFFIX,
+            )));
+        let library = PolicyLibrary::open(&library_path).unwrap();
+        let opponent_path = std::env::var_os("YGO_PLANNER_TEST_OPPONENT")
+            .map(std::path::PathBuf::from).unwrap_or(library_path);
+        let opponent = PolicyLibrary::open(&opponent_path).unwrap();
+        let deck = Deck::load(&root.join("decks").join(format!("{}.ydk", opponent.catalog["blackwing"]))).unwrap();
+        let decks = [deck.clone(), deck];
+        let run = PlayOptions {
+            seed: 1810280040, limit: 8192, trace: false,
+            life_points: [8000; 2], record: true,
+        };
+        let options = FastOptions {
+            searcher: 0, worlds: 4, depth: 1, max_candidates: 6,
+            max_playouts: 512, horizon: 1, millis: 0, strict: true,
+            effects: true,
+            planner: Some(PlannerOptions {
+                width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
+            }),
+        };
+        let play = || play_fast(
+            &core, &decks, [&library, &opponent], ["generic", "blackwing"],
+            &cards, run, options,
+        ).unwrap();
+        let first = play();
+        let second = play();
+        assert_eq!(first["winner"], second["winner"]);
+        assert_eq!(first["digest"], second["digest"]);
+        for key in ["proposal_nodes", "proposal_leaves", "proposal_improvements",
+            "proposal_completed_prefixes", "plan_evaluations", "live_plan_applied"] {
+            assert_eq!(first[key], second[key], "nondeterministic {key}");
+            assert!(first[key].as_u64().unwrap() > 0, "no {key}; digest={}, errors={}", first["digest"], first["search_errors"]);
+        }
+        for result in [&first, &second] {
+            assert_eq!(result["failed_playouts"], 0, "{}", result["search_errors"]);
+            assert_eq!(result["failed_searches"], 0, "{}", result["search_errors"]);
+            assert_eq!(result["limit"], false);
+            let record = Recorded::from_json(&result["record"]).unwrap();
+            let mut winner = None;
+            let left = core.replay(&record, None, &mut |shown| {
+                if let Replayed::Message(Message::Win { player, .. }) = shown {
+                    winner = Some(*player);
+                }
+            }).unwrap();
+            assert_eq!(left, 0);
+            assert_eq!(winner.map(u64::from), result["winner"].as_u64());
+        }
     }
 }

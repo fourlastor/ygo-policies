@@ -45,6 +45,12 @@ YgoPolicy *ygo_policy_clone(const YgoPolicy *policy);
    Optional in older libraries; ordinary seats avoid the snapshot overhead. */
 int32_t ygo_policy_enable_response_overrides(YgoPolicy *policy);
 
+/* Install public printed effect descriptors, keyed by card code, before the
+   first selection prompt. Forks inherit them. JSON never contains live hidden
+   state. 0 on success, -1 on invalid JSON/unsupported policy/late replacement.
+   Optional in older libraries. */
+int32_t ygo_policy_set_effect_profiles_json(YgoPolicy *policy, const char *profiles_json);
+
 /* Replace the pending response with another offered response and commit its
    action to policy memory. The pending decision must have been fed after
    enabling overrides. Sequential alternatives must first be expanded below.

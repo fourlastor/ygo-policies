@@ -29,6 +29,7 @@ pub struct PolicyLibrary {
     enable_response_overrides: Option<unsafe extern "C" fn(Handle) -> i32>,
     override_response: Option<unsafe extern "C" fn(Handle, *const u8, usize) -> i32>,
     alternative_responses: Option<unsafe extern "C" fn(Handle, usize) -> *const c_char>,
+    set_effect_profiles: Option<unsafe extern "C" fn(Handle, *const c_char) -> i32>,
     /// Policy id to the name of its deck list.
     pub catalog: HashMap<String, String>,
 }
@@ -71,6 +72,7 @@ impl PolicyLibrary {
                 enable_response_overrides: symbol(&library, b"ygo_policy_enable_response_overrides").ok(),
                 override_response: symbol(&library, b"ygo_policy_override_response").ok(),
                 alternative_responses: symbol(&library, b"ygo_policy_alternative_responses_json").ok(),
+                set_effect_profiles: symbol(&library, b"ygo_policy_set_effect_profiles_json").ok(),
                 catalog,
                 _library: library,
             })
@@ -117,6 +119,17 @@ pub struct LibrarySeat<'a> {
 }
 
 impl LibrarySeat<'_> {
+    /// Public card-definition metadata only, installed before play.
+    pub fn set_effect_profiles(&self, profiles: &serde_json::Value) -> Result<()> {
+        let install = self.library.set_effect_profiles
+            .ok_or("policy library has no effect profile API")?;
+        let encoded = CString::new(profiles.to_string()).map_err(|e| e.to_string())?;
+        match unsafe { install(self.handle, encoded.as_ptr()) } {
+            0 => Ok(()),
+            _ => Err(self.library.last_error()),
+        }
+    }
+
     /// An independent copy with the same library lifetime as this seat.
     pub fn fork(&self) -> Result<Self> {
         let fork = self.library.fork.ok_or("policy library has no copy API")?;

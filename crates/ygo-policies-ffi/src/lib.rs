@@ -140,7 +140,9 @@ pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoP
         let policy = policy.as_ref().ok_or("policy is NULL")?;
         let seat = policy.seat.fork().ok_or("policy does not support copying")?;
         Ok(Box::into_raw(Box::new(YgoPolicy {
-            seat, response: policy.response.clone(), json: policy.json.clone(),
+            // Getter output is disposable scratch, regenerated from the seat
+            // on every JSON request; search forks need not copy that buffer.
+            seat, response: policy.response.clone(), json: CString::default(),
         })))
     })
 }
@@ -153,6 +155,19 @@ pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoP
 pub unsafe extern "C" fn ygo_policy_enable_response_overrides(policy: *mut YgoPolicy) -> i32 {
     guarded(-1, || {
         handle(policy)?.seat.enable_response_overrides().map_err(|e| e.to_string())?;
+        Ok(0)
+    })
+}
+
+/// Install public effect-definition metadata before the first decision.
+/// # Safety
+/// `policy` is live; `profiles_json` is a NUL-terminated JSON object keyed by code.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_set_effect_profiles_json(policy: *mut YgoPolicy, profiles_json: *const c_char) -> i32 {
+    guarded(-1, || {
+        let profiles = serde_json::from_str(text(profiles_json, "profiles_json")?)
+            .map_err(|e| format!("effect profiles: {e}"))?;
+        handle(policy)?.seat.set_effect_profiles(profiles).map_err(|e| e.to_string())?;
         Ok(0)
     })
 }
@@ -335,4 +350,178 @@ pub extern "C" fn ygo_policy_catalog() -> *const c_char {
             CString::new(serde_json::Value::from(entries).to_string()).unwrap_or_default()
         })
         .as_ptr()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ygo_policies::cards::{effect_categories, effect_locations, effect_types, types, CardData, EffectDescriptor, EffectProfiles, MemoryCards};
+    use ygo_policies_ocgcore::wire::{location, msg, Writer};
+
+    // Invented identity: the behavior below follows the supplied public effect
+    // declaration, not a recognized staple, deck family or benchmark card.
+    const DRAW_TRAP: u32 = 900_005_011;
+    const DESCRIPTION: u64 = 144_000_801_761;
+
+    struct TestHandle(*mut YgoPolicy);
+
+    impl TestHandle {
+        fn generic() -> Self {
+            let db: Arc<dyn CardDatabase> = Arc::new(MemoryCards([(DRAW_TRAP, CardData {
+                code: DRAW_TRAP, kind: types::TRAP, ..CardData::default()
+            })].into()));
+            let policy = registry::create_seeded("generic", db.clone(), 1).unwrap();
+            Self(Box::into_raw(Box::new(YgoPolicy {
+                seat: Seat::new(policy, db, Some(0)),
+                response: Vec::new(),
+                json: CString::default(),
+            })))
+        }
+
+        fn install(&self, profiles: &str) -> i32 {
+            let profiles = CString::new(profiles).unwrap();
+            unsafe { ygo_policy_set_effect_profiles_json(self.0, profiles.as_ptr()) }
+        }
+
+        fn feed(&self, message: &[u8]) -> i32 {
+            unsafe { ygo_policy_feed(self.0, message.as_ptr(), message.len()) }
+        }
+
+        fn response(&self) -> Vec<u8> {
+            let mut length = 0;
+            unsafe {
+                let bytes = ygo_policy_response(self.0, &mut length);
+                std::slice::from_raw_parts(bytes, length).to_vec()
+            }
+        }
+
+        fn answer(&self) -> serde_json::Value {
+            unsafe { serde_json::from_slice(CStr::from_ptr(ygo_policy_last_answer_json(self.0)).to_bytes()).unwrap() }
+        }
+
+        fn fork(&self) -> Self {
+            let clone = unsafe { ygo_policy_clone(self.0) };
+            assert!(!clone.is_null(), "{}", last_error());
+            Self(clone)
+        }
+    }
+
+    impl Drop for TestHandle {
+        fn drop(&mut self) { unsafe { ygo_policy_destroy(self.0) } }
+    }
+
+    fn last_error() -> String {
+        let error = ygo_policy_last_error();
+        if error.is_null() { String::new() } else { unsafe { CStr::from_ptr(error).to_string_lossy().into_owned() } }
+    }
+
+    fn profiles(enabled: bool) -> String {
+        let effects = if enabled { vec![EffectDescriptor {
+            category: effect_categories::DRAW,
+            effect_type: effect_types::ACTIVATE,
+            range: effect_locations::SPELL_TRAP,
+            description: DESCRIPTION,
+            ..EffectDescriptor::default()
+        }] } else { Vec::new() };
+        let profiles: EffectProfiles = [(DRAW_TRAP, effects)].into();
+        serde_json::to_string(&profiles).unwrap()
+    }
+
+    fn idle_prompt() -> Vec<u8> {
+        let mut message = Writer::default().u8(msg::SELECT_IDLECMD).u8(0);
+        for _ in 0..5 { message = message.u32(0); }
+        message.u32(1).u32(DRAW_TRAP).u8(0).u8(location::SZONE).u32(0)
+            .u64(DESCRIPTION).u8(0).u8(0).u8(1).u8(0).0
+    }
+
+    #[test]
+    fn effect_profiles_before_first_prompt_change_real_generic_choice() {
+        let plain = TestHandle::generic();
+        let annotated = TestHandle::generic();
+        // Public nonselection updates are allowed before installing profiles.
+        assert_eq!(annotated.feed(&[msg::NEW_TURN, 0]), 0);
+        assert_eq!(annotated.install(&profiles(true)), 0, "{}", last_error());
+        assert_eq!(plain.feed(&idle_prompt()), 1);
+        assert_eq!(annotated.feed(&idle_prompt()), 1);
+        assert_eq!(plain.response(), 7u32.to_le_bytes());
+        assert_eq!(annotated.response(), 5u32.to_le_bytes());
+    }
+
+    #[test]
+    fn invalid_effect_profiles_preserve_previously_installed_metadata() {
+        // Cover syntax errors, nonobject input and a partly decoded object
+        // whose later entry has the wrong descriptor shape.
+        for invalid in ["{", "[]", "null", r#"{"900005011":[],"900005012":false}"#] {
+            let seat = TestHandle::generic();
+            assert_eq!(seat.install(&profiles(true)), 0);
+            assert_eq!(seat.install(invalid), -1, "{invalid}");
+            assert!(last_error().contains("effect profiles"), "{}", last_error());
+            assert_eq!(seat.feed(&idle_prompt()), 1);
+            assert_eq!(seat.response(), 5u32.to_le_bytes(), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn late_effect_profiles_are_rejected_without_changing_pending_response() {
+        let seat = TestHandle::generic();
+        assert_eq!(seat.install(&profiles(true)), 0);
+        assert_eq!(seat.feed(&idle_prompt()), 1);
+        let before = seat.answer();
+        assert_eq!(seat.install(&profiles(false)), -1);
+        assert!(last_error().contains("before feeding a selection prompt"));
+        assert_eq!(seat.response(), 5u32.to_le_bytes());
+        assert_eq!(seat.answer(), before);
+        // Clearing the awaiting flag with a public update must not reopen the
+        // initialization window after a policy has already made decisions.
+        assert_eq!(seat.feed(&[msg::NEW_TURN, 0]), 0);
+        assert_eq!(seat.install(&profiles(false)), -1);
+        assert_eq!(seat.feed(&idle_prompt()), 1);
+        assert_eq!(seat.response(), 5u32.to_le_bytes());
+    }
+
+    #[test]
+    fn fork_retains_effect_profiles_independently_of_parent_replacement() {
+        let parent = TestHandle::generic();
+        assert_eq!(parent.install(&profiles(true)), 0);
+        let child = parent.fork();
+        // An explicit empty descriptor list shadows that card's earlier
+        // metadata. The child must still retain its original immutable copy.
+        assert_eq!(parent.install(&profiles(false)), 0);
+        assert_eq!(parent.feed(&idle_prompt()), 1);
+        assert_eq!(child.feed(&idle_prompt()), 1);
+        assert_eq!(parent.response(), 7u32.to_le_bytes());
+        assert_eq!(child.response(), 5u32.to_le_bytes());
+    }
+
+    #[test]
+    fn fork_rebuilds_json_and_preserves_pending_response_independently() {
+        let parent = TestHandle::generic();
+        assert_eq!(parent.install(&profiles(true)), 0);
+        assert_eq!(unsafe { ygo_policy_enable_response_overrides(parent.0) }, 0);
+        assert_eq!(parent.feed(&idle_prompt()), 1);
+        let expected = parent.answer();
+        let parent_json = unsafe { (*parent.0).json.as_ptr() };
+        let parent_bytes = unsafe { CStr::from_ptr(parent_json).to_bytes().to_vec() };
+        let child = parent.fork();
+        assert_eq!(child.response(), parent.response());
+        assert_eq!(child.answer(), expected);
+
+        // A different getter overwrites only the child's scratch buffer. Its
+        // next answer getter must regenerate the same complete pending answer.
+        let child_observation = unsafe {
+            serde_json::from_slice::<serde_json::Value>(CStr::from_ptr(ygo_policy_observation_json(child.0)).to_bytes()).unwrap()
+        };
+        assert_eq!(child_observation, expected["observation"]);
+        assert_eq!(child.answer(), expected);
+        assert_eq!(unsafe { CStr::from_ptr(parent_json).to_bytes() }, parent_bytes);
+
+        // The actual pending state, unlike JSON scratch, is copied: changing a
+        // child's selected action must retain a valid independent parent.
+        let end_turn = 7u32.to_le_bytes();
+        assert_eq!(unsafe { ygo_policy_override_response(child.0, end_turn.as_ptr(), end_turn.len()) }, 0);
+        assert_eq!(child.response(), end_turn);
+        assert_eq!(child.answer()["choice"], 1);
+        assert_eq!(parent.response(), 5u32.to_le_bytes());
+        assert_eq!(parent.answer(), expected);
+    }
 }

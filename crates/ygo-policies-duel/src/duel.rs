@@ -167,6 +167,48 @@ const EXTRA: u32 = 0x40;
 const FACE_DOWN_DEFENSE: u32 = 0x8;
 
 impl Core {
+    /// Initial card-script declarations, keyed by decimal card code.
+    ///
+    /// Each value is an array of objects containing `category` (u64),
+    /// `effect_type` (u16), `range` (u16), `event` (u32), `description` (u64),
+    /// `flags` (u64), `has_cost` and `card_target`. Numeric layouts follow
+    /// OCGCore's constants. `event` is the effect code, including a passive
+    /// effect identifier for non-action effects.
+    ///
+    /// A separate, unstarted Master Rule 1 duel initializes each definition. No
+    /// live duel, hidden card, activation condition or Lua effect operation is
+    /// inspected. Results are sorted, deduplicated and cached by this core.
+    /// These are static hints, not a claim that an effect is legal or useful;
+    /// effects created later by an operation are intentionally absent.
+    /// `has_cost` means a cost function was registered, not that every use of
+    /// the effect consumes a card or Life Points.
+    pub fn effect_profiles(&self, codes: &[u32]) -> Result<serde_json::Value> {
+        if self.initial_effects.is_none() {
+            return Err("This core has no initial-effect metadata bridge".into());
+        }
+        let mut codes = codes.to_vec();
+        codes.sort_unstable();
+        codes.dedup();
+        let mut profiles = serde_json::Map::new();
+        for code in codes {
+            if self.printed(code).is_none() {
+                return Err(format!("Profile card {code} is absent from the database"));
+            }
+            let cached = self.effect_profile_cache.borrow().get(&code).cloned();
+            let value = match cached {
+                Some(value) => value,
+                None => {
+                    let mut duel = self.duel(&DuelOptions::seeded(0))?;
+                    let value = duel.initial_effect_profile(code)?;
+                    self.effect_profile_cache.borrow_mut().insert(code, value.clone());
+                    value
+                }
+            };
+            profiles.insert(code.to_string(), value);
+        }
+        Ok(serde_json::Value::Object(profiles))
+    }
+
     /// A duel with no card in it yet: [`Duel::add`] them, then
     /// [`Duel::start`] it.  `options.shuffle` is not used here.
     pub fn duel(&self, options: &DuelOptions) -> Result<Duel<'_>> {
@@ -232,6 +274,40 @@ impl Core {
 }
 
 impl Duel<'_> {
+    // Private: exposing this on a live duel would mutate it and would also
+    // allow an accidental dependency on the live field during initialization.
+    fn initial_effect_profile(&mut self, code: u32) -> Result<serde_json::Value> {
+        unsafe extern "C" fn append(output: Handle, effect: *const core::InitialEffect) {
+            (*(output as *mut Vec<core::InitialEffect>)).push(*effect);
+        }
+        let inspect = self.core.initial_effects.ok_or("No initial-effect metadata bridge")?;
+        let mut effects = Vec::<core::InitialEffect>::new();
+        let status = unsafe {
+            inspect(self.handle, code, &mut effects as *mut _ as Handle, append)
+        };
+        let errors = std::mem::take(&mut *self.errors.borrow_mut());
+        if !errors.is_empty() {
+            return Err(format!("Initializing profile {code}: {}", errors.join("; ")));
+        }
+        if status != 1 {
+            return Err(format!("Initializing profile {code} failed"));
+        }
+        effects.sort_unstable();
+        effects.dedup();
+        Ok(serde_json::Value::Array(effects.into_iter().map(|effect| {
+            serde_json::json!({
+                "category": effect.category,
+                "effect_type": effect.effect_type,
+                "range": effect.range,
+                "event": effect.event,
+                "description": effect.description,
+                "flags": effect.flags,
+                "has_cost": effect.has_cost != 0,
+                "card_target": effect.card_target != 0,
+            })
+        }).collect()))
+    }
+
     /// Put a card in the duel.  Only before [`Duel::start`].
     pub fn add(&mut self, card: Placed) {
         let pile = match card.location {

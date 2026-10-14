@@ -36,6 +36,9 @@ pub mod registry {
     struct Forkable<P>(P);
 
     impl<P: Policy + Clone + 'static> Policy for Forkable<P> {
+        fn set_effect_profiles(&mut self, profiles: crate::cards::EffectProfiles) -> bool {
+            self.0.set_effect_profiles(profiles)
+        }
         fn choose(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision) -> usize {
             self.0.choose(obs, decision)
         }

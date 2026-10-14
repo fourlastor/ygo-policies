@@ -243,6 +243,10 @@ one-step search at each of its decisions (see the bench README).\n\
   replay plays again; a deviation's `decision` is its answer's place in the record's responses)\n\
 generic mirrors each selected specialist deck: generic versus the frozen baseline specialist.\n\
   --plain true (use the generic policy without engine search)\n\
+  --effects true|false (public initial-effect metadata; default true)\n\
+  --method rollout|beam (default rollout; beam preserves complete action continuations)\n\
+  --beam-width 8 --beam-actions 6 --beam-nodes 128 --beam-decisions 256 --beam-replies 1\n\
+  Beam: --horizon 0 validates to terminal; nonzero validates at its turn horizon.\n\
   --worlds 4 --max-candidates 6 --max-playouts 24 --horizon 0 --millis 200\n\
   --depth 1|2 (default 1; depth 2 adds nested sampled rollout search; ignored by --plain true)\n\
   --millis 0 uses only deterministic work limits; --horizon 0 rolls out to the duel limit.\n\
@@ -320,6 +324,13 @@ fn run() -> Result<()> {
             "--depth",
             "--millis",
             "--exceptions",
+            "--effects",
+            "--method",
+            "--beam-width",
+            "--beam-actions",
+            "--beam-nodes",
+            "--beam-decisions",
+            "--beam-replies",
         ]
         .contains(&key.as_str())
         {
@@ -330,6 +341,11 @@ fn run() -> Result<()> {
             .ok_or_else(|| format!("Missing value for {key}"))?;
         if args.insert(key.clone(), value).is_some() {
             return Err(format!("Repeated argument: {key}"));
+        }
+    }
+    if mode != "generic" {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies"] {
+            if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
     if mode != "generic" && args.contains_key("--depth") {
@@ -777,7 +793,7 @@ fn generic_stats(rows: &[&Value], expected: usize) -> Value {
     let mut playouts = 0u64;
     let mut search_counts: BTreeMap<&str, u64> = ["searched", "failed_searches", "budget_exhausted",
         "incomplete_worlds", "truncated_playouts", "in_chain", "facing_set",
-        "inner_playouts", "inner_searches", "unresolved_playouts", "unsafe_selections", "soft_budget_overruns"]
+        "inner_playouts", "inner_searches", "unresolved_playouts", "unsafe_selections", "soft_budget_overruns", "proposal_nodes", "proposal_leaves", "proposal_improvements", "proposal_completed_prefixes", "proposal_responses", "plan_evaluations", "plan_applied", "plan_mismatches", "live_plan_applied", "live_plan_mismatches"]
         .into_iter().map(|key| (key, 0)).collect();
     let mut samples = Vec::new();
     let mut search_samples = Vec::new();
@@ -824,7 +840,7 @@ fn generic_stats(rows: &[&Value], expected: usize) -> Value {
     let interval = generic_wilson(wins, completed);
     let complete = rows.len() == expected && failures == 0 && caps == 0
         && failed_playouts == 0 && search_counts["failed_searches"] == 0;
-    json!({"attempted": rows.len(), "planned": expected, "completed": completed,
+    let mut summary = json!({"attempted": rows.len(), "planned": expected, "completed": completed,
         "wins": wins, "losses": losses, "draws": draws, "failures": failures, "caps": caps,
         "win_rate": rate, "wilson_95": interval, "target": 0.55,
         "meets_observed_target": complete && rate.is_some_and(|p| p >= 0.55),
@@ -840,7 +856,9 @@ fn generic_stats(rows: &[&Value], expected: usize) -> Value {
         "search_latency_ms": generic_latency(&mut search_samples),
         "soft_budget_overruns": search_counts["soft_budget_overruns"],
         "duel_seconds_sum": seconds,
-        "mean_duel_seconds": (!rows.is_empty()).then(|| seconds / rows.len() as f64)})
+        "mean_duel_seconds": (!rows.is_empty()).then(|| seconds / rows.len() as f64)});
+    for (key, value) in search_counts { summary[key] = json!(value); }
+    summary
 }
 
 fn generic_validate_schedule(stats: &mut Value, rows: &[&Value], expected: &[Job]) {
@@ -938,6 +956,13 @@ fn generic_run(
             "--millis",
             "--strict",
             "--exceptions",
+            "--effects",
+            "--method",
+            "--beam-width",
+            "--beam-actions",
+            "--beam-nodes",
+            "--beam-decisions",
+            "--beam-replies",
         ]
         .contains(&key.as_str())
         {
@@ -978,6 +1003,7 @@ fn generic_run(
     let limit = number("--limit", 4096)?;
     let seed = number("--seed", 2400000)? as u64;
     let plain = flag("--plain", false)?;
+    let effects = flag("--effects", true)?;
     let strict = flag("--strict", true)?;
     if !strict {
         return Err("generic requires --strict true: face-down monsters cannot be resampled safely".into());
@@ -986,13 +1012,24 @@ fn generic_run(
     let record = flag("--record", false)?;
     let worlds = number("--worlds", 4)?;
     let max_candidates = number("--max-candidates", 6)?;
+    let method = args.get("--method").map(String::as_str).unwrap_or("rollout");
+    if !["rollout", "beam"].contains(&method) { return Err("--method must be rollout or beam".into()); }
+    let planner = if method == "beam" {
+        Some(engine::PlannerOptions { width: number("--beam-width", 8)?,
+            actions: number("--beam-actions", 6)?, nodes: number("--beam-nodes", 128)?,
+            decisions: number("--beam-decisions", 256)?, replies: number("--beam-replies", 1)? })
+    } else { None };
+    if planner.is_some_and(|p| p.width == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0) {
+        return Err("beam width/actions/nodes/decisions must be positive".into());
+    }
     let max_playouts = if plain {
         0
     } else {
-        number("--max-playouts", 24)?
+        number("--max-playouts", if planner.is_some() { 1024 } else { 24 })?
     };
     let horizon = number("--horizon", 0)?;
     let depth = number("--depth", 1)?;
+    if planner.is_some() && depth != 1 { return Err("--depth applies only to rollout search".into()); }
     if !(1..=2).contains(&depth) {
         return Err("generic --depth must be 1 or 2".into());
     }
@@ -1040,8 +1077,9 @@ fn generic_run(
         "shuffle": "SplitMix64 Fisher-Yates v1; stable generic-mirror/deck-name seed",
         "policy_seed": "engine seed + seat", "rules": "MasterRule1 (0xD0700)",
         "decision_limit": limit, "life_points": [8000,8000], "target": 0.55, "exceptions": exceptions,
-        "plain": plain, "search": {"worlds": worlds, "max_candidates": max_candidates,
-            "max_playouts": max_playouts, "horizon": horizon, "depth": depth, "millis": millis, "strict": strict},
+        "plain": plain, "effect_profiles": effects, "search": {"worlds": worlds, "max_candidates": max_candidates,
+            "max_playouts": max_playouts, "horizon": horizon, "depth": depth, "millis": millis, "strict": strict,
+            "method": method, "validation": if horizon == 0 { "terminal" } else { "heuristic" }, "beam": planner.map(|p| json!({"width":p.width,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies}))},
         "timing_reproducibility": if millis == 0 || plain { "deterministic work cap" } else { "wall-time budget may change choices under machine load" },
         "engine": core_path.map(file_identity).unwrap_or_else(|| json!({"linked": true})),
         "executable": std::env::current_exe().ok().map(|p| file_identity(&p)),
@@ -1083,7 +1121,7 @@ fn generic_run(
                             ([&candidate, &baseline], ["generic", specialist])
                         } else { ([&baseline, &candidate], [specialist, "generic"]) };
                         let options = PlayOptions { seed: job.seed, limit, trace, life_points: [8000; 2], record };
-                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict };
+                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner };
                         let game_started = std::time::Instant::now();
                         let game = match engine::play_fast(&core, &decks, libraries, names, cards, options, fast) {
                             Ok(game) => game, Err(error) => json!({"error": error}),

@@ -13,6 +13,9 @@ mod search;
 pub use search::{play_searching, SearchOptions};
 mod fast;
 pub use fast::{play_fast, FastOptions};
+pub mod evaluation;
+mod planner;
+pub use planner::PlannerOptions;
 
 #[derive(Clone, Copy)]
 pub struct PlayOptions {

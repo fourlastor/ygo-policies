@@ -89,6 +89,19 @@ pub struct Seat {
 }
 
 impl Seat {
+    /// Install definition metadata before answering any prompt. Forks retain
+    /// the same immutable metadata; replacement during a transaction is rejected.
+    pub fn set_effect_profiles(&mut self, profiles: ygo_policies::cards::EffectProfiles) -> Result<()> {
+        if self.awaiting || self.answered.is_some() {
+            return Err(wire::error("set effect profiles before feeding a selection prompt"));
+        }
+        if !self.policy.set_effect_profiles(profiles.clone()) {
+            return Err(wire::error("policy does not support effect profiles"));
+        }
+        self.db = Arc::new(ygo_policies::cards::ProfiledCards::new(self.db.clone(), profiles));
+        Ok(())
+    }
+
     /// `seat` is this player's duel seat (0 goes first), or `None` to learn it
     /// from `MSG_START`.
     pub fn new(policy: Box<dyn Policy>, db: Arc<dyn CardDatabase>, seat: Option<u8>) -> Self {
