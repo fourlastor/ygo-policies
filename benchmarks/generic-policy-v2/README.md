@@ -95,6 +95,16 @@ single-worker four-game latency sample measured 190 ms median and 314 ms p95
 per searched decision at 32 iterations, versus 900/1,483 ms for 128. The paths
 differed and the sample is small; 200 ms is not a worst-case guarantee.
 
+The [v17 answer-reuse optimization](perf-v17/report.md) removes repeated JSON
+round trips for ordinary prompts while retaining sequential expansion and its
+cached policy state. Twelve focused tests and a native differential fixture
+passed; the latter removed 292 round trips across 32 identical simulations.
+The same four real games retained every outcome, digest and search-work counter;
+median/p95 searched-decision latency fell from 190/314 ms to 156/250 ms. Native
+snapshot byte-volume telemetry differed by a small persistent offset in one
+game, documented separately in the report. This is limited performance evidence,
+not a strength result or a universal 200 ms guarantee.
+
 The [v13 manual-weight diagnostic](manual-weights-chain-burn-v13/report.md)
 tested one frozen Chain Burn preset on 64 paired mirrors: default weights won
 9/64 (14.06%), and lower card-count/higher LP weights won 13/64 (20.31%). Six
@@ -370,6 +380,29 @@ The first beam smoke predates terminal validation and used the turn horizon even
 though its command contained `--horizon 0`. Its metadata explicitly records
 `search.validation=heuristic` and this correction. Current code honors zero as
 terminal validation. Do not pool these modes.
+
+## How the current search chooses branches
+
+The unchanged Generic move is retained first. A bounded set of legal alternatives
+adds action-kind and distinct Extra Deck summon diversity. Sequential prompts
+produce up to twelve complete responses by varying first picks and, if space
+remains, second picks; the host still retains at most eight for these experiments.
+This is a candidate subset, not exhaustive enumeration of every legal play.
+
+MCTS uses UCT: mean completed simulation value plus an exploration bonus
+`sqrt(2 * ln(parent_attempts + 1) / action_attempts)`. It selects the root action
+before cycling its sampled hidden world, adds at most one useful tree node per
+simulation, and uses Generic for the remainder of that rollout. The rollout
+ends at a resolved turn boundary after the configured reply horizon, or at a
+terminal result; failed or capped simulations do not contribute a value. Terminal
+returns are ±1; other leaves use the fixed 13-feature evaluator.
+
+The highest-mean proposal is frozen, then compared with the unchanged Generic
+continuation on four fresh common hidden worlds. It replaces Generic only if
+that fresh comparison is better; ties retain Generic. This is not recursive
+MCTS self-play. Hidden arrangements are sampled from known opponent deck
+composition, and unsafe active-chain or unknown face-down monster roots remain
+outside new search. Exact cached continuations can still be replayed.
 
 ## Reproduce
 
