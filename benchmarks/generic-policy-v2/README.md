@@ -68,6 +68,33 @@ ordinary plain play by themselves.
 
 ## Development evidence
 
+The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
+from weight tuning: Demise now accounts for its LP cost and friendly collateral,
+and uses profitable field wipes before developing more cards. Fresh paired plain
+mirrors improved from 17/64 to 27/64 on Demise; all outcomes and digests on the
+other 70 decks were unchanged. Fresh Demise MCTS improved from 23/64 to 38/64.
+That 59.4% observation has a 47.1–70.5% Wilson interval and is not a qualified
+55% result. The subsequent independent schedule below also illustrates its
+sampling uncertainty.
+
+The [v15/v16 follow-up](material-search-v16/report.md) isolates Megamorph target
+knowledge and bounded second-pick material alternatives, with default weights
+throughout. Megamorph improved plain Demise from 24/64 to 32/64; the other 70
+decks again retained identical outcomes and digests. On a separate MCTS schedule,
+v14/v15/v16 won 33/32/32 of 64 games. Additional material alternatives changed
+six trajectories but no winners there; an eight-deck screen changed 59/128 wins
+to 58/128. This establishes broader legal coverage, not a measured strength gain.
+A dedicated one-worker four-game sample measured approximately 0.85–0.90 seconds
+at the median searched decision: the 200 ms goal remains unmet at 128 iterations.
+
+The [single 32-iteration ablation](fast32-v16/report.md) kept all other settings
+fixed on the completed 64-game Demise schedule: 32/64 wins at 128 iterations
+versus 35/64 at 32. Twelve pairs improved and nine regressed; the paired interval
+crosses zero, so this is not proof of preserved or improved strength. A separate
+single-worker four-game latency sample measured 190 ms median and 314 ms p95
+per searched decision at 32 iterations, versus 900/1,483 ms for 128. The paths
+differed and the sample is small; 200 ms is not a worst-case guarantee.
+
 The [v13 manual-weight diagnostic](manual-weights-chain-burn-v13/report.md)
 tested one frozen Chain Burn preset on 64 paired mirrors: default weights won
 9/64 (14.06%), and lower card-count/higher LP weights won 13/64 (20.31%). Six

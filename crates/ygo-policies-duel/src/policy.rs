@@ -179,8 +179,9 @@ impl LibrarySeat<'_> {
     /// Expand a sequential target/material prompt into bounded legal whole
     /// responses, and return the updated last-answer JSON. Its choices and
     /// responses stay aligned; overrides restore the matching cached policy.
-    /// At most twelve initial candidates are attempted. Other prompts return
-    /// their existing answer without changing the available responses.
+    /// The library keeps at most twelve responses. Current libraries try up
+    /// to twelve first picks, then up to twelve second-pick deviations if
+    /// slots remain. Other prompts return their existing answer unchanged.
     pub fn alternative_responses(&self, maximum: usize) -> Result<serde_json::Value> {
         let expand = self.library.alternative_responses
             .ok_or("policy library has no sequential alternative API")?;
