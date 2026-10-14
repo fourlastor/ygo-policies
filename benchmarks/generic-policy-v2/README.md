@@ -92,6 +92,14 @@ three gains, five losses, paired interval [-11.82, +5.57] points. The logical
 correction has no demonstrated strength benefit. All games completed cleanly;
 default weights stayed fixed.
 
+The [v19 Crystal Release test](release-v19/report.md) corrects beneficial equip
+target polarity while leaving activation of its separate graveyard effect
+unchanged. Five new tests passed as part of 41 transaction tests. In fresh
+64-pair samples, plain play changed 30 to 31 wins and MCTS changed 41 to 40;
+neither establishes a strength improvement. The activation gate uses printed
+set membership, so runtime identity changes remain a documented limitation;
+actual offered Equip targets remain authoritative.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain
