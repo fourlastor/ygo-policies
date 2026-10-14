@@ -589,6 +589,7 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
         }
         AnnounceNumber { values, .. } => {
             p = Prompt::new(DecisionKind::Announce);
+            p.decision.hint = hint(selection_hint);
             for (index, value) in values.iter().enumerate() {
                 p.push(Choice { description: *value, ..plain(ChoiceKind::Announce) }, int(index as i32));
             }
@@ -631,6 +632,105 @@ pub fn prompt(message: &Message, obs: &Observation, selection_hint: u64, db: &dy
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn number_message(player: u8, values: &[u64]) -> Vec<u8> {
+        let mut message = Writer::default().u8(crate::wire::msg::ANNOUNCE_NUMBER)
+            .u8(player).u8(values.len() as u8);
+        for value in values { message = message.u64(*value); }
+        message.0
+    }
+
+    fn selection_hint_message(player: u8, hint: u64) -> Vec<u8> {
+        Writer::default().u8(crate::wire::msg::HINT).u8(crate::wire::hint::SELECTMSG)
+            .u8(player).u64(hint).0
+    }
+
+    fn announcement_seat(player: u8) -> crate::Seat {
+        struct LastChoice;
+        impl ygo_policies::agent::Policy for LastChoice {
+            fn choose(&mut self, _: &Observation, decision: &Decision) -> usize {
+                decision.choices.len() - 1
+            }
+        }
+        crate::Seat::new(Box::new(LastChoice),
+            std::sync::Arc::new(ygo_policies::cards::MemoryCards::default()), Some(player))
+    }
+
+    #[test]
+    fn announce_number_preserves_hint_value_order_and_index_responses() {
+        let commander_cost = (21_454_943u64 << 20) | 1;
+        // Deliberately not sorted: the native response is an offered index,
+        // never the announced numeric value or an index in a sorted list.
+        let values = [500, 100, 300];
+        for player in [0, 1] {
+            for (selection_hint, expected) in [
+                (None, Hint::None),
+                (Some(0), Hint::None),
+                (Some(commander_cost), Hint::Other(commander_cost)),
+                (Some(commander_cost + 1), Hint::Other(commander_cost + 1)),
+                (Some(515), Hint::FaceDown),
+            ] {
+                let mut seat = announcement_seat(player);
+                if let Some(hint) = selection_hint {
+                    assert_eq!(seat.feed(&selection_hint_message(player, hint)).unwrap(), None);
+                }
+                assert_eq!(seat.feed(&number_message(player, &values)).unwrap(), Some(int(2)));
+                let answer = seat.last_answer().unwrap();
+                assert_eq!(answer.decision.kind, DecisionKind::Announce);
+                assert_eq!(answer.decision.hint, expected);
+                assert_eq!(answer.decision.choices.iter().map(|choice| choice.description).collect::<Vec<_>>(), values);
+                assert!(answer.decision.choices.iter().all(|choice| choice.kind == ChoiceKind::Announce));
+                assert_eq!(answer.responses, vec![int(0), int(1), int(2)]);
+                // The hint belongs to one prompt, including when it is zero
+                // or unrelated to Commander. It must not label the next one.
+                seat.feed(&number_message(player, &values)).unwrap();
+                assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::None);
+            }
+        }
+    }
+
+    #[test]
+    fn announce_number_hint_lifecycle_is_per_seat_and_consumed_by_other_prompts() {
+        let commander_cost = (21_454_943u64 << 20) | 1;
+        for player in [0, 1] {
+            let mut seat = announcement_seat(player);
+            seat.feed(&selection_hint_message(player, commander_cost)).unwrap();
+            // The other player's private traffic neither overwrites nor
+            // consumes our pending hint.
+            assert_eq!(seat.feed(&selection_hint_message(1-player, commander_cost + 2)).unwrap(), None);
+            assert_eq!(seat.feed(&number_message(1-player, &[100, 200])).unwrap(), None);
+            seat.feed(&number_message(player, &[100, 200])).unwrap();
+            assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::Other(commander_cost));
+
+            seat.feed(&selection_hint_message(player, commander_cost)).unwrap();
+            let option = Writer::default().u8(crate::wire::msg::SELECT_OPTION)
+                .u8(player).u8(1).u64(7).0;
+            seat.feed(&option).unwrap();
+            assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::None);
+            seat.feed(&number_message(player, &[100, 200])).unwrap();
+            assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::None);
+
+            // A later selection hint replaces the earlier one.
+            seat.feed(&selection_hint_message(player, commander_cost)).unwrap();
+            seat.feed(&selection_hint_message(player, 501)).unwrap();
+            seat.feed(&number_message(player, &[100, 200])).unwrap();
+            assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::Discard);
+
+            // Other announcement families keep their current metadata and
+            // still consume the pending hint at the Seat boundary.
+            let race = Writer::default().u8(crate::wire::msg::ANNOUNCE_RACE)
+                .u8(player).u8(1).u64(5).0;
+            let attribute = Writer::default().u8(crate::wire::msg::ANNOUNCE_ATTRIB)
+                .u8(player).u8(1).u32(5).0;
+            for message in [race, attribute] {
+                seat.feed(&selection_hint_message(player, commander_cost)).unwrap();
+                seat.feed(&message).unwrap();
+                assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::None);
+                seat.feed(&number_message(player, &[100, 200])).unwrap();
+                assert_eq!(seat.last_answer().unwrap().decision.hint, Hint::None);
+            }
+        }
+    }
 
     fn candidate(sequence: u32, value: i64) -> Member {
         Member {

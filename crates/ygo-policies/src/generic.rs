@@ -708,6 +708,10 @@ impl Strategy for Generic {
     fn option(&self, t: &Turn) -> Option<usize> {
         life::option(t)
     }
+
+    fn announce(&self, t: &Turn) -> Option<usize> {
+        combat::announce(t)
+    }
 }
 
 #[cfg(test)]

@@ -186,9 +186,9 @@ pub fn set_spell_trap<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
 /// destroy, monsters that take their attacker with them, Damage Step ATK
 /// changes, monsters that switch position when attacked.
 pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick: i32) -> Outcome {
-    let striking = ctx.facts(attacker).striking;
     if !target.position.face_up && !target.known() {
         // Unknown face-down monster: only strong attackers risk it.
+        let striking = ctx.facts(attacker).striking;
         let atk = attacker.attack + striking.bonus;
         if atk >= 1900 {
             return Outcome::Win { trick: false };
@@ -199,6 +199,20 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
         return Outcome::Lose;
     }
     let met = ctx.attack_meets(Some(attacker), target);
+    default_outcome_with_meets(ctx, attacker, target, trick, met)
+}
+
+/// Resolve a known target with explicitly supplied battle facts. Exact
+/// transaction forecasts can remove a hypothetical stat-change prior before
+/// comparing the actual offered change, without losing shared battle rules.
+pub(crate) fn default_outcome_with_meets(
+    ctx: &Ctx,
+    attacker: &CardView,
+    target: &CardView,
+    trick: i32,
+    met: crate::ctx::Meets,
+) -> Outcome {
+    let striking = ctx.facts(attacker).striking;
     let removes = ctx.strike_removes(attacker, target);
     // No battle: one of the two is gone before damage calculation.
     if met.facts.attacker != Fate::Unharmed && met.facts.before_damage {
