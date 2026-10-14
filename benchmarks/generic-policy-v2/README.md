@@ -78,6 +78,8 @@ records binary fingerprints, engine/scripts, decks, seeds and settings.
 | v6 MCTS versus v4 MCTS, same 71-deck schedule | 129/284 | 134/284 | +1.76 points [-1.08, +4.60] |
 | v7 generic pilot versus v6, same 71-deck schedule | 397/1136 | 398/1136 | +0.09 points [-0.21, +0.39] |
 | v8 generic pilot versus v7, same 71-deck schedule | 398/1136 | 420/1136 | +1.94 points [+0.85, +3.02] |
+| v6 larger MCTS budgets and all-root validation versus v6 small MCTS, all 71 decks | 134/284 | 156/284 | +7.75 points [+1.47, +14.02] |
+| v8 small MCTS versus v6 small MCTS, same 71-deck schedule | 134/284 | 151/284 | +5.99 points [-0.35, +12.32] |
 
 Intervals are paired normal 95% intervals over the exact deck/seed/seat schedule.
 The earlier pilot and beam intervals include zero. The small MCTS smoke has only 11
@@ -109,6 +111,41 @@ it was +15.63 points [-4.27, +35.52]. Those two comparisons cross executable
 revisions. This four-deck development result does not meet the per-specialist
 target: Heroes and Monarch remained at 50%, and the other 67 decks were untested
 at this larger setting.
+
+The completed [v6 larger-roster comparison](mcts-v6-large-roster-comparison.json)
+uses identical frozen candidate and executable fingerprints on both sides. Larger
+budgets **and** all-root validation improved 53 paired win indicators and worsened
+31, with 200 unchanged. It scored 156 wins, 127 losses and one draw in 284 games
+(54.93%). Only 27/70 required decks met the observed 55% target; none passed the
+Wilson lower-bound target. Four games per deck cannot establish per-deck strength.
+This bundled development comparison does not isolate which search setting helped.
+All live games completed, with zero errors, live caps, failed searches/playouts,
+proposal cutoffs or unresolved validation trials. All 3,913,216 proposal simulations
+completed and all 31,619 retained root actions were visited; 2,483/7,643 searched
+roots accepted a proposal (32.5%). Validation still used heuristic leaves in
+267,441/314,096 trials (85.1%). Search latency was 5568 ms median, 12514 ms p95
+and 31912 ms maximum under concurrent load and the recorded affinity changes.
+Those timings are descriptive, unsuitable for a controlled speed comparison.
+
+The completed [v8 small-MCTS comparison](mcts-v8-roster-comparison.json) preserves
+the v6 small search configuration, but both candidate library and executable
+revisions changed. It scored 151/284 (53.17%), with 51 improved paired win
+indicators, 34 regressed and 199 unchanged. The aggregate interval includes zero.
+Only 25/70 required decks reached the observed target, versus 19/70 for v6;
+none met the Wilson lower-bound target. Jurrac changed from 0/4 to 4/4 and Agents
+from 1/4 to 4/4. Crystal, Destiny HERO, Draconic Might and Gemini each lost two
+wins. These four-game deck counts are descriptive and do not establish per-deck
+improvement or regression.
+
+V8 completed every live game with zero live caps, game errors, failed searches,
+failed playouts or unresolved validation trials. It recorded one bounded proposal
+cutoff: Countdown, seed 227181910, candidate seat 1. Thus 1,221,375/1,221,376
+proposal simulations completed; the capped proposal returned no value and did
+not update action values. All 76,336 validation trials resolved, including
+66,997 heuristic leaves. All 35,961 retained root actions were visited, and
+1,912/9,542 searches accepted a proposal (20.0%). Search latency was 1026 ms
+median and 2225 ms p95 under changing background load. Worker counts and load
+differ from v6, so these timings are not a controlled speed comparison.
 
 The v6 pilot uses binaries frozen at source revision `2961bfa`; subsequent source
 changes are outside this evidence. Compared with v4, it improved 31 paired
@@ -229,6 +266,10 @@ original names. `archive-manifest.json` records original byte counts and SHA-256
 digests, verified after decompression. Comparison JSON files point to the archives.
 Discontinued partial data is listed separately in `partial-archive-manifest.json`,
 with a status document that prevents its use in completed strength comparisons.
+The completed `pilot-v8-weak-traces.jsonl.gz` contains 28 selected diagnostic
+games, archived after all trace readers finished. Its metadata and summary are
+preserved; selection for weak-deck investigation makes it unsuitable as a new
+representative strength estimate.
 
 The first beam smoke predates terminal validation and used the turn horizon even
 though its command contained `--horizon 0`. Its metadata explicitly records
@@ -306,3 +347,49 @@ validation respects the game decision limit. A nonzero `--horizon` selects
 heuristic validation at the beam's requested turn horizon. `--millis` is a soft
 budget checked between engine operations. Half of its remaining time is reserved
 for validation; each proposal receives an equal portion of the other half.
+
+`mcts_cutoffs` counts proposal simulations stopped by their decision/time bounds
+without a value; these returns do not update action values. It is separate from
+live-game `caps` and failed searches/playouts. Report proposal cutoffs together
+with attempted/completed simulations, even when all live games finish normally.
+
+The `run_perf_v9.py` experiment compares frozen `1576a59` and performance revision
+`2b289c6` using each version's own executable and FFI library. It runs two games
+per version on Blackwing, Fabled, Monarch and Worm, seed 2468000, one worker,
+alternating version order across decks. It uses the small MCTS settings above
+with four proposal/validation worlds, eight candidates, 128 iterations, 1024
+nodes, 384 decisions, 256 total proposal/validation attempts and best-only validation. The script
+checks the exact frozen SHA-256 values and unchanged generic/evaluator sources.
+
+`/usr/bin/python3 benchmarks/generic-policy-v2/run_perf_v9.py plan` prints the commands
+without running them. An explicit `run` requires host process visibility and a
+fresh output directory; it refuses any other benchmark except the exact four-worker
+v8 roster, or accepts its validated completion. It temporarily confines active
+v8 threads to CPUs 12–23 while measurements use CPUs 8–11, then restores CPUs
+8–23. It verifies the completed v6 larger run before launch. Scheduling events,
+original masks and child affinities are saved; SIGKILL cannot execute restoration.
+The paired report requires exact outcomes, digests and all non-timing counters
+before comparing decision/search latency. It measures a bundled host/library
+optimization, with remaining background memory-load interference and only eight
+game pairs; it is not playing-strength evidence. These small performance raw
+files stay uncompressed so their recorded evidence hashes remain directly verifiable.
+
+Use the system interpreter above on this host: its native `os.pidfd_open` support
+was verified. The first attempt in `perf-v9-2b289c6` used the default local Python,
+which lacked that function. It failed before changing affinity or launching any
+measurement; its manifest, event log and failure status are retained separately.
+The fresh retry uses `run --output-dir benchmarks/generic-policy-v2/perf-v9-2b289c6-r2`.
+
+That retry [completed successfully](perf-v9-2b289c6-r2/README.md): all eight paired
+games matched exactly on outcomes, digests and every non-timing search counter,
+with zero failures, live caps or proposal cutoffs. The background v8 job ended
+during optimized Blackwing, so its two game pairs are excluded from the primary
+timing subset. The remaining six pairs on Fabled, Monarch and Worm had no
+competing benchmark process: total search time fell from 223.255 to 211.885
+seconds, **5.09% lower**, over 234 matched searched decisions. Their mean per-game
+reduction was 4.88%; search p95 was 1685 to 1583 ms. These are descriptive results
+from a small fixed sample, with correlated decisions and uncontrolled unrelated
+system activity. They establish neither a global speed guarantee nor the 55%
+strength target. Full source/binary fingerprints and the bundled host/library
+scope are documented beside the results. `summarize_perf_v9.py` reproduces the
+background-separated report without running matches or changing input files.
