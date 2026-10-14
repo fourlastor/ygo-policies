@@ -25,6 +25,10 @@ pub struct PolicyLibrary {
     error: unsafe extern "C" fn() -> *const c_char,
     answer: unsafe extern "C" fn(Handle) -> *const c_char,
     search_view: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
+    observation: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
+    enable_response_overrides: Option<unsafe extern "C" fn(Handle) -> i32>,
+    override_response: Option<unsafe extern "C" fn(Handle, *const u8, usize) -> i32>,
+    alternative_responses: Option<unsafe extern "C" fn(Handle, usize) -> *const c_char>,
     /// Policy id to the name of its deck list.
     pub catalog: HashMap<String, String>,
 }
@@ -63,6 +67,10 @@ impl PolicyLibrary {
                 error: symbol(&library, b"ygo_policy_last_error")?,
                 answer: symbol(&library, b"ygo_policy_last_answer_json")?,
                 search_view: symbol(&library, b"ygo_policy_search_view_json").ok(),
+                observation: symbol(&library, b"ygo_policy_observation_json").ok(),
+                enable_response_overrides: symbol(&library, b"ygo_policy_enable_response_overrides").ok(),
+                override_response: symbol(&library, b"ygo_policy_override_response").ok(),
+                alternative_responses: symbol(&library, b"ygo_policy_alternative_responses_json").ok(),
                 catalog,
                 _library: library,
             })
@@ -119,6 +127,43 @@ impl LibrarySeat<'_> {
         Ok(Self { library: self.library, handle })
     }
 
+    /// Enable policy snapshots before feeding this search seat's first prompt.
+    /// Forked seats retain the setting and the pending pre-choice snapshot.
+    pub fn enable_response_overrides(&self) -> Result<()> {
+        let enable = self.library.enable_response_overrides
+            .ok_or("policy library has no response override API")?;
+        match unsafe { enable(self.handle) } {
+            0 => Ok(()),
+            _ => Err(self.library.last_error()),
+        }
+    }
+
+    /// Commit the actual legal response chosen by search, including the
+    /// corresponding policy memory, before sending it to the engine.
+    pub fn override_response(&self, response: &[u8]) -> Result<()> {
+        let commit = self.library.override_response
+            .ok_or("policy library has no response override API")?;
+        match unsafe { commit(self.handle, response.as_ptr(), response.len()) } {
+            0 => Ok(()),
+            _ => Err(self.library.last_error()),
+        }
+    }
+
+    /// Expand a sequential target/material prompt into bounded legal whole
+    /// responses, and return the updated last-answer JSON. Its choices and
+    /// responses stay aligned; overrides restore the matching cached policy.
+    /// At most twelve initial candidates are attempted. Other prompts return
+    /// their existing answer without changing the available responses.
+    pub fn alternative_responses(&self, maximum: usize) -> Result<serde_json::Value> {
+        let expand = self.library.alternative_responses
+            .ok_or("policy library has no sequential alternative API")?;
+        unsafe {
+            let answer = expand(self.handle, maximum);
+            if answer.is_null() { return Err(self.library.last_error()); }
+            serde_json::from_slice(CStr::from_ptr(answer).to_bytes()).map_err(|e| e.to_string())
+        }
+    }
+
     /// Feed one message (id first).  When it asks this seat to decide, the
     /// response bytes for the engine come back.
     pub fn feed(&self, message: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -166,6 +211,12 @@ impl LibrarySeat<'_> {
     /// writes one: what it observed, the choices it had and the one it took.
     pub fn last_answer(&self) -> Result<serde_json::Value> {
         self.read_json(self.library.answer)
+    }
+
+    /// The seat's current observation, after the same redaction used by its
+    /// policy. This never queries hidden engine state.
+    pub fn observation(&self) -> Result<serde_json::Value> {
+        self.read_json(self.library.observation.ok_or("policy library has no observation API")?)
     }
 
     /// Alternatives and a small situation summary, or JSON null for a decision

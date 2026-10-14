@@ -40,6 +40,24 @@ YgoPolicy *ygo_policy_create_seeded(const char *policy_id, const char *cards_cdb
    failure; destroy the copy with ygo_policy_destroy. Optional in older libraries. */
 YgoPolicy *ygo_policy_clone(const YgoPolicy *policy);
 
+/* Enable state-safe replacement of future responses, before feeding the first
+   selection prompt. Forks inherit this setting. 0 on success, -1 on error.
+   Optional in older libraries; ordinary seats avoid the snapshot overhead. */
+int32_t ygo_policy_enable_response_overrides(YgoPolicy *policy);
+
+/* Replace the pending response with another offered response and commit its
+   action to policy memory. The pending decision must have been fed after
+   enabling overrides. Sequential alternatives must first be expanded below.
+   0 on success, -1 on error; errors preserve the response. Optional API. */
+int32_t ygo_policy_override_response(YgoPolicy *policy, const uint8_t *response, size_t length);
+
+/* Expand a sequential target/material prompt to at most twelve legal whole
+   responses, cache each resulting policy state, and return updated last-answer
+   JSON. `maximum` is clamped to 1..12; at most that many initial candidates are
+   attempted. Choices and responses remain aligned. Other prompts are unchanged.
+   NULL on error; valid until the next call. Optional in older libraries. */
+const char *ygo_policy_alternative_responses_json(YgoPolicy *policy, size_t maximum);
+
 /* One message (message id byte + body).  1: this seat must answer (see
    ygo_policy_response); 0: nothing to answer; -1: error. */
 int32_t ygo_policy_feed(YgoPolicy *policy, const uint8_t *message, size_t length);
@@ -64,8 +82,9 @@ const char *ygo_policy_observation_json(YgoPolicy *policy);
 const char *ygo_policy_last_answer_json(YgoPolicy *policy);
 
 /* Compact search view: {decision, choice, responses, situation}, without the
-   full observation. JSON null unless Idle, Battle, YesNo, Position or an optional
-   Chain. NULL on error; valid until the next call. Optional in older libraries. */
+   full observation. Supports Idle, Battle, YesNo, Position, Option, card/material
+   selections, or optional Chain; JSON null otherwise. NULL on error; valid until
+   the next call. Optional in older libraries. */
 const char *ygo_policy_search_view_json(YgoPolicy *policy);
 
 void ygo_policy_destroy(YgoPolicy *policy);

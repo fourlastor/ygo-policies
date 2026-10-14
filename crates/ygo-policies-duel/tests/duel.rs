@@ -135,6 +135,60 @@ fn a_snapshot_brings_the_duel_back_and_a_swap_changes_it() {
 }
 
 #[test]
+fn simulated_dice_are_reseeded_and_restoring_preserves_live_randomness() {
+    use ygo_policies::model::ChoiceKind;
+    use ygo_policies_duel::Placed;
+    const DICE: u32 = 74137509;
+    const MONSTER: u32 = 89631139;
+    let core = core();
+    assert!(core.has_reseed());
+    let options = DuelOptions { hand: 0, per_turn: 0, ..DuelOptions::seeded(123) };
+    let mut duel = core.duel(&options).unwrap();
+    duel.add(Placed { controller: 0, code: MONSTER, location: 4, sequence: 0, position: 1 });
+    duel.add(Placed { controller: 0, code: DICE, location: 2, sequence: 0, position: 8 });
+    duel.start();
+    let mut seats = seats(&duel, 123);
+    let activation = loop {
+        let (player, answer) = advance(&mut duel, &mut seats).unwrap();
+        let last = seats[player as usize].last_answer().unwrap();
+        if let Some(index) = last.decision.choices.iter().position(|choice| {
+            choice.kind == ChoiceKind::Activate && choice.code() == Some(DICE)
+        }) {
+            break last.responses[index].clone();
+        }
+        duel.respond(&answer);
+    };
+    let snapshot = duel.snapshot().unwrap();
+    let original_seats = [seats[0].fork().unwrap(), seats[1].fork().unwrap()];
+    let sample = |duel: &mut Duel, seed: Option<u64>| {
+        duel.restore(&snapshot).unwrap();
+        if let Some(seed) = seed { duel.reseed(seed).unwrap(); }
+        let mut players = [original_seats[0].fork().unwrap(), original_seats[1].fork().unwrap()];
+        duel.respond(&activation);
+        for _ in 0..32 {
+            let step = duel.step().unwrap();
+            let mut response = None;
+            for sent in step.messages {
+                if sent.bytes.first() == Some(&ygo_policies_ocgcore::wire::msg::TOSS_DICE) {
+                    return sent.bytes;
+                }
+                for seat in &mut players {
+                    if let Some(answer) = seat.feed(&sent.bytes).unwrap() { response = Some(answer); }
+                }
+            }
+            if let Some(answer) = response { duel.respond(&answer); }
+        }
+        panic!("Graceful Dice never rolled");
+    };
+    let live = sample(&mut duel, None);
+    let first = sample(&mut duel, Some(41));
+    assert_eq!(first, sample(&mut duel, Some(41)));
+    let outcomes: std::collections::BTreeSet<_> = (0..16).map(|seed| sample(&mut duel, Some(seed))).collect();
+    assert!(outcomes.len() > 1, "simulation seed must affect the die");
+    assert_eq!(live, sample(&mut duel, None), "search must leave live chance events untouched");
+}
+
+#[test]
 fn exodia_stall_with_large_synchro_searches_finishes() {
     // Seed 1311823037 used to throw std::bad_alloc inside Tele-DAD's
     // Synchro-material checks when its duel arena reached 256 MiB. Keep

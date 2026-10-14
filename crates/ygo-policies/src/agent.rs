@@ -18,6 +18,14 @@ pub trait Policy: Send {
     /// Return an index into `decision.choices`.
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize;
 
+    /// Commit an externally chosen legal action on the state from immediately
+    /// before `choose`. Search must restore that state first: applying this to
+    /// the already chosen policy would retain the discarded action's memory.
+    /// Return false when this policy cannot support external choices.
+    fn commit_choice(&mut self, _obs: &Observation, _decision: &Decision, _index: usize) -> bool {
+        false
+    }
+
     /// An independent copy, including memory and random state, when supported.
     fn fork(&self) -> Option<Box<dyn Policy>> {
         None
@@ -347,6 +355,18 @@ impl<S: Strategy> Agent<S> {
     pub fn seeded(strategy: S, db: Arc<dyn CardDatabase>, seed: u64) -> Self {
         Agent { strategy, db, memory: Memory { ties: TieBreak::new(seed), ..Memory::default() } }
     }
+
+    fn prepare_choice(&mut self, obs: &Observation, decision: &Decision) {
+        if obs.turn != self.memory.turn {
+            self.memory.turn = obs.turn;
+            self.memory.picks.clear();
+            self.memory.activated.clear();
+        }
+        if matches!(decision.kind, DecisionKind::Idle | DecisionKind::Battle) {
+            self.memory.intent.clear();
+            self.memory.chain_mark = None;
+        }
+    }
 }
 
 impl<S: Strategy> Policy for Agent<S> {
@@ -354,25 +374,13 @@ impl<S: Strategy> Policy for Agent<S> {
         if decision.choices.is_empty() {
             return 0;
         }
-        if obs.turn != self.memory.turn {
-            self.memory.turn = obs.turn;
-            self.memory.picks.clear();
-            self.memory.activated.clear();
-        }
+        self.prepare_choice(obs, decision);
         let db = self.db.clone();
         let mut t = Turn { ctx: Ctx::new(obs, db.as_ref()), decision, memory: &mut self.memory };
         let s = &mut self.strategy;
         let answer = match decision.kind {
-            DecisionKind::Idle => {
-                t.memory.intent.clear();
-                t.memory.chain_mark = None;
-                idle(s, &mut t)
-            }
-            DecisionKind::Battle => {
-                t.memory.intent.clear();
-                t.memory.chain_mark = None;
-                battle(s, &mut t)
-            }
+            DecisionKind::Idle => idle(s, &mut t),
+            DecisionKind::Battle => battle(s, &mut t),
             DecisionKind::Chain { .. } => chain(s, &mut t),
             DecisionKind::YesNo => yes_no(s, &mut t),
             DecisionKind::Position => position(s, &t),
@@ -385,6 +393,28 @@ impl<S: Strategy> Policy for Agent<S> {
             _ => None,
         };
         answer.filter(|i| *i < decision.choices.len()).unwrap_or(0)
+    }
+
+    fn commit_choice(&mut self, obs: &Observation, decision: &Decision, index: usize) -> bool {
+        let Some(choice) = decision.choices.get(index) else { return false };
+        self.prepare_choice(obs, decision);
+        let mut t = Turn { ctx: Ctx::new(obs, self.db.as_ref()), decision, memory: &mut self.memory };
+        // The previous action's targets cannot be reused for a different
+        // activation or attack. Follow-up selections can score the new targets.
+        if matches!(choice.kind, ChoiceKind::Activate | ChoiceKind::Attack) {
+            t.memory.intent.clear();
+        }
+        if choice.kind == ChoiceKind::Yes && choice.card.is_some() {
+            t.memory.intent.clear();
+            if let Some(code) = decision.subject.or_else(|| choice.code()) {
+                t.memory.last_activated = Some(code);
+                t.memory.activated.push(code);
+            }
+        }
+        if matches!(decision.kind, DecisionKind::Idle | DecisionKind::Battle | DecisionKind::Chain { .. }) {
+            t.pick(index);
+        }
+        true
     }
 }
 
@@ -711,4 +741,87 @@ fn toggle<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
     best.map(|b| b.1)
         .or(finish)
         .or_else(|| t.choices().find(|(_, c)| c.kind == ChoiceKind::Cancel).map(|(i, _)| i))
+}
+
+#[cfg(test)]
+mod commit_tests {
+    use super::*;
+    use crate::cards::MemoryCards;
+
+    #[derive(Clone, Default)]
+    struct Planner { calls: usize }
+
+    impl Strategy for Planner {
+        fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+            self.calls += 1;
+            t.pick_targeting(0, vec![CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 }])
+        }
+    }
+
+    fn observation() -> Observation {
+        Observation {
+            me: 0, turn: 1, turn_player: Some(0), phase: Some(Phase::Main1),
+            life_points: [8000, 8000], cards: Vec::new(), pile_sizes: Vec::new(),
+            chain: Vec::new(), battle_attacker: None, battle_target: None,
+            event_cards: Vec::new(), summon_used: false, chain_known: true,
+            can_attack_known: true, coin_toss: None,
+        }
+    }
+
+    fn choice(kind: ChoiceKind, code: u32) -> Choice {
+        Choice {
+            kind, card: Some(Member {
+                at: CardRef { controller: 0, location: Location::Hand, sequence: code },
+                code: Some(code), value: 0, required: false,
+            }), members: Vec::new(), description: 0, place: None,
+        }
+    }
+
+    fn decision(kind: DecisionKind, choices: Vec<Choice>) -> Decision {
+        Decision { kind, hint: Hint::None, minimum: 0, maximum: 0,
+            selected: Vec::new(), subject: None, choices }
+    }
+
+    #[test]
+    fn alternate_activation_commits_its_own_memory_from_prior_state() {
+        let obs = observation();
+        let decision = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::Activate, 10), choice(ChoiceKind::Activate, 20),
+        ]);
+        let mut original = Agent::new(Planner::default(), Arc::new(MemoryCards::default()));
+        let mut alternate = original.clone();
+        assert_eq!(original.choose(&obs, &decision), 0);
+        assert_eq!(original.strategy.calls, 1);
+        assert_eq!(original.memory.last_activated, Some(10));
+        assert_eq!(original.memory.intent.len(), 1);
+
+        assert!(alternate.commit_choice(&obs, &decision, 1));
+        assert_eq!(alternate.strategy.calls, 0);
+        assert_eq!(alternate.memory.last_activated, Some(20));
+        assert_eq!(alternate.memory.activated, vec![20]);
+        assert!(alternate.memory.intent.is_empty());
+        assert_eq!(alternate.memory.picks.get(&Turn::pick_key(&decision.choices[1])), Some(&1));
+        assert!(!alternate.memory.picks.contains_key(&Turn::pick_key(&decision.choices[0])));
+    }
+
+    #[test]
+    fn alternate_no_does_not_record_the_declined_activation() {
+        let obs = observation();
+        let mut decision = decision(DecisionKind::YesNo, vec![
+            choice(ChoiceKind::Yes, 20), choice(ChoiceKind::No, 20),
+        ]);
+        decision.subject = Some(20);
+        let mut original = Agent::new(Planner::default(), Arc::new(MemoryCards::default()));
+        original.memory.turn = obs.turn;
+        original.memory.last_activated = Some(10);
+        original.memory.activated = vec![10];
+        let mut alternate = original.clone();
+        assert_eq!(original.choose(&obs, &decision), 0);
+        assert!(alternate.commit_choice(&obs, &decision, 1));
+        assert_eq!(alternate.memory.last_activated, Some(10));
+        assert_eq!(alternate.memory.activated, vec![10]);
+        assert!(alternate.commit_choice(&obs, &decision, 0));
+        assert_eq!(alternate.memory.last_activated, Some(20));
+        assert_eq!(alternate.memory.activated, vec![10, 20]);
+    }
 }

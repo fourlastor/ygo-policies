@@ -14,6 +14,7 @@ pub mod agent;
 pub mod cards;
 pub mod ctx;
 pub mod decks;
+pub mod generic;
 pub mod knowledge;
 pub mod model;
 pub mod staples;
@@ -37,6 +38,10 @@ pub mod registry {
     impl<P: Policy + Clone + 'static> Policy for Forkable<P> {
         fn choose(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision) -> usize {
             self.0.choose(obs, decision)
+        }
+
+        fn commit_choice(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision, index: usize) -> bool {
+            self.0.commit_choice(obs, decision, index)
         }
 
         fn fork(&self) -> Option<Box<dyn Policy>> {
@@ -137,8 +142,20 @@ pub mod registry {
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
-        POLICIES.iter().find(|e| e.id == id)
+        if id == "generic" {
+            Some(&GENERIC)
+        } else {
+            POLICIES.iter().find(|e| e.id == id)
+        }
     }
+
+    /// This policy takes any supplied deck; it does not add a deck to the
+    /// specialist round-robin roster.
+    pub const GENERIC: Entry = Entry {
+        id: "generic",
+        deck: "",
+        build: |db, seed| Box::new(Forkable(Agent::seeded(crate::generic::Generic, db, seed))),
+    };
 
     pub fn create(id: &str, db: Arc<dyn CardDatabase>) -> Option<Box<dyn Policy>> {
         create_seeded(id, db, 0)

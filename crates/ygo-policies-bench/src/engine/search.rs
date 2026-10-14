@@ -56,6 +56,7 @@ const KEPT: usize = 2;
 
 const QUERY_IS_PUBLIC: u32 = 0x100000;
 const TYPE_SPELL_OR_TRAP: u32 = 0x2 | 0x4;
+const TYPE_FIELD: u32 = 0x80000;
 
 /// A card the searching seat cannot see, and where it is.
 #[derive(Clone, Copy)]
@@ -174,10 +175,10 @@ fn situation(answer: &serde_json::Value, me: u8) -> serde_json::Value {
 
 /// A decision as the policy's answer describes it: the alternatives worth
 /// trying (the pilot's own first), with a word on each for the report.
-struct Listed {
-    kind: String,
-    responses: Vec<Vec<u8>>,
-    labels: Vec<serde_json::Value>,
+pub(super) struct Listed {
+    pub(super) kind: String,
+    pub(super) responses: Vec<Vec<u8>>,
+    pub(super) labels: Vec<serde_json::Value>,
 }
 
 fn listed(answer: &serde_json::Value, given: &[u8]) -> Option<Listed> {
@@ -232,13 +233,13 @@ fn listed(answer: &serde_json::Value, given: &[u8]) -> Option<Listed> {
 
 /// Both seats of a duel, with everything each was fed: a seat can be built
 /// again in the same state by feeding another one the same messages.
-struct Table<'a> {
-    seats: Vec<LibrarySeat<'a>>,
-    logs: [Vec<u8>; 2],
+pub(super) struct Table<'a> {
+    pub(super) seats: Vec<LibrarySeat<'a>>,
+    pub(super) logs: [Vec<u8>; 2],
 }
 
 impl Table<'_> {
-    fn update(&mut self, message: &[u8]) -> Result<()> {
+    pub(super) fn update(&mut self, message: &[u8]) -> Result<()> {
         for log in &mut self.logs {
             log.extend_from_slice(&(message.len() as u32).to_le_bytes());
             log.extend_from_slice(message);
@@ -246,7 +247,7 @@ impl Table<'_> {
         self.seats[0].feed_update_pair(&self.seats[1], message)
     }
 
-    fn feed(&mut self, player: usize, message: &[u8]) -> Result<Option<Vec<u8>>> {
+    pub(super) fn feed(&mut self, player: usize, message: &[u8]) -> Result<Option<Vec<u8>>> {
         self.logs[player].extend_from_slice(&(message.len() as u32).to_le_bytes());
         self.logs[player].extend_from_slice(message);
         self.seats[player].feed(message)
@@ -264,7 +265,7 @@ struct Setup<'a> {
 
 /// The cards `viewer` cannot see: its own Deck, and the other player's
 /// Deck, hand and Set Spells and Traps.  Revealed cards stay known.
-fn hidden(duel: &Duel, viewer: u8) -> Result<Vec<Slot>> {
+fn hidden(duel: &Duel, viewer: u8, all_spell_zones: bool) -> Result<Vec<Slot>> {
     let mut slots = Vec::new();
     let mut add = |controller: u8, location: u32, sequence: u32, face_down_only: bool| -> Result<()> {
         let bytes = duel.card(query::CODE | query::POSITION | QUERY_IS_PUBLIC, controller, location, sequence)?;
@@ -283,7 +284,7 @@ fn hidden(duel: &Duel, viewer: u8) -> Result<Vec<Slot>> {
             add(controller, location, sequence, false)?;
         }
     }
-    for sequence in 0..7 {
+    for sequence in 0..if all_spell_zones { 8 } else { 7 } {
         add(opponent, 8, sequence, true)?;
     }
     Ok(slots)
@@ -291,7 +292,14 @@ fn hidden(duel: &Duel, viewer: u8) -> Result<Vec<Slot>> {
 
 /// Exact exchanges for a root inventory and world seed. Planning consumes
 /// the same random numbers and keeps the original exchange order.
-fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64) -> Result<Vec<(Slot, Slot)>> {
+fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64, canonical: bool) -> Result<Vec<(Slot, Slot)>> {
+    swap_plan_with_types(slots, viewer, seed, canonical, |code| duel.printed(code).map(|card| card.kind))
+}
+
+fn swap_plan_with_types(
+    slots: &[Slot], viewer: u8, seed: u64, canonical: bool,
+    printed_kind: impl Fn(u32) -> Option<u32>,
+) -> Result<Vec<(Slot, Slot)>> {
     let mut rng = SplitMix(seed);
     let mut swaps = Vec::new();
     let mut permute = |group: &[usize], wanted: &[usize]| -> Result<()> {
@@ -309,22 +317,49 @@ fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64) -> Result<Vec<(
     };
     let own: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller == viewer).collect();
     let mut wanted = own.clone();
+    if canonical { wanted.sort_by_key(|index| slots[*index].code); }
     rng.shuffle(&mut wanted);
     permute(&own, &wanted)?;
 
     let theirs: Vec<usize> = (0..slots.len()).filter(|i| slots[*i].controller != viewer).collect();
     let set: Vec<usize> = theirs.iter().copied().filter(|i| slots[*i].location == 8).collect();
-    let mut backrow: Vec<usize> = theirs
-        .iter()
-        .copied()
-        .filter(|i| duel.printed(slots[*i].code).is_some_and(|card| card.kind & TYPE_SPELL_OR_TRAP != 0))
-        .collect();
-    if backrow.len() < set.len() {
-        return Err("Fewer hidden Spells and Traps than Set cards".into());
-    }
-    rng.shuffle(&mut backrow);
-    backrow.truncate(set.len());
+    let backrow = if canonical {
+        // Standard set cards belong in SZONE 0..4; only Field Spells belong
+        // in sequence 5. The native swap accepts all S/T in either position,
+        // so the sampler must enforce this stronger rule before any swap.
+        let field = |index: usize| printed_kind(slots[index].code)
+            .is_some_and(|kind| kind & TYPE_SPELL_OR_TRAP != 0 && kind & TYPE_FIELD != 0);
+        let regular = |index: usize| printed_kind(slots[index].code)
+            .is_some_and(|kind| kind & TYPE_SPELL_OR_TRAP != 0 && kind & TYPE_FIELD == 0);
+        let mut fields: Vec<usize> = theirs.iter().copied().filter(|index| field(*index)).collect();
+        let mut regulars: Vec<usize> = theirs.iter().copied().filter(|index| regular(*index)).collect();
+        fields.sort_by_key(|index| slots[*index].code);
+        regulars.sort_by_key(|index| slots[*index].code);
+        rng.shuffle(&mut fields);
+        rng.shuffle(&mut regulars);
+        let (mut fields, mut regulars) = (fields.into_iter(), regulars.into_iter());
+        let mut selected = Vec::with_capacity(set.len());
+        for &index in &set {
+            let source = match slots[index].sequence {
+                0..=4 if regular(index) => regulars.next().ok_or("Fewer hidden regular Spells/Traps than regular Set cards")?,
+                5 if field(index) => fields.next().ok_or("Fewer hidden Field Spells than Set Field cards")?,
+                _ => return Err("Unsupported hidden Spell/Trap-zone placement; refusing to sample an illegal world".into()),
+            };
+            selected.push(source);
+        }
+        selected
+    } else {
+        // Preserve the diagnostic search's original pool and random stream.
+        let mut backrow: Vec<usize> = theirs.iter().copied()
+            .filter(|index| printed_kind(slots[*index].code).is_some_and(|kind| kind & TYPE_SPELL_OR_TRAP != 0))
+            .collect();
+        if backrow.len() < set.len() { return Err("Fewer hidden Spells and Traps than Set cards".into()); }
+        rng.shuffle(&mut backrow);
+        backrow.truncate(set.len());
+        backrow
+    };
     let mut rest: Vec<usize> = theirs.iter().copied().filter(|i| !backrow.contains(i)).collect();
+    if canonical { rest.sort_by_key(|index| slots[*index].code); }
     rng.shuffle(&mut rest);
     let destinations: Vec<usize> = set.iter().copied().chain(theirs.iter().copied().filter(|i| slots[*i].location != 8)).collect();
     let sources: Vec<usize> = backrow.into_iter().chain(rest).collect();
@@ -335,20 +370,30 @@ fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64) -> Result<Vec<(
 /// Cached only for one root decision. The snapshot after inventory queries
 /// preserves their native query-buffer/allocation effects on every branch.
 #[derive(Default)]
-struct HiddenWorlds {
+pub(super) struct HiddenWorlds {
+    known: Vec<(u8, u32, u32)>,
+    canonical: bool,
     inventory: Option<Result<(Vec<Slot>, Snapshot)>>,
     plans: HashMap<u64, Result<Vec<(Slot, Slot)>>>,
 }
 
 impl HiddenWorlds {
-    fn restore(&mut self, duel: &mut Duel, root: &Snapshot, viewer: u8, seed: u64) -> Result<()> {
+    /// Preserve identities already remembered by the searching player.
+    pub(super) fn with_known(known: Vec<(u8, u32, u32)>) -> Self {
+        Self { known, canonical: true, ..Self::default() }
+    }
+
+    pub(super) fn restore(&mut self, duel: &mut Duel, root: &Snapshot, viewer: u8, seed: u64) -> Result<()> {
         if self.inventory.is_none() {
             duel.restore(root)?;
-            self.inventory = Some(hidden(duel, viewer).and_then(|slots| Ok((slots, duel.snapshot()?))));
+            self.inventory = Some(hidden(duel, viewer, self.canonical).and_then(|mut slots| {
+                slots.retain(|slot| !self.known.contains(&(slot.controller, slot.location, slot.sequence)));
+                Ok((slots, duel.snapshot()?))
+            }));
         }
         let (slots, queried) = self.inventory.as_ref().unwrap().as_ref().map_err(Clone::clone)?;
         duel.restore(queried)?;
-        let swaps = self.plans.entry(seed).or_insert_with(|| swap_plan(duel, slots, viewer, seed));
+        let swaps = self.plans.entry(seed).or_insert_with(|| swap_plan(duel, slots, viewer, seed, self.canonical));
         for &(a, b) in swaps.as_ref().map_err(Clone::clone)? {
             if !duel.swap(a.controller, (a.location, a.sequence), (b.location, b.sequence))? {
                 return Err(format!("The engine refused to swap {:x}:{} and {:x}:{}", a.location, a.sequence, b.location, b.sequence));
@@ -734,5 +779,76 @@ pub fn play_searching(
             recorded.responses.push((p as u8, answer));
         }
         decisions += 1;
+    }
+}
+
+
+#[cfg(test)]
+mod sampling_tests {
+    use super::*;
+
+    fn printed_kind(code: u32) -> Option<u32> {
+        Some(match code { 100 | 101 => 0x2 | TYPE_FIELD, 200 | 201 => 0x2, 300 | 301 => 0x4, _ => 0x1 })
+    }
+
+    fn slot(code: u32, controller: u8, location: u32, sequence: u32) -> Slot {
+        Slot { code, controller, location, sequence }
+    }
+
+    fn apply(slots: &[Slot], swaps: &[(Slot, Slot)]) -> Vec<Slot> {
+        let mut cards = slots.to_vec();
+        for &(first, second) in swaps {
+            let locate = |wanted: Slot| cards.iter().position(|card| (card.controller,card.location,card.sequence)==(wanted.controller,wanted.location,wanted.sequence)).unwrap();
+            let (first,second)=(locate(first),locate(second));
+            let code=cards[first].code;
+            cards[first].code=cards[second].code;
+            cards[second].code=code;
+            // Check every intermediate native swap, not only the final deal.
+            for card in cards.iter().filter(|card| card.location==8) {
+                let kind=printed_kind(card.code).unwrap();
+                assert_ne!(kind & TYPE_SPELL_OR_TRAP,0);
+                assert_eq!(kind & TYPE_FIELD != 0, card.sequence==5);
+            }
+        }
+        cards
+    }
+
+    #[test]
+    fn fast_worlds_keep_field_and_regular_spells_in_legal_zones_after_every_swap() {
+        let cards=vec![slot(400,0,1,0),slot(201,0,1,1),
+            slot(300,1,8,0),slot(200,1,8,1),slot(100,1,8,5),
+            slot(101,1,2,0),slot(201,1,2,1),slot(301,1,1,0),slot(400,1,1,1)];
+        let mut original: Vec<_>=cards.iter().map(|card| (card.controller,card.code)).collect();
+        original.sort();
+        for seed in 0..128 {
+            let plan=swap_plan_with_types(&cards,0,seed,true,printed_kind).unwrap();
+            let dealt=apply(&cards,&plan);
+            let mut inventory: Vec<_>=dealt.iter().map(|card| (card.controller,card.code)).collect();
+            inventory.sort();
+            assert_eq!(original,inventory);
+        }
+    }
+
+    #[test]
+    fn sampled_code_assignments_do_not_depend_on_actual_hidden_arrangement() {
+        let first=vec![slot(200,0,1,0),slot(400,0,1,1),slot(300,1,8,0),slot(100,1,8,5),
+            slot(101,1,2,0),slot(201,1,2,1),slot(301,1,1,0),slot(400,1,1,1)];
+        let mut second=first.clone();
+        second[0].code=400;second[1].code=200;
+        second[2].code=301;second[6].code=300;
+        second[3].code=101;second[4].code=100;
+        second[5].code=400;second[7].code=201;
+        for seed in 0..32 {
+            let a=apply(&first,&swap_plan_with_types(&first,0,seed,true,printed_kind).unwrap());
+            let b=apply(&second,&swap_plan_with_types(&second,0,seed,true,printed_kind).unwrap());
+            assert_eq!(a.iter().map(|card|card.code).collect::<Vec<_>>(),b.iter().map(|card|card.code).collect::<Vec<_>>());
+        }
+    }
+
+    #[test]
+    fn unsupported_set_placement_falls_back_instead_of_inventing_a_world() {
+        for bad in [slot(400,1,8,0),slot(200,1,8,5),slot(100,1,8,0),slot(200,1,8,6),slot(200,1,8,7)] {
+            assert!(swap_plan_with_types(&[bad,slot(201,1,1,0)],0,17,true,printed_kind).is_err());
+        }
     }
 }

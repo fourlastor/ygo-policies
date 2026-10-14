@@ -11,6 +11,8 @@ use ygo_policies_ocgcore::{
 
 mod search;
 pub use search::{play_searching, SearchOptions};
+mod fast;
+pub use fast::{play_fast, FastOptions};
 
 #[derive(Clone, Copy)]
 pub struct PlayOptions {

@@ -424,6 +424,17 @@ impl Duel<'_> {
         Ok(())
     }
 
+    /// Replace future engine randomness on a simulation branch. Take a
+    /// snapshot first and restore it before continuing the live game.
+    /// Does not reorder existing decks; hidden-card sampling is separate.
+    pub fn reseed(&mut self, seed: u64) -> Result<()> {
+        let reseed = self.extensions()?.reseed.ok_or("this engine cannot reseed simulated chance events")?;
+        if unsafe { reseed(self.handle, seed) } != 1 {
+            return Err("engine refused to reseed simulated chance events".into());
+        }
+        Ok(())
+    }
+
     /// Exchange two hidden cards of `player`: each is a (location, sequence)
     /// in the Deck, the hand or the Spell & Trap Zone.  `false` when the
     /// engine refuses: an empty slot, the same slot twice, a card a link of

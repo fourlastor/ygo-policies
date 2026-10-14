@@ -237,6 +237,21 @@ seat balance, subset-stable seeds, paired uncertainty, rating orientation and
 refusal to rank failed/incomplete runs. Engine smoke tests are ordinary CLI runs;
 running `compare` with the same library twice should produce identical transcripts.
 
+## Experimental generic mirrors
+
+`policy-bench generic --policies all --baseline FROZEN_LIBRARY --games 64
+--output generic.jsonl` seats the same `generic` policy on each specialist's
+deck against that frozen specialist, alternating seats. `--plain true` disables
+search. The search accepts `--worlds`, `--max-candidates`, `--max-playouts`,
+`--depth 1|2`, `--horizon`, and a soft per-decision `--millis` budget.
+Its report tests the 55% target separately for every required matchup; it does
+not turn an aggregate rate into a passing per-deck result. See the
+[algorithm, assumptions, and measured results](../../benchmarks/generic-policy/README.md).
+
+The engine is also exported as a Rust library. The `generic_decks` example loads
+two arbitrary `.ydk` files directly and never identifies a registered deck.
+The existing 71-deck catalog and specialist policies are unchanged.
+
 ## Card facts from the engine
 
 The policies' shared card knowledge (`ygo_policies::knowledge`) is generated

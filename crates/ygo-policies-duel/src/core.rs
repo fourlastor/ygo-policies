@@ -114,6 +114,7 @@ extern "C" {
     fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
     fn OCG_DuelDestroySnapshot(snapshot: Handle);
     fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
+    fn YGO_DuelReseed(duel: Handle, seed: u64) -> i32;
 }
 
 /// What a search needs beyond the public OCGCore API: the fork's snapshots
@@ -126,6 +127,7 @@ pub(crate) struct Extensions {
     pub(crate) swap: unsafe extern "C" fn(Handle, u8, u32, u32, u32, u32) -> i32,
     pub(crate) count: unsafe extern "C" fn(Handle, u8, u32) -> u32,
     pub(crate) card: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
+    pub(crate) reseed: Option<unsafe extern "C" fn(Handle, u64) -> i32>,
 }
 
 impl Extensions {
@@ -138,6 +140,7 @@ impl Extensions {
             swap: OCG_DuelSwapHiddenCards,
             count: OCG_DuelQueryCount,
             card: OCG_DuelQuery,
+            reseed: Some(YGO_DuelReseed),
         }
     }
 
@@ -151,6 +154,7 @@ impl Extensions {
             swap: symbol(library, b"OCG_DuelSwapHiddenCards").or_else(|_| symbol(library, b"YGO_DuelSwapHiddenCards")).ok()?,
             count: symbol(library, b"OCG_DuelQueryCount").ok()?,
             card: symbol(library, b"OCG_DuelQuery").ok()?,
+            reseed: symbol(library, b"YGO_DuelReseed").ok(),
         })
     }
 }
@@ -328,6 +332,11 @@ impl Core {
     /// The built-in one does.
     pub fn has_snapshots(&self) -> bool {
         self.extensions.is_some()
+    }
+
+    /// Whether simulated branches can randomize future engine chance events.
+    pub fn has_reseed(&self) -> bool {
+        self.extensions.as_ref().is_some_and(|extensions| extensions.reseed.is_some())
     }
 
     /// Printed data of a card, if the database (or [`Core::define`]) has it.

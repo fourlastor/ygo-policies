@@ -80,6 +80,19 @@ fn store_json(policy: &mut YgoPolicy, value: serde_json::Value) -> *const c_char
     policy.json.as_ptr()
 }
 
+fn answer_json(seat: &Seat) -> serde_json::Value {
+    match seat.last_answer() {
+        None => serde_json::Value::Null,
+        Some(answer) => json!({
+            "observation": answer.observation,
+            "decision": answer.decision,
+            "choice": answer.choice,
+            "responses": answer.responses,
+            "picks": answer.picks,
+        }),
+    }
+}
+
 /// # Safety
 /// `policy_id` and `cards_cdb_path` must be NUL-terminated strings.
 #[no_mangle]
@@ -129,6 +142,47 @@ pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoP
         Ok(Box::into_raw(Box::new(YgoPolicy {
             seat, response: policy.response.clone(), json: policy.json.clone(),
         })))
+    })
+}
+
+/// Enable state-safe replacement of future responses. Call before the first
+/// selection prompt. Ordinary seats do not pay for pre-choice snapshots.
+/// # Safety
+/// `policy` is a live handle and is not used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_enable_response_overrides(policy: *mut YgoPolicy) -> i32 {
+    guarded(-1, || {
+        handle(policy)?.seat.enable_response_overrides().map_err(|e| e.to_string())?;
+        Ok(0)
+    })
+}
+
+/// Replace the pending answer and commit its action to the policy's memory.
+/// Returns 0 on success and -1 on error; errors preserve the prior response.
+/// # Safety
+/// `policy` is live; `response` points to `length` initialized bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_override_response(policy: *mut YgoPolicy, response: *const u8, length: usize) -> i32 {
+    guarded(-1, || {
+        let policy = handle(policy)?;
+        let response = bytes(response, length)?;
+        policy.seat.override_response(response).map_err(|e| e.to_string())?;
+        policy.response = response.to_vec();
+        Ok(0)
+    })
+}
+
+/// Expand legal sequential alternatives and return the updated answer JSON.
+/// At most twelve initial candidates are attempted. No engine state is read.
+/// # Safety
+/// `policy` is a live handle and is not used concurrently.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_alternative_responses_json(policy: *mut YgoPolicy, maximum: usize) -> *const c_char {
+    guarded(std::ptr::null(), || {
+        let policy = handle(policy)?;
+        policy.seat.alternative_responses(maximum).map_err(|e| e.to_string())?;
+        let value = answer_json(&policy.seat);
+        Ok(store_json(policy, value))
     })
 }
 
@@ -209,16 +263,7 @@ pub unsafe extern "C" fn ygo_policy_observation_json(policy: *mut YgoPolicy) -> 
 pub unsafe extern "C" fn ygo_policy_last_answer_json(policy: *mut YgoPolicy) -> *const c_char {
     guarded(std::ptr::null(), || {
         let policy = handle(policy)?;
-        let value = match policy.seat.last_answer() {
-            None => serde_json::Value::Null,
-            Some(answer) => json!({
-                "observation": answer.observation,
-                "decision": answer.decision,
-                "choice": answer.choice,
-                "responses": answer.responses,
-                "picks": answer.picks,
-            }),
-        };
+        let value = answer_json(&policy.seat);
         Ok(store_json(policy, value))
     })
 }
@@ -234,7 +279,8 @@ pub unsafe extern "C" fn ygo_policy_search_view_json(policy: *mut YgoPolicy) -> 
         let value = match policy.seat.last_answer() {
             Some(answer) if matches!(answer.decision.kind,
                 DecisionKind::Idle | DecisionKind::Battle | DecisionKind::YesNo
-                | DecisionKind::Position | DecisionKind::Chain { forced: false, .. }) => {
+                | DecisionKind::Position | DecisionKind::Option | DecisionKind::SelectCards
+                | DecisionKind::SelectSum | DecisionKind::SelectToggle | DecisionKind::Chain { forced: false, .. }) => {
                 let observation = &answer.observation;
                 let me = observation.me;
                 let count = |mine: bool, location: Location, face_down: bool| {
