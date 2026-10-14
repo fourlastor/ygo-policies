@@ -5,7 +5,7 @@
 //! `c10026986.lua` (King), `c73580471.lua` (Black Rose), `c57774843.lua`
 //! (Judgment Dragon), `c29071332.lua` (Armory Arm), `c39402797.lua`
 //! (Trident Dragion), `c72426662.lua` (Demise), `c22046459.lua`
-//! (Megamorph, with `proc_equip.lua`), and the
+//! (Megamorph), `c10004783.lua` (Crystal Release, with `proc_equip.lua`), and the
 //! mandatory-removal facts in `knowledge`.
 //! An ordinary NormalSummon choice does not expose its actual tribute cost.
 //! Consequently this module never vetoes a summon from printed Level alone.
@@ -22,9 +22,11 @@ const BLACK_ROSE_DRAGON: u32 = 73580471;
 const JUDGMENT_DRAGON: u32 = 57774843;
 const DEMISE: u32 = 72426662;
 const MEGAMORPH: u32 = 22046459;
+const CRYSTAL_RELEASE: u32 = 10004783;
 const ARMORY_ARM: u32 = 29071332;
 const TRIDENT_DRAGION: u32 = 39402797;
 const WORM_SET: u16 = 0x3e;
+const CRYSTAL_BEAST_SET: u16 = 0x1034;
 
 /// Partial transaction facts only. Every identity occurs in the active pool.
 pub const SUPPORTED_CODES: &[u32] = &[
@@ -36,6 +38,7 @@ pub const SUPPORTED_CODES: &[u32] = &[
     JUDGMENT_DRAGON,
     DEMISE,
     MEGAMORPH,
+    CRYSTAL_RELEASE,
     ARMORY_ARM,
     TRIDENT_DRAGION,
 ];
@@ -222,6 +225,19 @@ fn megamorph(t: &Turn) -> Option<bool> {
     } else {
         Some(false)
     }
+}
+
+/// Release's native equip procedure permits either player's Crystal Beast,
+/// but its +800 ATK belongs on ours. This is only recipient polarity: retain
+/// the existing ranking among friendly targets and make no damage prediction.
+fn crystal_release_recipient(t: &Turn, target: &CardView) -> bool {
+    target.at.controller == t.ctx.me
+        && target.at.location == Location::MonsterZone
+        && target.position.face_up
+        && t.ctx.reaches(target, CRYSTAL_RELEASE, true, false)
+        // Shared reaches models opposing immunity. Our voluntary beneficial
+        // equip also needs to affect its friendly recipient.
+        && t.ctx.facts(target).unaffected & crate::knowledge::kind::SPELL == 0
 }
 
 /// Only a visible battle with no paid trick, known replacement body, reflected
@@ -650,6 +666,22 @@ pub(super) fn allow_activation(t: &Turn, choice: &Choice) -> Option<bool> {
         return Some(allowed);
     }
     match code {
+        CRYSTAL_RELEASE
+            if choice.description == 1068
+                && matches!(
+                    choice.at()?.location,
+                    Location::Hand | Location::SpellTrapZone
+                ) =>
+        {
+            // This activation prompt has no target list. Membership here is
+            // bounded to the observed printed identity; runtime-only set/name
+            // changes are not exposed by CardView and can cause a false veto.
+            // Once Equip targets are offered, their native legality wins.
+            Some(t.ctx.monsters(t.ctx.me).into_iter().any(|target| {
+                t.ctx.view_data(target).in_set(CRYSTAL_BEAST_SET)
+                    && crystal_release_recipient(t, target)
+            }))
+        }
         MEGAMORPH
             if choice.description == 1068
                 && matches!(
@@ -688,6 +720,13 @@ pub(super) fn select(t: &Turn, member: &Member) -> Option<f64> {
     let ctx = t.ctx;
     let source = ctx.canonical(t.memory.last_activated?);
     let card = ctx.card(member.at)?;
+    if source == CRYSTAL_RELEASE && t.decision.hint == Hint::Equip {
+        // Actual offered members remain the legality authority. Valid own
+        // recipients keep Generic's existing gain score; do not let an enemy
+        // win merely because the shared gain fallback values its threat.
+        // The separate grave trigger uses HINTMSG_TOFIELD (527), not Equip.
+        return (!crystal_release_recipient(t, card)).then_some(-100_000.0);
+    }
     if source == MEGAMORPH && t.decision.hint == Hint::Equip {
         // Megamorph has one activation (native description 1068). Its actual
         // legal Equip prompt is the authority on available targets; do not
@@ -787,6 +826,9 @@ mod tests {
     const TOON_BODY: u32 = 900_510_006;
     const EQUIPMENT: u32 = 900_510_008;
     const VARIABLE_ATTACK: u32 = 900_510_009;
+    const UNFAMILIAR_CRYSTAL: u32 = 900_510_010;
+    const CRYSTAL_CAT: u32 = 32933942;
+    const CRYSTAL_TIGER: u32 = 95600067;
 
     fn db() -> MemoryCards {
         let cards = [
@@ -815,6 +857,38 @@ mod tests {
             CardData {
                 code: MEGAMORPH,
                 kind: types::SPELL | types::EQUIP,
+                ..CardData::default()
+            },
+            CardData {
+                code: CRYSTAL_RELEASE,
+                kind: types::SPELL | types::EQUIP,
+                ..CardData::default()
+            },
+            CardData {
+                code: CRYSTAL_CAT,
+                kind: types::MONSTER | types::EFFECT,
+                attack: 1200,
+                defense: 400,
+                level: 3,
+                setcodes: vec![CRYSTAL_BEAST_SET],
+                ..CardData::default()
+            },
+            CardData {
+                code: CRYSTAL_TIGER,
+                kind: types::MONSTER | types::EFFECT,
+                attack: 1600,
+                defense: 1000,
+                level: 4,
+                setcodes: vec![CRYSTAL_BEAST_SET],
+                ..CardData::default()
+            },
+            CardData {
+                code: UNFAMILIAR_CRYSTAL,
+                kind: types::MONSTER | types::EFFECT,
+                attack: 900,
+                defense: 2100,
+                level: 3,
+                setcodes: vec![CRYSTAL_BEAST_SET],
                 ..CardData::default()
             },
             CardData {
@@ -1273,6 +1347,143 @@ mod tests {
         prompt.choices[1].kind = ChoiceKind::EndTurn;
         prompt.choices[1].card = None;
         prompt
+    }
+
+    fn crystal_release_prompt(me: u8) -> Decision {
+        let mut prompt = megamorph_prompt();
+        let source = prompt.choices[0].card.as_mut().unwrap();
+        source.code = Some(CRYSTAL_RELEASE);
+        source.at.controller = me;
+        prompt
+    }
+
+    #[test]
+    fn crystal_release_declines_native_enemy_only_activation_on_either_seat() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        for me in [0, 1] {
+            let mut board = obs(vec![card(CRYSTAL_TIGER, 1 - me, 0)]);
+            board.me = me;
+            board.turn_player = Some(me);
+            board.cards[0].attack = 2400;
+            let prompt = crystal_release_prompt(me);
+            assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+            let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+            assert_eq!(pilot.choose(&board, &prompt), 1, "seat {me}");
+        }
+    }
+
+    #[test]
+    fn crystal_release_native_equip_prefers_own_lower_attack_target_on_either_seat() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        // Native seed 1109097475 seat 1: Activate description 1068 at trace
+        // 150; Equip at 152 picked opposing Tiger over offered own Cat.
+        // The opponent's already-2400 ATK Tiger became 3200 at trace 155.
+        for me in [0, 1] {
+            let mut board = obs(vec![
+                card(CRYSTAL_TIGER, 1 - me, 0),
+                card(CRYSTAL_CAT, me, 1),
+            ]);
+            board.me = me;
+            board.turn_player = Some(me);
+            board.cards[0].attack = 2400;
+            board.life_points[usize::from(me)] = 500;
+            let mut prompt = crystal_release_prompt(me);
+            assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+            let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+            assert_eq!(pilot.choose(&board, &prompt), 0);
+            prompt.kind = DecisionKind::SelectCards;
+            prompt.hint = Hint::Equip;
+            prompt.minimum = 1;
+            prompt.maximum = 1;
+            prompt.choices = board.cards.iter().map(|card| Choice {
+                kind: ChoiceKind::Cards,
+                card: None,
+                members: vec![member(card)],
+                description: 0,
+                place: None,
+            }).collect();
+            assert_eq!(pilot.choose(&board, &prompt), 1, "seat {me}");
+        }
+    }
+
+    #[test]
+    fn crystal_release_matches_public_recipient_set_zone_and_position() {
+        let prompt = crystal_release_prompt(0);
+        let mut board = obs(vec![card(UNFAMILIAR_CRYSTAL, 0, 0)]);
+        board.cards[0].position = Position::FACE_UP_DEFENSE;
+        board.phase = Some(Phase::Main2);
+        // Recipient polarity must not introduce a new immediate-attack gate,
+        // or rely on the current seven Crystal Beast passcodes.
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        with_turn(&board, Hint::Equip, Some(CRYSTAL_RELEASE), |t| {
+            assert_eq!(select(t, &member(&board.cards[0])), None,
+                "valid own target retains the existing generic ranking");
+        });
+        board.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards[0].position = Position::FACE_UP_ATTACK;
+        board.cards[0].at.location = Location::SpellTrapZone;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards = vec![card(ORDINARY, 0, 0)];
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        with_turn(&board, Hint::Equip, Some(CRYSTAL_RELEASE), |t| {
+            // If the engine actually offers a recipient whose set membership
+            // changed at runtime, its legal prompt outranks printed setcodes.
+            assert_eq!(select(t, &member(&board.cards[0])), None);
+        });
+    }
+
+    #[test]
+    fn crystal_release_does_not_count_an_unaffected_friendly_recipient() {
+        let mut database = db();
+        // Exercise the shared public spell-immunity fact on a synthetic
+        // set member; do not assume every future Crystal Beast is affectable.
+        let protected_code = 11224103;
+        let mut data = database.0[&UNFAMILIAR_CRYSTAL].clone();
+        data.code = protected_code;
+        database.0.insert(protected_code, data);
+        let mut target = card(UNFAMILIAR_CRYSTAL, 0, 0);
+        target.code = Some(protected_code);
+        let board = obs(vec![target]);
+        let mut prompt = crystal_release_prompt(0);
+        prompt.hint = Hint::Equip;
+        let mut memory = Memory::default();
+        memory.last_activated = Some(CRYSTAL_RELEASE);
+        let t = Turn {
+            ctx: Ctx::new(&board, &database),
+            decision: &prompt,
+            memory: &mut memory,
+        };
+        assert_eq!(allow_activation(&t, &prompt.choices[0]), Some(false));
+        assert_eq!(select(&t, &member(&board.cards[0])), Some(-100_000.0));
+    }
+
+    #[test]
+    fn crystal_release_leaves_grave_trigger_and_other_prompts_unchanged() {
+        let board = obs(vec![card(UNFAMILIAR_CRYSTAL, 0, 0)]);
+        let mut prompt = crystal_release_prompt(0);
+        prompt.choices[0].description = knowledge::description(CRYSTAL_RELEASE, 0);
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::Graveyard;
+        prompt.kind = DecisionKind::Chain { forced: false, triggers: true };
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.kind = DecisionKind::Idle;
+        prompt.choices[0].description = 1068;
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::SpellTrapZone;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        prompt.choices[0].card.as_mut().unwrap().at.controller = 1;
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        for hint in [Hint::Other(527), Hint::SpecialSummon, Hint::Target] {
+            with_turn(&board, hint, Some(CRYSTAL_RELEASE), |t| {
+                assert_eq!(select(t, &member(&board.cards[0])), None);
+            });
+        }
+        with_turn(&board, Hint::Equip, Some(EQUIPMENT), |t| {
+            assert_eq!(select(t, &member(&board.cards[0])), None);
+        });
     }
 
     #[test]
