@@ -6,6 +6,9 @@ qualification. The 71 decks are fixtures; there is no deck-name dispatch in the
 policy. No machine learning, fitted coefficients, model files, or training path
 is used. Policy decisions and planning are Rust code; the existing OCGCore/Lua
 engine supplies legal actions and simulates card rules.
+Known opponent deck composition is accepted for this task. Search still samples
+the opponent's hidden hand, backrow and deck order instead of reading their
+actual arrangement.
 
 Card-knowledge work is scoped to the original 71 decks: 951 distinct main/extra
 cards and another 17 cards occurring only in side decks. This is the coverage
@@ -99,6 +102,29 @@ unchanged. Five new tests passed as part of 41 transaction tests. In fresh
 neither establishes a strength improvement. The activation gate uses printed
 set membership, so runtime identity changes remain a documented limitation;
 actual offered Equip targets remain authoritative.
+
+The [v20 legal-menu experiment](legal-menu-v20/report.md) qualifies immediate
+effect access with actual offered activations at the searcher's next resolved
+Idle prompt. Setting a card earns no activation credit; future triggers, quick
+effects and reactive traps keep their priors. This uses engine actions without
+deck-name rules or new weights. The fixed three-deck comparison changed 96 to
+99 wins in 192 pairs, an uncertain +1.56 points: Crystal 36 to 43, Chain Burn
+16 to 16, Fabled 44 to 40, each out of 64. It therefore does not establish a
+general strength gain. All 79 engine unit tests and 10 native integration tests
+passed, including menu delivery, hidden-information boundaries and restoration.
+
+The [v21 Taiyou target diagnostic](taiyou-v21/report.md) kept the v18 host and
+default weights fixed, changing only the loaded policy library. On 64 fresh
+Deckout pairs, plain wins changed 9 to 11 (+3.13 points, paired 95% interval
+−3.00 to +9.25); MCTS32 changed 6 to 10 (+6.25 points, −1.15 to +13.65).
+Neither gain is established. All games completed without errors or caps, and
+45 transaction tests passed. Fresh searches covered 10.9% of control candidate
+decisions and 9.9% of candidate decisions. In the candidate arm, unknown opposing
+face-down monsters blocked fresh search on 32.0% of decisions and active chains
+on 9.4%; cached continuations applied on 2.0%. These skip counts cover supported,
+noncached prompts with multiple alternatives, with chain guards checked first.
+They identify a search-coverage gap, not evidence that those opportunities can
+be safely recovered or would improve wins.
 
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
@@ -421,9 +447,13 @@ produce up to twelve complete responses by varying first picks and, if space
 remains, second picks; the host still retains at most eight for these experiments.
 This is a candidate subset, not exhaustive enumeration of every legal play.
 
-MCTS uses UCT: mean completed simulation value plus an exploration bonus
-`sqrt(2 * ln(parent_attempts + 1) / action_attempts)`. It selects the root action
-before cycling its sampled hidden world, adds at most one useful tree node per
+At the root, the current implementation first schedules a fair pass through
+every supplied world for each retained action, within the existing trial budget.
+With eight actions, four worlds and 32 trials, that pass fits exactly. Failures
+consume scheduled attempts but are tracked separately from completed coverage.
+Remaining root trials and inner nodes use UCT: mean completed simulation value
+plus `sqrt(2 * ln(parent_attempts + 1) / action_attempts)`.
+Search selects the root action before cycling its sampled hidden world, adds at most one useful tree node per
 simulation, and uses Generic for the remainder of that rollout. The rollout
 ends at a resolved turn boundary after the configured reply horizon, or at a
 terminal result; failed or capped simulations do not contribute a value. Terminal
