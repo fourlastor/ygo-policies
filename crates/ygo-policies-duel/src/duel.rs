@@ -400,15 +400,29 @@ impl Duel<'_> {
     /// cards and Extra Decks as `MSG_UPDATE_DATA` messages, with current ATK,
     /// DEF and positions.  [`Duel::step`] puts it before every selection.
     pub fn field(&self) -> Vec<Vec<u8>> {
-        let mut updates = Vec::new();
+        let mut updates = Vec::with_capacity(12);
         for p in 0..2 {
             for loc in [2, 4, 8, 16, 32, 64] {
-                let mut update = vec![msg::UPDATE_DATA, p, loc as u8];
-                update.extend_from_slice(&self.location(p, loc));
-                updates.push(update);
+                updates.push(self.location_message(p, loc));
             }
         }
         updates
+    }
+
+    /// Copy the engine-owned query buffer straight into its final message.
+    fn location_message(&self, controller: u8, location: u32) -> Vec<u8> {
+        let q = Query { flags: query::RECOMMENDED, controller, location, sequence: 0, overlay: 0 };
+        let mut length = 0;
+        let bytes = unsafe { (self.core.query)(self.handle, &mut length, &q) };
+        let mut message = Vec::with_capacity(3 + length as usize);
+        message.extend_from_slice(&[msg::UPDATE_DATA, controller, location as u8]);
+        if length != 0 {
+            // OCG_DuelQueryLocation owns these bytes until the next query or
+            // engine mutation. Copy now, without another native call, and do
+            // not expose a borrow of that buffer. Zero length may be null.
+            unsafe { message.extend_from_slice(std::slice::from_raw_parts(bytes, length as usize)) };
+        }
+        message
     }
 
     /// `OCG_DuelQueryLocation` for one player's pile or zone.
@@ -520,5 +534,179 @@ impl Duel<'_> {
     pub fn swap(&mut self, player: u8, first: (u32, u32), second: (u32, u32)) -> Result<bool> {
         let swap = self.extensions()?.swap;
         Ok(unsafe { swap(self.handle, player, first.0, first.1, second.0, second.1) } != 0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{path::PathBuf, sync::Arc};
+    use ygo_policies::{cards::CardDatabase, model::ChoiceKind, registry};
+    use ygo_policies_ocgcore::{redact::redact, wire::position, Seat, SqliteCards};
+
+    fn core() -> Core {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        Core::open(None, &root.join("vendor/BabelCdb/cards.cdb"), &root.join("vendor/CardScripts")).unwrap()
+    }
+
+    /// The original two-copy field transport, kept independent of the new
+    /// message helper so the native fixture compares both implementations.
+    fn legacy_field(duel: &Duel<'_>) -> Vec<Vec<u8>> {
+        let mut updates = Vec::new();
+        for player in 0..2 {
+            for location in [2, 4, 8, 16, 32, 64] {
+                let mut update = vec![msg::UPDATE_DATA, player, location as u8];
+                update.extend_from_slice(&duel.location(player, location));
+                updates.push(update);
+            }
+        }
+        updates
+    }
+
+    #[test]
+    fn field_transport_preserves_empty_and_malformed_native_payloads() {
+        unsafe extern "C" fn query_payload(_: Handle, length: *mut u32, query: *const Query) -> *const u8 {
+            let payload: &'static [u8] = match (*query).location {
+                2 => &[],
+                4 => &[1],
+                8 => &[8, 0, 0, 0, 4],
+                16 => &[0, 0, 0, 0],
+                32 => &[2, 0, 0, 0, 0, 0],
+                _ => &[4, 0, 0, 0, 1, 2, 3, 4],
+            };
+            *length = payload.len() as u32;
+            if payload.is_empty() { ptr::null() } else { payload.as_ptr() }
+        }
+        let mut core = core();
+        core.query = query_payload;
+        let duel = core.duel(&DuelOptions::seeded(2493300)).unwrap();
+        duel.errors.borrow_mut().push("existing script error".to_owned());
+        let expected = legacy_field(&duel);
+        let actual = duel.field();
+        assert_eq!(actual, expected);
+        assert_eq!(actual.len(), 12);
+        assert_eq!(actual[0], [msg::UPDATE_DATA, 0, 2]);
+        assert!(actual.iter().filter(|bytes| message::parse(bytes).is_err()).count() >= 6);
+        assert_eq!(&*duel.errors.borrow(), &["existing script error"]);
+    }
+
+    #[test]
+    fn native_field_messages_match_legacy_with_hidden_cards_and_counters() {
+        const BREAKER: u32 = 71413901;
+        const MONSTER: u32 = 5053103;
+        const SPELL: u32 = 5318639;
+        const BARRIER: u32 = 53239672;
+        const FUSION: u32 = 23995346;
+        let core = core();
+        let options = DuelOptions { hand: 0, per_turn: 0, ..DuelOptions::seeded(2493301) };
+        let mut duel = core.duel(&options).unwrap();
+        for controller in 0..2 {
+            for (code, location, sequence, position) in [
+                (MONSTER, 1, 0, position::FACEDOWN_DEFENSE),
+                (SPELL, 2, 0, position::FACEDOWN_DEFENSE),
+                (MONSTER, 4, 0, position::FACEUP_ATTACK),
+                (MONSTER, 4, 1, position::FACEDOWN_DEFENSE),
+                (BARRIER, 8, 0, position::FACEUP_ATTACK),
+                (SPELL, 8, 1, position::FACEDOWN_DEFENSE),
+                (MONSTER, 16, 0, position::FACEUP_ATTACK),
+                (MONSTER, 32, 0, position::FACEUP_ATTACK),
+                (MONSTER, 32, 1, position::FACEDOWN_DEFENSE),
+                (FUSION, 64, 0, position::FACEDOWN_DEFENSE),
+            ] {
+                duel.add(Placed { controller, code, location, sequence, position });
+            }
+        }
+        duel.add(Placed { controller: 0, code: BREAKER, location: 2, sequence: 1, position: position::FACEDOWN_DEFENSE });
+        duel.start();
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let db: Arc<dyn CardDatabase> = Arc::new(SqliteCards::open(root.join("vendor/BabelCdb/cards.cdb")).unwrap());
+        let mut seats = [0, 1].map(|player| {
+            let mut seat = Seat::new(registry::create_seeded("generic", db.clone(), 2493301).unwrap(), db.clone(), None);
+            seat.enable_response_overrides().unwrap();
+            seat.feed(&duel.start_message(player)).unwrap();
+            seat
+        });
+        let mut summoned = false;
+        for _ in 0..32 {
+            let step = duel.step().unwrap();
+            let mut pending = None;
+            for sent in &step.messages {
+                assert_ne!(sent.bytes.first(), Some(&msg::RETRY));
+                for (player, seat) in seats.iter_mut().enumerate() {
+                    if let Some(response) = seat.feed(&sent.bytes).unwrap() {
+                        assert!(pending.replace((player, response)).is_none());
+                    }
+                }
+            }
+            assert!(!matches!(step.state, State::Over(_)));
+            let Some((player, mut response)) = pending else {
+                assert_ne!(step.state, State::Awaiting);
+                continue;
+            };
+            let snapshot = duel.snapshot().unwrap();
+            let expected = legacy_field(&duel);
+            duel.restore(&snapshot).unwrap();
+            let actual = duel.field();
+            assert_eq!(actual, expected);
+            assert_eq!(actual.len(), 12);
+            for (index, bytes) in actual.iter().enumerate() {
+                assert_eq!(&bytes[..3], &[msg::UPDATE_DATA, (index / 6) as u8, [2, 4, 8, 16, 32, 64][index % 6]]);
+            }
+            let cards = actual.iter().flat_map(|bytes| match message::parse(bytes).unwrap() {
+                Message::UpdateData { player, location, cards } => cards.into_iter().flatten()
+                    .map(move |card| (player, location, card)).collect::<Vec<_>>(),
+                _ => unreachable!(),
+            }).collect::<Vec<_>>();
+            if cards.iter().any(|(_, _, card)| card.code == Some(BREAKER) && card.counters == Some(1)) {
+                assert!(summoned);
+                let breaker = &cards.iter().find(|(_, _, card)| card.code == Some(BREAKER)).unwrap().2;
+                assert_eq!(breaker.attack, Some(1900));
+                assert_eq!(breaker.is_public, Some(true));
+                assert!(cards.iter().any(|(_, _, card)| card.is_public == Some(false)));
+                for owner in 0..2 {
+                    for location in [2, 4, 8, 16, 32, 64] {
+                        assert!(cards.iter().any(|(player, loc, _)| *player == owner && *loc == location));
+                    }
+                }
+                for viewer in [Some(0), Some(1), None] {
+                    for (before, after) in expected.iter().zip(&actual) {
+                        assert_eq!(redact(before, viewer).unwrap(), redact(after, viewer).unwrap());
+                        let redacted = redact(after, viewer).unwrap().unwrap();
+                        if let Message::UpdateData { player, location: 2, cards } = message::parse(&redacted).unwrap() {
+                            assert!(!cards.is_empty());
+                            for card in cards.into_iter().flatten() {
+                                assert_eq!(card.code.filter(|code| *code != 0).is_some(), viewer == Some(player));
+                            }
+                        }
+                    }
+                }
+                // The same query calls also leave the same native continuation:
+                // no reference to its shared query buffer escaped either path.
+                duel.respond(&response);
+                let optimized_next = duel.step().unwrap();
+                duel.restore(&snapshot).unwrap();
+                assert_eq!(legacy_field(&duel), expected);
+                duel.respond(&response);
+                let legacy_next = duel.step().unwrap();
+                assert_eq!(optimized_next.messages, legacy_next.messages);
+                assert_eq!(optimized_next.state, legacy_next.state);
+                return;
+            }
+            let answer = seats[player].last_answer().unwrap();
+            let choice = if !summoned && player == 0 {
+                answer.decision.choices.iter().position(|choice| choice.kind == ChoiceKind::NormalSummon && choice.code() == Some(BREAKER))
+            } else {
+                answer.decision.choices.iter().position(|choice| choice.kind == ChoiceKind::Pass)
+            };
+            if let Some(index) = choice {
+                response = answer.responses[index].clone();
+                if answer.decision.choices[index].kind == ChoiceKind::NormalSummon {
+                    summoned = true;
+                }
+                seats[player].override_response(&response).unwrap();
+            }
+            duel.respond(&response);
+        }
+        panic!("Breaker never gained its native Spell Counter");
     }
 }
