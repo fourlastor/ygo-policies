@@ -135,6 +135,16 @@ That coverage does not establish better decisions, and no strength gain was
 demonstrated. Default weights and the v21 library stayed fixed; quality counters
 were zero. Warmup remains experimental, with UCT retained as the default.
 
+The [v24 direct chain-payoff diagnostic](chain-payoff-v24/report.md) found no
+strength benefit on 128 fresh Chain Burn pairs per mode: plain changed 39 to 38
+wins (0 gained, 1 lost), while MCTS32 stayed at 24 (4 gained, 4 lost).
+Paired 95% intervals were −2.31 to +0.75 points and −4.35 to +4.35 points.
+Only the library changed, adding direct offered Strike/Fortune payoffs and
+pending-draw guards; it does not construct future chains. Both arms shared the
+v24 host, UCT default, explicit warmup false and unchanged weights. Quality
+counters were zero. The shared face-down banished-card guard recorded zero
+skips, so this sample does not demonstrate that guard being exercised.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain

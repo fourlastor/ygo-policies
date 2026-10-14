@@ -48,6 +48,12 @@ The native swap API does not support REMOVED or facedown monsters.
 checked MZONE only, and public memory deliberately does not retain facedown
 banished identities. A later root could therefore simulate the return of an
 actual, unsampled hidden card even with the original redacted leaf evaluator.
+There is also an inventory effect before that return: `hidden` omits the actual
+concealed Banished identity, and `swap_plan` samples only the remaining native
+inventory. Thus the hidden banished identity can change the sampled Hand/Deck
+composition even when it never moves during the rollout. This is source-based
+reasoning about the sampling boundary, not a measured outcome or strength
+impact. The same fresh-root guard covers both paths.
 
 The narrow fix skips a **fresh** root whenever the redacted observation contains
 an opposing facedown Banished card, using only controller/location/face_up. It
