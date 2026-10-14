@@ -113,6 +113,7 @@ impl FrozenPolicy {
 }
 
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(super) struct Stats {
     pub simulations: usize,
     pub completed: usize,
@@ -128,6 +129,10 @@ pub(super) struct Stats {
     pub errors: Vec<String>,
     #[cfg(test)]
     root_trials: Vec<(usize, usize)>,
+    #[cfg(test)]
+    observation_reads: usize,
+    #[cfg(test)]
+    responses: Vec<(usize, Vec<u8>)>,
 }
 
 impl Stats {
@@ -403,7 +408,7 @@ struct Trial {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn simulate(
+fn simulate<const LEGACY_HORIZON: bool>(
     duel: &mut Duel,
     seats: &[LibrarySeat<'_>],
     viewer: u8,
@@ -425,6 +430,10 @@ fn simulate(
     let mut original = root_original.clone();
     let mut response = given(root_original)?;
     let goal = goal_turn(&root_original["observation"], viewer, options.replies);
+    // Projection advances its turn exactly once per MSG_NEW_TURN. Keep that
+    // small public counter here so pre-horizon prompts do not need to build,
+    // serialize and parse an entire observation just to read its turn.
+    let mut turn = root_original["observation"]["turn"].as_u64().unwrap_or(0);
     let mut path = Path::default();
     let mut tree_active = true;
     let mut first = true;
@@ -511,6 +520,8 @@ fn simulate(
                 path.own_response(&response);
             }
         }
+        #[cfg(test)]
+        stats.responses.push((pending_player, response.clone()));
         duel.respond(&response);
         first = false;
         future += 1;
@@ -535,6 +546,7 @@ fn simulate(
                     msg::RETRY => return Err("Engine rejected ISMCTS response (MSG_RETRY)".into()),
                     msg::CHAINING => chain = true,
                     msg::CHAIN_END => chain = false,
+                    msg::NEW_TURN => turn += 1,
                     msg::SELECT_IDLECMD | msg::SELECT_BATTLECMD => quiescent = true,
                     _ => {}
                 }
@@ -559,8 +571,13 @@ fn simulate(
                 return Ok(trial);
             }
             if let Some((player, given)) = answer {
-                if !options.terminal && quiescent && !chain {
+                if !options.terminal && quiescent && !chain && (LEGACY_HORIZON || turn >= goal) {
+                    #[cfg(test)]
+                    {
+                        stats.observation_reads += 1;
+                    }
                     let observation = seats[viewer as usize].observation()?;
+                    debug_assert_eq!(observation["turn"].as_u64().unwrap_or(0), turn);
                     if observation["turn"].as_u64().unwrap_or(0) >= goal {
                         let value = evaluator(&observation, viewer);
                         if !value.is_finite() {
@@ -610,6 +627,33 @@ pub(super) fn search(
     deadline: Option<Instant>,
     evaluator: &dyn Fn(&Value, u8) -> f64,
 ) -> Result<SearchResult> {
+    search_impl::<false>(
+        duel,
+        worlds,
+        viewer,
+        root_original,
+        root_decisions,
+        game_limit,
+        options,
+        deadline,
+        evaluator,
+    )
+}
+
+// The true specialization is instantiated only by native differential tests.
+// Production has no runtime switch and always skips pre-horizon observations.
+#[allow(clippy::too_many_arguments)]
+fn search_impl<const LEGACY_HORIZON: bool>(
+    duel: &mut Duel,
+    worlds: &[World<'_>],
+    viewer: u8,
+    root_original: &Value,
+    root_decisions: usize,
+    game_limit: usize,
+    options: Options,
+    deadline: Option<Instant>,
+    evaluator: &dyn Fn(&Value, u8) -> f64,
+) -> Result<SearchResult> {
     validate(worlds, viewer, options)?;
     let root = duel.snapshot()?;
     let mut tree = HashMap::<Key, Node>::new();
@@ -630,7 +674,7 @@ pub(super) fn search(
             stats.simulations += 1;
             #[cfg(test)]
             stats.root_trials.push((root_action, world_index));
-            match simulate(
+            match simulate::<LEGACY_HORIZON>(
                 duel,
                 &world.seats,
                 viewer,
@@ -716,13 +760,42 @@ pub(super) fn evaluate_frozen(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
+    evaluate_frozen_impl::<false>(
+        duel,
+        world,
+        viewer,
+        root_original,
+        forced_root,
+        root_decisions,
+        game_limit,
+        options,
+        deadline,
+        evaluator,
+        policy,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn evaluate_frozen_impl<const LEGACY_HORIZON: bool>(
+    duel: &mut Duel,
+    world: &World<'_>,
+    viewer: u8,
+    root_original: &Value,
+    forced_root: &[u8],
+    root_decisions: usize,
+    game_limit: usize,
+    options: Options,
+    deadline: Option<Instant>,
+    evaluator: &dyn Fn(&Value, u8) -> f64,
+    policy: &FrozenPolicy,
+) -> Result<Evaluation> {
     validate(std::slice::from_ref(world), viewer, options)?;
     let root = duel.snapshot()?;
     let mut stats = Stats::default();
     let result = (|| -> Result<Trial> {
         duel.restore(&world.snapshot)?;
         stats.simulations = 1;
-        simulate(
+        simulate::<LEGACY_HORIZON>(
             duel,
             &world.seats,
             viewer,
@@ -761,6 +834,36 @@ pub(super) fn evaluate_frozen(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn assert_stats_equivalent(optimized: &Stats, legacy: &Stats) {
+        assert!(optimized.observation_reads <= legacy.observation_reads);
+        let mut optimized = optimized.clone();
+        let mut legacy = legacy.clone();
+        optimized.observation_reads = 0;
+        legacy.observation_reads = 0;
+        // Includes exact response traces, world allocations, failures, caps
+        // and completed/terminal counts, not only the winning root action.
+        assert_eq!(optimized, legacy);
+    }
+
+    fn assert_search_equivalent(optimized: &SearchResult, legacy: &SearchResult) {
+        assert_eq!(optimized.root_response, legacy.root_response);
+        assert_eq!(optimized.root_actions, legacy.root_actions);
+        assert_stats_equivalent(&optimized.stats, &legacy.stats);
+        assert_eq!(optimized.policy.len(), legacy.policy.len());
+        for (key, action) in &optimized.policy.choices {
+            let reference = legacy.policy.choices.get(key).unwrap();
+            assert_eq!(action.signature, reference.signature);
+            assert_eq!(action.response, reference.response);
+            assert_eq!(action.action, reference.action);
+        }
+    }
+
+    fn assert_evaluation_equivalent(optimized: &Evaluation, legacy: &Evaluation) {
+        assert_eq!(optimized.value, legacy.value);
+        assert_eq!(optimized.terminal, legacy.terminal);
+        assert_stats_equivalent(&optimized.stats, &legacy.stats);
+    }
 
     fn answer() -> Value {
         serde_json::json!({"observation":{"turn":1,"cards":[]},"decision":{"kind":"YesNo","choices":[{"kind":"No"},{"kind":"Yes"}]},"responses":[[0],[1]],"choice":0})
@@ -1049,12 +1152,19 @@ mod tests {
         assert_eq!(world.seats[0].last_answer().unwrap(), original);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let repeated = search(
+        let legacy = search_impl::<true>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
-        assert_eq!(first.root_actions, repeated.root_actions);
-        assert_eq!(first.stats.root_trials, repeated.stats.root_trials);
+        assert_search_equivalent(&first, &legacy);
+        assert_eq!(first.stats.observation_reads, first.stats.completed);
+        assert!(first.stats.observation_reads < legacy.stats.observation_reads);
+        eprintln!(
+            "horizon replies=0: observation reads {} -> {} across {} identical simulations",
+            legacy.stats.observation_reads, first.stats.observation_reads, options.iterations
+        );
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
         let replayed = evaluate_frozen(
             &mut duel,
             &world,
@@ -1075,6 +1185,23 @@ mod tests {
         assert_eq!(replayed.stats.mismatches, 0);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
+        let legacy_replayed = evaluate_frozen_impl::<true>(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            first.root_response.as_ref().unwrap(),
+            decisions,
+            1024,
+            options,
+            None,
+            &evaluator,
+            &first.policy,
+        )
+        .unwrap();
+        assert_evaluation_equivalent(&replayed, &legacy_replayed);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
         let failed = evaluate_frozen(
             &mut duel,
             &world,
@@ -1091,6 +1218,23 @@ mod tests {
         .unwrap();
         assert_eq!(failed.stats.failed, 1);
         assert_eq!(failed.value, None);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        let legacy_failed = evaluate_frozen_impl::<true>(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            &root_response,
+            decisions,
+            1024,
+            options,
+            None,
+            &|_, _| f64::NAN,
+            &FrozenPolicy::default(),
+        )
+        .unwrap();
+        assert_evaluation_equivalent(&failed, &legacy_failed);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
         let failed_search = search(
@@ -1119,6 +1263,24 @@ mod tests {
                 .sum::<usize>(),
             9
         );
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        let legacy_failed_search = search_impl::<true>(
+            &mut duel,
+            &worlds,
+            0,
+            &original,
+            decisions,
+            1024,
+            Options {
+                iterations: 9,
+                ..options
+            },
+            None,
+            &|_, _| f64::NAN,
+        )
+        .unwrap();
+        assert_search_equivalent(&failed_search, &legacy_failed_search);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
         let capped = search(
@@ -1154,5 +1316,202 @@ mod tests {
             .all(|action| action.attempts > 0));
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
+        let legacy_capped = search_impl::<true>(
+            &mut duel,
+            &worlds,
+            0,
+            &original,
+            decisions,
+            1024,
+            Options {
+                decisions: 1,
+                ..options
+            },
+            None,
+            &evaluator,
+        )
+        .unwrap();
+        assert_search_equivalent(&capped, &legacy_capped);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+
+        // This draw-heavy fixture can end before a longer horizon. Terminal
+        // results must remain exact and must not request a horizon observation.
+        for (replies, terminal) in [(1, false), (2, false), (0, true)] {
+            let options = Options {
+                iterations: 6,
+                replies,
+                terminal,
+                ..options
+            };
+            let optimized = search(
+                &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
+            )
+            .unwrap();
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+            let legacy = search_impl::<true>(
+                &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
+            )
+            .unwrap();
+            assert_search_equivalent(&optimized, &legacy);
+            assert_eq!(optimized.stats.failed, 0, "{:?}", optimized.stats.errors);
+            if terminal {
+                assert_eq!(optimized.stats.observation_reads, 0);
+                assert!(optimized.stats.terminal > 0);
+                assert_eq!(optimized.stats.completed, optimized.stats.terminal);
+            } else {
+                assert!(optimized.stats.completed > 0);
+                assert!(optimized.stats.observation_reads < legacy.stats.observation_reads);
+            }
+            eprintln!(
+                "horizon replies={replies}, terminal={terminal}: observation reads {} -> {} across {} identical simulations",
+                legacy.stats.observation_reads, optimized.stats.observation_reads, options.iterations
+            );
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+        }
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first"]
+    fn native_horizon_matches_reference_from_later_turns() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library = PolicyLibrary::open(&root.join(format!(
+            "target/release/{}ygo_policies{}",
+            std::env::consts::DLL_PREFIX,
+            std::env::consts::DLL_SUFFIX
+        )))
+        .unwrap();
+        let decks = std::array::from_fn(|_| Deck {
+            main: vec![5053103; 40],
+            extra: vec![],
+        });
+        for viewer in 0..2u8 {
+            // Enough LP to reach every requested horizon without an early
+            // terminal result masking an incorrectly initialized turn count.
+            let mut duel_options = DuelOptions::seeded(2493100 + u64::from(viewer));
+            duel_options.life_points = [100_000; 2];
+            let mut duel = core.deal(&duel_options, &decks).unwrap();
+            let seats = (0..2u8)
+                .map(|player| {
+                    let seat = library
+                        .seat(
+                            "generic",
+                            &cards,
+                            i32::from(player),
+                            2493100 + u64::from(player),
+                        )
+                        .unwrap();
+                    seat.enable_response_overrides().unwrap();
+                    seat.feed(&duel.start_message(player)).unwrap();
+                    seat
+                })
+                .collect::<Vec<_>>();
+            let (root_response, decisions) = {
+                let mut decisions = 0;
+                loop {
+                    let step = duel.step().unwrap();
+                    let mut pending = None;
+                    let mut idle = false;
+                    for sent in &step.messages {
+                        if sent.refresh {
+                            seats[0].feed_update_pair(&seats[1], &sent.bytes).unwrap();
+                        } else {
+                            idle |= sent.bytes[0] == msg::SELECT_IDLECMD;
+                            for (player, seat) in seats.iter().enumerate() {
+                                if let Some(response) = seat.feed(&sent.bytes).unwrap() {
+                                    assert!(pending.replace((player, response)).is_none());
+                                }
+                            }
+                        }
+                    }
+                    assert!(!matches!(step.state, State::Over(_)));
+                    if let Some((player, response)) = pending {
+                        if player == usize::from(viewer)
+                            && idle
+                            && seats[player].observation().unwrap()["turn"]
+                                .as_u64()
+                                .unwrap()
+                                >= 3
+                        {
+                            break (response, decisions);
+                        }
+                        duel.respond(&response);
+                        decisions += 1;
+                    } else {
+                        assert_ne!(step.state, State::Awaiting);
+                    }
+                    assert!(decisions < 128);
+                }
+            };
+            let original = seats[usize::from(viewer)].last_answer().unwrap();
+            assert!(original["observation"]["turn"].as_u64().unwrap() >= 3);
+            let world = World {
+                snapshot: duel.snapshot().unwrap(),
+                seats,
+            };
+            let next_bytes = |duel: &mut Duel<'_>| {
+                duel.respond(&root_response);
+                duel.step().unwrap().messages
+            };
+            let expected = next_bytes(&mut duel);
+            duel.restore(&world.snapshot).unwrap();
+            for replies in [0, 1, 2] {
+                let options = Options {
+                    iterations: 6,
+                    actions: 3,
+                    nodes: 32,
+                    decisions: 128,
+                    replies,
+                    terminal: false,
+                };
+                let goal = goal_turn(&original["observation"], viewer, replies);
+                let evaluator = |observation: &Value, _: u8| {
+                    assert_eq!(observation["turn"].as_u64(), Some(goal));
+                    observation["cards"].as_array().unwrap().len() as f64 * 0.001
+                };
+                let optimized = search(
+                    &mut duel,
+                    std::slice::from_ref(&world),
+                    viewer,
+                    &original,
+                    decisions,
+                    1024,
+                    options,
+                    None,
+                    &evaluator,
+                )
+                .unwrap();
+                assert_eq!(next_bytes(&mut duel), expected);
+                duel.restore(&world.snapshot).unwrap();
+                let legacy = search_impl::<true>(
+                    &mut duel,
+                    std::slice::from_ref(&world),
+                    viewer,
+                    &original,
+                    decisions,
+                    1024,
+                    options,
+                    None,
+                    &evaluator,
+                )
+                .unwrap();
+                assert_search_equivalent(&optimized, &legacy);
+                assert_eq!(optimized.stats.failed, 0, "{:?}", optimized.stats.errors);
+                assert_eq!(optimized.stats.completed, options.iterations);
+                assert_eq!(optimized.stats.terminal, 0);
+                assert_eq!(optimized.stats.observation_reads, options.iterations);
+                assert!(optimized.stats.observation_reads < legacy.stats.observation_reads);
+                eprintln!(
+                    "later root viewer={viewer}, replies={replies}: observation reads {} -> {} across {} identical simulations",
+                    legacy.stats.observation_reads, optimized.stats.observation_reads, options.iterations
+                );
+                assert_eq!(next_bytes(&mut duel), expected);
+                duel.restore(&world.snapshot).unwrap();
+            }
+        }
     }
 }
