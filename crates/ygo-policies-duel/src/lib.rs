@@ -83,7 +83,7 @@ mod record;
 
 pub use crate::core::{Core, Printed};
 pub use crate::deck::Deck;
-pub use crate::duel::{Duel, DuelOptions, Monster, Outcome, Placed, Sent, Snapshot, State, Step};
+pub use crate::duel::{Duel, DuelOptions, Monster, Outcome, Placed, Sent, Snapshot, SnapshotMetrics, State, Step};
 pub use crate::policy::{LibrarySeat, PolicyLibrary};
 pub use crate::record::{Asked, Recorded, Replayed};
 

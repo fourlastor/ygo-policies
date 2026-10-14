@@ -131,6 +131,8 @@ extern "C" {
     fn OCG_DuelCreateSnapshot(duel: Handle, out: *mut Handle) -> i32;
     fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
     fn OCG_DuelDestroySnapshot(snapshot: Handle);
+    fn OCG_DuelArenaUsed(duel: Handle) -> u64;
+    fn OCG_DuelSnapshotSize(snapshot: Handle) -> u64;
     fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
     fn YGO_DuelReseed(duel: Handle, seed: u64) -> i32;
     fn YGO_DuelInitialEffects(
@@ -150,6 +152,10 @@ pub(crate) struct Extensions {
     pub(crate) count: unsafe extern "C" fn(Handle, u8, u32) -> u32,
     pub(crate) card: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
     pub(crate) reseed: Option<unsafe extern "C" fn(Handle, u64) -> i32>,
+    /// These diagnostics are optional independently of each other and of
+    /// search support on older dynamically loaded cores.
+    pub(crate) arena_used: Option<unsafe extern "C" fn(Handle) -> u64>,
+    pub(crate) snapshot_size: Option<unsafe extern "C" fn(Handle) -> u64>,
 }
 
 impl Extensions {
@@ -163,6 +169,8 @@ impl Extensions {
             count: OCG_DuelQueryCount,
             card: OCG_DuelQuery,
             reseed: Some(YGO_DuelReseed),
+            arena_used: Some(OCG_DuelArenaUsed),
+            snapshot_size: Some(OCG_DuelSnapshotSize),
         }
     }
 
@@ -177,6 +185,8 @@ impl Extensions {
             count: symbol(library, b"OCG_DuelQueryCount").ok()?,
             card: symbol(library, b"OCG_DuelQuery").ok()?,
             reseed: symbol(library, b"YGO_DuelReseed").ok(),
+            arena_used: symbol(library, b"OCG_DuelArenaUsed").ok(),
+            snapshot_size: symbol(library, b"OCG_DuelSnapshotSize").ok(),
         })
     }
 }

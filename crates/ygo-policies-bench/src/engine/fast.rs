@@ -81,6 +81,7 @@ struct Stats {
     mcts_accepted: u64,
     mcts_root_actions: u64,
     mcts_visited_root_actions: u64,
+    snapshot_copies: Vec<ygo_policies_duel::SnapshotMetrics>,
     errors: Vec<String>,
 }
 
@@ -836,6 +837,25 @@ fn choose_mcts(
     decisions: usize,
     stats: &mut Stats,
 ) -> Result<(Vec<u8>, usize, f64, Option<ismcts::FrozenPolicy>)> {
+    // Diagnostics stay outside the restored native arena. Include preparation,
+    // proposal, validation and the final live-root restore, even on errors.
+    duel.enable_snapshot_metrics(true);
+    duel.reset_snapshot_metrics();
+    let result = choose_mcts_measured(duel, context, table, original, given, decisions, stats);
+    if let Some(metrics) = duel.take_snapshot_metrics() { stats.snapshot_copies.push(metrics); }
+    duel.enable_snapshot_metrics(false);
+    result
+}
+
+fn choose_mcts_measured(
+    duel: &mut Duel,
+    context: &Context<'_>,
+    table: &Table<'_>,
+    original: &serde_json::Value,
+    given: &[u8],
+    decisions: usize,
+    stats: &mut Stats,
+) -> Result<(Vec<u8>, usize, f64, Option<ismcts::FrozenPolicy>)> {
     let options = context.options.mcts.ok_or("Missing MCTS options")?;
     let evaluator = context.evaluator.as_ref().ok_or("Missing MCTS evaluator")?;
     let evaluate = |observation: &serde_json::Value, viewer| evaluator.value(observation, viewer);
@@ -1155,6 +1175,14 @@ pub fn play_fast(
                 ("mcts_root_actions", stats.mcts_root_actions),
                 ("mcts_visited_root_actions", stats.mcts_visited_root_actions),
             ] { row[key] = serde_json::json!(value); }
+            row["mcts_snapshot_copies"] = serde_json::Value::Array(stats.snapshot_copies.iter().map(|metrics| {
+                serde_json::json!({
+                    "snapshots": metrics.snapshots, "restores": metrics.restores,
+                    "max_snapshot_bytes": metrics.max_snapshot_bytes,
+                    "snapshotted_bytes": metrics.snapshotted_bytes,
+                    "restored_bytes": metrics.restored_bytes,
+                })
+            }).collect());
             if let Some(recorded) = &recorded {
                 row["record"] = record_json(recorded, names);
             }
@@ -1575,6 +1603,13 @@ mod tests {
             assert_eq!(result["failed_playouts"], 0, "{}", result["search_errors"]);
             assert_eq!(result["failed_searches"], 0, "{}", result["search_errors"]);
             assert_eq!(result["limit"], false);
+            let copies = result["mcts_snapshot_copies"].as_array().unwrap();
+            assert_eq!(copies.len() as u64, result["searched"].as_u64().unwrap());
+            assert!(copies.iter().all(|copy| copy["snapshots"].as_u64().unwrap() > 0
+                && copy["restores"].as_u64().unwrap() > 0
+                && copy["max_snapshot_bytes"].as_u64().unwrap() > 0
+                && copy["snapshotted_bytes"].as_u64().unwrap() > 0
+                && copy["restored_bytes"].as_u64().unwrap() > 0));
             let searched = result["searched"].as_u64().unwrap();
             let simulated = result["mcts_simulations"].as_u64().unwrap();
             assert!(simulated <= searched * options.mcts.unwrap().iterations as u64);

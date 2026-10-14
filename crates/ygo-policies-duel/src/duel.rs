@@ -135,6 +135,50 @@ pub struct Step {
 pub struct Snapshot {
     handle: Handle,
     discard: unsafe extern "C" fn(Handle),
+    byte_len: Option<u64>,
+}
+
+impl Snapshot {
+    /// Bytes in the saved native arena image, cached when it was created.
+    /// This excludes allocation capacity and snapshot metadata. `None` means
+    /// the loaded core has no snapshot-size diagnostic.
+    pub fn byte_len(&self) -> Option<u64> { self.byte_len }
+}
+
+/// Successful native arena copies observed while a duel's optional meter is
+/// enabled. These are logical payload bytes, not measured memory bandwidth.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SnapshotMetrics {
+    /// Successful calls to [`Duel::snapshot`].
+    pub snapshots: u64,
+    /// Successful calls to [`Duel::restore`].
+    pub restores: u64,
+    /// Largest image copied in either direction during this period.
+    pub max_snapshot_bytes: Option<u64>,
+    /// Total bytes copied from the arena into newly created snapshots.
+    pub snapshotted_bytes: Option<u64>,
+    /// Total bytes copied from snapshots back into the arena.
+    pub restored_bytes: Option<u64>,
+}
+
+impl SnapshotMetrics {
+    fn new(sizes_available: bool) -> Self {
+        let zero = sizes_available.then_some(0);
+        Self { snapshots: 0, restores: 0, max_snapshot_bytes: zero,
+            snapshotted_bytes: zero, restored_bytes: zero }
+    }
+
+    fn record(&mut self, bytes: Option<u64>, restoring: bool) {
+        self.max_snapshot_bytes = self.max_snapshot_bytes.zip(bytes).map(|(old, bytes)| old.max(bytes));
+        let total = if restoring {
+            self.restores = self.restores.saturating_add(1);
+            &mut self.restored_bytes
+        } else {
+            self.snapshots = self.snapshots.saturating_add(1);
+            &mut self.snapshotted_bytes
+        };
+        *total = total.zip(bytes).and_then(|(old, bytes)| old.checked_add(bytes));
+    }
 }
 
 impl Drop for Snapshot {
@@ -154,6 +198,8 @@ pub struct Duel<'a> {
     life_points: [u32; 2],
     /// Cards put in each player's Deck and Extra Deck, for [`Duel::start_message`].
     piles: [[u16; 2]; 2],
+    /// Host-side counters are deliberately outside the native snapshot.
+    snapshot_metrics: Option<SnapshotMetrics>,
 }
 
 impl Drop for Duel<'_> {
@@ -236,7 +282,8 @@ impl Core {
             if status != 0 {
                 return Err(format!("OCG_CreateDuel: {status}"));
             }
-            let duel = Duel { core: self, handle, errors, life_points: options.life_points, piles: [[0; 2]; 2] };
+            let duel = Duel { core: self, handle, errors, life_points: options.life_points,
+                piles: [[0; 2]; 2], snapshot_metrics: None };
             for name in ["constant.lua", "utility.lua"] {
                 let name = CString::new(name).unwrap();
                 if core::scripts(payload, handle, name.as_ptr()) == 0 {
@@ -490,6 +537,39 @@ impl Duel<'_> {
         }
     }
 
+    /// Current native arena high-water usage, including space retained from
+    /// freed allocations. This is not the arena's reserved capacity or a
+    /// count of live objects. `None` means this diagnostic is unavailable.
+    pub fn arena_used_bytes(&self) -> Option<u64> {
+        self.core.extensions.as_ref()?.arena_used.map(|used| unsafe { used(self.handle) })
+    }
+
+    fn empty_snapshot_metrics(&self) -> SnapshotMetrics {
+        SnapshotMetrics::new(self.core.extensions.as_ref().is_some_and(|extensions| extensions.snapshot_size.is_some()))
+    }
+
+    /// Enable the host-side arena-copy meter, initially disabled. Enabling an
+    /// already enabled meter preserves its counters; disabling discards them.
+    /// The meter performs no allocation, timing or native queries on restore.
+    pub fn enable_snapshot_metrics(&mut self, enabled: bool) {
+        if !enabled { self.snapshot_metrics = None; }
+        else if self.snapshot_metrics.is_none() { self.snapshot_metrics = Some(self.empty_snapshot_metrics()); }
+    }
+
+    /// Start a fresh counter period if the meter is enabled. Missing native
+    /// size diagnostics remain `None`, rather than being reported as zero.
+    pub fn reset_snapshot_metrics(&mut self) {
+        if self.snapshot_metrics.is_some() { self.snapshot_metrics = Some(self.empty_snapshot_metrics()); }
+    }
+
+    /// Read and reset this period, leaving the meter enabled. `None` means the
+    /// meter is disabled. Individual byte fields are `None` when unavailable;
+    /// totals also become `None` on overflow. Failed operations are excluded.
+    pub fn take_snapshot_metrics(&mut self) -> Option<SnapshotMetrics> {
+        let empty = self.empty_snapshot_metrics();
+        self.snapshot_metrics.as_mut().map(|metrics| std::mem::replace(metrics, empty))
+    }
+
     /// Copy the duel's state.  Only while the engine waits for a response
     /// ([`State::Awaiting`]) and before one is given.
     pub fn snapshot(&mut self) -> Result<Snapshot> {
@@ -499,7 +579,10 @@ impl Duel<'_> {
         if status != 0 {
             return Err(format!("OCG_DuelCreateSnapshot: {status}"));
         }
-        Ok(Snapshot { handle, discard: extensions.discard })
+        let snapshot = Snapshot { handle, discard: extensions.discard,
+            byte_len: extensions.snapshot_size.map(|size| unsafe { size(handle) }) };
+        if let Some(metrics) = &mut self.snapshot_metrics { metrics.record(snapshot.byte_len, false); }
+        Ok(snapshot)
     }
 
     /// Go back to a snapshot of this duel: the engine waits for the same
@@ -511,6 +594,7 @@ impl Duel<'_> {
             return Err(format!("OCG_DuelRestoreSnapshot: {status}"));
         }
         self.errors.borrow_mut().clear();
+        if let Some(metrics) = &mut self.snapshot_metrics { metrics.record(snapshot.byte_len, true); }
         Ok(())
     }
 
@@ -547,6 +631,126 @@ mod tests {
     fn core() -> Core {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         Core::open(None, &root.join("vendor/BabelCdb/cards.cdb"), &root.join("vendor/CardScripts")).unwrap()
+    }
+
+    fn snapshot_boundary(core: &Core) -> Duel<'_> {
+        let options = DuelOptions { hand: 0, per_turn: 0, ..DuelOptions::seeded(2493302) };
+        let mut duel = core.duel(&options).unwrap();
+        duel.add(Placed { controller: 0, code: 5053103, location: 2, sequence: 0,
+            position: position::FACEDOWN_DEFENSE });
+        duel.start();
+        for _ in 0..16 {
+            let step = duel.step().unwrap();
+            if step.state == State::Awaiting {
+                assert!(step.messages.iter().any(|sent| matches!(message::parse(&sent.bytes),
+                    Ok(Message::SelectIdle(idle)) if !idle.summon.is_empty())));
+                return duel;
+            }
+            assert_eq!(step.state, State::Running);
+        }
+        panic!("snapshot fixture never reached its first summon selection");
+    }
+
+    #[test]
+    fn snapshot_metrics_count_exact_native_images_without_changing_continuation() {
+        let core = core();
+        let mut duel = snapshot_boundary(&core);
+        let root = duel.snapshot().unwrap();
+        let bytes = root.byte_len().unwrap();
+        assert!(bytes > 0);
+        assert_eq!(duel.arena_used_bytes(), Some(bytes));
+        assert_eq!(duel.take_snapshot_metrics(), None, "the meter is disabled by default");
+        let summon = 0i32.to_le_bytes();
+        duel.respond(&summon);
+        let expected = duel.step().unwrap();
+        assert!(duel.arena_used_bytes().unwrap() >= bytes);
+        duel.restore(&root).unwrap();
+        assert_eq!(duel.arena_used_bytes(), Some(bytes));
+        assert_eq!(duel.take_snapshot_metrics(), None);
+
+        duel.enable_snapshot_metrics(true);
+        let copy = duel.snapshot().unwrap();
+        assert_eq!(copy.byte_len(), Some(bytes));
+        // Owner errors and unsafe-boundary failures perform no successful copy.
+        let mut other = snapshot_boundary(&core);
+        let foreign = other.snapshot().unwrap();
+        assert!(duel.restore(&foreign).is_err());
+        duel.respond(&summon);
+        assert!(duel.snapshot().is_err());
+        let actual = duel.step().unwrap();
+        assert_eq!(actual.messages, expected.messages);
+        assert_eq!(actual.state, expected.state);
+        duel.restore(&copy).unwrap();
+        duel.restore(&root).unwrap();
+        // The root predates enabling the meter; its cached size is still valid.
+        assert_eq!(duel.take_snapshot_metrics(), Some(SnapshotMetrics {
+            snapshots: 1, restores: 2, max_snapshot_bytes: Some(bytes),
+            snapshotted_bytes: Some(bytes), restored_bytes: Some(2 * bytes),
+        }));
+        assert_eq!(duel.take_snapshot_metrics(), Some(SnapshotMetrics::new(true)));
+        duel.restore(&root).unwrap();
+        duel.enable_snapshot_metrics(true);
+        assert_eq!(duel.take_snapshot_metrics().unwrap().restores, 1,
+            "enabling twice preserves the current period");
+        duel.restore(&root).unwrap();
+        duel.reset_snapshot_metrics();
+        assert_eq!(duel.take_snapshot_metrics(), Some(SnapshotMetrics::new(true)));
+        duel.enable_snapshot_metrics(false);
+        duel.restore(&root).unwrap();
+        let _ = duel.snapshot().unwrap();
+        duel.reset_snapshot_metrics();
+        assert_eq!(duel.take_snapshot_metrics(), None);
+        duel.respond(&summon);
+        let unmetered = duel.step().unwrap();
+        assert_eq!(unmetered.messages, expected.messages);
+        assert_eq!(unmetered.state, expected.state);
+    }
+
+    #[test]
+    fn snapshot_metrics_optional_getters_are_independent_and_restore_uses_cached_size() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SIZE_CALLS: AtomicU64 = AtomicU64::new(0);
+        unsafe extern "C" fn counted_size(_: Handle) -> u64 {
+            SIZE_CALLS.fetch_add(1, Ordering::Relaxed);
+            1234
+        }
+        let mut core = core();
+        let native = core.extensions.unwrap();
+        for arena in [false, true] {
+            for size in [false, true] {
+                let extensions = core.extensions.as_mut().unwrap();
+                extensions.arena_used = if arena { native.arena_used } else { None };
+                extensions.snapshot_size = size.then_some(counted_size);
+                assert!(core.has_snapshots(), "missing diagnostics must not disable search");
+                let mut duel = snapshot_boundary(&core);
+                assert_eq!(duel.arena_used_bytes().is_some(), arena);
+                duel.enable_snapshot_metrics(true);
+                SIZE_CALLS.store(0, Ordering::Relaxed);
+                let snapshot = duel.snapshot().unwrap();
+                assert_eq!(snapshot.byte_len(), size.then_some(1234));
+                for _ in 0..3 { duel.restore(&snapshot).unwrap(); }
+                assert_eq!(SIZE_CALLS.load(Ordering::Relaxed), u64::from(size),
+                    "the optional native size getter is called once per image, never per restore");
+                assert_eq!(duel.take_snapshot_metrics(), Some(SnapshotMetrics {
+                    snapshots: 1, restores: 3, max_snapshot_bytes: size.then_some(1234),
+                    snapshotted_bytes: size.then_some(1234), restored_bytes: size.then_some(3702),
+                }));
+            }
+        }
+    }
+
+    #[test]
+    fn snapshot_metrics_unavailable_or_overflowed_bytes_never_become_zero() {
+        let mut metrics = SnapshotMetrics::new(true);
+        metrics.record(Some(u64::MAX), false);
+        metrics.record(Some(1), false);
+        assert_eq!(metrics.snapshotted_bytes, None);
+        assert_eq!(metrics.max_snapshot_bytes, Some(u64::MAX));
+        metrics.record(None, true);
+        metrics.record(Some(42), true);
+        assert_eq!(metrics.max_snapshot_bytes, None);
+        assert_eq!(metrics.restored_bytes, None);
+        assert_eq!((metrics.snapshots, metrics.restores), (2, 2));
     }
 
     /// The original two-copy field transport, kept independent of the new
