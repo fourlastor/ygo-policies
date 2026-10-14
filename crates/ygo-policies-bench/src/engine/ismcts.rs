@@ -148,6 +148,11 @@ pub(super) struct Stats {
     pub opponent_actions: usize,
     /// Opponent tree responses successfully committed during proposals.
     pub opponent_tree_hits: usize,
+    /// Root actions attempted/successfully evaluated in every supplied
+    /// proposal world. Supplied worlds can be fewer than configured when
+    /// preparation reaches its deadline; validation worlds are not counted.
+    pub root_actions_all_worlds_attempted: usize,
+    pub root_actions_all_worlds_completed: usize,
     pub applied: usize,
     pub missing: usize,
     pub mismatches: usize,
@@ -218,22 +223,48 @@ struct Node {
     actions: Vec<Action>,
 }
 
-/// UCT selects a root action before any sampled world is inspected. Each
-/// action then sees the same world cycle, rather than inheriting the global
-/// iteration's world. Scheduled trials advance even when simulation fails or
-/// reaches its cap; completed returns alone still determine action values.
+/// Root warmup and then UCT select an action before any sampled world is
+/// inspected. Each action sees the same world cycle, rather than inheriting
+/// the global iteration's world. Scheduled trials advance even when simulation
+/// fails or reaches its cap; completed returns alone determine action values.
 #[derive(Default)]
 struct RootWorldSchedule {
     scheduled: Vec<usize>,
+    completed: Vec<Vec<bool>>,
 }
 
 impl RootWorldSchedule {
+    fn select(&self, root: &Node, worlds: usize) -> usize {
+        // Stable ties keep Generic first and yield fair round-robin prefixes
+        // even when the trial budget cannot finish the warmup. Use scheduled
+        // attempts: failures before an edge commits still consume its world.
+        let (action, attempts) = root.actions.iter().enumerate()
+            .map(|(index, _)| (index, self.scheduled.get(index).copied().unwrap_or(0)))
+            .min_by_key(|&(_, attempts)| attempts)
+            .expect("a retained root has actions");
+        if attempts < worlds { action } else { root.select() }
+    }
+
     fn next(&mut self, action: usize, worlds: usize) -> usize {
         self.scheduled
             .resize(self.scheduled.len().max(action + 1), 0);
         let world = self.scheduled[action] % worlds;
         self.scheduled[action] += 1;
         world
+    }
+
+    fn complete(&mut self, action: usize, world: usize, worlds: usize) {
+        self.completed.resize_with(self.completed.len().max(action + 1), Vec::new);
+        self.completed[action].resize(worlds, false);
+        self.completed[action][world] = true;
+    }
+
+    fn coverage(&self, actions: usize, worlds: usize) -> (usize, usize) {
+        let attempted = self.scheduled.iter().take(actions)
+            .filter(|&&attempts| attempts >= worlds).count();
+        let completed = self.completed.iter().take(actions)
+            .filter(|seen| seen.len() == worlds && seen.iter().all(|&done| done)).count();
+        (attempted, completed)
     }
 }
 
@@ -855,7 +886,8 @@ fn search_impl<
             }
             // An unseen root expands generic-first, so its first action is 0.
             // No hidden world data participates in this selection.
-            let root_action = tree.get(&root_key).map_or(0, Node::select);
+            let root_action = tree.get(&root_key)
+                .map_or(0, |node| schedule.select(node, worlds.len()));
             let world_index = schedule.next(root_action, worlds.len());
             let world = &worlds[world_index];
             duel.restore(&world.snapshot)?;
@@ -886,6 +918,9 @@ fn search_impl<
                         stats.completed += 1;
                         stats.terminal += usize::from(trial.terminal);
                         for (key, index) in trial.visited {
+                            if key == root_key {
+                                schedule.complete(index, world_index, worlds.len());
+                            }
                             let action = &mut tree.get_mut(&key).unwrap().actions[index];
                             action.visits += 1;
                             action.total += value;
@@ -911,7 +946,7 @@ fn search_impl<
     let root_response = tree
         .get(&root_key)
         .map(|node| node.actions[node.best()].planned.response.clone());
-    let root_actions = tree
+    let root_actions: Vec<RootAction> = tree
         .get(&root_key)
         .map(|node| {
             node.actions
@@ -925,6 +960,8 @@ fn search_impl<
                 .collect()
         })
         .unwrap_or_default();
+    (stats.root_actions_all_worlds_attempted, stats.root_actions_all_worlds_completed) =
+        schedule.coverage(root_actions.len(), worlds.len());
     let policy = FrozenPolicy {
         choices: tree
             .into_iter()
@@ -1539,6 +1576,136 @@ mod tests {
         }
     }
 
+    fn node_with_actions(count: usize) -> Node {
+        let original = serde_json::json!({
+            "observation": {},
+            "decision": {"kind":"Option", "choices": (0..count)
+                .map(|index| serde_json::json!({"kind":"Option","description":index}))
+                .collect::<Vec<_>>()},
+            "responses": (0..count).map(|index| vec![index as u8]).collect::<Vec<_>>(),
+            "choice": 0,
+        });
+        Node { actions: actions(&original, &original, count).unwrap() }
+    }
+
+    #[test]
+    fn root_warmup_covers_eight_actions_in_thirty_two_trials_and_balances_short_budgets() {
+        for budget in [1usize, 7, 11, 31, 32] {
+            let mut node = node_with_actions(8);
+            let mut schedule = RootWorldSchedule::default();
+            let mut trials = Vec::new();
+            for _ in 0..budget {
+                let action = schedule.select(&node, 4);
+                let world = schedule.next(action, 4);
+                node.actions[action].attempts += 1;
+                node.actions[action].visits += 1;
+                schedule.complete(action, world, 4);
+                trials.push((action, world));
+            }
+            assert_eq!(trials, (0..budget).map(|trial| (trial % 8, trial / 8)).collect::<Vec<_>>());
+            assert_eq!(node.actions.iter().map(|action| action.attempts).sum::<usize>(), budget);
+            let attempts: Vec<_> = node.actions.iter().map(|action| action.attempts).collect();
+            assert!(attempts.iter().max().unwrap() - attempts.iter().min().unwrap() <= 1);
+            assert_balanced_worlds(&trials, 4);
+            let full = budget.saturating_sub(3 * 8).min(8);
+            assert_eq!(schedule.coverage(8, 4), (full, full));
+        }
+    }
+
+    #[test]
+    fn root_warmup_can_recover_an_action_with_bad_early_worlds_without_more_trials() {
+        let run = |warmup: bool| {
+            let mut node = node_with_actions(8);
+            let mut schedule = RootWorldSchedule::default();
+            for _ in 0..32 {
+                let action = if warmup { schedule.select(&node, 4) } else { node.select() };
+                let world = schedule.next(action, 4);
+                // Action 7 averages zero and beats every constant -0.1 action,
+                // but its first two worlds alone misleadingly average -1.
+                let value = if action == 7 {
+                    if world < 2 { -1.0 } else { 1.0 }
+                } else { -0.1 };
+                node.actions[action].attempts += 1;
+                node.actions[action].visits += 1;
+                node.actions[action].total += value;
+                schedule.complete(action, world, 4);
+            }
+            (node, schedule)
+        };
+        let (old, old_schedule) = run(false);
+        let (warmed, warmed_schedule) = run(true);
+        for node in [&old, &warmed] {
+            assert_eq!(node.actions.iter().map(|action| action.attempts).sum::<usize>(), 32);
+        }
+        assert!(old.actions[7].visits < 4);
+        assert_ne!(old.best(), 7);
+        assert_eq!(warmed.best(), 7);
+        assert_eq!(warmed.actions[7].total, 0.0);
+        assert!(old_schedule.coverage(8, 4).0 < 8);
+        assert_eq!(warmed_schedule.coverage(8, 4), (8, 8));
+    }
+
+    #[test]
+    fn root_warmup_preserves_inner_uct_and_returns_to_it_after_coverage() {
+        let mut node = node_with_actions(2);
+        node.actions[0].attempts = 3;
+        node.actions[0].visits = 3;
+        node.actions[0].total = 2.4;
+        node.actions[1].attempts = 2;
+        node.actions[1].visits = 2;
+        node.actions[1].total = -1.6;
+        let mut schedule = RootWorldSchedule {
+            scheduled: vec![3, 2],
+            ..Default::default()
+        };
+        assert_eq!(node.select(), 0, "inner maximizing UCT still favors its evidence");
+        assert_eq!(node.select_for(false), 1, "inner minimizing UCT is unchanged");
+        assert_eq!(schedule.select(&node, 4), 1, "only the root completes the world cycle");
+        schedule.scheduled = vec![4, 4];
+        assert_eq!(schedule.select(&node, 4), node.select());
+        // With one supplied world, the warmup is exactly UCT's existing
+        // first-unvisited pass, including uneven values and every prefix.
+        let mut one_world = node_with_actions(3);
+        let mut schedule = RootWorldSchedule::default();
+        for _ in 0..16 {
+            let action = schedule.select(&one_world, 1);
+            assert_eq!(action, one_world.select());
+            schedule.next(action, 1);
+            one_world.actions[action].attempts += 1;
+            one_world.actions[action].visits += 1;
+            one_world.actions[action].total += [0.5, -0.8, 0.1][action];
+        }
+    }
+
+    #[test]
+    fn root_world_completion_requires_each_distinct_world_despite_failures_and_repeats() {
+        let mut node = node_with_actions(2);
+        let mut schedule = RootWorldSchedule::default();
+        for _ in 0..8 {
+            let action = schedule.select(&node, 4);
+            let world = schedule.next(action, 4);
+            // Simulate failures before edge-attempt accounting on action 0.
+            // They must consume its scheduled worlds without starving action 1.
+            if action == 1 {
+                node.actions[action].attempts += 1;
+                node.actions[action].visits += 1;
+                schedule.complete(action, world, 4);
+            }
+        }
+        assert_eq!(schedule.scheduled, vec![4, 4]);
+        assert_eq!(schedule.coverage(2, 4), (2, 1));
+        for _ in 0..8 {
+            let world = schedule.next(0, 4);
+            if world != 0 { schedule.complete(0, world, 4); }
+        }
+        assert_eq!(schedule.coverage(2, 4), (2, 1),
+            "six successful repeats cannot replace the missing world 0");
+        let world = schedule.next(0, 4);
+        assert_eq!(world, 0);
+        schedule.complete(0, world, 4);
+        assert_eq!(schedule.coverage(2, 4), (2, 2));
+    }
+
     #[test]
     fn root_world_cycles_remove_action_order_bias_from_world_only_returns() {
         let run = |balanced: bool| {
@@ -1745,6 +1912,8 @@ mod tests {
         assert_eq!(menus_seen.get(), 0, "replies=0 evaluates the opponent's turn");
         assert!(heuristic_calls.get() > 0);
         assert_eq!(first.stats.completed, options.iterations);
+        assert_eq!(first.stats.root_actions_all_worlds_attempted, first.root_actions.len());
+        assert_eq!(first.stats.root_actions_all_worlds_completed, first.root_actions.len());
         assert_balanced_worlds(&first.stats.root_trials, worlds.len());
         assert_eq!(first.stats.root_trials.len(), options.iterations);
         assert_eq!(
@@ -1919,6 +2088,9 @@ mod tests {
         .unwrap();
         assert_eq!(failed_search.stats.failed, 9);
         assert_eq!(failed_search.stats.completed, 0);
+        assert_eq!(failed_search.stats.root_actions_all_worlds_attempted,
+            failed_search.root_actions.len());
+        assert_eq!(failed_search.stats.root_actions_all_worlds_completed, 0);
         assert_balanced_worlds(&failed_search.stats.root_trials, worlds.len());
         assert_eq!(
             failed_search
@@ -1965,6 +2137,8 @@ mod tests {
         .unwrap();
         assert_eq!(capped.stats.completed, 0);
         assert_eq!(capped.stats.cutoffs, options.iterations);
+        assert_eq!(capped.stats.root_actions_all_worlds_attempted, capped.root_actions.len());
+        assert_eq!(capped.stats.root_actions_all_worlds_completed, 0);
         assert_balanced_worlds(&capped.stats.root_trials, worlds.len());
         assert_eq!(
             capped
@@ -2458,6 +2632,10 @@ mod tests {
                 assert_search_equivalent(&optimized, &legacy);
                 assert_eq!(optimized.stats.failed, 0, "{:?}", optimized.stats.errors);
                 assert_eq!(optimized.stats.completed, options.iterations);
+                assert_eq!(optimized.stats.root_actions_all_worlds_attempted,
+                    optimized.root_actions.len());
+                assert_eq!(optimized.stats.root_actions_all_worlds_completed,
+                    optimized.root_actions.len());
                 assert_eq!(optimized.stats.terminal, 0);
                 assert_eq!(optimized.stats.observation_reads, options.iterations);
                 assert_eq!(menus_seen.get(), if replies == 0 { 0 } else { 2 * options.iterations },

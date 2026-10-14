@@ -106,6 +106,8 @@ struct Stats {
     mcts_accepted: u64,
     mcts_root_actions: u64,
     mcts_visited_root_actions: u64,
+    mcts_root_actions_all_worlds_attempted: u64,
+    mcts_root_actions_all_worlds_completed: u64,
     snapshot_copies: Vec<ygo_policies_duel::SnapshotMetrics>,
     errors: Vec<String>,
 }
@@ -923,6 +925,8 @@ fn choose_mcts_measured(
             context.limit, MctsOptions { iterations, ..options }, proposal_deadline, &evaluate)?;
         stats.mcts_root_actions += searched.root_actions.len() as u64;
         stats.mcts_visited_root_actions += searched.root_actions.iter().filter(|a| a.visits > 0).count() as u64;
+        stats.mcts_root_actions_all_worlds_attempted += searched.stats.root_actions_all_worlds_attempted as u64;
+        stats.mcts_root_actions_all_worlds_completed += searched.stats.root_actions_all_worlds_completed as u64;
         stats.mcts_simulations += searched.stats.simulations as u64;
         stats.mcts_completed += searched.stats.completed as u64;
         stats.mcts_nodes += searched.stats.nodes as u64;
@@ -1222,6 +1226,8 @@ pub fn play_fast(
                 ("mcts_accepted", stats.mcts_accepted),
                 ("mcts_root_actions", stats.mcts_root_actions),
                 ("mcts_visited_root_actions", stats.mcts_visited_root_actions),
+                ("mcts_root_actions_all_worlds_attempted", stats.mcts_root_actions_all_worlds_attempted),
+                ("mcts_root_actions_all_worlds_completed", stats.mcts_root_actions_all_worlds_completed),
             ] { row[key] = serde_json::json!(value); }
             row["search_opponent_model"] = serde_json::json!(if fast.specialist_opponent { "specialist" } else { "generic" });
             if fast.specialist_opponent {
