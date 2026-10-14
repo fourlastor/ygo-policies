@@ -126,6 +126,15 @@ noncached prompts with multiple alternatives, with chain guards checked first.
 They identify a search-coverage gap, not evidence that those opportunities can
 be safely recovered or would improve wins.
 
+The [v22 root-world warmup diagnostic](root-warmup-v22/report.md) changed wins
+from 71 to 66 in 128 fresh pairs across Crystal, Gem-Knight, Gishki and Heroes
+(10 gained, 15 lost; paired change −3.91 points, 95% interval −11.56 to +3.75).
+All 16,186 retained candidate root actions were attempted and completed in every
+supplied proposal world, but the old host lacked these coverage counters.
+That coverage does not establish better decisions, and no strength gain was
+demonstrated. Default weights and the v21 library stayed fixed; quality counters
+were zero. Warmup remains experimental, with UCT retained as the default.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain
@@ -447,12 +456,12 @@ produce up to twelve complete responses by varying first picks and, if space
 remains, second picks; the host still retains at most eight for these experiments.
 This is a candidate subset, not exhaustive enumeration of every legal play.
 
-At the root, the current implementation first schedules a fair pass through
-every supplied world for each retained action, within the existing trial budget.
-With eight actions, four worlds and 32 trials, that pass fits exactly. Failures
-consume scheduled attempts but are tracked separately from completed coverage.
-Remaining root trials and inner nodes use UCT: mean completed simulation value
-plus `sqrt(2 * ln(parent_attempts + 1) / action_attempts)`.
+By default, root and inner nodes use UCT: mean completed simulation value plus
+`sqrt(2 * ln(parent_attempts + 1) / action_attempts)`. Experimental root-world
+warmup first schedules a fair pass through every supplied world for each retained
+root action, within the existing trial budget, before returning to UCT. With
+eight actions, four worlds and 32 trials, that pass fits exactly. Failures consume
+scheduled attempts but are tracked separately from completed coverage.
 Search selects the root action before cycling its sampled hidden world, adds at most one useful tree node per
 simulation, and uses Generic for the remainder of that rollout. The rollout
 ends at a resolved turn boundary after the configured reply horizon, or at a
