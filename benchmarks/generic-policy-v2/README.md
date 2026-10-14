@@ -25,6 +25,10 @@ Initial action metadata exists for 822 cards: 751 have a categorized action and
 71 have only category-zero actions. Shared lookup facts cover 270 active cards.
 These overlapping counts describe available facts, not complete card semantics
 or measured playing strength.
+The [v8 inventory](card-coverage-v8.json), frozen at `3faafa3`, contains 67 such
+identities, adding partial rules for Honest and Black Rose Dragon. Its registries
+include five transaction entries and one combat entry; other registry sizes and
+the 951-card scope are unchanged. This remains partial contextual knowledge.
 
 ## Changes from the first experiment
 
@@ -73,6 +77,7 @@ records binary fingerprints, engine/scripts, decks, seeds and settings.
 | v6 generic pilot versus v4, same 71-deck schedule | 369/1136 | 397/1136 | +2.46 points [+1.47, +3.46] |
 | v6 MCTS versus v4 MCTS, same 71-deck schedule | 129/284 | 134/284 | +1.76 points [-1.08, +4.60] |
 | v7 generic pilot versus v6, same 71-deck schedule | 397/1136 | 398/1136 | +0.09 points [-0.21, +0.39] |
+| v8 generic pilot versus v7, same 71-deck schedule | 398/1136 | 420/1136 | +1.94 points [+0.85, +3.02] |
 
 Intervals are paired normal 95% intervals over the exact deck/seed/seat schedule.
 The earlier pilot and beam intervals include zero. The small MCTS smoke has only 11
@@ -132,6 +137,28 @@ includes zero; this does not establish a strength improvement. Seven of 70
 required decks met the observed target, none cleared the Wilson lower bound,
 and all games completed without failures or caps.
 
+The v8 plain run, frozen at `3faafa3`, won 420/1136 (36.97%) versus v7's 398/1136.
+It improved 31 paired outcomes and worsened nine. The largest observed net gains
+were Iron Chain, 2/16 to 6/16, and Jurrac, 3/16 to 7/16; Benkei and Herald each
+lost one win. This supports aggregate improvement on the repeated development
+schedule, not a 55% per-specialist guarantee. The observed target count remains
+7/70, with no Wilson lower-bound passes; there were no failures or caps.
+
+Spot checks in the archived v7/v8 traces show concrete behavior changes. These
+examples use candidate seat 0 and zero-based trace indices:
+
+- Fabled, seed `1072687460`: Black Rose Dragon's description-221 prompt changes
+  from Yes at v7 index 72 to No at v8 index 65. Both games still end in a loss.
+- Fabled, seed `1072687462`: v7 sets Nozoochee on turn 5 at index 202; v8 activates
+  it from hand on turns 3 and 5 at indices 135 and 212. The outcome changes from
+  loss to win.
+- Worm, seed `396332351`: v7 normal-summons and bounces Honest on turns 1 and 3
+  (indices 2/6 and 51/55). V8 normal-summons it at index 2 and passes the bounce
+  at index 6; the outcome changes from loss to win.
+
+Several fixes changed together and the game paths diverge, so these are behavior
+checks, not isolated causal evidence that any one fix produced the extra wins.
+
 The v6 small/large roster runs overlap, and their shared CPU affinity was reduced
 during execution to logical CPUs 8–23, leaving four complete physical cores
 (logical CPUs 0–7) free for the user. `cpu-affinity-intervention.json` preserves
@@ -140,6 +167,13 @@ their latency is not a controlled speed comparison. These runs use fixed work
 budgets and no time deadline. Future concurrent searches must share at most
 16 worker threads total and use `taskset -c 8-23` on this host. While a 12-worker
 run remains active, any new benchmark may use at most four workers.
+The v7 MCTS timing also includes a deliberate pause during v8 validation, so its
+elapsed latency is unsuitable for performance claims.
+That v7 roster run was subsequently discontinued after 107/284 recorded games
+to redirect its four workers to frozen v8. Its partial archive is diagnostic
+evidence only, has no full summary, and is rejected by the comparison analyzer.
+The completed [v8 validation schedule](v8-validation-scheduling.json) records the
+earlier pause and successful resume before this separate termination.
 
 The beam smoke search latency was
 about 963 ms mean and 2947 ms p95 under four concurrent workers, well above the
@@ -187,10 +221,14 @@ replay, budgets, and the all-root validation path; these do not establish streng
 A subsequent v7 workspace run passed 392 enabled tests with the same seven native
 fixtures ignored by that ordinary run; it does not replace the separate v6 native
 validation above.
+The native host test for validated MCTS continuations and deterministic replay
+also passed with the frozen v8 library (one test, 85.97 seconds under load).
 
 Archived completed raw runs are stored as `.jsonl.gz`; metadata and summaries retain their
 original names. `archive-manifest.json` records original byte counts and SHA-256
 digests, verified after decompression. Comparison JSON files point to the archives.
+Discontinued partial data is listed separately in `partial-archive-manifest.json`,
+with a status document that prevents its use in completed strength comparisons.
 
 The first beam smoke predates terminal validation and used the turn horizon even
 though its command contained `--horizon 0`. Its metadata explicitly records
