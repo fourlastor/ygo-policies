@@ -87,6 +87,37 @@ pub fn hand_condition_allows(code: u32, effect: &EffectDescriptor, hand_size: u3
     hand_requirement(code, effect).is_none_or(|requirement| requirement.allows(hand_size))
 }
 
+/// Immediate payoff of a source-backed native Extra Deck summon procedure.
+/// These facts do not describe revivals or a monster already on the field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExtraSummonPayoff {
+    DrawToHandSize { limit: u32 },
+}
+
+pub fn extra_summon_payoff(code: u32) -> Option<ExtraSummonPayoff> {
+    match code {
+        // c47395382 registers only its Synchro procedure. Its optional
+        // summon trigger draws exactly enough cards to reach two in hand.
+        RAGIN => Some(ExtraSummonPayoff::DrawToHandSize { limit: 2 }),
+        _ => None,
+    }
+}
+
+/// Prospective draw count for the exact offered native procedure. This is a
+/// public-state prior: the engine still resolves responses and draw legality.
+pub(super) fn extra_summon_draws(t: &Turn, choice: &Choice) -> Option<u32> {
+    let ctx = t.ctx;
+    if choice.kind != ChoiceKind::SpecialSummon || choice.description != 0
+        || choice.at().is_none_or(|at| at.controller != ctx.me || at.location != Location::Extra)
+    {
+        return None;
+    }
+    let code = ctx.canonical(choice.code()?);
+    let ExtraSummonPayoff::DrawToHandSize { limit } = extra_summon_payoff(code)?;
+    let count = limit.saturating_sub(ctx.hand_size(ctx.me));
+    Some(if ctx.effects_drained() || ctx.wasted(code) || ctx.deck_size(ctx.me) < count { 0 } else { count })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArrivalRequirement {
     /// Both discard costs and discard effects qualify; ordinary sends,
@@ -306,6 +337,60 @@ mod tests {
     fn decision(hint: Hint) -> Decision {
         Decision { kind: DecisionKind::Idle, hint, minimum: 0, maximum: 0,
             selected: vec![], subject: None, choices: vec![] }
+    }
+
+    #[test]
+    fn native_ragin_draw_count_requires_the_right_summon_and_available_cards() {
+        let cards = MemoryCards::default();
+        let mut memory = Memory::default();
+        let prompt = decision(Hint::None);
+        let mut summon = choice(ChoiceKind::SpecialSummon, &view(RAGIN, Location::Extra, 0));
+        for (hand, deck, drained, expected) in [
+            (0, 2, false, 2), (1, 1, false, 1), (2, 10, false, 0),
+            (3, 10, false, 0), (0, 1, false, 0), (1, 0, false, 0),
+            (0, 10, true, 0),
+        ] {
+            let mut obs = observation();
+            obs.pile_sizes = vec![(0, Location::Hand, hand), (0, Location::Deck, deck)];
+            if drained { obs.cards.push(view(crate::knowledge::SKILL_DRAIN, Location::SpellTrapZone, 0)); }
+            let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+            assert_eq!(extra_summon_draws(&turn, &summon), Some(expected),
+                "hand={hand}, deck={deck}, drained={drained}");
+        }
+        for (hand, opponent_hand, location, position, expected) in [
+            (0, 0, Location::MonsterZone, Position::FACE_UP_ATTACK, 0),
+            (1, 1, Location::MonsterZone, Position::FACE_UP_ATTACK, 0),
+            (0, 1, Location::MonsterZone, Position::FACE_UP_ATTACK, 2),
+            (1, 0, Location::MonsterZone, Position::FACE_UP_ATTACK, 1),
+            (0, 0, Location::MonsterZone, Position::FACE_DOWN_DEFENSE, 2),
+            (0, 0, Location::Graveyard, Position::FACE_UP_ATTACK, 2),
+        ] {
+            let mut obs = observation();
+            obs.pile_sizes = vec![(0, Location::Hand, hand), (1, Location::Hand, opponent_hand),
+                (0, Location::Deck, 10)];
+            let mut lock = view(crate::knowledge::FABLED_UNICORE, location, 0);
+            lock.at.controller = 1;
+            lock.position = position;
+            obs.cards.push(lock);
+            let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+            assert_eq!(extra_summon_draws(&turn, &summon), Some(expected),
+                "hand={hand}/{opponent_hand}, Unicore={location:?}/{position:?}");
+        }
+        let mut obs = observation();
+        obs.pile_sizes.push((0, Location::Deck, 10));
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        summon.card.as_mut().unwrap().at.location = Location::Graveyard;
+        assert_eq!(extra_summon_draws(&turn, &summon), None);
+        summon.card.as_mut().unwrap().at.location = Location::Extra;
+        summon.kind = ChoiceKind::Activate;
+        assert_eq!(extra_summon_draws(&turn, &summon), None);
+        summon.kind = ChoiceKind::SpecialSummon;
+        summon.description = description(RAGIN, 0);
+        assert_eq!(extra_summon_draws(&turn, &summon), None);
+        summon.description = 0;
+        summon.card.as_mut().unwrap().code = Some(900008050);
+        assert_eq!(extra_summon_draws(&turn, &summon), None);
+        assert_eq!(extra_summon_payoff(900008050), None);
     }
 
     #[test]

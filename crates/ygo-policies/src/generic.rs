@@ -468,6 +468,26 @@ impl Strategy for Generic {
         alternate::special_summon(t, choice)
     }
 
+    fn extra_summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
+        let count = requirements::extra_summon_draws(t, choice)?;
+        if count == 0 { return None; }
+        // A card gained uses the same scale as the normal-summon access
+        // reward. This bonus belongs to this summon, not Ragin's keep value.
+        let reward = f64::from(count) * 1400.0;
+        if tactics::lethal_on_board(t) { return Some(None); }
+        let ctx = t.ctx;
+        if ctx.main1() && ctx.monsters(ctx.opp).is_empty() {
+            // The destination choice does not expose its legal materials.
+            // Conservatively price ALL available attackers as consumed,
+            // rather than guessing a cheap material pair or zero cost.
+            let attack: i64 = ctx.monsters(ctx.me).into_iter().filter(|card| ctx.can_attack(card))
+                .map(|card| i64::from(card.attack.max(0))).sum();
+            let lost_attack = (attack - i64::from(ctx.data(choice.code()?).attack.max(0))).max(0);
+            if reward <= lost_attack as f64 { return None; }
+        }
+        Some(Some(crate::agent::value(self, &ctx, choice.code(), None) as f64 + reward))
+    }
+
     fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
         !card.position.attack || !card.position.face_up || !card.code.is_some_and(|code| {
             knowledge::profile(t.ctx.canonical(code)).dies_in_face_up_defense
@@ -883,6 +903,72 @@ mod tests {
             obs.cards[1].at.location = Location::MonsterZone;
             let followup = decision(DecisionKind::Idle, vec![summon, choice(ChoiceKind::EndTurn, None, Location::Other)]);
             assert_eq!(pilot.choose(&obs, &followup), 0);
+        }
+    }
+
+    #[test]
+    fn extra_summon_ranking_values_only_the_available_ragin_refill() {
+        let ragin = 47395382;
+        let unfamiliar = 900007051;
+        let database = profiled(vec![
+            CardData { code: ragin, kind: types::MONSTER | types::EFFECT | types::SYNCHRO,
+                attack: 2300, defense: 1800, level: 5, ..CardData::default() },
+            CardData { code: unfamiliar, kind: types::MONSTER | types::EFFECT | types::SYNCHRO,
+                attack: 2900, level: 8, ..CardData::default() },
+        ], EffectProfiles::default());
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SpecialSummon, Some(ragin), Location::Extra),
+            choice(ChoiceKind::SpecialSummon, Some(unfamiliar), Location::Extra),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        for (hand, deck, drained, expected) in [
+            (0, 20, false, 0), (1, 20, false, 0), (2, 20, false, 1),
+            (3, 20, false, 1), (0, 1, false, 1), (1, 0, false, 1),
+            (0, 20, true, 1),
+        ] {
+            let mut obs = observation();
+            obs.cards.push(on_field(900007052, 1, Location::MonsterZone, Position::FACE_UP_ATTACK));
+            obs.pile_sizes = vec![(0, Location::Hand, hand), (0, Location::Deck, deck)];
+            if drained {
+                obs.cards.push(on_field(crate::knowledge::SKILL_DRAIN, 1, Location::SpellTrapZone, Position::FACE_UP_ATTACK));
+            }
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), expected,
+                "hand={hand}, deck={deck}, drained={drained}");
+            let mut memory = crate::agent::Memory::default();
+            let turn = Turn { ctx: Ctx::new(&obs, database.as_ref()), decision: &prompt, memory: &mut memory };
+            assert_eq!(Generic.extra_summon_score(&turn, &prompt.choices[1]), None,
+                "an unfamiliar summon retains the ordinary ranking");
+        }
+    }
+
+    #[test]
+    fn ragin_refill_must_cover_all_available_attack_lost_and_never_delays_lethal() {
+        let ragin = 47395382;
+        let database = profiled(vec![CardData { code: ragin,
+            kind: types::MONSTER | types::EFFECT | types::SYNCHRO,
+            attack: 2300, defense: 1800, level: 5, ..CardData::default() }], EffectProfiles::default());
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SpecialSummon, Some(ragin), Location::Extra),
+            choice(ChoiceKind::EnterBattle, None, Location::Other),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        for (hand, attack, life, expected) in [
+            (0, 5000, 8000, 0), (0, 6000, 8000, 1),
+            (1, 3000, 8000, 0), (1, 4000, 8000, 1),
+            (1, 3700, 8000, 1), (2, 3000, 8000, 1),
+            (0, 5000, 5000, 1),
+        ] {
+            let mut obs = observation();
+            obs.pile_sizes = vec![(0, Location::Hand, hand), (0, Location::Deck, 20)];
+            obs.life_points[1] = life;
+            for sequence in 0..2 {
+                let mut body = on_field(900007053, 0, Location::MonsterZone, Position::FACE_UP_ATTACK);
+                body.at.sequence = sequence;
+                body.attack = attack / 2;
+                obs.cards.push(body);
+            }
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), expected,
+                "hand={hand}, attack={attack}, opponent_lp={life}");
         }
     }
 

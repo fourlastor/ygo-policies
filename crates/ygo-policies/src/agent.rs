@@ -367,6 +367,13 @@ pub trait Strategy: Send {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         None
     }
+    /// Contextual Extra Deck summon score in the same units as `value`.
+    /// `None` preserves the shared timing and ranking; `Some(None)` declines
+    /// this summon. An explicit score also owns the open-field attack trade,
+    /// but cannot override `special_summon` returning `Some(false)`.
+    fn extra_summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
+        None
+    }
     /// Veto a position change whose triggered effect makes it undesirable.
     fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
         true
