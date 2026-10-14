@@ -132,8 +132,16 @@ pub(super) fn arrival_value(t: &Turn, member: &Member) -> Option<f64> {
         matches!(ctx.canonical(code), CHAWA | NOZOOCHEE)
             && ctx.in_hand(ctx.canonical(code))
     });
-    let space = ctx.free_monster_zones(ctx.me) > usize::from(pending_body);
-    Some(match payoff {
+    Some(discard_payoff_value(t, payoff, usize::from(pending_body)))
+}
+
+/// Shared estimate for an actual discard and a prospective hand outlet.
+/// `reserved_zones` accounts for bodies deployed before the arrival trigger.
+/// The caller establishes the origin/reason and that the card reaches the GY.
+fn discard_payoff_value(t: &Turn, payoff: DiscardPayoff, reserved_zones: usize) -> f64 {
+    let ctx = t.ctx;
+    let space = ctx.free_monster_zones(ctx.me) > reserved_zones;
+    match payoff {
         DiscardPayoff::SummonSelf => if space { 3000.0 } else { 0.0 },
         DiscardPayoff::ReviveSmallFabled => {
             // Another copy of Krus is legal: the script excludes the actual
@@ -165,6 +173,30 @@ pub(super) fn arrival_value(t: &Turn, member: &Member) -> Option<f64> {
                 -(own_loss as f64)
             }
         }
+    }
+}
+
+/// c29905795.spop and c55277252.op discard another Fabled monster from hand
+/// as an effect, then summon the handler before the discarded card's trigger.
+/// Advance an engine-offered hand ignition when a visible discard has a known
+/// positive payoff. This uses no deck identity or hidden remaining inventory.
+/// The caller retains activation vetoes and the normal action-loop guard.
+pub(super) fn activate_before_normal(t: &Turn, choice: &Choice) -> bool {
+    let ctx = t.ctx;
+    let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return false; };
+    if choice.kind != ChoiceKind::Activate || !matches!(code, CHAWA | NOZOOCHEE)
+        || choice.description != description(code, 0)
+        || choice.at().is_none_or(|at| at.controller != ctx.me || at.location != Location::Hand)
+        || ctx.monsters_banished() || ctx.free_monster_zones(ctx.me) == 0
+    {
+        return false;
+    }
+    ctx.hand().into_iter().any(|fuel| {
+        if Some(fuel.at) == choice.at() { return false; }
+        let data = ctx.view_data(fuel);
+        if !data.is_monster() || !data.in_set(FABLED_SET) { return false; }
+        fuel.code.and_then(|code| discard_payoff(ctx.canonical(code)))
+            .is_some_and(|payoff| discard_payoff_value(t, payoff, 1) > 0.0)
     })
 }
 
@@ -361,6 +393,98 @@ mod tests {
         obs.cards.push(own_body);
         let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
         assert!(arrival_value(&turn, &catsith).unwrap() < 0.0);
+    }
+
+    fn fabled_cards() -> MemoryCards {
+        MemoryCards([CHAWA, NOZOOCHEE, CERBURREL, KRUS, CATSITH].into_iter()
+            .map(|code| (code, CardData { code, kind: types::MONSTER, level: 2,
+                setcodes: vec![FABLED_SET], ..CardData::default() })).collect())
+    }
+
+    #[test]
+    fn hand_outlets_advance_only_the_exact_offered_effect_with_profitable_fuel() {
+        let cards = fabled_cards();
+        let mut memory = Memory::default();
+        for code in [CHAWA, NOZOOCHEE] {
+            let mut obs = observation();
+            let source = view(code, Location::Hand, 0);
+            obs.cards = vec![source.clone(), view(CERBURREL, Location::Hand, 1),
+                view(900008040, Location::Hand, 2)];
+            let mut activation = choice(ChoiceKind::Activate, &source);
+            activation.description = description(code, 0);
+            let mut prompt = decision(Hint::None);
+            prompt.choices = vec![activation.clone(), choice(ChoiceKind::NormalSummon, &source),
+                choice(ChoiceKind::SetMonster, &source)];
+            let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+            assert!(activate_before_normal(&turn, &activation));
+            assert!(!activate_before_normal(&turn, &prompt.choices[1]));
+            assert!(!activate_before_normal(&turn, &prompt.choices[2]));
+            activation.description = description(code, 1);
+            assert!(!activate_before_normal(&turn, &activation));
+            activation.description = description(code, 0);
+            activation.card.as_mut().unwrap().at.location = Location::MonsterZone;
+            assert!(!activate_before_normal(&turn, &activation));
+            activation.card.as_mut().unwrap().at.location = Location::Hand;
+            obs.cards.remove(1);
+            let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+            assert!(!activate_before_normal(&turn, &activation));
+        }
+    }
+
+    #[test]
+    fn hand_outlet_does_not_advance_dead_revival_or_mandatory_self_destruction() {
+        let cards = fabled_cards();
+        let mut obs = observation();
+        let source = view(NOZOOCHEE, Location::Hand, 0);
+        obs.cards = vec![source.clone(), view(KRUS, Location::Hand, 1)];
+        let mut activation = choice(ChoiceKind::Activate, &source);
+        activation.description = description(NOZOOCHEE, 0);
+        let mut prompt = decision(Hint::None);
+        prompt.choices.push(activation.clone());
+        let mut memory = Memory::default();
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+        obs.cards.push(view(KRUS, Location::Graveyard, 0));
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(activate_before_normal(&turn, &activation));
+        obs.cards.pop();
+        obs.cards[1] = view(CATSITH, Location::Hand, 1);
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+        obs.cards.push(view(900008041, Location::MonsterZone, 0));
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+        let mut enemy = view(900008042, Location::MonsterZone, 0);
+        enemy.at.controller = 1;
+        obs.cards.push(enemy.clone());
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(activate_before_normal(&turn, &activation));
+        memory.intent.push((enemy.at, enemy.code));
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+    }
+
+    #[test]
+    fn hand_outlet_reserves_its_zone_and_requires_the_discard_to_reach_graveyard() {
+        let cards = fabled_cards();
+        let mut obs = observation();
+        let source = view(CHAWA, Location::Hand, 0);
+        obs.cards = vec![source.clone(), view(CERBURREL, Location::Hand, 1)];
+        let mut activation = choice(ChoiceKind::Activate, &source);
+        activation.description = description(CHAWA, 0);
+        let mut prompt = decision(Hint::None);
+        prompt.choices.push(activation.clone());
+        let mut memory = Memory::default();
+        obs.cards.push(view(crate::knowledge::MACRO_COSMOS, Location::SpellTrapZone, 0));
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+        obs.cards.pop();
+        for sequence in 0..4 { obs.cards.push(view(900008043, Location::MonsterZone, sequence)); }
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(!activate_before_normal(&turn, &activation));
+        obs.cards.pop();
+        let turn = Turn { ctx: Ctx::new(&obs, &cards), decision: &prompt, memory: &mut memory };
+        assert!(activate_before_normal(&turn, &activation));
     }
 
     #[test]

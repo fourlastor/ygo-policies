@@ -160,6 +160,7 @@ fn compiled_sources() -> Value {
         "../ygo-policies/src/generic/knowledge.rs",
         "../ygo-policies/src/generic/alternate.rs",
         "../ygo-policies/src/generic/conversion.rs",
+        "../ygo-policies/src/generic/combat.rs",
         "../ygo-policies/src/generic/requirements.rs",
         "../ygo-policies/src/generic/transactions.rs",
         "../ygo-policies/src/generic/materials.rs",
@@ -282,8 +283,14 @@ fn run() -> Result<()> {
         let requirements = generic::requirements::SUPPORTED_CODES.contains(&canonical);
         let transactions = generic::TRANSACTION_SUPPORTED_CODES.contains(&canonical);
         let materials = generic::MATERIAL_SUPPORTED_CODES.contains(&canonical);
-        let explicit =
-            generic_facts || alternate || conversion || requirements || transactions || materials;
+        let combat = generic::COMBAT_SUPPORTED_CODES.contains(&canonical);
+        let explicit = generic_facts
+            || alternate
+            || conversion
+            || requirements
+            || transactions
+            || materials
+            || combat;
         let existing = battle
             || owner_value != 0
             || staple_value.is_some()
@@ -316,6 +323,7 @@ fn run() -> Result<()> {
             ("explicit_requirement_facts", requirements),
             ("explicit_transaction_facts", transactions),
             ("explicit_material_facts", materials),
+            ("explicit_combat_facts", combat),
             ("explicit_new_any", explicit),
             (
                 "any_initial_or_shared_fact",
@@ -355,6 +363,7 @@ fn run() -> Result<()> {
         generic::requirements::SUPPORTED_CODES,
         generic::TRANSACTION_SUPPORTED_CODES,
         generic::MATERIAL_SUPPORTED_CODES,
+        generic::COMBAT_SUPPORTED_CODES,
     ]
     .into_iter()
     .flatten()
@@ -398,6 +407,7 @@ fn run() -> Result<()> {
             "requirements": generic::requirements::SUPPORTED_CODES,
             "transactions": generic::TRANSACTION_SUPPORTED_CODES,
             "materials": generic::MATERIAL_SUPPORTED_CODES,
+            "combat": generic::COMBAT_SUPPORTED_CODES,
         },
         "explicit_registry_codes_outside_active_pool": {
             "generic_knowledge": generic::knowledge::SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
@@ -406,6 +416,7 @@ fn run() -> Result<()> {
             "requirements": generic::requirements::SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "transactions": generic::TRANSACTION_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "materials": generic::MATERIAL_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
+            "combat": generic::COMBAT_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
         },
         "explicit_registry_union": {
             "unique_codes": explicit_registry_union.len(),

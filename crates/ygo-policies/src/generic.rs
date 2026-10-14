@@ -7,16 +7,18 @@
 //! An engine search can override these choices after simulating the effect.
 
 pub mod alternate;
+mod combat;
 mod conversion;
 pub mod knowledge;
 mod materials;
 pub mod requirements;
 mod transactions;
 pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
+pub use combat::SUPPORTED_CODES as COMBAT_SUPPORTED_CODES;
 pub use materials::SUPPORTED_CODES as MATERIAL_SUPPORTED_CODES;
 pub use transactions::SUPPORTED_CODES as TRANSACTION_SUPPORTED_CODES;
 
-use crate::agent::{Response, Strategy, Turn};
+use crate::agent::{Outcome, Response, Strategy, Turn};
 use crate::cards::{effect_categories as cat, effect_events as event, effect_locations as range,
     effect_types as effect_type, types, EffectDescriptor};
 use crate::ctx::Ctx;
@@ -120,6 +122,10 @@ impl Generic {
         let own_trigger = ctx.db.effects(code).iter().any(|effect| {
             effect.effect_type & effect_type::TRIGGER != 0
                 && effect.event == event::SUMMON_SUCCESS
+                // The summoned card is now in a main Monster Zone. A hand
+                // trigger reacting to somebody else's summon must stay in
+                // hand; summoning that card cannot earn its effect's reward.
+                && (effect.range == 0 || range::matches_at(effect.range, range::MONSTER, 0))
                 && effect.category & (Self::DEVELOP | cat::EQUIP) != 0
         });
         let field_trigger = ctx.obs.cards.iter().filter(|card| {
@@ -155,7 +161,9 @@ impl Generic {
     /// Exact source facts constrain a legal transaction without guessing its
     /// cost from printed Level or treating unrelated modes as interchangeable.
     fn known_activation_allowed(t: &Turn, choice: &Choice) -> bool {
-        if transactions::allow_activation(t, choice) == Some(false) { return false; }
+        if transactions::allow_activation(t, choice) == Some(false)
+            || combat::allow_activation(t, choice) == Some(false)
+        { return false; }
         let ctx = t.ctx;
         let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return true };
         let triggered = matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. });
@@ -363,6 +371,12 @@ impl Strategy for Generic {
         if let Some(index) = t.choices().find(|(i, _)| self.ignition_before_summon(t, *i)).map(|(i, _)| i) {
             return t.pick(index);
         }
+        if let Some(index) = t.choices().find(|(index, choice)| {
+            self.unknown_activation(t, *index).is_some()
+                && requirements::activate_before_normal(t, choice)
+        }).map(|(index, _)| index) {
+            return t.pick(index);
+        }
         // Searches/draws can expose the normal summon we actually want. The
         // legal offered effect, including its opaque conditions, is the gate.
         if t.has(ChoiceKind::NormalSummon) {
@@ -484,14 +498,28 @@ impl Strategy for Generic {
         t.pick_targeting(index, vec![])
     }
 
+    fn attack_trick(&self, ctx: &Ctx, attacker: &CardView) -> i32 {
+        combat::attack_trick(ctx, attacker)
+    }
+
+    fn attack_outcome(&self, ctx: &Ctx, attacker: &CardView, target: &CardView) -> Option<Outcome> {
+        combat::attack_outcome(ctx, attacker, target)
+    }
+
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
         if let Some(response) = alternate::chain(t, index) { return Some(response); }
+        if let Some(response) = combat::chain(t, index) { return Some(response); }
         let choice = t.choice(index);
         if alternate::allow_activation(t, index) == Some(false)
             || conversion::allow_activation(t, choice) == Some(false)
             || !Self::known_activation_allowed(t, choice)
         {
             return Some(Response::no());
+        }
+        if transactions::allow_activation(t, choice) == Some(true) {
+            // A precisely identified profitable transaction can also share
+            // our trigger chain; unrelated optional effects keep their guard.
+            return Some(Response::new(110.0));
         }
         let code = t.ctx.canonical(choice.code()?);
         if Self::shared_effect(code) {
@@ -612,7 +640,9 @@ impl Strategy for Generic {
     }
 
     fn yes_no(&self, t: &Turn) -> Option<bool> {
-        alternate::yes_no(t).or_else(|| tactics::attack_directly(t))
+        alternate::yes_no(t)
+            .or_else(|| transactions::yes_no(t))
+            .or_else(|| tactics::attack_directly(t))
     }
 }
 
@@ -804,6 +834,55 @@ mod tests {
             prompt.minimum = 1;
             prompt.maximum = 1;
             assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), expected, "{hint:?} from {location:?}");
+        }
+    }
+
+    #[test]
+    fn profitable_hand_extender_discards_before_committing_the_normal_summon() {
+        let extender = 29905795;
+        let fuel = 82888408;
+        let ordinary = 900007021;
+        let inert_fuel = 900007022;
+        let database = profiled(vec![
+            CardData { code: extender, kind: types::MONSTER | types::EFFECT | types::TUNER,
+                attack: 200, level: 1, setcodes: vec![0x35], ..CardData::default() },
+            CardData { code: fuel, kind: types::MONSTER | types::EFFECT | types::TUNER,
+                attack: 1000, level: 2, setcodes: vec![0x35], ..CardData::default() },
+            CardData { code: ordinary, kind: types::MONSTER, attack: 1900, level: 4, setcodes: vec![0x35], ..CardData::default() },
+            CardData { code: inert_fuel, kind: types::MONSTER, attack: 1000, level: 2, setcodes: vec![0x35], ..CardData::default() },
+        ], EffectProfiles::default());
+        for profitable in [false, true] {
+            let mut obs = observation();
+            for (sequence, code) in [extender, if profitable { fuel } else { inert_fuel }, ordinary].into_iter().enumerate() {
+                let mut card = on_field(code, 0, Location::Hand, Position::FACE_UP_ATTACK);
+                card.at.sequence = sequence as u32;
+                obs.cards.push(card);
+            }
+            let mut activate = choice(ChoiceKind::Activate, Some(extender), Location::Hand);
+            activate.description = knowledge::description(extender, 0);
+            let mut summon = choice(ChoiceKind::NormalSummon, Some(ordinary), Location::Hand);
+            summon.card.as_mut().unwrap().at.sequence = 2;
+            let prompt = decision(DecisionKind::Idle, vec![summon.clone(), activate, choice(ChoiceKind::EndTurn, None, Location::Other)]);
+            let mut pilot = Agent::seeded(Generic, database.clone(), 1);
+            assert_eq!(pilot.choose(&obs, &prompt), usize::from(profitable));
+            if !profitable { continue; }
+            let selections = [fuel, ordinary].into_iter().enumerate().map(|(index, code)| {
+                let mut candidate = choice(ChoiceKind::Cards, Some(code), Location::Hand);
+                candidate.card.as_mut().unwrap().at.sequence = index as u32 + 1;
+                candidate.members.push(candidate.card.take().unwrap());
+                candidate
+            }).collect();
+            let mut discard = decision(DecisionKind::SelectCards, selections);
+            discard.hint = Hint::Discard;
+            discard.minimum = 1;
+            discard.maximum = 1;
+            assert_eq!(pilot.choose(&obs, &discard), 0);
+            // Simulate completion of the two legal summons, then verify that
+            // the retained unfamiliar monster still receives the Normal Summon.
+            obs.cards[0].at.location = Location::MonsterZone;
+            obs.cards[1].at.location = Location::MonsterZone;
+            let followup = decision(DecisionKind::Idle, vec![summon, choice(ChoiceKind::EndTurn, None, Location::Other)]);
+            assert_eq!(pilot.choose(&obs, &followup), 0);
         }
     }
 
@@ -1032,6 +1111,92 @@ mod tests {
                 choice(ChoiceKind::EndTurn, None, Location::Other),
             ]);
             assert_eq!(pilot.choose(&obs, &prompt), 1, "reward source {source}");
+        }
+    }
+
+    #[test]
+    fn summon_reward_requires_the_trigger_to_exist_at_the_summoned_destination() {
+        let trigger_body = 900007001;
+        let ordinary_body = 900007002;
+        for (source_range, source_type, source_event, rewarded) in [
+            (0, effect_type::TRIGGER, event::SUMMON_SUCCESS, true),
+            (range::MONSTER, effect_type::TRIGGER, event::SUMMON_SUCCESS, true),
+            (range::MONSTER_MAIN, effect_type::TRIGGER, event::SUMMON_SUCCESS, true),
+            // FIELD+TRIGGER from HAND mirrors an extender that must remain
+            // there while another monster is Normal Summoned.
+            (range::HAND, effect_type::TRIGGER | 0x2, event::SUMMON_SUCCESS, false),
+            (range::GRAVEYARD, effect_type::TRIGGER, event::SUMMON_SUCCESS, false),
+            (range::BANISHED, effect_type::TRIGGER, event::SUMMON_SUCCESS, false),
+            (range::SPELL_TRAP, effect_type::TRIGGER, event::SUMMON_SUCCESS, false),
+            (range::MONSTER_EXTRA, effect_type::TRIGGER, event::SUMMON_SUCCESS, false),
+            (range::MONSTER, effect_type::IGNITION, event::SUMMON_SUCCESS, false),
+            (range::MONSTER, effect_type::TRIGGER, event::SPECIAL_SUMMON_SUCCESS, false),
+        ] {
+            let database = profiled(vec![
+                CardData { code: trigger_body, kind: types::MONSTER | types::EFFECT,
+                    attack: 1500, defense: 1000, level: 4, ..CardData::default() },
+                CardData { code: ordinary_body, kind: types::MONSTER,
+                    attack: 2000, defense: 1000, level: 4, ..CardData::default() },
+            ], [(trigger_body, vec![EffectDescriptor {
+                category: cat::SPECIAL_SUMMON, effect_type: source_type, event: source_event,
+                range: source_range, ..EffectDescriptor::default()
+            }])].into());
+            let mut obs = observation();
+            obs.cards.push(on_field(trigger_body, 0, Location::Hand, Position::FACE_UP_ATTACK));
+            let mut other = on_field(ordinary_body, 0, Location::Hand, Position::FACE_UP_ATTACK);
+            other.at.sequence = 1;
+            obs.cards.push(other);
+            let mut other_summon = choice(ChoiceKind::NormalSummon, Some(ordinary_body), Location::Hand);
+            other_summon.card.as_mut().unwrap().at.sequence = 1;
+            let prompt = decision(DecisionKind::Idle, vec![
+                choice(ChoiceKind::NormalSummon, Some(trigger_body), Location::Hand),
+                other_summon, choice(ChoiceKind::EndTurn, None, Location::Other),
+            ]);
+            assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &prompt), usize::from(!rewarded),
+                "range={source_range:#x}, type={source_type:#x}, event={source_event}");
+        }
+    }
+
+    #[test]
+    fn known_summon_wipe_joins_our_chain_only_for_a_profitable_public_exchange() {
+        let source = 73580471;
+        let enemy = 900007011;
+        let database = profiled(vec![
+            CardData { code: source, kind: types::MONSTER | types::EFFECT | types::SYNCHRO,
+                attack: 2400, defense: 1800, level: 7, ..CardData::default() },
+            CardData { code: enemy, kind: types::MONSTER, attack: 2800, defense: 2000, level: 4, ..CardData::default() },
+        ], EffectProfiles::default());
+        for profitable in [false, true] {
+            let mut obs = observation();
+            let mut dragon = on_field(source, 0, Location::MonsterZone, Position::FACE_UP_ATTACK);
+            dragon.attack = 2400;
+            dragon.defense = 1800;
+            obs.cards.push(dragon);
+            for sequence in 0..if profitable { 2 } else { 1 } {
+                let mut target = on_field(enemy, 1, Location::MonsterZone,
+                    if profitable { Position::FACE_UP_ATTACK } else { Position::FACE_DOWN_DEFENSE });
+                target.at.sequence = sequence;
+                target.attack = 2800;
+                target.defense = 2000;
+                if !profitable { target.code = None; }
+                obs.cards.push(target);
+            }
+            obs.chain.push(ChainLink { code: 900007012, controller: 0,
+                source: CardRef { controller: 0, location: Location::SpellTrapZone, sequence: 4 }, targets: vec![] });
+            let mut effect = choice(ChoiceKind::Activate, Some(source), Location::MonsterZone);
+            effect.description = knowledge::description(source, 0);
+            let prompt = decision(DecisionKind::Chain { forced: false, triggers: true }, vec![
+                effect, choice(ChoiceKind::Pass, None, Location::Other),
+            ]);
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), usize::from(!profitable));
+            // Native single-trigger questions use system description 221,
+            // rather than the card's script description used by Chain.
+            obs.chain.clear();
+            let mut yes = choice(ChoiceKind::Yes, Some(source), Location::MonsterZone);
+            yes.description = 221;
+            let mut yes_no = decision(DecisionKind::YesNo, vec![yes, choice(ChoiceKind::No, None, Location::Other)]);
+            yes_no.subject = Some(source);
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &yes_no), usize::from(!profitable));
         }
     }
 

@@ -2,7 +2,8 @@
 //! These are card rules and reusable exchange tests, never deck dispatch.
 //!
 //! Sources: `vendor/CardScripts/official/c35480699.lua` (Eclipse),
-//! `c10026986.lua` (King), and the mandatory-removal facts in `knowledge`.
+//! `c10026986.lua` (King), `c73580471.lua` (Black Rose), and the
+//! mandatory-removal facts in `knowledge`.
 //! An ordinary NormalSummon choice does not expose its actual tribute cost.
 //! Consequently this module never vetoes a summon from printed Level alone.
 
@@ -14,13 +15,95 @@ use crate::tactics;
 
 const BOOK_OF_ECLIPSE: u32 = 35480699;
 const WORM_KING: u32 = 10026986;
+const BLACK_ROSE_DRAGON: u32 = 73580471;
 const WORM_SET: u16 = 0x3e;
 
 /// Partial transaction facts only. Every identity occurs in the active pool.
-pub const SUPPORTED_CODES: &[u32] = &[9748752, WORM_KING, BOOK_OF_ECLIPSE, 73125233];
+pub const SUPPORTED_CODES: &[u32] = &[
+    9748752,
+    WORM_KING,
+    BOOK_OF_ECLIPSE,
+    73125233,
+    BLACK_ROSE_DRAGON,
+];
 
 fn keep_value(t: &Turn, card: &CardView) -> i32 {
     agent::value(&Generic, &t.ctx, card.code, Some(card))
+}
+
+fn black_rose_source(t: &Turn, choice: &Choice) -> bool {
+    choice.code().map(|code| t.ctx.canonical(code)) == Some(BLACK_ROSE_DRAGON)
+        && choice
+            .at()
+            .is_some_and(|at| at.controller == t.ctx.me && at.location == Location::MonsterZone)
+        && t.view(choice)
+            .is_some_and(|card| card.position.face_up && t.ctx.is(card, BLACK_ROSE_DRAGON))
+}
+
+/// A conservative exchange estimate, not a simulator of destruction triggers.
+/// Unknown opposing facedowns retain the public uncertainty values supplied
+/// by sweep_worth. Own cards are charged their full keep value: a generic GY
+/// payoff is not guaranteed when destruction/replacement conditions are opaque.
+fn global_destruction_profitable(t: &Turn, source: u32) -> bool {
+    let mut removed = 0i64;
+    let mut lost = 0i64;
+    for card in t
+        .ctx
+        .obs
+        .cards
+        .iter()
+        .filter(|card| card.at.location.is_field())
+    {
+        if !t.ctx.reaches(card, source, false, true) {
+            continue;
+        }
+        if card.at.controller == t.ctx.me {
+            lost += i64::from(keep_value(t, card).max(0));
+        } else if card.at.controller == t.ctx.opp {
+            let worth = if card.at.location == Location::SpellTrapZone
+                && card.position.face_up
+                && t.ctx.is_toon_world(card)
+            {
+                // The shared single-card removal score includes dependent
+                // Toon bodies. This sweep already counts each body below.
+                card.code
+                    .map_or(0, |code| {
+                        crate::knowledge::owner_worth(t.ctx.canonical(code))
+                    })
+                    .max(900)
+            } else {
+                t.ctx.sweep_worth(card)
+            };
+            removed += i64::from(worth.max(0));
+        }
+    }
+    removed > lost
+}
+
+/// c73580471.descon offers only the optional Synchro-summon destruction
+/// trigger. Its operation destroys ALL field cards, including Black Rose.
+/// The Plant-banish ignition has description 1 and must not inherit this rule.
+pub(super) fn yes_no(t: &Turn) -> Option<bool> {
+    if t.decision.kind != DecisionKind::YesNo
+        || t.decision.subject.map(|code| t.ctx.canonical(code)) != Some(BLACK_ROSE_DRAGON)
+    {
+        return None;
+    }
+    let choice = t
+        .decision
+        .choices
+        .iter()
+        .find(|choice| choice.kind == ChoiceKind::Yes)?;
+    // OCGCore processor.cpp's single optional-trigger paths emit 0 or 221,
+    // not the effect description. Other generic questions (e.g. direct attack
+    // 31 or replacement 94) must retain their original behavior.
+    if !black_rose_source(t, choice)
+        || !(matches!(choice.description, 0 | 221)
+            || choice.description == knowledge::description(BLACK_ROSE_DRAGON, 0))
+    {
+        return None;
+    }
+    Some(global_destruction_profitable(t, BLACK_ROSE_DRAGON))
 }
 
 fn can_be_set(t: &Turn, card: &CardView) -> bool {
@@ -168,16 +251,22 @@ fn king(t: &Turn, choice: &Choice) -> Option<bool> {
     Some(false)
 }
 
-/// A veto only for a precisely identified unfavorable transaction. `None`
-/// preserves the generic policy's timing and the engine's legal options.
+/// A decision only for a precisely identified transaction. `None` preserves
+/// the generic policy's timing and the engine's legal options.
 pub(super) fn allow_activation(t: &Turn, choice: &Choice) -> Option<bool> {
-    if choice.kind != ChoiceKind::Activate
-        || choice.at().is_none_or(|at| at.controller != t.ctx.me)
-        || matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. })
+    if choice.kind != ChoiceKind::Activate || choice.at().is_none_or(|at| at.controller != t.ctx.me)
     {
         return None;
     }
     let code = t.ctx.canonical(choice.code()?);
+    if black_rose_source(t, choice)
+        && choice.description == knowledge::description(BLACK_ROSE_DRAGON, 0)
+    {
+        return Some(global_destruction_profitable(t, BLACK_ROSE_DRAGON));
+    }
+    if matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. }) {
+        return None;
+    }
     match code {
         BOOK_OF_ECLIPSE
             if choice.description == 0
@@ -263,9 +352,31 @@ mod tests {
     const SMALL: u32 = 900_510_002;
     const FLIP: u32 = 900_510_003;
     const FODDER: u32 = 900_510_004;
+    const TOON_BODY: u32 = 900_510_006;
 
     fn db() -> MemoryCards {
         let cards = [
+            CardData {
+                code: BLACK_ROSE_DRAGON,
+                kind: types::MONSTER | types::EFFECT | types::SYNCHRO,
+                attack: 2400,
+                defense: 1800,
+                level: 7,
+                ..CardData::default()
+            },
+            CardData {
+                code: crate::knowledge::TOON_WORLD,
+                kind: types::SPELL | types::CONTINUOUS,
+                ..CardData::default()
+            },
+            CardData {
+                code: TOON_BODY,
+                kind: types::MONSTER | types::EFFECT,
+                attack: 3000,
+                level: 8,
+                setcodes: vec![crate::knowledge::SET_TOON],
+                ..CardData::default()
+            },
             CardData {
                 code: WORM_KING,
                 kind: types::MONSTER | types::EFFECT,
@@ -452,6 +563,192 @@ mod tests {
             decision: &decision,
             memory: &mut memory,
         })
+    }
+
+    fn black_rose_prompt(yes_no_description: Option<u64>) -> Decision {
+        let source = card(BLACK_ROSE_DRAGON, 0, 0);
+        let choice = Choice {
+            kind: if yes_no_description.is_some() {
+                ChoiceKind::Yes
+            } else {
+                ChoiceKind::Activate
+            },
+            card: Some(member(&source)),
+            members: vec![],
+            description: yes_no_description
+                .unwrap_or_else(|| knowledge::description(BLACK_ROSE_DRAGON, 0)),
+            place: None,
+        };
+        let mut other = choice.clone();
+        other.kind = if yes_no_description.is_some() {
+            ChoiceKind::No
+        } else {
+            ChoiceKind::Pass
+        };
+        Decision {
+            kind: if yes_no_description.is_some() {
+                DecisionKind::YesNo
+            } else {
+                DecisionKind::Chain {
+                    forced: false,
+                    triggers: true,
+                }
+            },
+            hint: Hint::None,
+            minimum: 0,
+            maximum: 0,
+            selected: vec![],
+            subject: yes_no_description.map(|_| BLACK_ROSE_DRAGON),
+            choices: vec![choice, other],
+        }
+    }
+
+    fn black_rose_answer(board: &Observation, decision: &Decision) -> Option<bool> {
+        let db = db();
+        let mut memory = Memory::default();
+        let t = Turn {
+            ctx: Ctx::new(board, &db),
+            decision,
+            memory: &mut memory,
+        };
+        if decision.kind == DecisionKind::YesNo {
+            yes_no(&t)
+        } else {
+            allow_activation(&t, &decision.choices[0])
+        }
+    }
+
+    #[test]
+    fn black_rose_refuses_its_own_body_for_one_unknown_monster() {
+        let mut unknown = card(SMALL, 1, 0);
+        unknown.code = None;
+        unknown.position = Position::FACE_DOWN_DEFENSE;
+        unknown.attack = 0;
+        unknown.defense = 0;
+        let board = obs(vec![card(BLACK_ROSE_DRAGON, 0, 0), unknown]);
+        for description in [0, 221, knowledge::description(BLACK_ROSE_DRAGON, 0)] {
+            assert_eq!(
+                black_rose_answer(&board, &black_rose_prompt(Some(description))),
+                Some(false)
+            );
+        }
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(None)),
+            Some(false)
+        );
+        let own_only = obs(vec![card(BLACK_ROSE_DRAGON, 0, 0)]);
+        assert_eq!(
+            black_rose_answer(&own_only, &black_rose_prompt(Some(221))),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn black_rose_accepts_profitable_removal_but_counts_own_backrow() {
+        let mut board = obs(vec![
+            card(BLACK_ROSE_DRAGON, 0, 0),
+            card(ORDINARY, 1, 0),
+            card(ORDINARY, 1, 1),
+        ]);
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(None)),
+            Some(true)
+        );
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(Some(221))),
+            Some(true)
+        );
+
+        let mut backrow = card(BOOK_OF_ECLIPSE, 0, 0);
+        backrow.at.location = Location::SpellTrapZone;
+        backrow.position = Position::FACE_DOWN_DEFENSE;
+        board.cards.push(backrow);
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(None)),
+            Some(false)
+        );
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(Some(221))),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn black_rose_counts_unknown_backrow_without_using_concealed_stats() {
+        let mut unknown = card(SMALL, 1, 0);
+        unknown.code = None;
+        unknown.position = Position::FACE_DOWN_DEFENSE;
+        let mut backrow = unknown.clone();
+        backrow.at.location = Location::SpellTrapZone;
+        let mut other_backrow = backrow.clone();
+        other_backrow.at.sequence = 1;
+        let mut board = obs(vec![
+            card(BLACK_ROSE_DRAGON, 0, 0),
+            unknown,
+            backrow,
+            other_backrow,
+        ]);
+        let decision = black_rose_prompt(Some(221));
+        assert_eq!(black_rose_answer(&board, &decision), Some(true));
+
+        // Concealed field stats and off-field cards cannot affect this public
+        // board exchange. In actual observations concealed stats are redacted.
+        for card in &mut board.cards[1..] {
+            card.attack = 100_000;
+            card.defense = 100_000;
+            card.level = 12;
+            card.counters = 99;
+        }
+        let mut hand = card(BLACK_ROSE_DRAGON, 1, 0);
+        hand.at.location = Location::Hand;
+        hand.code = None;
+        board.cards.push(hand);
+        assert_eq!(black_rose_answer(&board, &decision), Some(true));
+        board.cards.truncate(2);
+        assert_eq!(black_rose_answer(&board, &decision), Some(false));
+        board.cards[1].attack = 0;
+        board.cards[1].defense = 0;
+        assert_eq!(black_rose_answer(&board, &decision), Some(false));
+    }
+
+    #[test]
+    fn black_rose_matches_only_its_global_destruction_effect() {
+        let board = obs(vec![card(BLACK_ROSE_DRAGON, 0, 0)]);
+        let mut trigger = black_rose_prompt(None);
+        trigger.choices[0].description = knowledge::description(BLACK_ROSE_DRAGON, 1);
+        assert_eq!(black_rose_answer(&board, &trigger), None);
+        trigger.choices[0].description = 0;
+        assert_eq!(black_rose_answer(&board, &trigger), None);
+        for description in [31, 94, knowledge::description(BLACK_ROSE_DRAGON, 1)] {
+            assert_eq!(
+                black_rose_answer(&board, &black_rose_prompt(Some(description))),
+                None
+            );
+        }
+        let mut question = black_rose_prompt(Some(221));
+        question.subject = Some(ORDINARY);
+        assert_eq!(black_rose_answer(&board, &question), None);
+        question.subject = Some(BLACK_ROSE_DRAGON);
+        question.choices[0].card.as_mut().unwrap().at.controller = 1;
+        assert_eq!(black_rose_answer(&board, &question), None);
+    }
+
+    #[test]
+    fn black_rose_does_not_count_toon_collateral_twice() {
+        let mut world = card(crate::knowledge::TOON_WORLD, 1, 0);
+        world.at.location = Location::SpellTrapZone;
+        let board = obs(vec![
+            card(BLACK_ROSE_DRAGON, 0, 0),
+            card(TOON_BODY, 0, 1),
+            card(TOON_BODY, 1, 0),
+            world,
+        ]);
+        // Our two bodies cost 2750 + 3350. Their World and body are 3000
+        // each, not World + body + the same body's collateral value.
+        assert_eq!(
+            black_rose_answer(&board, &black_rose_prompt(Some(221))),
+            Some(false)
+        );
     }
 
     #[test]
