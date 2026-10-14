@@ -12,6 +12,10 @@ const BARREL: u32 = 27053506;
 const DESSERTS: u32 = 24068492;
 const POISON: u32 = 8842266;
 const STRIKE: u32 = 91623717;
+const FORTUNE: u32 = 98444741;
+const JAR: u32 = 83968380;
+const LEGACY: u32 = 30461781;
+const RECKLESS: u32 = 37576645;
 const EXPLOSION: u32 = 32723153;
 const OOKAZI: u32 = 19523799;
 const THIEF: u32 = 45311864;
@@ -34,6 +38,10 @@ pub const SUPPORTED_CODES: &[u32] = &[
     DESSERTS,
     POISON,
     STRIKE,
+    FORTUNE,
+    JAR,
+    LEGACY,
+    RECKLESS,
     EXPLOSION,
     OOKAZI,
     THIEF,
@@ -90,6 +98,7 @@ fn transaction(code: u32, poison_heal: bool) -> Option<Transaction> {
         POISON if poison_heal => &[Recover(Controller, 1200)],
         POISON | OOKAZI => &[Damage(Opponent, Fixed(800))],
         STRIKE => &[Damage(Opponent, ChainLink(400))],
+        FORTUNE => &[],
         EXPLOSION => &[Damage(Opponent, OwnGraveSpells(200))],
         // Both scripts defer their paired LP changes until RDComplete.
         THIEF => &[Damage(Opponent, Fixed(500)), Recover(Controller, 500)],
@@ -108,7 +117,11 @@ fn transaction(code: u32, poison_heal: bool) -> Option<Transaction> {
     };
     Some(Transaction {
         changes,
-        draws: u32::from(code == UPSTART),
+        draws: match code {
+            FORTUNE => 2,
+            UPSTART => 1,
+            _ => 0,
+        },
     })
 }
 
@@ -309,9 +322,50 @@ impl Forecast {
     }
 }
 
+/// These are payoffs already offered by the engine, never a prediction that
+/// another set card will become activatable after extending the chain.
+fn offered_chain_payoff(t: &Turn, code: u32) -> bool {
+    let minimum = match code {
+        STRIKE => 1,
+        FORTUNE => 3,
+        _ => return false,
+    };
+    let chain = &t.ctx.obs.chain;
+    t.ctx.obs.chain_known
+        && chain.len() >= minimum
+        // CheckChainUniqueness compares current runtime names. Exact repeated
+        // observed passcodes are a conservative rejection; do not canonicalize
+        // aliases or pretend this models every runtime name change. The actual
+        // legal offer remains authoritative. The candidate is not yet a link.
+        && chain.iter().enumerate().all(|(index, link)| {
+            !chain[..index].iter().any(|earlier| earlier.code == link.code)
+        })
+}
+
+/// Fortune resolves above these draws, so all must fit in the remaining deck.
+/// Legacy's selected mode is absent from ChainLink; reserve its maximum two.
+/// These facts grant no new activation permission to the pending draw cards.
+fn pending_known_draws(t: &Turn) -> u32 {
+    t.ctx.obs.chain.iter().filter(|link| link.controller == t.ctx.me).fold(0u32, |draws, link| {
+        draws.saturating_add(match t.ctx.canonical(link.code) {
+            JAR | UPSTART => 1,
+            LEGACY | RECKLESS | FORTUNE => 2,
+            _ => 0,
+        })
+    })
+}
+
 fn forecast(t: &Turn, code: u32, poison_heal: bool, origin: Option<Location>) -> Option<Forecast> {
     let transaction = transaction(code, poison_heal)?;
     if stopped(t, code, origin) || transaction.draws > t.ctx.deck_size(t.ctx.me) {
+        return None;
+    }
+    if matches!(code, STRIKE | FORTUNE) && !offered_chain_payoff(t, code) {
+        return None;
+    }
+    if code == FORTUNE
+        && transaction.draws.saturating_add(pending_known_draws(t)) > t.ctx.deck_size(t.ctx.me)
+    {
         return None;
     }
     let mut result = Forecast {
@@ -409,8 +463,8 @@ pub(super) fn activate(t: &Turn, choice: &Choice) -> Option<bool> {
     )
 }
 
-/// Our own top link is crossed only for an independently lethal LP change or
-/// to install recovery reversal above a recovery that has not resolved yet.
+/// Our own top link is crossed for an independently lethal LP change, an
+/// already-offered unique-chain payoff, or pending recovery reversal setup.
 pub(super) fn chain(t: &Turn, choice: &Choice) -> Option<Response> {
     let code = exact_activation(t, choice)?;
     let origin = choice.at().map(|at| at.location);
@@ -432,6 +486,7 @@ pub(super) fn chain(t: &Turn, choice: &Choice) -> Option<Response> {
     );
     Some(match result {
         Some(result) if result.lethal(&t.ctx) => Response::new(150.0),
+        Some(result) if t.own_top() && matches!(code, STRIKE | FORTUNE) && result.useful(&t.ctx) => Response::new(110.0),
         Some(result) if !t.own_top() && result.useful(&t.ctx) => Response::new(35.0),
         _ => Response::no(),
     })
@@ -500,6 +555,10 @@ mod tests {
                         BARREL
                         | DESSERTS
                         | EXPLOSION
+                        | FORTUNE
+                        | JAR
+                        | LEGACY
+                        | RECKLESS
                         | GIFT
                         | SIMOCHI
                         | DECREE
@@ -610,6 +669,176 @@ mod tests {
             },
             targets: vec![],
         }
+    }
+
+    fn payoff_prompt(me: u8, code: u32) -> (Observation, Decision) {
+        let mut obs = observation(me);
+        let mut source = card(code, me, Location::SpellTrapZone, 0);
+        source.position = Position::FACE_DOWN_DEFENSE;
+        obs.cards.push(source);
+        obs.chain = if code == FORTUNE {
+            vec![link(OOKAZI, 1 - me, 1), link(POISON, 1 - me, 2), link(RAIN, me, 3)]
+        } else {
+            vec![link(OOKAZI, me, 1)]
+        };
+        let choice = activation(code, me, Location::SpellTrapZone);
+        let mut pass = choice.clone();
+        pass.kind = ChoiceKind::Pass;
+        pass.card = None;
+        let mut prompt = decision(vec![choice, pass]);
+        prompt.kind = DecisionKind::Chain { forced: false, triggers: false };
+        (obs, prompt)
+    }
+
+    fn set_deck(obs: &mut Observation, player: u8, count: u32) {
+        obs.pile_sizes.retain(|&(owner, location, _)| owner != player || location != Location::Deck);
+        obs.pile_sizes.push((player, Location::Deck, count));
+    }
+
+    #[test]
+    fn offered_unique_chain_payoffs_cross_own_top_in_actual_generic_agent() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        for me in [0, 1] {
+            for code in [STRIKE, FORTUNE] {
+                let (obs, prompt) = payoff_prompt(me, code);
+                with(&obs, &prompt, |t| {
+                    assert_eq!(activate(t, &prompt.choices[0]), Some(true));
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 110.0);
+                });
+                let mut pilot = Agent::seeded(super::super::Generic, Arc::new(db()), 1);
+                assert_eq!(pilot.choose(&obs, &prompt), 0, "seat {me}, source {code}");
+                let mut opposing_top = obs.clone();
+                let last = opposing_top.chain.last_mut().unwrap();
+                last.controller = 1 - me;
+                last.source.controller = 1 - me;
+                with(&opposing_top, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 35.0,
+                        "ordinary response priority remains below negation");
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn chain_payoffs_require_known_threshold_and_no_observed_duplicate_links() {
+        for me in [0, 1] {
+            for code in [STRIKE, FORTUNE] {
+                let (mut obs, prompt) = payoff_prompt(me, code);
+                obs.chain_known = false;
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+                });
+                obs.chain_known = true;
+                obs.chain.pop();
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+                });
+                obs.chain = vec![link(OOKAZI, me, 1), link(OOKAZI, 1 - me, 2), link(RAIN, me, 3)];
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+                });
+                // Native uniqueness checks the existing chain, before this
+                // candidate is added. One existing copy alone is not a pair.
+                obs.chain = if code == FORTUNE {
+                    vec![link(code, me, 1), link(POISON, 1 - me, 2), link(RAIN, me, 3)]
+                } else {
+                    vec![link(code, me, 1)]
+                };
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 110.0);
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn fortune_reserves_deck_for_already_pending_known_draws() {
+        for me in [0, 1] {
+            for (pending, draws) in [(JAR, 1), (UPSTART, 1), (LEGACY, 2), (RECKLESS, 2), (FORTUNE, 2)] {
+                let (mut obs, prompt) = payoff_prompt(me, FORTUNE);
+                obs.chain[0] = link(pending, me, 1);
+                set_deck(&mut obs, me, draws + 1);
+                with(&obs, &prompt, |t| {
+                    assert_eq!(activate(t, &prompt.choices[0]), Some(false));
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+                });
+                set_deck(&mut obs, me, draws + 2);
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 110.0);
+                });
+                // These scripts draw for their own controller, so their
+                // opponent-controlled copies do not consume our deck.
+                obs.chain[0].controller = 1 - me;
+                obs.chain[0].source.controller = 1 - me;
+                set_deck(&mut obs, me, 2);
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 110.0);
+                });
+            }
+            let (mut obs, prompt) = payoff_prompt(me, FORTUNE);
+            obs.chain = vec![link(JAR, me, 1), link(LEGACY, me, 2), link(RECKLESS, me, 3)];
+            for (remaining, allowed) in [(6, false), (7, true)] {
+                set_deck(&mut obs, me, remaining);
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score > 100.0, allowed);
+                });
+            }
+            set_deck(&mut obs, me, 1);
+            with(&obs, &prompt, |t| {
+                assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+            });
+        }
+    }
+
+    #[test]
+    fn offered_payoffs_keep_negation_and_damage_prevention_guards() {
+        for me in [0, 1] {
+            for (negator, location) in [(DECREE, Location::SpellTrapZone), (JINZO, Location::MonsterZone)] {
+                let (mut obs, prompt) = payoff_prompt(me, FORTUNE);
+                obs.cards.push(card(negator, 1 - me, location, 4));
+                with(&obs, &prompt, |t| {
+                    assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+                });
+            }
+            let (mut obs, prompt) = payoff_prompt(me, STRIKE);
+            obs.cards.push(card(BLACK_WINGED, 1 - me, Location::MonsterZone, 4));
+            with(&obs, &prompt, |t| {
+                assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0);
+            });
+        }
+    }
+
+    #[test]
+    fn direct_payoff_exception_matches_only_exact_offered_activation() {
+        for code in [STRIKE, FORTUNE] {
+            let (obs, original) = payoff_prompt(0, code);
+            for location in [Location::Graveyard, Location::Banished, Location::MonsterZone] {
+                let mut prompt = original.clone();
+                prompt.choices[0].card.as_mut().unwrap().at.location = location;
+                with(&obs, &prompt, |t| {
+                    assert!(chain(t, &prompt.choices[0]).is_none());
+                });
+            }
+            let mut prompt = original.clone();
+            prompt.choices[0].description = (code as u64) << 20;
+            with(&obs, &prompt, |t| assert!(chain(t, &prompt.choices[0]).is_none()));
+            prompt = original.clone();
+            prompt.choices[0].card.as_mut().unwrap().at.controller = 1;
+            with(&obs, &prompt, |t| assert!(chain(t, &prompt.choices[0]).is_none()));
+            prompt = original.clone();
+            prompt.kind = DecisionKind::Chain { forced: false, triggers: true };
+            with(&obs, &prompt, |t| assert!(chain(t, &prompt.choices[0]).is_none()));
+        }
+        let (obs, mut prompt) = payoff_prompt(0, STRIKE);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::Hand;
+        with(&obs, &prompt, |t| assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 110.0));
+        for unrelated in [JAR, LEGACY, RECKLESS] {
+            prompt.choices[0].card.as_mut().unwrap().code = Some(unrelated);
+            with(&obs, &prompt, |t| assert!(chain(t, &prompt.choices[0]).is_none()));
+        }
+        prompt.choices[0].card.as_mut().unwrap().code = Some(POISON);
+        with(&obs, &prompt, |t| assert_eq!(chain(t, &prompt.choices[0]).unwrap().score, 0.0));
     }
 
     #[test]
