@@ -9,13 +9,19 @@
 pub mod alternate;
 mod combat;
 mod conversion;
+mod counters;
 pub mod knowledge;
+mod life;
 mod materials;
 pub mod requirements;
+mod timing;
 mod transactions;
 pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
 pub use combat::SUPPORTED_CODES as COMBAT_SUPPORTED_CODES;
+pub use counters::SUPPORTED_CODES as COUNTER_SUPPORTED_CODES;
+pub use life::SUPPORTED_CODES as LIFE_SUPPORTED_CODES;
 pub use materials::SUPPORTED_CODES as MATERIAL_SUPPORTED_CODES;
+pub use timing::SUPPORTED_CODES as TIMING_SUPPORTED_CODES;
 pub use transactions::SUPPORTED_CODES as TRANSACTION_SUPPORTED_CODES;
 
 use crate::agent::{Outcome, Response, Strategy, Turn};
@@ -163,6 +169,9 @@ impl Generic {
     fn known_activation_allowed(t: &Turn, choice: &Choice) -> bool {
         if transactions::allow_activation(t, choice) == Some(false)
             || combat::allow_activation(t, choice) == Some(false)
+            || timing::allow_activation(t, choice) == Some(false)
+            || life::activate(t, choice) == Some(false)
+            || counters::allow_activation(t, choice) == Some(false)
         { return false; }
         let ctx = t.ctx;
         let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return true };
@@ -318,6 +327,9 @@ impl Generic {
         if at.location == Location::MonsterZone && t.ctx.effects_drained() {
             return None;
         }
+        if life::activate(t, choice) == Some(true)
+            || counters::allow_activation(t, choice) == Some(true)
+        { return Some(65); }
         if Self::shield_useful(t, choice) { return Some(45); }
         // Reactive cards are left to their engine-gated response windows.
         // A legal unknown Trap in Main Phase may consume a defense needlessly.
@@ -353,6 +365,24 @@ impl Strategy for Generic {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         if let Some(index) = alternate::main_phase(t) { return Some(index); }
+        if let Some(index) = life::activate_before_development(t) { return Some(index); }
+        if let Some(index) = t.choices().find(|(index, choice)| {
+            t.fresh(*index) && transactions::activate_before_development(t, choice)
+        }).map(|(index, _)| index) {
+            return t.pick(index);
+        }
+        if let Some(index) = t.choices().find(|(index, choice)| {
+            t.fresh(*index) && counters::activate_before_development(t, choice)
+        }).map(|(index, _)| index) {
+            return t.pick(index);
+        }
+        // A legal position change can unlock a known productive effect even
+        // when its printed ATK alone would not justify ordinary repositioning.
+        if let Some(index) = t.choices().find(|(index, choice)| {
+            t.fresh(*index) && timing::change_position_for_access(t, choice)
+        }).map(|(index, _)| index) {
+            return t.pick(index);
+        }
         // Empty-hand and draw-to-a-limit effects sometimes require backrow
         // to leave the hand first. Only advance a visible, source-backed
         // payoff; ordinary decks keep the shared setting order.
@@ -499,7 +529,11 @@ impl Strategy for Generic {
     }
 
     fn allow_staple(&self, t: &Turn, code: u32) -> bool {
-        alternate::allow_staple(t, code)
+        alternate::allow_staple(t, code) && !t.choices().any(|(_, choice)| {
+            choice.code().is_some_and(|candidate| t.ctx.canonical(candidate) == t.ctx.canonical(code))
+                && (life::activate(t, choice) == Some(false)
+                    || timing::allow_activation(t, choice) == Some(false))
+        })
     }
 
     fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
@@ -535,6 +569,10 @@ impl Strategy for Generic {
             || !Self::known_activation_allowed(t, choice)
         {
             return Some(Response::no());
+        }
+        if let Some(response) = life::chain(t, choice) { return Some(response); }
+        if let Some(allowed) = counters::allow_activation(t, choice) {
+            return Some(if allowed && !t.own_top() { Response::new(45.0) } else { Response::no() });
         }
         if transactions::allow_activation(t, choice) == Some(true) {
             // A precisely identified profitable transaction can also share
@@ -594,6 +632,7 @@ impl Strategy for Generic {
         if let Some(score) = materials::material_score(t, member) { return Some(score); }
         if let Some(score) = conversion::material_score(t, member) { return Some(score); }
         if let Some(score) = transactions::select(t, member) { return Some(score); }
+        if let Some(score) = counters::select(t, member) { return Some(score); }
         let code = member.code?;
         let ctx = t.ctx;
         let hint = t.decision.hint;
@@ -662,7 +701,12 @@ impl Strategy for Generic {
     fn yes_no(&self, t: &Turn) -> Option<bool> {
         alternate::yes_no(t)
             .or_else(|| transactions::yes_no(t))
+            .or_else(|| counters::yes_no(t))
             .or_else(|| tactics::attack_directly(t))
+    }
+
+    fn option(&self, t: &Turn) -> Option<usize> {
+        life::option(t)
     }
 }
 

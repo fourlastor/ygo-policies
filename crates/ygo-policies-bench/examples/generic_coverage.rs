@@ -161,7 +161,10 @@ fn compiled_sources() -> Value {
         "../ygo-policies/src/generic/alternate.rs",
         "../ygo-policies/src/generic/conversion.rs",
         "../ygo-policies/src/generic/combat.rs",
+        "../ygo-policies/src/generic/counters.rs",
+        "../ygo-policies/src/generic/life.rs",
         "../ygo-policies/src/generic/requirements.rs",
+        "../ygo-policies/src/generic/timing.rs",
         "../ygo-policies/src/generic/transactions.rs",
         "../ygo-policies/src/generic/materials.rs",
         "../ygo-policies/src/knowledge.rs",
@@ -285,6 +288,9 @@ fn run() -> Result<()> {
         let transactions = generic::TRANSACTION_SUPPORTED_CODES.contains(&canonical);
         let materials = generic::MATERIAL_SUPPORTED_CODES.contains(&canonical);
         let combat = generic::COMBAT_SUPPORTED_CODES.contains(&canonical);
+        let counters = generic::COUNTER_SUPPORTED_CODES.contains(&canonical);
+        let life = generic::LIFE_SUPPORTED_CODES.contains(&canonical);
+        let timing = generic::TIMING_SUPPORTED_CODES.contains(&canonical);
         let search_battle = evaluation::BATTLE_SUPPORTED_CODES.contains(&canonical);
         let policy_explicit = generic_facts
             || alternate
@@ -292,7 +298,10 @@ fn run() -> Result<()> {
             || requirements
             || transactions
             || materials
-            || combat;
+            || combat
+            || counters
+            || life
+            || timing;
         let explicit = policy_explicit || search_battle;
         let existing = battle
             || owner_value != 0
@@ -327,6 +336,9 @@ fn run() -> Result<()> {
             ("explicit_transaction_facts", transactions),
             ("explicit_material_facts", materials),
             ("explicit_combat_facts", combat),
+            ("explicit_counter_facts", counters),
+            ("explicit_life_facts", life),
+            ("explicit_timing_facts", timing),
             ("explicit_policy_any", policy_explicit),
             ("explicit_search_battle_facts", search_battle),
             ("explicit_new_any", explicit),
@@ -369,6 +381,9 @@ fn run() -> Result<()> {
         generic::TRANSACTION_SUPPORTED_CODES,
         generic::MATERIAL_SUPPORTED_CODES,
         generic::COMBAT_SUPPORTED_CODES,
+        generic::COUNTER_SUPPORTED_CODES,
+        generic::LIFE_SUPPORTED_CODES,
+        generic::TIMING_SUPPORTED_CODES,
         evaluation::BATTLE_SUPPORTED_CODES,
     ]
     .into_iter()
@@ -386,7 +401,7 @@ fn run() -> Result<()> {
         },
         "interpretation": [
             "Coverage flags overlap and mean at least one partial fact, not complete card understanding or measured playing strength.",
-            "Explicit requirements, transaction guards and material facts are contextual partial rules; registry membership does not mean that a card's effect is currently legal, active or profitable.",
+            "Explicit requirements, transaction guards, material, counter, life and timing facts are contextual partial rules; registry membership does not mean that a card's effect is currently legal, active or profitable.",
             "Explicit search battle facts belong to the native-search leaf evaluator, not the exported ordinary Generic policy. The explicit policy subtotal excludes this registry; the explicit union includes it and deduplicates overlapping cards.",
             "Initial metadata comes only from isolated unstarted card definitions; dynamic conditions, costs, targets, operations and later-created effects are not executed or inferred.",
             "An empty initial profile may describe a normal monster or an opaque/missing script; it is not proof that the card has no useful rules.",
@@ -415,6 +430,9 @@ fn run() -> Result<()> {
             "transactions": generic::TRANSACTION_SUPPORTED_CODES,
             "materials": generic::MATERIAL_SUPPORTED_CODES,
             "combat": generic::COMBAT_SUPPORTED_CODES,
+            "counters": generic::COUNTER_SUPPORTED_CODES,
+            "life": generic::LIFE_SUPPORTED_CODES,
+            "timing": generic::TIMING_SUPPORTED_CODES,
             "search_battle": evaluation::BATTLE_SUPPORTED_CODES,
         },
         "explicit_registry_codes_outside_active_pool": {
@@ -425,6 +443,9 @@ fn run() -> Result<()> {
             "transactions": generic::TRANSACTION_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "materials": generic::MATERIAL_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "combat": generic::COMBAT_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
+            "counters": generic::COUNTER_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
+            "life": generic::LIFE_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
+            "timing": generic::TIMING_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "search_battle": evaluation::BATTLE_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
         },
         "explicit_registry_union": {
