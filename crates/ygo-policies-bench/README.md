@@ -242,11 +242,35 @@ running `compare` with the same library twice should produce identical transcrip
 `policy-bench generic --policies all --baseline FROZEN_LIBRARY --games 64
 --output generic.jsonl` seats the same `generic` policy on each specialist's
 deck against that frozen specialist, alternating seats. `--plain true` disables
-search. The search accepts `--worlds`, `--max-candidates`, `--max-playouts`,
-`--depth 1|2`, `--horizon`, and a soft per-decision `--millis` budget.
+search. `--method rollout|beam|mcts` chooses the planner (default `rollout`).
+The search accepts `--worlds`, `--max-candidates`, `--max-playouts`, `--horizon`,
+and a soft per-decision `--millis` budget; `--depth 1|2` applies to rollouts only.
+Beam/MCTS construct executable continuations in proposal worlds and compare
+them with unchanged generic play in independent common validation worlds.
+Their `--horizon 0` validates to terminal; nonzero uses the requested turn horizon.
+Search currently assumes known opponent deck composition. Unknown opposing
+face-down monsters still block resampling; publicly remembered ones are safe.
 Its report tests the 55% target separately for every required matchup; it does
 not turn an aggregate rate into a passing per-deck result. See the
-[algorithm, assumptions, and measured results](../../benchmarks/generic-policy/README.md).
+[algorithm, assumptions, and measured results](../../benchmarks/generic-policy-v2/README.md).
+
+The current strength-oriented development configuration is explicit and has no
+wall-clock cap; its measured search latency exceeds 200 ms:
+
+```sh
+policy-bench generic --baseline FROZEN_LIBRARY --library CANDIDATE_LIBRARY \
+  --policies all --method mcts --mcts-iterations 128 --mcts-worlds 4 \
+  --mcts-actions 8 --mcts-nodes 1024 --mcts-decisions 384 --mcts-replies 1 \
+  --mcts-terminal false --mcts-validate-roots false --worlds 4 \
+  --max-candidates 8 --max-playouts 256 --horizon 1 --millis 0 \
+  --games 16 --seed 2460000 --output generic.jsonl
+```
+
+`--mcts-validate-roots true` also compares the other measured root moves with
+their frozen continuations. It is experimental and has not shown an improvement
+over the cheaper best-only validation. `--max-playouts` counts proposal
+simulations plus validation rollouts for MCTS, while beam counts proposal
+transitions plus validation rollouts; these are not equal units of engine work.
 
 The engine is also exported as a Rust library. The `generic_decks` example loads
 two arbitrary `.ydk` files directly and never identifies a registered deck.

@@ -22,9 +22,12 @@ EDOPro already filtered pass through unchanged.
 
 The experimental `generic` policy can pilot an arbitrary deck without selecting
 one of the specialist strategies below. It is available through the normal
-registry/FFI; an optional engine-hosted Monte Carlo search adds bounded lookahead.
+registry/FFI; optional engine-hosted rollouts, transaction beam search, and
+information-set MCTS add bounded lookahead. All policy and evaluation rules are
+Rust code, with no fitted model. Card knowledge is shared across unfamiliar deck
+combinations; current additions focus on the supplied decks' 951 main/extra cards.
 It is deliberately outside the fixed deck catalog. See
-[generic policy and measured limitations](benchmarks/generic-policy/README.md).
+[generic policy and measured limitations](benchmarks/generic-policy-v2/README.md).
 It has not met the requested 55% mirror-win target; see the linked evaluation before using it as a replacement.
 
 | id | deck (`decks/`) | plan |

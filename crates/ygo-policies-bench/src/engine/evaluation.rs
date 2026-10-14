@@ -18,21 +18,25 @@ use ygo_policies::cards::{
     types, CardDatabase, EffectDescriptor as Effect, EffectProfiles, ProfiledCards,
 };
 use ygo_policies::ctx::Ctx;
+use ygo_policies::generic::alternate;
+use ygo_policies::generic::knowledge::{self as card_knowledge, CounterRecipients, CounterTiming, DamageShield};
 use ygo_policies::knowledge::{Burn, Fate, ALWAYS};
 use ygo_policies::model::{CardRef, CardView, Coin, CoinEffect, Location, Observation, Phase, Position};
 use ygo_policies::tactics;
 use ygo_policies_ocgcore::SqliteCards;
 
-pub const FEATURE_NAMES: [&str; 12] = [
+pub const FEATURE_NAMES: [&str; 13] = [
     "accessible_cards", "stranded_hand", "body_power", "dominant_attack",
     "reusable_grave", "interaction", "effect_access", "battle_card_gain",
     "battle_damage", "immediate_lethal", "life_buffer", "deck_reserve",
+    "alternate_win_progress",
 ];
 
 /// Fixed heuristic coefficients, in `FEATURE_NAMES` order. Accessible cards
 /// anchor resource value; imminent lethal pressure outweighs ordinary board
-/// improvements. Engine-confirmed outcomes remain outside this estimate.
-pub const HEURISTIC_COEFFICIENTS: [f64; 12] = [0.8, 0.5, 0.2, 0.45, 0.6, 0.8, 0.45, 0.6, 0.45, 2.5, 0.55, 0.7];
+/// improvements. Explicit alternate-win progress is capped at five units.
+/// Engine-confirmed outcomes remain outside this estimate.
+pub const HEURISTIC_COEFFICIENTS: [f64; 13] = [0.8, 0.5, 0.2, 0.45, 0.6, 0.8, 0.45, 0.6, 0.45, 2.5, 0.55, 0.7, 1.0];
 
 // Stable OCGCore category/type/location flags. These are facts about generic
 // effect semantics, not a lookup of benchmark cards or deck families.
@@ -114,21 +118,26 @@ impl Evaluator {
 
     /// Difference features in the requested seat's favor. The input remains
     /// anchored to its own `me` visibility boundary when changing perspective.
-    pub fn features(&self, observation: &Value, viewer: u8) -> [f64; 12] {
+    pub fn features(&self, observation: &Value, viewer: u8) -> [f64; 13] {
         let observation = visible_observation(observation, viewer);
         let ctx = Ctx::new(&observation, self.cards.as_ref());
         let profiles = self.profiles.as_deref().map(|cards| cards as &dyn CardDatabase).unwrap_or(self.cards.as_ref());
-        let mut sides = [[0.0; 12]; 2];
+        let protection = BattleProtection::from_public_board(&ctx);
+        let mut sides = [[0.0; 13]; 2];
         for player in 0..2u8 {
             let side = &mut sides[player as usize];
             let bodies: Vec<_> = observation.pile(player, Location::MonsterZone).collect();
             let body_count = bodies.len();
+            let mut victory_pieces = 0u8;
             for card in observation.cards.iter().filter(|card| card.at.controller == player) {
                 let data = ctx.view_data(card);
                 let effects = card.code.map(|code| profiles.effects(code)).unwrap_or(&[]);
                 match card.at.location {
                     Location::Hand => {
                         side[0] += 1.0;
+                        if let Some(piece) = card.code.and_then(|code| alternate::exodia_piece(ctx.canonical(code))) {
+                            victory_pieces |= 1 << piece;
+                        }
                         if data.is_monster() && data.tributes() as usize > body_count {
                             let self_summon = effects.iter().any(|effect| effect.range & HAND != 0 && effect.category & SUMMON != 0);
                             if !self_summon { side[1] -= 0.65; }
@@ -155,7 +164,9 @@ impl Evaluator {
                     }
                     Location::SpellTrapZone => {
                         side[0] += 1.0;
-                        side[6] += effect_access(effects, BACKROW, Some(card.at.sequence), true);
+                        let native_access = effect_access(effects, BACKROW, Some(card.at.sequence), true);
+                        let known_access = known_backrow_access(&ctx, card);
+                        side[6] += native_access.max(known_access);
                         side[5] += quick_interaction(effects, BACKROW, card.at.sequence);
                     }
                     Location::Graveyard => {
@@ -176,6 +187,11 @@ impl Evaluator {
             side[4] = side[4].min(2.0);
             side[5] = side[5].min(4.0);
             side[6] = side[6].min(3.0);
+            // Each different piece advances the same explicit five-card hand
+            // condition. Duplicates and pieces outside the hand do not advance
+            // it. Hidden opposing identities were removed before this loop.
+            let distinct = f64::from(victory_pieces.count_ones());
+            side[12] = distinct * distinct / 5.0;
             let strongest = bodies.iter().filter(|card| card.position.face_up)
                 .map(|card| card.attack.max(0)).max().unwrap_or(0);
             let opposing = observation.pile(1 - player, Location::MonsterZone)
@@ -189,7 +205,7 @@ impl Evaluator {
             // engine says remain available now. Main Phase 2 cannot inflict a
             // fresh battle's damage just by keeping its monsters in attack.
             let discount = if current { if battle_soon { 1.0 } else { 0.0 } } else { 0.55 };
-            let battle = battle_projection(&ctx, player, current);
+            let battle = battle_projection(&ctx, player, current, protection);
             side[7] = battle.cards * discount;
             side[8] = (battle.damage / 2500.0).clamp(-4.0, 4.0) * discount;
             let opposing_lp = f64::from(observation.life_points[(1 - player) as usize].max(1));
@@ -206,6 +222,28 @@ impl Evaluator {
         let me = usize::from(viewer.min(1));
         std::array::from_fn(|index| sides[me][index] - sides[1 - me][index])
     }
+}
+
+fn known_backrow_access(ctx: &Ctx<'_>, card: &CardView) -> f64 {
+    if !card.position.face_up { return 0.0; }
+    let Some(code) = card.code.map(|code| ctx.canonical(code)) else { return 0.0; };
+    // Heart advertises CATEGORY_DRAW only while targeting, not among its
+    // initial descriptors. This prices an optional future draw, not income.
+    if alternate::heart_of_the_underdog(code) && ctx.obs.pile_size(card.at.controller, Location::Deck) > 1 { return 0.35; }
+    let Some(support) = card_knowledge::profile(code).counter_support else { return 0.0; };
+    if support.timing != CounterTiming::OwnStandby || support.recipients != CounterRecipients::EveryFaceUpMonster
+        || ctx.effects_drained() { return 0.0; }
+    // A symmetric counter generator has some option value if more of our live
+    // engines can use that counter than theirs. No displayed counter totals
+    // are read: they do not reveal types or prove an effect is payable.
+    let mut users = [0usize; 2];
+    for monster in ctx.obs.cards.iter().filter(|monster| monster.at.location == Location::MonsterZone && monster.position.face_up) {
+        if monster.code.and_then(|code| card_knowledge::profile(ctx.canonical(code)).counter_engine)
+            .is_some_and(|engine| engine.counter == support.counter && (engine.spend.is_some() || engine.attack_per_counter_on_field > 0)) {
+            users[monster.at.controller as usize] += 1;
+        }
+    }
+    if users[card.at.controller as usize] > users[(1 - card.at.controller) as usize] { 0.2 } else { 0.0 }
 }
 
 fn effect_access(effects: &[Effect], location: u16, sequence: Option<u32>, activate_here: bool) -> f64 {
@@ -237,9 +275,57 @@ impl BattleEstimate {
     fn score(self) -> f64 { self.cards + self.damage / 2500.0 }
 }
 
+#[derive(Clone, Copy)]
+struct BattleChoice {
+    target: Option<usize>,
+    destroys_target: bool,
+    loses_attacker: bool,
+    value: BattleEstimate,
+}
+
+/// Public continuous protections are collected once, outside the attack-pair
+/// loops. Conditions tied to surviving monsters remain dynamic within the
+/// projected battle sequence.
+#[derive(Clone, Copy, Default)]
+struct BattleProtection {
+    while_controls_monster: [bool; 2],
+    protected_races: u32,
+}
+
+impl BattleProtection {
+    fn from_public_board(ctx: &Ctx<'_>) -> Self {
+        let mut result = Self::default();
+        let drained = ctx.effects_drained();
+        // Exact disable ordering is not observable. A visible suppressor is
+        // enough to avoid claiming guaranteed protection from a field trap.
+        let field_traps_suppressed = ctx.obs.cards.iter().any(|source| {
+            source.at.location.is_field() && source.position.face_up
+                && !(source.at.location == Location::MonsterZone && drained)
+                && source.code.is_some_and(|code| card_knowledge::profile(ctx.canonical(code)).negates_field_traps)
+        });
+        for source in ctx.obs.cards.iter().filter(|source| source.at.location == Location::SpellTrapZone && source.position.face_up) {
+            let data = ctx.view_data(source);
+            if field_traps_suppressed && data.is_trap() { continue; }
+            if data.is(types::FIELD) && source.at.sequence != 5 { continue; }
+            let Some(code) = source.code else { continue; };
+            match card_knowledge::profile(ctx.canonical(code)).damage_shield {
+                Some(DamageShield::ControllerWhileControlsMonster) => result.while_controls_monster[source.at.controller as usize] = true,
+                Some(DamageShield::BattleInvolvingRace { race }) => result.protected_races |= race,
+                None => {}
+            }
+        }
+        result
+    }
+
+    fn prevents(self, ctx: &Ctx<'_>, player: u8, battler: Option<&CardView>, remaining_bodies: usize) -> bool {
+        self.while_controls_monster[player as usize] && remaining_bodies > 0
+            || battler.is_some_and(|card| card.at.controller == player && ctx.view_data(card).race & self.protected_races != 0)
+    }
+}
+
 /// A cheap two-order greedy exchange estimate. Real search resolves actual
 /// battles; this only prices the remaining tactical exposure at a safe leaf.
-fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool) -> BattleEstimate {
+fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool, protection: BattleProtection) -> BattleEstimate {
     let mut attackers: Vec<_> = ctx.obs.pile(player, Location::MonsterZone)
         .filter(|card| card.position.face_up && card.position.attack
             && (!current || !ctx.obs.can_attack_known || card.can_attack)).collect();
@@ -251,12 +337,17 @@ fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool) -> BattleEstimate
     let mut best = BattleEstimate::default();
     for reversed in [false, true] {
         let mut targets: Vec<_> = ctx.obs.pile(1 - player, Location::MonsterZone).collect();
+        let mut remaining_own_bodies = ctx.obs.pile(player, Location::MonsterZone).count();
         let mut estimate = BattleEstimate::default();
         let ordered: Vec<_> = if reversed { attackers.iter().rev().copied().collect() } else { attackers.clone() };
         for attacker in ordered {
             let striking = ctx.facts(attacker).striking;
             let mut selected = if targets.is_empty() || striking.direct {
-                Some((None, BattleEstimate { cards: 0.0, damage: f64::from(attacker.attack.max(0)) }))
+                let damage = if protection.prevents(ctx, 1 - player, None, targets.len()) {
+                    0.0
+                } else { f64::from(attacker.attack.max(0)) };
+                Some(BattleChoice { target: None, destroys_target: false, loses_attacker: false,
+                    value: BattleEstimate { cards: 0.0, damage } })
             } else { None };
             for (index, target) in targets.iter().enumerate() {
                 // An available repeatable attack negation is not a free kill.
@@ -277,26 +368,30 @@ fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool) -> BattleEstimate
                 let before = met.facts.before_damage && met.facts.attacker != Fate::Unharmed
                     || striking.before_damage && ctx.strike_removes(attacker, target).is_some();
                 if !before {
-                    if !met.facts.no_damage && (!met.defending || striking.piercing) {
+                    if !met.facts.no_damage && (!met.defending || striking.piercing)
+                        && !protection.prevents(ctx, 1 - player, Some(target), targets.len()) {
                         damage += f64::from((attack - met.stat).max(0));
                     }
-                    damage -= f64::from((met.stat - attack).max(0));
+                    let own_protected = protection.prevents(ctx, player, Some(attacker), remaining_own_bodies);
+                    if !own_protected { damage -= f64::from((met.stat - attack).max(0)); }
                     damage -= f64::from(match met.facts.burn {
                         Burn::None => 0,
                         Burn::Fixed(amount) => amount,
                         Burn::AttackerAtk => attack,
-                        Burn::Reflected => if !met.defending || striking.piercing { (attack - met.stat).max(0) } else { 0 },
+                        Burn::Reflected => if !own_protected && (!met.defending || striking.piercing) { (attack - met.stat).max(0) } else { 0 },
                     });
                 }
                 let value = BattleEstimate { cards, damage };
-                if value.score() > selected.map_or(0.0, |(_, value)| value.score()) {
-                    selected = Some((Some((index, destroyed)), value));
+                if value.score() > selected.map_or(0.0, |choice| choice.value.score()) {
+                    selected = Some(BattleChoice { target: Some(index), destroys_target: destroyed,
+                        loses_attacker: lost, value });
                 }
             }
-            if let Some((target, value)) = selected {
-                estimate.cards += value.cards;
-                estimate.damage += value.damage;
-                if let Some((index, true)) = target { targets.remove(index); }
+            if let Some(choice) = selected {
+                estimate.cards += choice.value.cards;
+                estimate.damage += choice.value.damage;
+                if choice.loses_attacker { remaining_own_bodies = remaining_own_bodies.saturating_sub(1); }
+                if let Some(index) = choice.target.filter(|_| choice.destroys_target) { targets.remove(index); }
             }
         }
         if estimate.score() > best.score() { best = estimate; }
@@ -415,6 +510,17 @@ mod tests {
     }
 
     #[test]
+    fn sacrificing_the_only_large_body_to_destroy_a_small_body_loses_value() {
+        let evaluator = evaluator();
+        // Worm King's script can tribute the King itself for targeted removal.
+        // Compare complete transactions, after both the cost and removal, using
+        // ordinary card facts so this stays a general material-exchange rule.
+        let before = observation(vec![card(0,"MonsterZone",4,2700),card(1,"MonsterZone",1,1200)]);
+        let after = observation(vec![card(0,"Graveyard",4,2700),card(1,"Graveyard",1,1200)]);
+        assert!(evaluator.value(&before,0) > evaluator.value(&after,0));
+    }
+
+    #[test]
     fn already_spent_attacks_do_not_create_immediate_lethal() {
         let evaluator = evaluator();
         let mut value = observation(vec![card(0,"MonsterZone",4,2600)]);
@@ -488,6 +594,126 @@ mod tests {
         assert_eq!(evaluator.features(&value,0)[7],0.0);
         value["cards"][2]["code"] = json!(1);
         assert!(evaluator.features(&value,0)[9] > 0.0);
+    }
+
+    fn protection_evaluator() -> Evaluator {
+        let mut cards = MemoryCards::default();
+        for (code, kind, race) in [
+            (1, types::MONSTER, 0), (4, types::MONSTER, ygo_policies::cards::races::FAIRY),
+            (16197610, types::MONSTER | types::EFFECT, ygo_policies::cards::races::FAIRY),
+            (53239672, types::TRAP | types::CONTINUOUS, 0),
+            (56433456, types::SPELL | types::FIELD, 0),
+            (51452091, types::TRAP | types::CONTINUOUS, 0),
+            (69750546, types::MONSTER | types::EFFECT, 0),
+        ] {
+            cards.0.insert(code, CardData { code, kind, race, ..Default::default() });
+        }
+        Evaluator::new(Arc::new(cards))
+    }
+
+    #[test]
+    fn spirit_barrier_blocks_damage_with_a_body_and_expires_when_the_last_body_leaves() {
+        let evaluator = protection_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",4,2600),card(0,"MonsterZone",1,1800),
+            card(1,"MonsterZone",16197610,800),card(1,"SpellTrapZone",53239672,0)]);
+        value["phase"] = json!("Main1"); value["life_points"][1] = json!(2700);
+        let shielded = evaluator.features(&value,0);
+        assert_eq!(shielded[8],0.0, "battle-immune body maintains Barrier through both attacks");
+        assert_eq!(shielded[9],0.0);
+        value["cards"][3]["position"]["face_up"] = json!(false);
+        assert!(evaluator.features(&value,0)[9] > 0.0, "a set trap is not an active shield");
+        value["cards"][3]["position"]["face_up"] = json!(true);
+        value["cards"][2]["code"] = json!(1);
+        assert_eq!(evaluator.features(&value,0)[8],2600.0 / 2500.0,
+            "the first attacker clears the body without damage, then the other hits directly");
+        assert_eq!(evaluator.features(&value,0)[9],0.0);
+        value["life_points"][1] = json!(2500);
+        assert!(evaluator.features(&value,0)[9] > 0.0);
+    }
+
+    #[test]
+    fn sanctuary_protects_the_battling_fairy_on_either_side_but_not_direct_hits() {
+        let evaluator = protection_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,2600),
+            card(1,"MonsterZone",16197610,800),card(0,"SpellTrapZone",56433456,0)]);
+        value["cards"][2]["at"]["sequence"] = json!(5);
+        value["phase"] = json!("Main1");
+        assert_eq!(evaluator.features(&value,0)[8],0.0, "Sanctuary also protects the opposing Fairy");
+        value["cards"][2]["at"]["sequence"] = json!(0);
+        assert!(evaluator.features(&value,0)[8] > 0.0, "a Field Spell outside the Field Zone has no field-range shield");
+        value["cards"][2]["at"]["sequence"] = json!(5);
+        value["cards"][1]["code"] = json!(1);
+        assert!(evaluator.features(&value,0)[8] > 0.0, "a non-Fairy receives battle damage");
+        value["cards"].as_array_mut().unwrap().remove(1);
+        assert_eq!(evaluator.features(&value,0)[8],2600.0 / 2500.0);
+    }
+
+    #[test]
+    fn visible_field_trap_suppression_prevents_claiming_barrier_immunity() {
+        let evaluator = protection_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,2600),
+            card(1,"MonsterZone",16197610,800),card(1,"SpellTrapZone",53239672,0)]);
+        value["phase"] = json!("Main1");
+        assert_eq!(evaluator.features(&value,0)[8],0.0);
+        value["cards"].as_array_mut().unwrap().push(card(0,"SpellTrapZone",51452091,0));
+        assert!(evaluator.features(&value,0)[8] > 0.0);
+    }
+
+    #[test]
+    fn battle_shields_do_not_remove_scattershots_effect_damage() {
+        let evaluator = protection_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,2600),card(0,"SpellTrapZone",53239672,0),
+            card(1,"MonsterZone",69750546,500)]);
+        value["phase"] = json!("Main1");
+        // The target takes 2100 battle damage; its grave trigger deals 500
+        // effect damage through our Barrier. The script is c69750546.lua.
+        assert_eq!(evaluator.features(&value,0)[8],1600.0 / 2500.0);
+    }
+
+    #[test]
+    fn victory_progress_requires_unique_visible_pieces_in_hand() {
+        let evaluator = evaluator();
+        let mut value = observation(vec![card(0,"Hand",33396948,0),card(0,"Hand",70903634,0)]);
+        assert_eq!(evaluator.features(&value,0)[12],0.8);
+        value["cards"].as_array_mut().unwrap().push(card(0,"Hand",70903634,0));
+        assert_eq!(evaluator.features(&value,0)[12],0.8, "duplicates do not advance the condition");
+        value["cards"].as_array_mut().unwrap().push(card(0,"Graveyard",7902349,0));
+        assert_eq!(evaluator.features(&value,0)[12],0.8);
+        value["cards"].as_array_mut().unwrap().push(card(1,"Hand",8124921,0));
+        assert_eq!(evaluator.features(&value,0)[12],0.8, "opponent private pieces are ignored");
+        value["cards"][0]["at"]["location"] = json!("MonsterZone");
+        assert_eq!(evaluator.features(&value,0)[12],0.2);
+        assert_eq!(evaluator.features(&value,0)[12],-evaluator.features(&value,1)[12]);
+    }
+
+    #[test]
+    fn live_uncategorized_draw_engine_has_a_prior_without_double_counting_native_metadata() {
+        let mut evaluator = evaluator();
+        let mut value = observation(vec![card(0,"SpellTrapZone",35762283,0)]);
+        value["cards"][0]["at"]["sequence"] = json!(0);
+        let without_native = evaluator.features(&value,0)[6];
+        assert_eq!(without_native,0.35);
+        evaluator.set_profiles(&json!({"35762283":[{"category":category::DRAW,"effect_type":kind::TRIGGER,"range":BACKROW}]})).unwrap();
+        assert_eq!(evaluator.features(&value,0)[6],without_native);
+        evaluator.set_profiles(&json!({})).unwrap();
+        value["cards"][0]["position"]["face_up"] = json!(false);
+        assert_eq!(evaluator.features(&value,0)[6],0.0);
+        value["cards"][0]["position"]["face_up"] = json!(true);
+        value["pile_sizes"][0][2] = json!(0);
+        assert_eq!(evaluator.features(&value,0)[6],0.0, "empty deck has no draw-engine option value");
+    }
+
+    #[test]
+    fn symmetric_counter_support_needs_live_beneficiaries_and_never_reads_counter_totals() {
+        let evaluator = evaluator();
+        let mut value = observation(vec![card(0,"SpellTrapZone",90135989,0)]);
+        assert_eq!(evaluator.features(&value,0)[6],0.0);
+        value["cards"].as_array_mut().unwrap().push(card(0,"MonsterZone",16197610,800));
+        assert_eq!(evaluator.features(&value,0)[6],0.2);
+        value["cards"][1]["counters"] = json!(10000);
+        assert_eq!(evaluator.features(&value,0)[6],0.2, "aggregate counts are not typed resource value");
+        value["cards"].as_array_mut().unwrap().push(card(1,"MonsterZone",16197610,800));
+        assert_eq!(evaluator.features(&value,0)[6],0.0, "equal opposing benefit cancels the support prior");
     }
 
     #[test]

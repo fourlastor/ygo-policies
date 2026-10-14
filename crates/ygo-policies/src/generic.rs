@@ -6,11 +6,16 @@
 //! legal availability does not establish that activating an effect is good.
 //! An engine search can override these choices after simulating the effect.
 
+pub mod alternate;
+mod conversion;
+pub mod knowledge;
+pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
+
 use crate::agent::{Response, Strategy, Turn};
 use crate::cards::{effect_categories as cat, effect_events as event, effect_locations as range,
     effect_types as effect_type, types, EffectDescriptor};
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, DecisionKind, Hint, Location, Member, Phase};
+use crate::model::{CardView, Choice, ChoiceKind, DecisionKind, Hint, Location, Member, Phase, Position};
 use crate::{staples, tactics};
 
 #[derive(Clone, Default)]
@@ -103,6 +108,9 @@ impl Generic {
     }
 
     fn normal_summon_reward(ctx: &Ctx, code: u32) -> f64 {
+        let counter_trigger = knowledge::profile(ctx.canonical(code)).counter_engine.is_some_and(|engine| {
+            matches!(engine.normal_summon_gain, knowledge::CounterGain::FaceUpSetOnBothFields { .. })
+        });
         let own_trigger = ctx.db.effects(code).iter().any(|effect| {
             effect.effect_type & effect_type::TRIGGER != 0
                 && effect.event == event::SUMMON_SUCCESS
@@ -116,7 +124,62 @@ impl Generic {
                 && range::normalize(effect.range) & range::SPELL_TRAP != 0
                 && effect.category & Self::DEVELOP != 0
         }));
-        if own_trigger { 1400.0 } else if field_trigger { 600.0 } else { 0.0 }
+        if own_trigger || counter_trigger { 1400.0 } else if field_trigger { 600.0 } else { 0.0 }
+    }
+
+    fn shield_useful(t: &Turn, choice: &Choice) -> bool {
+        let ctx = t.ctx;
+        let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return false };
+        if !ctx.data(code).is_spell() && !ctx.data(code).is_trap() { return false; }
+        if t.view(choice).is_some_and(|card| card.at.location.is_field() && card.position.face_up) { return false; }
+        if ctx.data(code).is_trap() && ctx.obs.cards.iter().any(|card| {
+            card.at.location.is_field() && card.position.face_up
+                && card.code.is_some_and(|code| knowledge::profile(ctx.canonical(code)).negates_field_traps)
+                && (card.at.location != Location::MonsterZone || !ctx.effects_drained())
+        }) { return false; }
+        match knowledge::profile(code).damage_shield {
+            Some(knowledge::DamageShield::ControllerWhileControlsMonster) => !ctx.monsters(ctx.me).is_empty(),
+            Some(knowledge::DamageShield::BattleInvolvingRace { race }) => ctx.monsters(ctx.me).iter().any(|card| {
+                card.position.face_up && ctx.view_data(card).race & race != 0
+            }),
+            None => false,
+        }
+    }
+
+    /// Exact source facts constrain a legal transaction without guessing its
+    /// cost from printed Level or treating unrelated modes as interchangeable.
+    fn known_activation_allowed(t: &Turn, choice: &Choice) -> bool {
+        let ctx = t.ctx;
+        let Some(code) = choice.code().map(|code| ctx.canonical(code)) else { return true };
+        let triggered = matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. });
+        if !triggered {
+            if let Some(spend) = knowledge::profile(code).counter_engine.and_then(|engine| engine.spend) {
+                if spend.description == choice.description {
+                    if let knowledge::CounterPayoff::DestroyOnEitherField { domain } = spend.payoff {
+                        return ctx.obs.cards.iter().any(|card| card.at.controller == ctx.opp
+                            && ctx.reaches(card, code, true, true) && match domain {
+                            knowledge::TargetDomain::AnyCard => card.at.location.is_field(),
+                            knowledge::TargetDomain::Monster => card.at.location == Location::MonsterZone,
+                            knowledge::TargetDomain::SpellTrap => card.at.location == Location::SpellTrapZone,
+                        });
+                    }
+                }
+            }
+            if let Some(facts) = knowledge::action(code, knowledge::ActionKind::Ignition, choice.description) {
+                if let knowledge::Operation::ExtraNormalSummon { setcode, excluded_code } = facts.payoff {
+                    // Returning a body only for this restricted extra summon
+                    // cannot help when no eligible hand monster exists. The
+                    // excluded source cannot make its own bounce productive.
+                    return ctx.hand().iter().any(|card| card.code.is_some_and(|candidate| {
+                        let data = ctx.data(candidate);
+                        ctx.canonical(candidate) != excluded_code && data.is_monster()
+                            && !data.is_extra() && data.in_set(setcode)
+                            && data.tributes() == 0
+                    }));
+                }
+            }
+        }
+        true
     }
 
     fn gain_value(ctx: &Ctx, code: u32, hint: Hint) -> f64 {
@@ -154,6 +217,26 @@ impl Generic {
         value
     }
 
+    fn ignition_setup(effect: &EffectDescriptor) -> bool {
+        let destructive = Self::REMOVE | cat::RELEASE | cat::FUSION_SUMMON | cat::DAMAGE;
+        effect.effect_type & effect_type::IGNITION != 0
+            && range::normalize(effect.range) & range::SPELL_TRAP != 0
+            && (effect.category == 0
+                || effect.category & (Self::ACCESS | cat::SPECIAL_SUMMON | cat::TOKEN) != 0
+                    && effect.category & destructive == 0)
+    }
+
+    fn ignition_before_summon(&self, t: &Turn, index: usize) -> bool {
+        let choice = t.choice(index);
+        let Some(code) = choice.code() else { return false };
+        let data = t.ctx.data(code);
+        data.is_spell() && data.is(types::CONTINUOUS | types::FIELD)
+            && choice.at().is_some_and(|at| at.location == Location::SpellTrapZone)
+            && self.unknown_activation(t, index).is_some()
+            && t.choices().any(|(i, choice)| t.fresh(i) && choice.kind == ChoiceKind::NormalSummon)
+            && Self::offered_effects(t, choice).any(Self::ignition_setup)
+    }
+
     fn setup_before_summon(&self, t: &Turn, index: usize) -> bool {
         let choice = t.choice(index);
         let Some(code) = choice.code() else { return false };
@@ -164,6 +247,26 @@ impl Generic {
             || t.view(choice).is_some_and(|view| view.at.location == Location::SpellTrapZone && view.position.face_up)
         {
             return false;
+        }
+        if alternate::allow_activation(t, index) == Some(false)
+            || conversion::allow_activation(t, choice) == Some(false)
+            || !Self::known_activation_allowed(t, choice)
+        { return false; }
+        // Replacing a field can remove a live engine. Evaluating that exchange
+        // belongs to search, not to this setup ordering prior.
+        if data.is(types::FIELD) && t.ctx.spell_traps(t.ctx.me).iter().any(|card| card.at.sequence == 5) {
+            return false;
+        }
+        let has_normal = t.choices().any(|(i, summon)| t.fresh(i) && summon.kind == ChoiceKind::NormalSummon);
+        // A cost-free installation may expose an ignition whose categories
+        // are assigned only after choosing a mode. Move an activation already
+        // accepted by the fallback earlier; do not infer usefulness from all
+        // category-zero field spells (some are locks or forced drawbacks).
+        if has_normal && self.unknown_activation(t, index).is_some()
+            && Self::offered_effects(t, choice).any(|effect| effect.effect_type & effect_type::ACTIVATE != 0 && !effect.has_cost)
+            && t.ctx.db.effects(code).iter().any(Self::ignition_setup)
+        {
+            return true;
         }
         t.ctx.db.effects(code).iter().any(|effect| {
             range::normalize(effect.range) & range::SPELL_TRAP != 0
@@ -185,6 +288,12 @@ impl Generic {
         if choice.kind != ChoiceKind::Activate || !t.fresh(index) || t.own_top() {
             return None;
         }
+        if alternate::allow_activation(t, index) == Some(false)
+            || conversion::allow_activation(t, choice) == Some(false)
+            || !Self::known_activation_allowed(t, choice)
+        {
+            return None;
+        }
         let at = choice.at()?;
         let code = t.ctx.canonical(choice.code()?);
         if at.controller != t.ctx.me || Self::shared_effect(code) || t.ctx.wasted(code) {
@@ -194,10 +303,15 @@ impl Generic {
         if at.location == Location::MonsterZone && t.ctx.effects_drained() {
             return None;
         }
+        if Self::shield_useful(t, choice) { return Some(45); }
         // Reactive cards are left to their engine-gated response windows.
         // A legal unknown Trap in Main Phase may consume a defense needlessly.
         let categories = Self::offered_categories(t, choice);
-        if (data.is_trap() || data.is(types::QUICKPLAY)) && categories & Self::ACCESS == 0 {
+        let backrow_development = at.location == Location::SpellTrapZone
+            && categories & (cat::SPECIAL_SUMMON | cat::TOKEN) != 0;
+        if (data.is_trap() || data.is(types::QUICKPLAY))
+            && categories & Self::ACCESS == 0 && !backrow_development
+        {
             return None;
         }
         let score = match at.location {
@@ -205,7 +319,7 @@ impl Generic {
             Location::Hand if data.is_monster() => 35,
             Location::Graveyard | Location::Banished => 35,
             Location::MonsterZone => 30,
-            Location::SpellTrapZone if data.is_spell() || categories & Self::ACCESS != 0 => 25,
+            Location::SpellTrapZone if data.is_spell() || categories & Self::DEVELOP != 0 => 25,
             _ => return None,
         };
         Some(score + if categories & Self::ACCESS != 0 { 20 } else { 0 })
@@ -214,6 +328,7 @@ impl Generic {
 
 impl Strategy for Generic {
     fn value(&self, ctx: &Ctx, code: u32) -> Option<i32> {
+        if let Some(value) = alternate::value(ctx, code) { return Some(value); }
         if staples::value(code).is_some() {
             return None;
         }
@@ -222,9 +337,13 @@ impl Strategy for Generic {
     }
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+        if let Some(index) = alternate::main_phase(t) { return Some(index); }
         // A summon-triggered engine has to be installed before the event it
         // rewards. The setup card's activation itself often has category zero.
         if let Some(index) = t.choices().find(|(i, _)| self.setup_before_summon(t, *i)).map(|(i, _)| i) {
+            return t.pick(index);
+        }
+        if let Some(index) = t.choices().find(|(i, _)| self.ignition_before_summon(t, *i)).map(|(i, _)| i) {
             return t.pick(index);
         }
         // Searches/draws can expose the normal summon we actually want. The
@@ -237,11 +356,24 @@ impl Strategy for Generic {
                 return t.pick(index);
             }
         }
+        // Equipped monsters and other backrow cards can deploy bodies from
+        // that zone. Use the offered action before a summon consumes the host
+        // and sends its equipment away. Printed card type is not the action's
+        // role. Fusion transactions still need their materials evaluated.
+        if let Some(index) = t.choices().filter(|(i, choice)| {
+            choice.at().is_some_and(|at| at.location == Location::SpellTrapZone)
+                && self.unknown_activation(t, *i).is_some()
+                && Self::offered_categories(t, choice) & (cat::SPECIAL_SUMMON | cat::TOKEN) != 0
+                && Self::offered_categories(t, choice) & cat::FUSION_SUMMON == 0
+        }).map(|(i, _)| i).next() {
+            return t.pick(index);
+        }
         // Many free hand summons need an empty field. Use that opportunity
         // before spending the normal summon; the engine checks the conditions.
         if t.ctx.monsters(t.ctx.me).is_empty() {
             let choice = t.choices()
                 .filter(|(i, c)| t.fresh(*i) && c.kind == ChoiceKind::SpecialSummon)
+                .filter(|(_, c)| self.special_summon(t, c) != Some(false))
                 .filter(|(_, c)| c.at().is_some_and(|a| a.location == Location::Hand))
                 .max_by_key(|(_, c)| c.code().map_or(0, |code| Self::body_value(&t.ctx, code)))
                 .map(|(i, _)| i);
@@ -263,6 +395,7 @@ impl Strategy for Generic {
     }
 
     fn summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
+        if let Some(score) = alternate::summon_score(t, choice) { return Some(score); }
         let code = choice.code()?;
         let data = t.ctx.data(code);
         if data.tributes() as usize > t.ctx.monsters(t.ctx.me).len() {
@@ -300,8 +433,49 @@ impl Strategy for Generic {
         None
     }
 
+    fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
+        alternate::special_summon(t, choice)
+    }
+
+    fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
+        !card.position.attack || !card.position.face_up || !card.code.is_some_and(|code| {
+            knowledge::profile(t.ctx.canonical(code)).dies_in_face_up_defense
+        })
+    }
+
+    fn position(&self, t: &Turn, code: u32) -> Option<Position> {
+        knowledge::profile(t.ctx.canonical(code)).dies_in_face_up_defense.then_some(Position::FACE_UP_ATTACK)
+    }
+
+    fn allow_staple(&self, t: &Turn, code: u32) -> bool {
+        alternate::allow_staple(t, code)
+    }
+
+    fn set_spell_trap(&self, t: &Turn, code: u32) -> Option<bool> {
+        alternate::set_spell_trap(t, code)
+    }
+
+    fn allow_repeated_chain(&self, t: &Turn, index: usize) -> bool {
+        alternate::allow_repeated_chain(t, index)
+    }
+
+    fn battle(&mut self, t: &mut Turn) -> Option<usize> {
+        // The engine's attack choice says whether this specific attacker may
+        // bypass opposing monsters. Preserve an empty target intent so the
+        // ensuing "attack directly?" prompt follows that legal plan.
+        let index = tactics::direct_attack(t)?;
+        t.pick_targeting(index, vec![])
+    }
+
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
+        if let Some(response) = alternate::chain(t, index) { return Some(response); }
         let choice = t.choice(index);
+        if alternate::allow_activation(t, index) == Some(false)
+            || conversion::allow_activation(t, choice) == Some(false)
+            || !Self::known_activation_allowed(t, choice)
+        {
+            return Some(Response::no());
+        }
         let code = t.ctx.canonical(choice.code()?);
         if Self::shared_effect(code) {
             return None;
@@ -322,6 +496,7 @@ impl Strategy for Generic {
                 && Self::offered_effects(t, choice).any(|e| e.effect_type & effect_type::TRIGGER != 0);
             return Some(if productive_trigger { Response::new(110.0) } else { Response::no() });
         }
+        if Self::shield_useful(t, choice) { return Some(Response::new(45.0)); }
         let counter = t.ctx.data(code).is(types::COUNTER) && !t.ctx.obs.chain.is_empty();
         if triggered || counter {
             return Some(Response::new(30.0));
@@ -350,9 +525,21 @@ impl Strategy for Generic {
     }
 
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
+        if let Some(score) = alternate::select(t, member) { return Some(score); }
+        if let Some(score) = conversion::material_score(t, member) { return Some(score); }
         let code = member.code?;
         let ctx = t.ctx;
         let hint = t.decision.hint;
+        if matches!(hint, Hint::FaceUp | Hint::Target) {
+            if let Some(support) = t.memory.last_activated.and_then(|source| knowledge::profile(ctx.canonical(source)).counter_support) {
+                if support.recipients == knowledge::CounterRecipients::OneFaceUpMonsterOnEitherField {
+                    let engine = knowledge::profile(ctx.canonical(code)).counter_engine;
+                    return Some(if member.at.controller != ctx.me { -10_000.0 }
+                        else if engine.is_some_and(|engine| engine.counter == support.counter) { 10_000.0 }
+                        else { 0.0 });
+                }
+            }
+        }
         if member.at.controller != ctx.me {
             return None;
         }
@@ -401,7 +588,7 @@ impl Strategy for Generic {
     }
 
     fn yes_no(&self, t: &Turn) -> Option<bool> {
-        tactics::attack_directly(t)
+        alternate::yes_no(t).or_else(|| tactics::attack_directly(t))
     }
 }
 
@@ -448,6 +635,112 @@ mod tests {
             attack: 1800, defense: 1000, level: 4, can_attack: true,
             battles: 0, counters: 0, coin_effect: None,
         }
+    }
+
+    #[test]
+    fn source_backed_damage_shield_requires_a_body_and_no_live_trap_negator() {
+        let shield = 53239672;
+        let body = 900005001;
+        let database = profiled(vec![
+            CardData { code: shield, kind: types::TRAP | types::CONTINUOUS, ..CardData::default() },
+            CardData { code: body, kind: types::MONSTER, ..CardData::default() },
+            CardData { code: 77585513, kind: types::MONSTER | types::EFFECT, ..CardData::default() },
+        ], EffectProfiles::default());
+        for (has_body, negated, expected) in [(true, false, 0), (false, false, 1), (true, true, 1)] {
+            let mut obs = observation();
+            obs.cards.push(on_field(shield, 0, Location::SpellTrapZone, Position::FACE_DOWN_DEFENSE));
+            if has_body { obs.cards.push(on_field(body, 0, Location::MonsterZone, Position::FACE_UP_ATTACK)); }
+            if negated { obs.cards.push(on_field(77585513, 1, Location::MonsterZone, Position::FACE_UP_ATTACK)); }
+            for kind in [DecisionKind::Idle, DecisionKind::Chain { triggers: false, forced: false }] {
+                let end = if kind == DecisionKind::Idle { ChoiceKind::EndTurn } else { ChoiceKind::Pass };
+                let prompt = decision(kind, vec![choice(ChoiceKind::Activate, Some(shield), Location::SpellTrapZone), choice(end, None, Location::Other)]);
+                let mut pilot = Agent::seeded(Generic, database.clone(), 1);
+                assert_eq!(pilot.choose(&obs, &prompt), expected, "{kind:?}, body={has_body}, negated={negated}");
+            }
+        }
+    }
+
+    #[test]
+    fn counter_summon_resources_and_self_destruction_change_position_choices() {
+        let body = 16197610;
+        let database = profiled(vec![CardData { code: body, kind: types::MONSTER | types::EFFECT,
+            attack: 800, defense: 0, level: 4, ..CardData::default() }], EffectProfiles::default());
+        let mut obs = observation();
+        obs.cards.push(on_field(900005011, 1, Location::MonsterZone, Position::FACE_UP_ATTACK));
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SetMonster, Some(body), Location::Hand),
+            choice(ChoiceKind::NormalSummon, Some(body), Location::Hand),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), 1);
+        let mut prompt = decision(DecisionKind::Position, vec![
+            choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE), None, Location::Other),
+            choice(ChoiceKind::Position(Position::FACE_UP_ATTACK), None, Location::Other),
+        ]);
+        prompt.subject = Some(body);
+        assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &prompt), 1);
+    }
+
+    #[test]
+    fn restricted_extra_summon_does_not_bounce_for_an_ineligible_hand() {
+        let source = 9126351;
+        let candidate = 900005021;
+        for (same_set, level, allowed) in [(false, 4, false), (true, 7, false), (true, 4, true)] {
+            let database = profiled(vec![
+                CardData { code: source, kind: types::MONSTER | types::EFFECT, level: 2, ..CardData::default() },
+                CardData { code: candidate, kind: types::MONSTER, level, setcodes: if same_set { vec![knowledge::FROG_SET] } else { vec![] }, ..CardData::default() },
+            ], EffectProfiles::default());
+            let mut obs = observation();
+            obs.cards.push(on_field(source, 0, Location::MonsterZone, Position::FACE_UP_ATTACK));
+            obs.cards.push(on_field(candidate, 0, Location::Hand, Position::FACE_UP_ATTACK));
+            let mut action = choice(ChoiceKind::Activate, Some(source), Location::MonsterZone);
+            action.description = knowledge::description(source, 1);
+            let prompt = decision(DecisionKind::Idle, vec![action.clone(), choice(ChoiceKind::EndTurn, None, Location::Other)]);
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), usize::from(!allowed));
+            // The summon trigger deliberately shares the same description;
+            // its graveyard setup is a different effect and remains allowed.
+            let trigger = decision(DecisionKind::Chain { forced: false, triggers: true }, vec![action, choice(ChoiceKind::Pass, None, Location::Other)]);
+            assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &trigger), 0);
+        }
+    }
+
+    #[test]
+    fn counter_removal_does_not_spend_resources_on_our_only_target() {
+        let source = 43318266;
+        let database = profiled(vec![CardData { code: source, kind: types::MONSTER | types::EFFECT, ..CardData::default() }], EffectProfiles::default());
+        for (enemy, allowed) in [(None, false), (Some(900005031), true), (Some(27527047), false)] {
+            let mut obs = observation();
+            obs.cards.push(on_field(source, 0, Location::MonsterZone, Position::FACE_UP_ATTACK));
+            if let Some(enemy) = enemy { obs.cards.push(on_field(enemy, 1, Location::MonsterZone, Position::FACE_UP_ATTACK)); }
+            let mut action = choice(ChoiceKind::Activate, Some(source), Location::MonsterZone);
+            action.description = knowledge::description(source, 1);
+            let prompt = decision(DecisionKind::Idle, vec![action, choice(ChoiceKind::EndTurn, None, Location::Other)]);
+            assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), usize::from(!allowed));
+        }
+    }
+
+    #[test]
+    fn setup_ordering_respects_alternate_win_backrow_reservation() {
+        let setup = 900005041;
+        let body = 900005042;
+        let database = profiled(vec![
+            CardData { code: setup, kind: types::SPELL | types::CONTINUOUS, ..CardData::default() },
+            CardData { code: body, kind: types::MONSTER, attack: 1900, level: 4, ..CardData::default() },
+        ], [(setup, vec![EffectDescriptor { category: cat::SEARCH, effect_type: effect_type::TRIGGER,
+            range: range::SPELL_TRAP, event: event::SUMMON_SUCCESS, ..EffectDescriptor::default() }])].into());
+        let mut obs = observation();
+        obs.cards.push(on_field(94212438, 0, Location::Hand, Position::FACE_UP_ATTACK));
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::Activate, Some(setup), Location::Hand),
+            choice(ChoiceKind::NormalSummon, Some(body), Location::Hand),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), 1);
+        let chain = decision(DecisionKind::Chain { forced: false, triggers: false }, vec![
+            choice(ChoiceKind::Activate, Some(setup), Location::SpellTrapZone),
+            choice(ChoiceKind::Pass, None, Location::Other),
+        ]);
+        assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &chain), 1);
     }
 
     #[test]
@@ -626,6 +919,125 @@ mod tests {
             choice(ChoiceKind::EndTurn, None, Location::Other),
         ]);
         assert_eq!(pilot.choose(&observation(), &prompt), 1);
+    }
+
+    #[test]
+    fn unknown_mode_setup_and_its_ignition_both_precede_the_normal_summon() {
+        let setup = 900005001;
+        let monster = 900005002;
+        for (category, activation_cost, occupied, has_ignition, promote) in [
+            (0, false, false, true, true),
+            (cat::SPECIAL_SUMMON, false, false, true, true),
+            (cat::SPECIAL_SUMMON | cat::DESTROY, false, false, true, false),
+            (cat::SPECIAL_SUMMON | cat::FUSION_SUMMON, false, false, true, false),
+            (0, true, false, true, false),
+            (0, false, true, true, false),
+            (0, false, false, false, false),
+        ] {
+            let mut effects = vec![EffectDescriptor {
+                effect_type: effect_type::ACTIVATE, has_cost: activation_cost, ..EffectDescriptor::default()
+            }];
+            if has_ignition {
+                effects.push(EffectDescriptor {
+                    category, effect_type: effect_type::IGNITION, range: range::FIELD,
+                    description: 91, has_cost: true, ..EffectDescriptor::default()
+                });
+            }
+            let database = profiled(vec![
+                CardData { code: setup, kind: types::SPELL | types::FIELD, ..CardData::default() },
+                CardData { code: monster, kind: types::MONSTER, attack: 1800, level: 4, ..CardData::default() },
+            ], [(setup, effects)].into());
+            let mut pilot = Agent::seeded(Generic, database, 1);
+            let mut obs = observation();
+            if occupied {
+                let mut field = on_field(900005003, 0, Location::SpellTrapZone, Position::FACE_UP_ATTACK);
+                field.at.sequence = 5;
+                obs.cards.push(field);
+            }
+            let initial = decision(DecisionKind::Idle, vec![
+                choice(ChoiceKind::NormalSummon, Some(monster), Location::Hand),
+                choice(ChoiceKind::Activate, Some(setup), Location::Hand),
+                choice(ChoiceKind::EndTurn, None, Location::Other),
+            ]);
+            assert_eq!(pilot.choose(&obs, &initial), usize::from(promote),
+                "category={category}, activation_cost={activation_cost}, occupied={occupied}, ignition={has_ignition}");
+            if promote {
+                let mut field = on_field(setup, 0, Location::SpellTrapZone, Position::FACE_UP_ATTACK);
+                field.at.sequence = 5;
+                obs.cards.push(field);
+                let mut activation = choice(ChoiceKind::Activate, Some(setup), Location::SpellTrapZone);
+                activation.card.as_mut().unwrap().at.sequence = 5;
+                activation.description = 91;
+                let followup = decision(DecisionKind::Idle, vec![
+                    choice(ChoiceKind::NormalSummon, Some(monster), Location::Hand),
+                    activation,
+                    choice(ChoiceKind::EndTurn, None, Location::Other),
+                ]);
+                assert_eq!(pilot.choose(&obs, &followup), 1, "the new engine must act before spending the summon");
+            }
+        }
+    }
+
+    #[test]
+    fn productive_equipped_monster_acts_before_a_summon_can_spend_its_host() {
+        let equipped = 900004001;
+        let host = 900004002;
+        let summon = 900004003;
+        let database = profiled(vec![
+            CardData { code: equipped, kind: types::MONSTER | types::EFFECT | types::TUNER, attack: 500, level: 2, ..CardData::default() },
+            CardData { code: host, kind: types::MONSTER | types::EFFECT, attack: 1900, level: 4, ..CardData::default() },
+            CardData { code: summon, kind: types::MONSTER | types::EFFECT, attack: 2600, level: 8, ..CardData::default() },
+        ], [(equipped, vec![EffectDescriptor {
+            category: cat::SPECIAL_SUMMON, effect_type: effect_type::IGNITION,
+            range: range::SPELL_TRAP, ..EffectDescriptor::default()
+        }])].into());
+        let mut obs = observation();
+        obs.cards.push(on_field(host, 0, Location::MonsterZone, Position::FACE_UP_ATTACK));
+        obs.cards.push(on_field(equipped, 0, Location::SpellTrapZone, Position::FACE_UP_ATTACK));
+        let mut pilot = Agent::seeded(Generic, database, 1);
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SpecialSummon, Some(summon), Location::Hand),
+            choice(ChoiceKind::Activate, Some(equipped), Location::SpellTrapZone),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        assert_eq!(pilot.choose(&obs, &prompt), 1);
+        let alone = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+            choice(ChoiceKind::Activate, Some(equipped), Location::SpellTrapZone),
+        ]);
+        assert_eq!(pilot.choose(&obs, &alone), 1);
+    }
+
+    #[test]
+    fn unseen_direct_attacker_uses_engine_permission_and_confirms_direct_attack() {
+        let attacker = 900004011;
+        let database = Arc::new(MemoryCards([(attacker, CardData {
+            code: attacker, kind: types::MONSTER, attack: 1400, level: 4, ..CardData::default()
+        })].into()));
+        for can_direct in [false, true] {
+            let mut pilot = Agent::seeded(Generic, database.clone(), 1);
+            let mut obs = observation();
+            obs.phase = Some(Phase::BattleStart);
+            let mut own = on_field(attacker, 0, Location::MonsterZone, Position::FACE_UP_ATTACK);
+            own.attack = 1400;
+            let mut enemy = on_field(900004012, 1, Location::MonsterZone, Position::FACE_UP_ATTACK);
+            enemy.attack = 2600;
+            obs.cards.extend([own, enemy]);
+            let mut attack = choice(ChoiceKind::Attack, Some(attacker), Location::MonsterZone);
+            attack.card.as_mut().unwrap().value = i64::from(can_direct);
+            let prompt = decision(DecisionKind::Battle, vec![
+                attack, choice(ChoiceKind::EnterMain2, None, Location::Other),
+            ]);
+            assert_eq!(pilot.choose(&obs, &prompt), usize::from(!can_direct));
+            if can_direct {
+                let mut confirmation = decision(DecisionKind::YesNo, vec![
+                    choice(ChoiceKind::No, None, Location::Other),
+                    choice(ChoiceKind::Yes, None, Location::Other),
+                ]);
+                for answer in &mut confirmation.choices { answer.description = tactics::ATTACK_DIRECTLY; }
+                assert_eq!(pilot.choose(&obs, &confirmation), 1);
+            }
+        }
     }
 
     #[test]

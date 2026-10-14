@@ -1,4 +1,4 @@
-//! Bounded root Monte Carlo search for the generic policy.
+//! Bounded rollout, transaction-beam and information-set MCTS search.
 //!
 //! Both simulated players use the generic policy. Alternatives share sampled
 //! hidden worlds, and only complete rounds contribute to their comparison.
@@ -10,6 +10,8 @@ use super::search::{HiddenWorlds, Listed, Table};
 use super::*;
 use super::planner::{self, PlannedAction, PlannerOptions, PlannerResult};
 use super::evaluation::Evaluator;
+use super::ismcts;
+use super::public_memory::PublicIdentityMemory;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -18,22 +20,30 @@ pub struct FastOptions {
     pub searcher: usize,
     /// Maximum complete sampled worlds per decision.
     pub worlds: usize,
-    /// One root choice, or two choices within each already sampled world.
+    /// Rollout method only: one root choice or two choices in a sampled world.
     pub depth: usize,
     pub max_candidates: usize,
-    /// Hard bound on attempted rollouts per decision; zero plays the plain pilot.
+    /// Work cap: rollout attempts, beam transitions plus validations, or MCTS
+    /// iterations plus validations. Zero plays the plain pilot.
     pub max_playouts: usize,
-    /// Minimum future decisions before a quiescent leaf, or zero for full duels.
-    /// A truncated rollout may extend at most 64 decisions to resolve effects.
+    /// Rollouts: minimum future decisions before a quiescent leaf; zero runs
+    /// to terminal. Beam/MCTS: zero validates to terminal, nonzero uses their
+    /// requested turn horizon. Truncated rollouts get64 extra resolution steps.
     pub horizon: usize,
     /// Soft wall-clock budget per decision, or zero for deterministic work caps.
     pub millis: u64,
-    /// Skip search when the opponent has an unsampleable face-down monster.
+    /// Skip search when an opposing face-down monster has unknown identity.
     pub strict: bool,
     /// Attach public registered-effect metadata to the generic pilot.
     pub effects: bool,
     /// Transaction-complete beam proposals, evaluated unchanged across worlds.
     pub planner: Option<PlannerOptions>,
+    /// Online information-set UCT; mutually exclusive with beam planning.
+    pub mcts: Option<MctsOptions>,
+    /// Separate sampled proposal worlds; validation uses fresh common worlds.
+    pub mcts_worlds: usize,
+    /// Compare each measured root with the frozen continuation on common worlds.
+    pub mcts_validate_roots: bool,
 }
 
 #[derive(Default)]
@@ -59,6 +69,18 @@ struct Stats {
     plan_mismatches: u64,
     live_plan_applied: u64,
     live_plan_mismatches: u64,
+    mcts_simulations: u64,
+    mcts_completed: u64,
+    mcts_nodes: u64,
+    mcts_steps: u64,
+    mcts_tree_hits: u64,
+    mcts_cutoffs: u64,
+    mcts_live_hits: u64,
+    mcts_live_missing: u64,
+    mcts_frozen_actions: u64,
+    mcts_accepted: u64,
+    mcts_root_actions: u64,
+    mcts_visited_root_actions: u64,
     errors: Vec<String>,
 }
 
@@ -803,6 +825,139 @@ fn record_planner(result: &PlannerResult, stats: &mut Stats) {
     for error in &result.errors { stats.error(error.clone()); }
 }
 
+/// Discover a conditional policy in proposal worlds, then independently
+/// compare the frozen policy against plain play on fresh common worlds.
+fn choose_mcts(
+    duel: &mut Duel,
+    context: &Context<'_>,
+    table: &Table<'_>,
+    original: &serde_json::Value,
+    given: &[u8],
+    decisions: usize,
+    stats: &mut Stats,
+) -> Result<(Vec<u8>, usize, f64, Option<ismcts::FrozenPolicy>)> {
+    let options = context.options.mcts.ok_or("Missing MCTS options")?;
+    let evaluator = context.evaluator.as_ref().ok_or("Missing MCTS evaluator")?;
+    let evaluate = |observation: &serde_json::Value, viewer| evaluator.value(observation, viewer);
+    let root = duel.snapshot()?;
+    let deadline = (context.options.millis > 0)
+        .then(|| Instant::now() + Duration::from_millis(context.options.millis));
+    let mut hidden = HiddenWorlds::with_known(pending_known_slots(original, context.viewer));
+    let mut complete = 0;
+    let mut advantage = 0.0;
+    let mut proposed_response = given.to_vec();
+    let mut policy = None;
+    let result = (|| -> Result<()> {
+        let opponent = public_opponent(context, &table.logs, decisions)?;
+        let reserve = context.options.worlds.saturating_mul(if context.options.mcts_validate_roots {
+            context.options.max_candidates.saturating_add(1)
+        } else { 2 });
+        let iterations = options.iterations.min(context.options.max_playouts.saturating_sub(reserve));
+        if iterations == 0 { stats.budget_exhausted += 1; return Ok(()); }
+        let proposal_deadline = deadline.map(|end| Instant::now() + end.saturating_duration_since(Instant::now()) / 2);
+        let mut worlds = Vec::new();
+        for index in 0..context.options.mcts_worlds.min(iterations) {
+            if expired(proposal_deadline) { break; }
+            let seed = context.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15)
+                ^ (index as u64 + 1).wrapping_mul(0xA0761D6478BD642F);
+            hidden.restore(duel, &root, context.viewer, seed)?;
+            duel.reseed(seed ^ 0x94D049BB133111EB)?;
+            let seats = prepare(duel, context, table, &opponent)?;
+            worlds.push(ismcts::World { snapshot: duel.snapshot()?, seats });
+        }
+        if worlds.is_empty() { stats.budget_exhausted += 1; return Ok(()); }
+        let searched = ismcts::search(duel, &worlds, context.viewer, original, decisions,
+            context.limit, MctsOptions { iterations, ..options }, proposal_deadline, &evaluate)?;
+        stats.mcts_root_actions += searched.root_actions.len() as u64;
+        stats.mcts_visited_root_actions += searched.root_actions.iter().filter(|a| a.visits > 0).count() as u64;
+        stats.mcts_simulations += searched.stats.simulations as u64;
+        stats.mcts_completed += searched.stats.completed as u64;
+        stats.mcts_nodes += searched.stats.nodes as u64;
+        stats.mcts_steps += searched.stats.steps as u64;
+        stats.mcts_tree_hits += searched.stats.tree_hits as u64;
+        stats.mcts_cutoffs += searched.stats.cutoffs as u64;
+        stats.failed_playouts += searched.stats.failed as u64;
+        for error in &searched.stats.errors { stats.error(error.clone()); }
+        if searched.stats.completed == 0 { return Ok(()); }
+        let Some(response) = searched.root_response else { return Ok(()); };
+        let responses = mcts_validation_responses(given, response, &searched.root_actions,
+            context.options.max_candidates, context.options.mcts_validate_roots);
+        let mut totals = vec![0.0; responses.len() + 1];
+        let frozen = searched.policy;
+        stats.mcts_frozen_actions += frozen.len() as u64;
+        // Proposal snapshots and generic seats are no longer needed while
+        // validation allocates independent worlds.
+        drop(worlds);
+        let control = ismcts::FrozenPolicy::default();
+        let validation = MctsOptions { terminal: context.options.horizon == 0,
+            decisions: if context.options.horizon == 0 { context.limit } else { options.decisions }, ..options };
+        for index in 0..context.options.worlds {
+            if expired(deadline) { stats.budget_exhausted += 1; break; }
+            let seed = context.seed ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15)
+                ^ (index as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
+            hidden.restore(duel, &root, context.viewer, seed)?;
+            duel.reseed(seed ^ 0x94D049BB133111EB)?;
+            let seats = prepare(duel, context, table, &opponent)?;
+            let world = ismcts::World { snapshot: duel.snapshot()?, seats };
+            let mut scores = Vec::new();
+            for (response, policy) in std::iter::once((given, &control))
+                .chain(responses.iter().map(|response| (response.as_slice(), &frozen))) {
+                if expired(deadline) { break; }
+                let trial = ismcts::evaluate_frozen(duel, &world, context.viewer, original,
+                    response, decisions, context.limit, validation, deadline, &evaluate, policy)?;
+                stats.playouts += 1;
+                stats.plan_evaluations += 1;
+                stats.plan_applied += trial.stats.applied as u64;
+                stats.plan_mismatches += trial.stats.mismatches as u64;
+                stats.failed_playouts += trial.stats.failed as u64;
+                stats.unresolved_playouts += u64::from(trial.value.is_none());
+                stats.truncated_playouts += u64::from(trial.value.is_some() && !trial.terminal);
+                for error in trial.stats.errors { stats.error(error); }
+                scores.push(trial.value);
+            }
+            if scores.len() == totals.len() && scores.iter().all(Option::is_some) {
+                let baseline = scores[0].unwrap();
+                for (total, score) in totals.iter_mut().zip(scores) { *total += score.unwrap() - baseline; }
+                complete += 1;
+            } else { stats.incomplete_worlds += 1; }
+        }
+        let best = best_candidate(&totals, complete);
+        advantage = totals[best];
+        if best > 0 {
+            proposed_response = responses[best - 1].clone();
+            stats.mcts_accepted += 1;
+            policy = Some(frozen);
+        }
+        Ok(())
+    })();
+    duel.restore(&root)?;
+    if let Err(error) = result {
+        stats.failed_searches += 1;
+        stats.error(error);
+        return Ok((given.to_vec(), 0, 0.0, None));
+    }
+    let gain = if complete == 0 { 0.0 } else { advantage / complete as f64 };
+    if policy.is_none() { proposed_response = given.to_vec(); }
+    Ok((proposed_response, complete, gain, policy))
+}
+
+/// The plain root with a searched continuation is a different candidate from
+/// plain play. Only completed root returns rank additional proposals; all are
+/// subsequently compared on independent, common validation worlds.
+fn mcts_validation_responses(given: &[u8], best: Vec<u8>, actions: &[ismcts::RootAction],
+    limit: usize, all: bool) -> Vec<Vec<u8>> {
+    if !all { return vec![best]; }
+    let mut responses = vec![given.to_vec()];
+    let mut ranked: Vec<_> = actions.iter().enumerate()
+        .filter(|(_, action)| action.visits > 0 && action.mean.is_some_and(f64::is_finite)).collect();
+    ranked.sort_by(|(ai, a), (bi, b)| b.mean.unwrap().total_cmp(&a.mean.unwrap()).then(ai.cmp(bi)));
+    for (_, action) in ranked {
+        if responses.len() >= limit { break; }
+        if !responses.contains(&action.response) { responses.push(action.response.clone()); }
+    }
+    responses
+}
+
 fn latency(values: &[f64]) -> serde_json::Value {
     let mut sorted = values.to_vec();
     sorted.sort_by(f64::total_cmp);
@@ -829,10 +984,15 @@ pub fn play_fast(
     run: PlayOptions,
     fast: FastOptions,
 ) -> Result<serde_json::Value> {
+    if fast.planner.is_some() && fast.mcts.is_some() { return Err("Choose beam or MCTS, not both".into()); }
+    if fast.mcts.is_some_and(|p| p.iterations == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0)
+        || fast.mcts.is_some() && fast.mcts_worlds == 0 {
+        return Err("MCTS iterations/actions/nodes/decisions/worlds must be positive".into());
+    }
     if fast.planner.is_some_and(|p| p.width == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0) {
         return Err("Beam width/actions/nodes/decisions must be positive".into());
     }
-    if fast.planner.is_some() && fast.depth != 1 {
+    if (fast.planner.is_some() || fast.mcts.is_some()) && fast.depth != 1 {
         return Err("Nested rollout depth does not apply to beam planning".into());
     }
     if fast.max_playouts > 0 && ![1, 2].contains(&fast.depth) {
@@ -896,7 +1056,7 @@ pub fn play_fast(
         }
         table.feed(player, &duel.start_message(player as u8))?;
     }
-    let evaluator = if fast.planner.is_some() {
+    let evaluator = if fast.planner.is_some() || fast.mcts.is_some() {
         let mut evaluator = Evaluator::open(cards)?;
         if let Some(profiles) = &profiles { evaluator.set_profiles(profiles)?; }
         Some(evaluator)
@@ -918,12 +1078,16 @@ pub fn play_fast(
     let mut traces = Vec::new();
     let mut deviations = Vec::new();
     let mut plan: VecDeque<PlannedAction> = VecDeque::new();
+    let mut tree: Option<(ismcts::FrozenPolicy, ismcts::Path)> = None;
+    let mut public_memory = PublicIdentityMemory::default();
     let mut decision_ms: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
     let mut search_decision_ms: Vec<f64> = Vec::new();
     loop {
         let step = duel.step()?;
         let mut response = None;
         for sent in &step.messages {
+            public_memory.observe(&sent.bytes)?;
+            if let Some((_, path)) = &mut tree { path.message(&sent.bytes, context.viewer)?; }
             if sent.refresh {
                 table.update(&sent.bytes)?;
                 continue;
@@ -975,6 +1139,20 @@ pub fn play_fast(
                 "soft_budget_overruns": if fast.millis == 0 { 0 } else { search_decision_ms.iter().filter(|ms| **ms > fast.millis as f64).count() },
                 "decision_ms_by_seat": decision_ms,
                 "search_information": "known deck composition; sampled hidden arrangement and future RNG; generic opponent model"});
+            for (key, value) in [
+                ("mcts_simulations", stats.mcts_simulations),
+                ("mcts_completed", stats.mcts_completed),
+                ("mcts_nodes", stats.mcts_nodes),
+                ("mcts_steps", stats.mcts_steps),
+                ("mcts_tree_hits", stats.mcts_tree_hits),
+                ("mcts_cutoffs", stats.mcts_cutoffs),
+                ("mcts_live_hits", stats.mcts_live_hits),
+                ("mcts_live_missing", stats.mcts_live_missing),
+                ("mcts_frozen_actions", stats.mcts_frozen_actions),
+                ("mcts_accepted", stats.mcts_accepted),
+                ("mcts_root_actions", stats.mcts_root_actions),
+                ("mcts_visited_root_actions", stats.mcts_visited_root_actions),
+            ] { row[key] = serde_json::json!(value); }
             if let Some(recorded) = &recorded {
                 row["record"] = record_json(recorded, names);
             }
@@ -993,6 +1171,18 @@ pub fn play_fast(
             // original visible prompt and exact offered action authorize replay.
             let original = table.seats[player].last_answer()?;
             let mut replayed = false;
+            if let Some((policy, path)) = &tree {
+                if policy.has(&original, *path) {
+                    let expanded = table.seats[player].alternative_responses(12)?;
+                    if let Some(planned) = policy.resolve(&original, &expanded, *path) {
+                        answer = planned;
+                        table.seats[player].override_response(&answer)?;
+                        stats.mcts_live_hits += 1;
+                        replayed = true;
+                    }
+                }
+                if !replayed { stats.mcts_live_missing += 1; }
+            }
             if let Some(action) = plan.front() {
                 if action.signature == planner::prompt_signature(&original) {
                     let expanded = table.seats[player].alternative_responses(12)?;
@@ -1010,18 +1200,31 @@ pub fn play_fast(
                 }
             }
             if !replayed {
-                let expanded_limit = if fast.planner.is_some() { 12 } else { fast.max_candidates };
+                let expanded_limit = if fast.planner.is_some() || fast.mcts.is_some() { 12 } else { fast.max_candidates };
                 let described = table.seats[player].alternative_responses(expanded_limit)?;
                 if let Some(listed) = candidates(&described, &answer,
                     fast.max_candidates.min(fast.max_playouts)) {
                     if chain { in_chain += 1; }
-                    else if fast.strict && duel.monsters().iter().any(|m| {
-                        m.controller != context.viewer && m.position & position::FACEDOWN != 0
-                    }) { facing_set += 1; }
+                    else if fast.strict && public_memory.has_unknown_monsters(&original["observation"], context.viewer) {
+                        facing_set += 1;
+                    }
                     else if unsafe_selection(&described, context.viewer) { stats.unsafe_selection += 1; }
                     else {
                         stats.searched += 1;
                         searched_this_decision = true;
+                        if fast.mcts.is_some() {
+                            let before = answer.clone();
+                            let (selected, worlds, gain, policy) = choose_mcts(&mut duel, &context,
+                                &table, &original, &answer, decisions, &mut stats)?;
+                            tree = policy.map(|policy| (policy, ismcts::Path::default()));
+                            answer = selected;
+                            if answer != before {
+                                table.seats[player].override_response(&answer)?;
+                                deviations.push(serde_json::json!({"decision": decisions, "turn": turns,
+                                    "kind": listed.kind, "from_response": before, "to_response": answer,
+                                    "worlds": worlds, "gain": gain}));
+                            }
+                        } else {
                         let (chosen, worlds, gain) = if fast.planner.is_some() {
                             let (chosen, worlds, gain, continuation) = choose_plan(
                                 &mut duel, &context, &table, &listed, decisions, &mut stats)?;
@@ -1033,6 +1236,7 @@ pub fn play_fast(
                             table.seats[player].override_response(&answer)?;
                             deviations.push(serde_json::json!({"decision": decisions, "turn": turns, "kind": listed.kind,
                                 "from": listed.labels[0], "to": listed.labels[chosen], "worlds": worlds, "gain": gain}));
+                        }
                         }
                     }
                 }
@@ -1046,6 +1250,9 @@ pub fn play_fast(
         for byte in message.iter().chain(&answer) {
             digest = (digest ^ *byte as u64).wrapping_mul(0x100000001b3);
         }
+        if player == fast.searcher {
+            if let Some((_, path)) = &mut tree { path.own_response(&answer); }
+        }
         if trace { traces.push(table.seats[player].last_answer()?); }
         duel.respond(&answer);
         if let Some(recorded) = &mut recorded {
@@ -1058,6 +1265,22 @@ pub fn play_fast(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mcts_validation_keeps_plain_continuation_and_only_completed_distinct_roots() {
+        let actions = vec![
+            ismcts::RootAction { response: vec![1], mean: Some(0.2), visits: 2, attempts: 2 },
+            ismcts::RootAction { response: vec![2], mean: Some(0.8), visits: 3, attempts: 3 },
+            ismcts::RootAction { response: vec![3], mean: None, visits: 0, attempts: 4 },
+            ismcts::RootAction { response: vec![4], mean: Some(0.8), visits: 1, attempts: 1 },
+            ismcts::RootAction { response: vec![5], mean: Some(f64::NAN), visits: 1, attempts: 1 },
+        ];
+        assert_eq!(mcts_validation_responses(&[1], vec![2], &actions, 4, true),
+            vec![vec![1], vec![2], vec![4]]);
+        assert_eq!(mcts_validation_responses(&[1], vec![2], &actions, 2, true),
+            vec![vec![1], vec![2]]);
+        assert_eq!(mcts_validation_responses(&[1], vec![2], &actions, 4, false), vec![vec![2]]);
+    }
 
     #[test]
     fn incomplete_worlds_and_ties_do_not_change_the_pilot() {
@@ -1193,6 +1416,8 @@ mod tests {
             strict: true,
             effects: false,
             planner: None,
+            mcts: None,
+            mcts_worlds: 4, mcts_validate_roots: false,
         };
         let first = play_fast(
             &core,
@@ -1262,6 +1487,8 @@ mod tests {
             searcher: 0, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
+            mcts: None,
+            mcts_worlds: 4, mcts_validate_roots: false,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
@@ -1293,5 +1520,137 @@ mod tests {
             assert_eq!(left, 0);
             assert_eq!(winner.map(u64::from), result["winner"].as_u64());
         }
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first; native MCTS integration"]
+    fn mcts_adapter_executes_validated_conditionals_and_replays_deterministically() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library_path = std::env::var_os("YGO_MCTS_TEST_LIBRARY")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join(format!(
+                "target/release/{}ygo_policies{}",
+                std::env::consts::DLL_PREFIX,
+                std::env::consts::DLL_SUFFIX,
+            )));
+        let library = PolicyLibrary::open(&library_path).unwrap();
+        let opponent_path = std::env::var_os("YGO_MCTS_TEST_OPPONENT")
+            .map(std::path::PathBuf::from).unwrap_or(library_path);
+        let opponent = PolicyLibrary::open(&opponent_path).unwrap();
+        let deck = Deck::load(&root.join("decks").join(format!("{}.ydk", opponent.catalog["blackwing"]))).unwrap();
+        let decks = [deck.clone(), deck];
+        let run = PlayOptions {
+            seed: 1810284039, limit: 8192, trace: false,
+            life_points: [8000; 2], record: true,
+        };
+        let options = FastOptions {
+            searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
+            max_playouts: 256, horizon: 1, millis: 0, strict: true,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false,
+            mcts: Some(MctsOptions {
+                iterations: 128, actions: 6, nodes: 1024, decisions: 256,
+                replies: 1, terminal: false,
+            }),
+        };
+        let play = || play_fast(
+            &core, &decks, [&opponent, &library], ["blackwing", "generic"],
+            &cards, run, options,
+        ).unwrap();
+        let first = play();
+        let second = play();
+        assert_eq!(first["winner"], second["winner"]);
+        assert_eq!(first["digest"], second["digest"]);
+        for key in ["mcts_simulations", "mcts_completed", "mcts_nodes",
+            "mcts_tree_hits", "mcts_frozen_actions", "mcts_accepted",
+            "mcts_live_hits", "plan_evaluations"] {
+            assert_eq!(first[key], second[key], "nondeterministic {key}");
+            assert!(first[key].as_u64().unwrap() > 0,
+                "no {key}; digest={}, errors={}", first["digest"], first["search_errors"]);
+        }
+        for result in [&first, &second] {
+            assert_eq!(result["failed_playouts"], 0, "{}", result["search_errors"]);
+            assert_eq!(result["failed_searches"], 0, "{}", result["search_errors"]);
+            assert_eq!(result["limit"], false);
+            let searched = result["searched"].as_u64().unwrap();
+            let simulated = result["mcts_simulations"].as_u64().unwrap();
+            assert!(simulated <= searched * options.mcts.unwrap().iterations as u64);
+            assert!(simulated + result["playouts"].as_u64().unwrap()
+                <= searched * options.max_playouts as u64);
+            let record = Recorded::from_json(&result["record"]).unwrap();
+            let mut winner = None;
+            let left = core.replay(&record, None, &mut |shown| {
+                if let Replayed::Message(Message::Win { player, .. }) = shown {
+                    winner = Some(*player);
+                }
+            }).unwrap();
+            assert_eq!(left, 0);
+            assert_eq!(winner.map(u64::from), result["winner"].as_u64());
+        }
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first; native all-root MCTS integration"]
+    fn mcts_all_roots_validate_within_budget_and_replay_the_chosen_path() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library_path = std::env::var_os("YGO_MCTS_TEST_LIBRARY")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join(format!(
+                "target/release/{}ygo_policies{}",
+                std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX,
+            )));
+        let library = PolicyLibrary::open(&library_path).unwrap();
+        let opponent_path = std::env::var_os("YGO_MCTS_TEST_OPPONENT")
+            .map(std::path::PathBuf::from).unwrap_or(library_path);
+        let opponent = PolicyLibrary::open(&opponent_path).unwrap();
+        let deck = Deck::load(&root.join("decks").join(format!("{}.ydk", opponent.catalog["blackwing"]))).unwrap();
+        let options = FastOptions {
+            searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
+            max_playouts: 256, horizon: 1, millis: 0, strict: true,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true,
+            mcts: Some(MctsOptions {
+                iterations: 128, actions: 6, nodes: 1024, decisions: 256,
+                replies: 1, terminal: false,
+            }),
+        };
+        let result = play_fast(
+            &core, &[deck.clone(), deck], [&opponent, &library], ["blackwing", "generic"],
+            &cards, PlayOptions {
+                seed: 1810284039, limit: 8192, trace: false,
+                life_points: [8000; 2], record: true,
+            }, options,
+        ).unwrap();
+        assert_eq!(result["failed_playouts"], 0, "{}", result["search_errors"]);
+        assert_eq!(result["failed_searches"], 0, "{}", result["search_errors"]);
+        assert_eq!(result["limit"], false);
+        for key in ["mcts_completed", "mcts_accepted", "mcts_live_hits", "mcts_visited_root_actions"] {
+            assert!(result[key].as_u64().unwrap() > 0,
+                "no {key}; digest={}, errors={}", result["digest"], result["search_errors"]);
+        }
+        let searched = result["searched"].as_u64().unwrap();
+        let simulated = result["mcts_simulations"].as_u64().unwrap();
+        let validated = result["plan_evaluations"].as_u64().unwrap();
+        let reserve = options.worlds * (options.max_candidates + 1);
+        let allowed_iterations = options.mcts.unwrap().iterations
+            .min(options.max_playouts.saturating_sub(reserve));
+        assert!(simulated <= searched * allowed_iterations as u64);
+        assert!(validated <= searched * reserve as u64);
+        assert!(simulated + validated <= searched * options.max_playouts as u64);
+        // Actual native work must include extra root proposals, rather than
+        // merely setting the flag while still running the two-candidate path.
+        assert!(validated > searched * (options.worlds * 2) as u64);
+        assert_eq!(result["playouts"].as_u64(), Some(validated));
+        let record = Recorded::from_json(&result["record"]).unwrap();
+        let mut winner = None;
+        let left = core.replay(&record, None, &mut |shown| {
+            if let Replayed::Message(Message::Win { player, .. }) = shown {
+                winner = Some(*player);
+            }
+        }).unwrap();
+        assert_eq!(left, 0);
+        assert_eq!(winner.map(u64::from), result["winner"].as_u64());
     }
 }

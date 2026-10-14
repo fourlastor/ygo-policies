@@ -16,6 +16,9 @@ pub use fast::{play_fast, FastOptions};
 pub mod evaluation;
 mod planner;
 pub use planner::PlannerOptions;
+mod ismcts;
+mod public_memory;
+pub use ismcts::Options as MctsOptions;
 
 #[derive(Clone, Copy)]
 pub struct PlayOptions {

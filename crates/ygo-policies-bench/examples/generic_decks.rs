@@ -19,7 +19,7 @@ fn main() -> Result<(), String> {
     let result = play_fast(
         &core, &decks, [&library, &library], ["generic", "generic"], &cards,
         PlayOptions { seed, limit: 8192, trace: false, life_points: [8000; 2], record: false },
-        FastOptions { searcher: 0, worlds: 4, max_candidates: 8, max_playouts: 32, horizon: 32, millis: 200, strict: true, depth: 1, effects: true, planner: None },
+        FastOptions { searcher: 0, worlds: 4, max_candidates: 8, max_playouts: 32, horizon: 32, millis: 200, strict: true, depth: 1, effects: true, planner: None, mcts: None, mcts_worlds: 4, mcts_validate_roots: false },
     )?;
     // Seat 0 searches; seat 1 uses the plain generic pilot. Search currently
     // assumes known deck lists, but resamples their unknown arrangement.
