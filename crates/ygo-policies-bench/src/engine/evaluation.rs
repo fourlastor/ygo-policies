@@ -7,7 +7,7 @@
 //! Profiles advertise possible effects, never prove that their conditions or
 //! costs can currently be met. Search must resolve those through the engine.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -168,7 +168,14 @@ impl Evaluator {
     }
 
     pub fn value(&self, observation: &Value, viewer: u8) -> f64 {
-        let features = self.features(observation, viewer);
+        self.value_with_menu(observation, viewer, None)
+    }
+
+    /// A current, viewer-owned Idle menu can qualify immediate activation
+    /// access. It never adds value for the number of choices or for setting a
+    /// card. Without that context the state-only estimate is unchanged.
+    pub fn value_with_menu(&self, observation: &Value, viewer: u8, menu: Option<&Value>) -> f64 {
+        let features = self.features_with_menu(observation, viewer, menu);
         let score: f64 = features.iter().zip(self.weights).map(|(feature, coefficient)| feature * coefficient).sum();
         // Proven engine wins/losses are +/-1. Even an extreme estimated board
         // must stay strictly inside those outcomes.
@@ -178,6 +185,11 @@ impl Evaluator {
     /// Difference features in the requested seat's favor. The input remains
     /// anchored to its own `me` visibility boundary when changing perspective.
     pub fn features(&self, observation: &Value, viewer: u8) -> [f64; 13] {
+        self.features_with_menu(observation, viewer, None)
+    }
+
+    pub fn features_with_menu(&self, observation: &Value, viewer: u8, menu: Option<&Value>) -> [f64; 13] {
+        let activations = menu.and_then(|menu| idle_activations(observation, viewer, menu));
         let observation = visible_observation(observation, viewer);
         let ctx = Ctx::new(&observation, self.cards.as_ref());
         let profiles = self.profiles.as_deref().map(|cards| cards as &dyn CardDatabase).unwrap_or(self.cards.as_ref());
@@ -199,6 +211,9 @@ impl Evaluator {
                 let effects = card.code.map(|code| profiles.effects(code)).unwrap_or(&[]);
                 let code = card.code.map(|code| ctx.canonical(code)).unwrap_or(0);
                 let available = || available_effects(effects, code, hand_size);
+                let access = || available().filter(|effect| menu_allows_access(effect, card.at,
+                    data.is_spell() && !data.is(types::QUICKPLAY),
+                    if player == viewer { activations.as_ref() } else { None }));
                 match card.at.location {
                     Location::Hand => {
                         side[0] += 1.0;
@@ -220,7 +235,7 @@ impl Evaluator {
                                 && range::normalize(effect.range) & HAND != 0
                         });
                         if deployment_blocked && !has_hand_action { side[1] -= 0.65; }
-                        side[6] += effect_access(available().filter(|effect| {
+                        side[6] += effect_access(access().filter(|effect| {
                             !deployment_blocked || effect.effect_type & kind::ACTIVATE == 0
                         }), HAND, None, data.is_spell() || data.is_trap());
                     }
@@ -237,14 +252,14 @@ impl Evaluator {
                             side[5] += 0.1 * f64::from((facts.immune | facts.unaffected | facts.untargetable).count_ones());
                             if ctx.battle_proof(card) { side[5] += 0.45; }
                             if !ctx.effects_drained() {
-                                side[6] += effect_access(available(), MONSTER, Some(card.at.sequence), false);
+                                side[6] += effect_access(access(), MONSTER, Some(card.at.sequence), false);
                                 side[5] += quick_interaction(available(), MONSTER, card.at.sequence);
                             }
                         }
                     }
                     Location::SpellTrapZone => {
                         side[0] += 1.0;
-                        let native_access = effect_access(available(), BACKROW, Some(card.at.sequence), true);
+                        let native_access = effect_access(access(), BACKROW, Some(card.at.sequence), true);
                         let known_access = known_backrow_access(&ctx, card);
                         side[6] += native_access.max(known_access);
                         side[5] += quick_interaction(available(), BACKROW, card.at.sequence);
@@ -301,6 +316,60 @@ impl Evaluator {
         let me = usize::from(viewer.min(1));
         std::array::from_fn(|index| sides[me][index] - sides[1 - me][index])
     }
+}
+
+fn idle_context(observation: &Value, viewer: u8) -> bool {
+    viewer < 2 && observation["me"].as_u64() == Some(u64::from(viewer))
+        && observation["turn_player"].as_u64() == Some(u64::from(viewer))
+        && matches!(observation["phase"].as_str(), Some("Main1" | "Main2"))
+        && observation["chain"].as_array().is_some_and(Vec::is_empty)
+}
+
+/// Fetch a compact, already redacted menu only where an immediate-activation
+/// estimate is meaningful. In particular, never read the other seat's menu.
+pub(super) fn legal_idle_menu(
+    observation: &Value,
+    responder: usize,
+    viewer: u8,
+    read: impl FnOnce() -> Result<Value, String>,
+) -> Result<Option<Value>, String> {
+    if responder != usize::from(viewer) || !idle_context(observation, viewer) {
+        return Ok(None);
+    }
+    let menu = read()?;
+    Ok((menu["decision"]["kind"] == "Idle").then_some(menu))
+}
+
+fn idle_activations(observation: &Value, viewer: u8, menu: &Value) -> Option<HashSet<CardRef>> {
+    if !idle_context(observation, viewer) || menu["decision"]["kind"] != "Idle" {
+        return None;
+    }
+    let mut activations = HashSet::new();
+    for choice in menu["decision"]["choices"].as_array()? {
+        if choice["kind"] != "Activate" { continue; }
+        // Unknown activation metadata cannot prove that a card is absent.
+        // The offered acting card is relevant; target/material members are not.
+        let at = &choice["card"]["at"];
+        let controller = u8::try_from(at["controller"].as_u64()?).ok()?;
+        let sequence = u32::try_from(at["sequence"].as_u64()?).ok()?;
+        let location = location(&at["location"]);
+        if controller > 1 || location == Location::Other { return None; }
+        if controller == viewer {
+            activations.insert(CardRef { controller, location, sequence });
+        }
+    }
+    Some(activations)
+}
+
+fn menu_allows_access(effect: &Effect, at: CardRef, ordinary_spell: bool, activations: Option<&HashSet<CardRef>>) -> bool {
+    let Some(activations) = activations else { return true; };
+    // A missing current option says nothing about future triggers, responses,
+    // or passive value. Category-zero/unknown effects receive no invented bonus.
+    let immediate = effect.effect_type & (kind::QUICK | kind::TRIGGER) == 0
+        && (effect.effect_type & IGNITION != 0 || ordinary_spell && effect.effect_type & kind::ACTIVATE != 0);
+    // Card-level evidence deliberately remains optimistic across multiple
+    // effects: descriptions are not guaranteed unique in initial profiles.
+    !immediate || activations.contains(&at)
 }
 
 /// Unknown requirements remain optimistic priors. Known conditions apply to
@@ -767,6 +836,147 @@ mod tests {
             stored["at"]["sequence"] = json!(sequence);
             stored
         }).collect()
+    }
+
+    fn idle_view(cards: Vec<Value>) -> Value {
+        let mut view = observation(cards);
+        view["chain"] = json!([]);
+        view
+    }
+
+    fn idle_menu(choices: Vec<Value>) -> Value {
+        json!({"decision":{"kind":"Idle","choices":choices}})
+    }
+
+    fn activate(card: &Value) -> Value {
+        json!({"kind":"Activate","card":{"at":card["at"]},"description":0,"members":[]})
+    }
+
+    #[test]
+    fn idle_menu_qualifies_immediate_access_without_credit_for_setting_or_duplicates() {
+        let evaluator = congestion_evaluator();
+        let spell = card(0,"Hand",3,0);
+        let view = idle_view(vec![spell.clone()]);
+        let baseline = evaluator.features(&view,0);
+        assert_eq!(baseline[6],0.35);
+        let set = json!({"kind":"SetSpellTrap","card":{"at":spell["at"]},"members":[spell.clone()]});
+        let unavailable = idle_menu(vec![set.clone(),json!({"kind":"EndTurn"})]);
+        let blocked = evaluator.features_with_menu(&view,0,Some(&unavailable));
+        assert_eq!(blocked[6],0.0);
+        for index in 0..FEATURE_NAMES.len() {
+            if index != 6 { assert_eq!(blocked[index],baseline[index],"{}",FEATURE_NAMES[index]); }
+        }
+        let enabled = idle_menu(vec![set,activate(&spell),activate(&spell)]);
+        assert_eq!(evaluator.features_with_menu(&view,0,Some(&enabled)),baseline);
+        assert_eq!(evaluator.value_with_menu(&view,0,Some(&enabled)),evaluator.value(&view,0));
+        assert!(evaluator.value_with_menu(&view,0,Some(&enabled)) > evaluator.value_with_menu(&view,0,Some(&unavailable)));
+        // Membership as a target/material does not make this card's own effect available.
+        let other = card(0,"MonsterZone",10,0);
+        let mut targeting = activate(&other);
+        targeting["members"] = json!([spell]);
+        assert_eq!(evaluator.features_with_menu(&view,0,Some(&idle_menu(vec![targeting])))[6],0.0);
+        // Available actions with unknown/category-zero payoff invent no reward.
+        let unknown = card(0,"Hand",8,0);
+        let unknown_view = idle_view(vec![unknown.clone()]);
+        let mut zero = congestion_evaluator();
+        zero.set_profiles(&json!({"8":[{"category":0,"effect_type":kind::ACTIVATE,"range":0}]})).unwrap();
+        assert_eq!(zero.features_with_menu(&unknown_view,0,Some(&idle_menu(vec![activate(&unknown)])))[6],0.0);
+    }
+
+    #[test]
+    fn idle_menu_preserves_future_trigger_quick_and_trap_access() {
+        let mut cards = MemoryCards::default();
+        for (code, kind) in [(20,types::MONSTER),(21,types::SPELL | types::QUICKPLAY),
+            (22,types::TRAP),(23,types::MONSTER),(24,types::SPELL)] {
+            cards.0.insert(code,CardData { code,kind,..Default::default() });
+        }
+        let mut evaluator = Evaluator::new(Arc::new(cards));
+        evaluator.set_profiles(&json!({
+            "20":[{"category":category::DRAW,"effect_type":kind::IGNITION,"range":MONSTER},
+                {"category":category::SPECIAL_SUMMON,"effect_type":kind::TRIGGER,"range":MONSTER}],
+            "21":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0}],
+            "22":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0}],
+            "23":[{"category":category::DESTROY,"effect_type":kind::QUICK,"range":MONSTER}],
+            "24":[{"category":category::DRAW,"effect_type":kind::IGNITION,"range":BACKROW}]
+        })).unwrap();
+        let empty = idle_menu(vec![json!({"kind":"EndTurn"})]);
+        for (code, zone, before, after) in [(20,"MonsterZone",0.35,0.2),
+            (21,"Hand",0.35,0.35),(22,"SpellTrapZone",0.35,0.35),
+            (23,"MonsterZone",0.25,0.25),(24,"SpellTrapZone",0.35,0.0)] {
+            let source = card(0,zone,code,0);
+            let view = idle_view(vec![source.clone()]);
+            assert_eq!(evaluator.features(&view,0)[6],before,"card {code}");
+            assert_eq!(evaluator.features_with_menu(&view,0,Some(&empty))[6],after,"card {code}");
+            assert_eq!(evaluator.features_with_menu(&view,0,Some(&idle_menu(vec![activate(&source)])))[6],before);
+        }
+        // Exact known future access is separate from the currently offered effects.
+        let heart = card(0,"SpellTrapZone",35762283,0);
+        let view = idle_view(vec![heart]);
+        assert_eq!(evaluator.features(&view,0)[6],0.35);
+        assert_eq!(evaluator.features_with_menu(&view,0,Some(&empty)),evaluator.features(&view,0));
+    }
+
+    #[test]
+    fn idle_menu_does_not_override_backrow_capacity_or_add_another_stranded_penalty() {
+        let evaluator = congestion_evaluator();
+        let empty = idle_menu(vec![json!({"kind":"EndTurn"})]);
+        for (code, stranded, prior_access) in [(3,-0.65,0.0),(7,0.0,0.2)] {
+            let source = card(0,"Hand",code,0);
+            let mut cards = occupied_backrow(0,5);
+            cards.push(source.clone());
+            let view = idle_view(cards);
+            let baseline = evaluator.features(&view,0);
+            let no_action = evaluator.features_with_menu(&view,0,Some(&empty));
+            assert_eq!((baseline[1],baseline[6]),(stranded,prior_access));
+            assert_eq!((no_action[1],no_action[6]),(stranded,0.0));
+            let offered = evaluator.features_with_menu(&view,0,Some(&idle_menu(vec![activate(&source)])));
+            assert_eq!((offered[1],offered[6]),(stranded,prior_access));
+            assert_eq!(offered[0],baseline[0]);
+        }
+    }
+
+    #[test]
+    fn idle_menu_context_falls_back_without_reading_opponent_or_unsettled_menus() {
+        let evaluator = congestion_evaluator();
+        let view = idle_view(vec![card(0,"Hand",3,0)]);
+        let empty = idle_menu(vec![json!({"kind":"EndTurn"})]);
+        let not_read = || -> Result<Value,String> { panic!("menu must not be read") };
+        assert_eq!(legal_idle_menu(&view,1,0,not_read).unwrap(),None);
+        for (field, value) in [("me",json!(1)),("turn_player",json!(1)),
+            ("phase",json!("Battle")),("chain",json!([{}])),("chain",Value::Null)] {
+            let mut other = view.clone();
+            other[field] = value;
+            assert_eq!(legal_idle_menu(&other,0,0,not_read).unwrap(),None);
+            assert_eq!(evaluator.features_with_menu(&other,0,Some(&empty)),evaluator.features(&other,0));
+        }
+        assert_eq!(legal_idle_menu(&view,0,0,|| Ok(empty.clone())).unwrap(),Some(empty.clone()));
+        let battle = json!({"decision":{"kind":"Battle","choices":[]}});
+        assert_eq!(legal_idle_menu(&view,0,0,|| Ok(battle.clone())).unwrap(),None);
+        assert_eq!(evaluator.features_with_menu(&view,0,Some(&battle)),evaluator.features(&view,0));
+        let malformed = idle_menu(vec![json!({"kind":"Activate","card":null})]);
+        assert_eq!(evaluator.features_with_menu(&view,0,Some(&malformed)),evaluator.features(&view,0));
+        assert_eq!(evaluator.features_with_menu(&view,0,None),evaluator.features(&view,0));
+    }
+
+    #[test]
+    fn idle_menu_uses_only_viewer_actors_and_preserves_hidden_information_invariance() {
+        let evaluator = congestion_evaluator();
+        for player in 0..2u8 {
+            let own = card(player,"Hand",3,0);
+            let mut view = idle_view(vec![own.clone(),card(1-player,"Hand",3,0)]);
+            view["me"] = json!(player);
+            view["turn_player"] = json!(player);
+            let menu = idle_menu(vec![activate(&own)]);
+            let baseline = evaluator.features_with_menu(&view,player,Some(&menu));
+            assert_eq!(baseline[6],0.35);
+            for code in [5,6,7,8,9,10] {
+                view["cards"][1]["code"] = json!(code);
+                assert_eq!(evaluator.features_with_menu(&view,player,Some(&menu)),baseline);
+            }
+            assert_eq!(evaluator.features_with_menu(&view,1-player,Some(&menu)),evaluator.features(&view,1-player));
+            let opponent_actor = idle_menu(vec![activate(&view["cards"][1])]);
+            assert_eq!(evaluator.features_with_menu(&view,player,Some(&opponent_actor))[6],0.0);
+        }
     }
 
     #[test]

@@ -747,7 +747,8 @@ fn choose_plan(
 ) -> Result<(usize, usize, f64, Vec<PlannedAction>)> {
     let options = context.options.planner.ok_or("Missing planner options")?;
     let evaluator = context.evaluator.as_ref().ok_or("Missing planner evaluator")?;
-    let evaluate = |observation: &serde_json::Value, viewer| evaluator.value(observation, viewer);
+    let evaluate = |observation: &serde_json::Value, viewer, menu: Option<&serde_json::Value>|
+        evaluator.value_with_menu(observation, viewer, menu);
     let root = duel.snapshot()?;
     let deadline = (context.options.millis > 0)
         .then(|| Instant::now() + Duration::from_millis(context.options.millis));
@@ -889,7 +890,8 @@ fn choose_mcts_measured(
 ) -> Result<(Vec<u8>, usize, f64, Option<ismcts::FrozenPolicy>)> {
     let options = context.options.mcts.ok_or("Missing MCTS options")?;
     let evaluator = context.evaluator.as_ref().ok_or("Missing MCTS evaluator")?;
-    let evaluate = |observation: &serde_json::Value, viewer| evaluator.value(observation, viewer);
+    let evaluate = |observation: &serde_json::Value, viewer, menu: Option<&serde_json::Value>|
+        evaluator.value_with_menu(observation, viewer, menu);
     let root = duel.snapshot()?;
     let deadline = (context.options.millis > 0)
         .then(|| Instant::now() + Duration::from_millis(context.options.millis));

@@ -248,7 +248,7 @@ struct Search<'a, 'c, 'e> {
     capture_plan: bool,
     options: PlannerOptions,
     deadline: Option<Instant>,
-    evaluator: &'e dyn Fn(&Value, u8) -> f64,
+    evaluator: &'e dyn Fn(&Value, u8, Option<&Value>) -> f64,
     result: PlannerResult,
 }
 
@@ -282,8 +282,8 @@ impl<'a, 'c, 'e> Search<'a, 'c, 'e> {
         }
     }
 
-    fn value(&self, observation: &Value) -> Result<f64> {
-        let value = (self.evaluator)(observation, self.viewer);
+    fn value(&self, observation: &Value, menu: Option<&Value>) -> Result<f64> {
+        let value = (self.evaluator)(observation, self.viewer, menu);
         if !value.is_finite() {
             return Err("Planner evaluator returned a non-finite value".into());
         }
@@ -408,8 +408,10 @@ impl<'a, 'c, 'e> Search<'a, 'c, 'e> {
                 .as_ref()
                 .is_some_and(|view| view["turn"].as_u64().unwrap_or(0) >= self.goal_turn)
             {
+                let menu = evaluation::legal_idle_menu(observation.as_ref().unwrap(), next_player, self.viewer,
+                    || seats[self.viewer as usize].search_view())?;
                 return Ok(Advanced::Leaf(Leaf {
-                    value: self.value(observation.as_ref().unwrap())?,
+                    value: self.value(observation.as_ref().unwrap(), menu.as_ref())?,
                     terminal: false,
                     plan,
                 }));
@@ -453,13 +455,15 @@ impl<'a, 'c, 'e> Search<'a, 'c, 'e> {
             };
             if explore {
                 if quiescent {
+                    let menu = evaluation::legal_idle_menu(observation.as_ref().unwrap(), next_player, self.viewer,
+                        || seats[self.viewer as usize].search_view())?;
                     return Ok(Advanced::Board(Node {
                         snapshot: self.duel.snapshot()?,
                         seats,
                         pending,
                         progress,
                         plan,
-                        score: self.value(observation.as_ref().unwrap())?,
+                        score: self.value(observation.as_ref().unwrap(), menu.as_ref())?,
                     }));
                 }
                 if pending.player == self.viewer as usize
@@ -637,7 +641,7 @@ fn run(
     game_limit: usize,
     options: PlannerOptions,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     fixed: Option<&[PlannedAction]>,
     beam_search: bool,
     terminal_only: bool,
@@ -765,7 +769,7 @@ pub(super) fn evaluate(
     game_limit: usize,
     options: PlannerOptions,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
 ) -> Result<PlannerResult> {
     run(
         duel,
@@ -798,7 +802,7 @@ pub(super) fn evaluate_plan(
     game_limit: usize,
     options: PlannerOptions,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     plan: &[PlannedAction],
 ) -> Result<PlannerResult> {
     run(
@@ -831,7 +835,7 @@ pub(super) fn evaluate_plan_terminal(
     game_limit: usize,
     options: PlannerOptions,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     plan: &[PlannedAction],
 ) -> Result<PlannerResult> {
     run(
@@ -972,7 +976,23 @@ mod tests {
             decisions: 256,
             replies: 1,
         };
-        let evaluator = |observation: &Value, viewer: u8| {
+        let menus_seen = std::cell::Cell::new(0);
+        let evaluator = |observation: &Value, viewer: u8, menu: Option<&Value>| {
+            assert_eq!(observation["me"].as_u64(), Some(u64::from(viewer)));
+            assert!(observation["chain"].as_array().unwrap().is_empty());
+            let own_idle = observation["turn_player"].as_u64() == Some(u64::from(viewer))
+                && matches!(observation["phase"].as_str(), Some("Main1" | "Main2"));
+            // The beam also scores completed opponent and Battle boards;
+            // those contexts must use the state-only fallback.
+            assert_eq!(menu.is_some(), own_idle);
+            if let Some(menu) = menu {
+                menus_seen.set(menus_seen.get() + 1);
+                assert_eq!(menu["decision"]["kind"], "Idle");
+                let choices = menu["decision"]["choices"].as_array().unwrap();
+                assert!(!choices.is_empty());
+                assert!(choices.iter().all(|choice| choice["kind"] != "Activate"),
+                    "the native normal-monster fixture has no activatable effects");
+            }
             let cards = observation["cards"].as_array().unwrap();
             let field = |player: u8| {
                 cards
@@ -1002,6 +1022,7 @@ mod tests {
         assert!(proposed.nodes > 1 && proposed.nodes <= options.nodes);
         assert!(proposed.completed_prefixes > 0);
         assert!(!proposed.plan.is_empty());
+        assert!(menus_seen.get() > 0, "actual own Idle menus must reach the beam evaluator");
         assert_eq!(seats[0].last_answer().unwrap(), before_answer);
         assert_eq!(step_bytes(&mut duel), expected);
         duel.restore(&root_snapshot).unwrap();
@@ -1039,7 +1060,7 @@ mod tests {
                 ..options
             },
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
             &proposed.plan,
         )
         .unwrap();
@@ -1179,7 +1200,7 @@ mod tests {
             512,
             options,
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
             &proposed.plan,
         )
         .unwrap();
@@ -1293,7 +1314,7 @@ mod tests {
             decisions: 128,
             replies: 0,
         };
-        let evaluator = |observation: &Value, viewer: u8| {
+        let evaluator = |observation: &Value, viewer: u8, _: Option<&Value>| {
             if observation["cards"].as_array().unwrap().iter().any(|card| {
                 card["at"]["controller"] == viewer
                     && card["at"]["location"] == "MonsterZone"

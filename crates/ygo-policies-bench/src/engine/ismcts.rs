@@ -540,7 +540,7 @@ fn simulate<
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     mut mode: Mode<'_>,
     stats: &mut Stats,
 ) -> Result<Trial> {
@@ -759,7 +759,9 @@ fn simulate<
                     let observation = seats[viewer as usize].observation()?;
                     debug_assert_eq!(observation["turn"].as_u64().unwrap_or(0), turn);
                     if observation["turn"].as_u64().unwrap_or(0) >= goal {
-                        let value = evaluator(&observation, viewer);
+                        let menu = evaluation::legal_idle_menu(&observation, player, viewer,
+                            || seats[viewer as usize].search_view())?;
+                        let value = evaluator(&observation, viewer, menu.as_ref());
                         if !value.is_finite() {
                             return Err("ISMCTS evaluator returned a non-finite value".into());
                         }
@@ -807,7 +809,7 @@ pub(super) fn search(
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
 ) -> Result<SearchResult> {
     search_impl::<false, false, false>(
         duel,
@@ -838,7 +840,7 @@ fn search_impl<
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
 ) -> Result<SearchResult> {
     validate(worlds, viewer, options)?;
     let root = duel.snapshot()?;
@@ -955,7 +957,7 @@ pub(super) fn evaluate_frozen(
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
     evaluate_frozen_impl::<false, true, false, false>(
@@ -988,7 +990,7 @@ pub(super) fn evaluate_frozen_in_place(
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
     evaluate_frozen_impl::<false, false, false, false>(
@@ -1022,7 +1024,7 @@ fn evaluate_frozen_impl<
     game_limit: usize,
     options: Options,
     deadline: Option<Instant>,
-    evaluator: &dyn Fn(&Value, u8) -> f64,
+    evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
     validate(std::slice::from_ref(world), viewer, options)?;
@@ -1088,6 +1090,26 @@ fn evaluate_frozen_impl<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn assert_heuristic_menu(observation: &Value, viewer: u8, menu: Option<&Value>) {
+        assert_eq!(observation["me"].as_u64(), Some(u64::from(viewer)));
+        assert!(observation["chain"].as_array().unwrap().is_empty());
+        let own_idle = observation["turn_player"].as_u64() == Some(u64::from(viewer))
+            && matches!(observation["phase"].as_str(), Some("Main1" | "Main2"));
+        assert_eq!(menu.is_some(), own_idle);
+        if let Some(menu) = menu {
+            assert_eq!(menu["decision"]["kind"], "Idle");
+            let choices = menu["decision"]["choices"].as_array().unwrap();
+            assert!(!choices.is_empty());
+            for choice in choices.iter().filter(|choice| choice["kind"] == "Activate") {
+                let at = &choice["card"]["at"];
+                assert_eq!(at["controller"].as_u64(), Some(u64::from(viewer)));
+                assert!(observation["cards"].as_array().unwrap().iter().any(|card| {
+                    card["at"] == *at && card["code"].as_u64().is_some_and(|code| code != 0)
+                }));
+            }
+        }
+    }
 
     fn assert_stats_equivalent(optimized: &Stats, legacy: &Stats) {
         assert!(optimized.observation_reads <= legacy.observation_reads);
@@ -1643,6 +1665,24 @@ mod tests {
             }
         };
         let original = seats[0].last_answer().unwrap();
+        // Inspect the actual compact native menu at the draw-spell root. Its
+        // acting references must be exactly the playable copies in our hand,
+        // not members or targets attached to some other action.
+        let root_view = seats[0].observation().unwrap();
+        let root_menu = evaluation::legal_idle_menu(&root_view, 0, 0,
+            || seats[0].search_view()).unwrap().unwrap();
+        assert_heuristic_menu(&root_view, 0, Some(&root_menu));
+        let expected_activations = root_view["cards"].as_array().unwrap().iter()
+            .filter(|card| card["at"]["controller"] == 0
+                && card["at"]["location"] == "Hand" && card["code"] == 55144522)
+            .map(|card| &card["at"]).collect::<Vec<_>>();
+        let actual_activations = root_menu["decision"]["choices"].as_array().unwrap().iter()
+            .filter(|choice| choice["kind"] == "Activate")
+            .map(|choice| &choice["card"]["at"]).collect::<Vec<_>>();
+        assert!(!expected_activations.is_empty());
+        assert_eq!(actual_activations.len(), expected_activations.len());
+        assert!(actual_activations.iter().all(|at| expected_activations.contains(at)));
+        assert_eq!(seats[0].last_answer().unwrap(), original);
         let snapshot = duel.snapshot().unwrap();
         let next_bytes = |duel: &mut Duel<'_>| {
             duel.respond(&root_response);
@@ -1680,7 +1720,12 @@ mod tests {
             terminal: false,
             adversarial_opponent: false,
         };
-        let evaluator = |observation: &Value, viewer: u8| {
+        let heuristic_calls = std::cell::Cell::new(0);
+        let menus_seen = std::cell::Cell::new(0);
+        let evaluator = |observation: &Value, viewer: u8, menu: Option<&Value>| {
+            assert_heuristic_menu(observation, viewer, menu);
+            heuristic_calls.set(heuristic_calls.get() + 1);
+            menus_seen.set(menus_seen.get() + usize::from(menu.is_some()));
             observation["cards"]
                 .as_array()
                 .unwrap()
@@ -1697,6 +1742,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(first.stats.failed, 0, "{:?}", first.stats.errors);
+        assert_eq!(menus_seen.get(), 0, "replies=0 evaluates the opponent's turn");
+        assert!(heuristic_calls.get() > 0);
         assert_eq!(first.stats.completed, options.iterations);
         assert_balanced_worlds(&first.stats.root_trials, worlds.len());
         assert_eq!(first.stats.root_trials.len(), options.iterations);
@@ -1830,7 +1877,7 @@ mod tests {
             1024,
             options,
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
             &FrozenPolicy::default(),
         )
         .unwrap();
@@ -1848,7 +1895,7 @@ mod tests {
             1024,
             options,
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
             &FrozenPolicy::default(),
         )
         .unwrap();
@@ -1867,7 +1914,7 @@ mod tests {
                 ..options
             },
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
         )
         .unwrap();
         assert_eq!(failed_search.stats.failed, 9);
@@ -1895,7 +1942,7 @@ mod tests {
                 ..options
             },
             None,
-            &|_, _| f64::NAN,
+            &|_, _, _| f64::NAN,
         )
         .unwrap();
         assert_search_equivalent(&failed_search, &legacy_failed_search);
@@ -1956,6 +2003,7 @@ mod tests {
         // This draw-heavy fixture can end before a longer horizon. Terminal
         // results must remain exact and must not request a horizon observation.
         for (replies, terminal) in [(1, false), (2, false), (0, true)] {
+            let calls_before = heuristic_calls.get();
             let options = Options {
                 iterations: 6,
                 replies,
@@ -1975,6 +2023,8 @@ mod tests {
             assert_search_equivalent(&optimized, &legacy);
             assert_eq!(optimized.stats.failed, 0, "{:?}", optimized.stats.errors);
             if terminal {
+                assert_eq!(heuristic_calls.get(), calls_before,
+                    "terminal search must never request a menu or call the heuristic");
                 assert_eq!(optimized.stats.observation_reads, 0);
                 assert!(optimized.stats.terminal > 0);
                 assert_eq!(optimized.stats.completed, optimized.stats.terminal);
@@ -2012,8 +2062,8 @@ mod tests {
         };
         let control = FrozenPolicy::default();
         let frozen_root = first.root_response.as_deref().unwrap();
-        let bad_evaluator = |_: &Value, _: u8| f64::NAN;
-        let evaluator: &dyn Fn(&Value, u8) -> f64 = &evaluator;
+        let bad_evaluator = |_: &Value, _: u8, _: Option<&Value>| f64::NAN;
+        let evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64 = &evaluator;
         let trial_cases = [
             (
                 "control",
@@ -2370,8 +2420,13 @@ mod tests {
                     adversarial_opponent: false,
                 };
                 let goal = goal_turn(&original["observation"], viewer, replies);
-                let evaluator = |observation: &Value, _: u8| {
+                let menus_seen = std::cell::Cell::new(0);
+                let evaluator = |observation: &Value, player: u8, menu: Option<&Value>| {
+                    assert_eq!(player, viewer);
                     assert_eq!(observation["turn"].as_u64(), Some(goal));
+                    assert_heuristic_menu(observation, viewer, menu);
+                    assert_eq!(menu.is_some(), replies != 0);
+                    menus_seen.set(menus_seen.get() + usize::from(menu.is_some()));
                     observation["cards"].as_array().unwrap().len() as f64 * 0.001
                 };
                 let optimized = search(
@@ -2405,6 +2460,8 @@ mod tests {
                 assert_eq!(optimized.stats.completed, options.iterations);
                 assert_eq!(optimized.stats.terminal, 0);
                 assert_eq!(optimized.stats.observation_reads, options.iterations);
+                assert_eq!(menus_seen.get(), if replies == 0 { 0 } else { 2 * options.iterations },
+                    "both optimized and reference horizons must deliver actual own Idle menus");
                 assert!(optimized.stats.observation_reads < legacy.stats.observation_reads);
                 eprintln!(
                     "later root viewer={viewer}, replies={replies}: observation reads {} -> {} across {} identical simulations",
@@ -2426,7 +2483,7 @@ mod tests {
                 terminal: false,
                 adversarial_opponent: true,
             };
-            let evaluator = |observation: &Value, player: u8| {
+            let evaluator = |observation: &Value, player: u8, _: Option<&Value>| {
                 assert_eq!(player, viewer);
                 assert_eq!(observation["me"].as_u64(), Some(u64::from(viewer)));
                 observation["cards"]
@@ -2627,7 +2684,7 @@ mod tests {
                     1024,
                     bounded,
                     None,
-                    &|_, _| f64::NAN,
+                    &|_, _, _| f64::NAN,
                 )
                 .unwrap();
                 assert_eq!(invalid.stats.simulations, bounded.iterations);
