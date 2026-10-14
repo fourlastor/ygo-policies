@@ -201,9 +201,11 @@ impl Seat {
 
     /// Expand a sequential target/material prompt into a bounded collection
     /// of legal whole responses. Force each initial choice, let the policy
-    /// finish its subset, and cache the resulting policy state. Never reads
-    /// hidden cards or enumerates the combinatorial power set. At most twelve
-    /// candidates are attempted; `last_answer` keeps choices/responses aligned.
+    /// finish its subset, and cache the resulting policy state. If response
+    /// slots remain, try at most twelve additional two-pick prefixes. Never
+    /// reads hidden cards or enumerates the combinatorial power set. The
+    /// first-choice order is preserved and at most twelve responses are kept;
+    /// `last_answer` keeps choices/responses aligned.
     pub fn alternative_responses(&mut self, maximum: usize) -> Result<Vec<Vec<u8>>> {
         if !self.awaiting {
             return Err(wire::error("no pending response to expand"));
@@ -215,16 +217,52 @@ impl Seat {
         let observation = self.answered.as_ref().unwrap().observation.clone();
         let original_response = self.answered.as_ref().unwrap().responses[self.answered.as_ref().unwrap().choice].clone();
         let (_, steps) = sequential.step(&[]);
+        let mut first_picks = Vec::new();
         for first in 0..steps.len().min(maximum) {
             if self.selection_alternatives.len() >= maximum { break; }
             let mut policy = self.before_choice.as_ref().and_then(|policy| policy.fork())
                 .ok_or_else(|| wire::error("response overrides were not enabled before this prompt"))?;
-            let (picked, cancelled) = Self::run_sequential(&mut *policy, &observation, &sequential, Some(first))?;
+            let (picked, cancelled) = Self::run_sequential(&mut *policy, &observation, &sequential, &[first])?;
+            if let decision::Step::Pick(candidate) = steps[first] {
+                first_picks.push((first, candidate, picked.get(1).copied()));
+            }
             let response = if cancelled { decision::Sequential::cancel_response() } else { sequential.response(&picked) };
             if self.selection_alternatives.iter().any(|candidate| candidate.response == response) { continue; }
             self.selection_alternatives.push(SelectionAlternative {
                 response, choice: Self::selection_choice(&sequential, &picked, cancelled), picks: picked, policy,
             });
+        }
+        if self.selection_alternatives.len() < maximum {
+            // The first pass already tried the policy's usual second pick.
+            // Rotate through the other legal second picks across first picks
+            // so one wide branch cannot consume the whole extra-attempt budget.
+            let second_picks: Vec<_> = first_picks.into_iter().map(|(first, candidate, usual_second)| {
+                let (_, next) = sequential.step(&[candidate]);
+                let alternatives: Vec<_> = next.into_iter().enumerate().filter_map(|(index, step)| {
+                    match step {
+                        decision::Step::Pick(candidate) if Some(candidate) != usual_second => Some(index),
+                        _ => None,
+                    }
+                }).collect();
+                (first, alternatives)
+            }).collect();
+            let mut attempts = 0;
+            'fill: for offset in 0..12 {
+                for (first, seconds) in &second_picks {
+                    if attempts == 12 || self.selection_alternatives.len() >= maximum { break 'fill; }
+                    let Some(second) = seconds.get(offset) else { continue; };
+                    attempts += 1;
+                    let mut policy = self.before_choice.as_ref().and_then(|policy| policy.fork())
+                        .ok_or_else(|| wire::error("response overrides were not enabled before this prompt"))?;
+                    let (picked, cancelled) = Self::run_sequential(
+                        &mut *policy, &observation, &sequential, &[*first, *second])?;
+                    let response = if cancelled { decision::Sequential::cancel_response() } else { sequential.response(&picked) };
+                    if self.selection_alternatives.iter().any(|candidate| candidate.response == response) { continue; }
+                    self.selection_alternatives.push(SelectionAlternative {
+                        response, choice: Self::selection_choice(&sequential, &picked, cancelled), picks: picked, policy,
+                    });
+                }
+            }
         }
         let answered = self.answered.as_mut().unwrap();
         answered.responses = self.selection_alternatives.iter().map(|candidate| candidate.response.clone()).collect();
@@ -319,7 +357,7 @@ impl Seat {
     /// Decide a card or sum selection one pick at a time, then answer the
     /// whole prompt at once.
     fn select_sequentially(&mut self, observation: Observation, sequential: decision::Sequential) -> Result<Vec<u8>> {
-        let (picked, cancelled) = Self::run_sequential(&mut *self.policy, &observation, &sequential, None)?;
+        let (picked, cancelled) = Self::run_sequential(&mut *self.policy, &observation, &sequential, &[])?;
         // Retry fallbacks: the chosen answer, then cancel when allowed.
         let (final_decision, _) = sequential.step(&picked);
         let mut summary = Decision { choices: Vec::new(), ..final_decision };
@@ -354,14 +392,18 @@ impl Seat {
     }
 
     fn run_sequential(policy: &mut dyn Policy, observation: &Observation, sequential: &decision::Sequential,
-        mut forced_first: Option<usize>) -> Result<(Vec<usize>, bool)> {
+        forced_prefix: &[usize]) -> Result<(Vec<usize>, bool)> {
+        let mut forced = forced_prefix.iter();
         let mut picked = Vec::new();
         let cancelled = loop {
             let (step_decision, steps) = sequential.step(&picked);
             if steps.is_empty() {
                 return Err(wire::error("selection message offers no legal answer"));
             }
-            let choice = if let Some(index) = forced_first.take() {
+            let choice = if let Some(&index) = forced.next() {
+                if index >= steps.len() {
+                    return Err(wire::error("forced selection is not a legal choice"));
+                }
                 if !policy.commit_choice(observation, &step_decision, index) {
                     return Err(wire::error("policy cannot commit an external selection"));
                 }
@@ -378,6 +420,9 @@ impl Seat {
                 }
             }
         };
+        if forced.next().is_some() {
+            return Err(wire::error("forced selection extends past the completed response"));
+        }
         Ok((picked, cancelled))
     }
 
@@ -468,13 +513,22 @@ mod override_tests {
     }
 
     fn select_two() -> Vec<u8> {
-        let mut message = Writer::default().u8(msg::SELECT_CARD).u8(0).u8(0).u32(2).u32(2).u32(4);
-        for sequence in 0..4 {
+        select_cards(2, 4)
+    }
+
+    fn select_cards(count: u32, available: u32) -> Vec<u8> {
+        let mut message = Writer::default().u8(msg::SELECT_CARD).u8(0).u8(0).u32(count).u32(count).u32(available);
+        for sequence in 0..available {
             message = message.u32(10 + sequence).loc(wire::Loc {
                 controller: 0, location: location::HAND, sequence, position: position::FACEDOWN_DEFENSE,
             });
         }
         message.0
+    }
+
+    fn selected_indices(response: &[u8]) -> Vec<u32> {
+        response[8..].chunks_exact(4)
+            .map(|part| u32::from_le_bytes(part.try_into().unwrap())).collect()
     }
 
     #[test]
@@ -483,8 +537,11 @@ mod override_tests {
         seat.enable_response_overrides().unwrap();
         let baseline = seat.feed(&select_two()).unwrap().unwrap();
         let responses = seat.alternative_responses(6).unwrap();
-        assert_eq!(responses.len(), 3);
+        assert_eq!(responses.len(), 6);
         assert_eq!(responses[0], baseline);
+        assert_eq!(responses.iter().map(|response| selected_indices(response)).collect::<Vec<_>>(),
+            vec![vec![0, 1], vec![0, 2], vec![0, 3], vec![1, 2], vec![1, 3], vec![2, 3]],
+            "the old first-pick candidates stay in front of the new second-pick candidates");
         let answer = seat.last_answer().unwrap();
         assert_eq!(answer.choice, 0);
         assert_eq!(answer.decision.choices.len(), responses.len());
@@ -506,6 +563,173 @@ mod override_tests {
         branch.feed(&prompt()).unwrap();
         seat.feed(&prompt()).unwrap();
         assert_eq!(*observed.lock().unwrap(), vec![vec![2, 100], vec![100, 100]]);
+    }
+
+    #[test]
+    fn second_pick_exploration_reaches_missing_pair_and_commits_both_picks() {
+        let (mut seat, observed) = seat();
+        seat.enable_response_overrides().unwrap();
+        let baseline = seat.feed(&select_cards(2, 3)).unwrap().unwrap();
+        let responses = seat.alternative_responses(12).unwrap();
+        assert_eq!(responses[0], baseline);
+        assert_eq!(responses.iter().map(|response| selected_indices(response)).collect::<Vec<_>>(),
+            vec![vec![0, 1], vec![0, 2], vec![1, 2]]);
+        assert_eq!(seat.alternative_responses(12).unwrap(), responses,
+            "repeated expansion preserves response order and cached policy states");
+        let mut branch = seat.fork().unwrap();
+        branch.override_response(&responses[2]).unwrap();
+        assert_eq!(branch.last_answer().unwrap().picks, Some(vec![1, 2]));
+        assert_eq!(seat.last_answer().unwrap().picks, Some(vec![0, 1]));
+        observed.lock().unwrap().clear();
+        branch.feed(&prompt()).unwrap();
+        seat.feed(&prompt()).unwrap();
+        assert_eq!(*observed.lock().unwrap(), vec![vec![1, 1], vec![100, 100]],
+            "the second prefix index is relative to the remaining legal choices");
+    }
+
+    #[test]
+    fn second_pick_exploration_handles_optional_early_finish_and_cancel() {
+        #[derive(Clone)]
+        struct EarlyStop { stop: ChoiceKind, recording: RecordingPolicy }
+        impl Policy for EarlyStop {
+            fn choose(&mut self, observation: &Observation, decision: &Decision) -> usize {
+                self.recording.choose(observation, decision);
+                if !decision.selected.is_empty() {
+                    if let Some(index) = decision.choices.iter().position(|choice| choice.kind == self.stop) {
+                        return index;
+                    }
+                }
+                0
+            }
+            fn fork(&self) -> Option<Box<dyn Policy>> { Some(Box::new(self.clone())) }
+            fn commit_choice(&mut self, observation: &Observation, decision: &Decision, index: usize) -> bool {
+                self.recording.commit_choice(observation, decision, index)
+            }
+        }
+        for stop in [ChoiceKind::Finish, ChoiceKind::Cancel] {
+            let observed = Arc::new(Mutex::new(Vec::new()));
+            let policy = EarlyStop { stop, recording: RecordingPolicy {
+                committed: Vec::new(), observed: observed.clone(), forks: Arc::new(AtomicUsize::new(0)),
+            } };
+            let mut seat = Seat::new(Box::new(policy), Arc::new(MemoryCards::default()), Some(0));
+            seat.enable_response_overrides().unwrap();
+            let mut message = select_cards(2, 3);
+            message[2] = 1; // Cancelable, selecting one or two cards.
+            message[3..7].copy_from_slice(&1u32.to_le_bytes());
+            let baseline = seat.feed(&message).unwrap().unwrap();
+            let responses = seat.alternative_responses(12).unwrap();
+            assert_eq!(responses[0], baseline);
+            assert_eq!(responses.len(), if stop == ChoiceKind::Finish { 7 } else { 4 });
+            assert_eq!(seat.last_answer().unwrap().picks, Some(vec![0]));
+            let pair = responses.iter().find(|response| {
+                response.len() > 8 && selected_indices(response) == [0, 1]
+            }).unwrap();
+            let mut branch = seat.fork().unwrap();
+            branch.override_response(pair).unwrap();
+            assert_eq!(branch.last_answer().unwrap().picks, Some(vec![0, 1]));
+            let cancel = decision::Sequential::cancel_response();
+            assert!(responses.contains(&cancel));
+            for (choice, response) in seat.last_answer().unwrap().decision.choices.iter().zip(&responses) {
+                if *response == cancel {
+                    assert_eq!(choice.kind, ChoiceKind::Cancel);
+                    assert!(choice.members.is_empty());
+                } else {
+                    assert!((1..=2).contains(&selected_indices(response).len()));
+                    assert_eq!(choice.members.len(), selected_indices(response).len());
+                }
+            }
+            observed.lock().unwrap().clear();
+            branch.feed(&prompt()).unwrap();
+            seat.feed(&prompt()).unwrap();
+            assert_eq!(*observed.lock().unwrap(), vec![vec![0, 0], vec![100, 100]],
+                "an early-stop baseline and a completed two-pick branch keep separate committed states");
+        }
+    }
+
+    #[test]
+    fn forced_prefix_cannot_continue_after_automatic_finish_or_cancel() {
+        let (mut seat, _) = seat();
+        seat.enable_response_overrides().unwrap();
+        let mut message = select_cards(1, 2);
+        message[2] = 1;
+        seat.feed(&message).unwrap();
+        let sequential = seat.pending_sequential.as_ref().unwrap();
+        let observation = &seat.last_answer().unwrap().observation;
+        let (_, steps) = sequential.step(&[]);
+        let cancel = steps.iter().position(|step| matches!(step, decision::Step::Cancel)).unwrap();
+        for prefix in [[0, 0], [cancel, 0]] {
+            let mut branch = seat.before_choice.as_ref().unwrap().fork().unwrap();
+            let error = Seat::run_sequential(&mut *branch, observation, sequential, &prefix).unwrap_err();
+            assert!(error.to_string().contains("extends past the completed response"));
+        }
+        assert_eq!(seat.last_answer().unwrap().picks, Some(vec![0]));
+    }
+
+    #[test]
+    fn second_pick_exploration_bounds_work_even_when_every_completion_duplicates() {
+        let (mut seat, _, forks) = counted_seat();
+        seat.enable_response_overrides().unwrap();
+        let baseline = seat.feed(&select_cards(8, 8)).unwrap().unwrap();
+        forks.store(0, Ordering::Relaxed);
+        assert_eq!(seat.alternative_responses(1).unwrap(), vec![baseline.clone()]);
+        assert_eq!(forks.load(Ordering::Relaxed), 0, "a full response budget needs no exploration");
+        for _ in 0..2 {
+            forks.store(0, Ordering::Relaxed);
+            assert_eq!(seat.alternative_responses(usize::MAX).unwrap(), vec![baseline.clone()]);
+            assert_eq!(forks.load(Ordering::Relaxed), 8 + 12,
+                "one fork per first-pick attempt and exactly twelve extra two-pick attempts");
+        }
+        assert_eq!(seat.last_answer().unwrap().picks, Some((0..8).collect()));
+    }
+
+    #[test]
+    fn second_pick_exploration_keeps_twelve_response_cap_and_fresh_run_order() {
+        let (mut first, _, forks) = counted_seat();
+        first.enable_response_overrides().unwrap();
+        first.feed(&select_cards(2, 14)).unwrap();
+        forks.store(0, Ordering::Relaxed);
+        let responses = first.alternative_responses(usize::MAX).unwrap();
+        assert_eq!(responses.len(), 12);
+        let old_prefix: Vec<_> = (1..12).map(|second| vec![0, second]).collect();
+        assert_eq!(responses[..11].iter().map(|response| selected_indices(response)).collect::<Vec<_>>(), old_prefix);
+        assert_eq!(selected_indices(&responses[11]), vec![1, 2]);
+        assert_eq!(forks.load(Ordering::Relaxed), 12 + 2);
+        let (mut second, _) = seat();
+        second.enable_response_overrides().unwrap();
+        second.feed(&select_cards(2, 14)).unwrap();
+        assert_eq!(second.alternative_responses(12).unwrap(), responses);
+        forks.store(0, Ordering::Relaxed);
+        assert_eq!(first.alternative_responses(12).unwrap(), responses);
+        assert_eq!(forks.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn second_pick_sum_alternatives_preserve_required_material_and_exact_total() {
+        let (mut seat, _) = seat();
+        seat.enable_response_overrides().unwrap();
+        let mut message = Writer::default().u8(msg::SELECT_SUM).u8(0).u8(0)
+            .u32(5).u32(2).u32(2).u32(1)
+            .u32(99).loc(wire::Loc {
+                controller: 0, location: location::MZONE, sequence: 3, position: position::FACEUP_ATTACK,
+            }).u32(1).u32(3);
+        for sequence in 0..3 {
+            message = message.u32(10 + sequence).loc(wire::Loc {
+                controller: 0, location: location::MZONE, sequence, position: position::FACEUP_ATTACK,
+            }).u32(2);
+        }
+        seat.feed(&message.0).unwrap();
+        let responses = seat.alternative_responses(12).unwrap();
+        assert_eq!(responses.iter().map(|response| response[8..].to_vec()).collect::<Vec<_>>(),
+            vec![vec![0, 1], vec![0, 2], vec![1, 2]]);
+        for (choice, response) in seat.last_answer().unwrap().decision.choices.iter().zip(&responses) {
+            assert_eq!(u32::from_le_bytes(response[..4].try_into().unwrap()), 2);
+            assert_eq!(u32::from_le_bytes(response[4..8].try_into().unwrap()), 2);
+            assert_eq!(choice.members.iter().map(|member| member.value).sum::<i64>(), 5);
+            assert_eq!(choice.members.iter().filter(|member| member.required).count(), 1);
+            assert_eq!(choice.members[0].code, Some(99));
+        }
+        seat.override_response(&responses[2]).unwrap();
+        assert_eq!(seat.last_answer().unwrap().picks, Some(vec![1, 2]));
     }
 
     #[test]
