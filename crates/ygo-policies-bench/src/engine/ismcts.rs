@@ -272,8 +272,52 @@ fn supported(answer: &Value) -> bool {
     }
 }
 
-/// Generic first, then action-kind diversity. Sequential candidates remain
-/// bounded whole subsets supplied by LibrarySeat, not all combinations.
+fn extra_summon_identity(choice: &Value) -> Option<(u64, u64, u64)> {
+    if choice["kind"] != "SpecialSummon" || choice["card"]["at"]["location"] != "Extra" {
+        return None;
+    }
+    let code = choice["card"]["code"].as_u64().filter(|code| *code != 0)?;
+    Some((
+        code,
+        choice["description"].as_u64()?,
+        choice["card"]["at"]["controller"].as_u64()?,
+    ))
+}
+
+/// Prefer different Extra Deck summon identities before further copies. This
+/// changes ordering only: copies can have different state, so their distinct
+/// legal responses remain eligible once the budget reaches them. Unknown-code
+/// and non-Extra choices keep their positions within the action-kind group.
+fn prioritize_extra_summons(group: &mut [usize], choices: &[Value], generic: usize) {
+    let mut seen: Vec<_> = extra_summon_identity(&choices[generic])
+        .into_iter()
+        .collect();
+    let mut positions = Vec::new();
+    let mut distinct = Vec::new();
+    let mut copies = Vec::new();
+    for (position, &index) in group.iter().enumerate() {
+        let Some(identity) = extra_summon_identity(&choices[index]) else {
+            continue;
+        };
+        positions.push(position);
+        if seen.contains(&identity) {
+            copies.push(index);
+        } else {
+            seen.push(identity);
+            distinct.push(index);
+        }
+    }
+    for (position, index) in positions
+        .into_iter()
+        .zip(distinct.into_iter().chain(copies))
+    {
+        group[position] = index;
+    }
+}
+
+/// Generic first, then action-kind diversity, preferring distinct Extra Deck
+/// summons within that kind. Sequential candidates remain bounded whole
+/// subsets supplied by LibrarySeat, not all combinations.
 fn actions(original: &Value, expanded: &Value, maximum: usize) -> Result<Vec<Action>> {
     let original_response = given(original)?;
     let choices = expanded["decision"]["choices"]
@@ -315,6 +359,12 @@ fn actions(original: &Value, expanded: &Value, maximum: usize) -> Result<Vec<Act
             } else {
                 groups.push((kind, vec![index]));
             }
+        }
+        if let Some((_, group)) = groups
+            .iter_mut()
+            .find(|(kind, _)| kind == "\"SpecialSummon\"")
+        {
+            prioritize_extra_summons(group, choices, first);
         }
         let priority = [
             "Activate",
@@ -867,6 +917,77 @@ mod tests {
 
     fn answer() -> Value {
         serde_json::json!({"observation":{"turn":1,"cards":[]},"decision":{"kind":"YesNo","choices":[{"kind":"No"},{"kind":"Yes"}]},"responses":[[0],[1]],"choice":0})
+    }
+
+    fn extra_summon(code: u32, sequence: usize) -> Value {
+        serde_json::json!({
+            "kind": "SpecialSummon", "description": 0,
+            "card": {"code": code, "at": {
+                "controller": 1, "location": "Extra", "sequence": sequence
+            }},
+            "members": [], "place": null
+        })
+    }
+
+    #[test]
+    fn extra_summon_diversity_keeps_distinct_trace_choices_before_copies() {
+        // Archived v7 Fabled seed 1072687461, seat 1, decision 118: the pilot
+        // chose Valkyrus with an empty hand while two Ragins and two Unicores
+        // consumed scarce search slots ahead of other legal Synchro summons.
+        let mut choices: Vec<_> = [
+            47395382, 47395382, 44155002, 44155002, 54048462, 26593852, 50321796, 73580471,
+            44508094, 76774528, 52687916, 27315304, 43385557, 29071332,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(sequence, code)| extra_summon(code, sequence))
+        .collect();
+        choices.push(serde_json::json!({"kind": "EnterBattle"}));
+        choices.push(serde_json::json!({"kind": "EndTurn"}));
+        let responses: Vec<_> = (0..choices.len()).map(|index| vec![index as u8]).collect();
+        let original = serde_json::json!({
+            "observation": {"turn": 2, "cards": []},
+            "decision": {"kind": "Idle", "choices": choices},
+            "responses": responses, "choice": 4
+        });
+        let retained = |maximum| {
+            actions(&original, &original, maximum)
+                .unwrap()
+                .into_iter()
+                .map(|action| action.planned.response[0])
+                .collect::<Vec<_>>()
+        };
+        // Keep the generic choice and phase diversity, but admit Brionac and
+        // Black Rose at eight choices, and Trishula and Mist Wurm at twelve.
+        assert_eq!(retained(1), vec![4]);
+        assert_eq!(retained(8), vec![4, 0, 14, 15, 2, 5, 6, 7]);
+        assert_eq!(retained(12), vec![4, 0, 14, 15, 2, 5, 6, 7, 8, 9, 10, 11]);
+        let mut all = retained(32);
+        assert_eq!(all[0], 4);
+        assert_eq!(&all[all.len() - 2..], &[1, 3]);
+        all.sort_unstable();
+        assert_eq!(all, (0..16).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn extra_summon_order_keeps_unknown_and_other_locations_in_place() {
+        let mut choices: Vec<_> = (0..8).map(|sequence| extra_summon(100, sequence)).collect();
+        choices[2]["card"]["code"] = Value::Null;
+        choices[3]["description"] = serde_json::json!(1);
+        choices[4]["card"]["at"]["controller"] = serde_json::json!(0);
+        choices[5]["card"]["at"]["location"] = serde_json::json!("Hand");
+        choices[6]["card"]["code"] = serde_json::json!(200);
+        choices[7]["card"]["code"] = serde_json::json!(0);
+        let mut group = vec![1, 2, 3, 4, 5, 6, 7];
+        prioritize_extra_summons(&mut group, &choices, 0);
+        // Different effect descriptions and controllers are distinct. The
+        // generic identity already counts as seen, but its copy is deferred,
+        // not removed. Unknown codes and the hand summon do not move.
+        assert_eq!(group, vec![3, 2, 4, 6, 5, 1, 7]);
+        choices[1]["kind"] = serde_json::json!("Activate");
+        let mut unaffected = vec![1, 2, 5, 7];
+        prioritize_extra_summons(&mut unaffected, &choices, 0);
+        assert_eq!(unaffected, vec![1, 2, 5, 7]);
     }
 
     #[test]
