@@ -4,7 +4,8 @@
 //! Sources: `vendor/CardScripts/official/c35480699.lua` (Eclipse),
 //! `c10026986.lua` (King), `c73580471.lua` (Black Rose), `c57774843.lua`
 //! (Judgment Dragon), `c29071332.lua` (Armory Arm), `c39402797.lua`
-//! (Trident Dragion), `c72426662.lua` (Demise), and the
+//! (Trident Dragion), `c72426662.lua` (Demise), `c22046459.lua`
+//! (Megamorph, with `proc_equip.lua`), and the
 //! mandatory-removal facts in `knowledge`.
 //! An ordinary NormalSummon choice does not expose its actual tribute cost.
 //! Consequently this module never vetoes a summon from printed Level alone.
@@ -20,6 +21,7 @@ const WORM_KING: u32 = 10026986;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const JUDGMENT_DRAGON: u32 = 57774843;
 const DEMISE: u32 = 72426662;
+const MEGAMORPH: u32 = 22046459;
 const ARMORY_ARM: u32 = 29071332;
 const TRIDENT_DRAGION: u32 = 39402797;
 const WORM_SET: u16 = 0x3e;
@@ -33,6 +35,7 @@ pub const SUPPORTED_CODES: &[u32] = &[
     BLACK_ROSE_DRAGON,
     JUDGMENT_DRAGON,
     DEMISE,
+    MEGAMORPH,
     ARMORY_ARM,
     TRIDENT_DRAGION,
 ];
@@ -159,6 +162,66 @@ pub(super) fn activate_before_development(t: &Turn, choice: &Choice) -> bool {
         && t.ctx.my_turn()
         && t.ctx.obs.chain.is_empty()
         && paid_sweep(t, choice) == Some(true)
+}
+
+/// A bounded target-ranking prior, not a battle or damage prediction. The
+/// script compares the EQUIP controller's LP and sets the recipient's ATK
+/// from its runtime base ATK, which CardView does not expose. Printed ATK is
+/// only a conservative baseline: do not spend the card on an already larger
+/// friendly body or an already smaller enemy. Unknown/variable printed ATK
+/// leaves the ordinary fallback available on the appropriate side.
+fn megamorph_target(t: &Turn, target: &CardView) -> Option<i32> {
+    let ctx = t.ctx;
+    let lower = ctx.my_lp() < ctx.opp_lp();
+    if ctx.my_lp() == ctx.opp_lp()
+        || target.at.location != Location::MonsterZone
+        || !target.position.face_up
+        || target.at.controller != if lower { ctx.me } else { ctx.opp }
+        || !ctx.reaches(target, MEGAMORPH, true, false)
+        || target.at.controller == ctx.me
+            && ctx.facts(target).unaffected & crate::knowledge::kind::SPELL != 0
+    {
+        return Some(0);
+    }
+    let printed = ctx.db.card(target.code?)?.attack;
+    if printed <= 0 {
+        return if printed == 0 && target.attack == 0 {
+            Some(0)
+        } else {
+            None
+        };
+    }
+    let change = if lower {
+        printed.saturating_mul(2).saturating_sub(target.attack)
+    } else {
+        target.attack.saturating_sub(printed / 2)
+    };
+    Some(change.clamp(0, 5000))
+}
+
+fn megamorph(t: &Turn) -> Option<bool> {
+    if t.ctx.my_lp() == t.ctx.opp_lp() || t.ctx.wasted(MEGAMORPH) {
+        return Some(false);
+    }
+    let mut uncertain = false;
+    for target in t
+        .ctx
+        .obs
+        .cards
+        .iter()
+        .filter(|card| card.at.location == Location::MonsterZone)
+    {
+        match megamorph_target(t, target) {
+            Some(gain) if gain > 0 => return Some(true),
+            None => uncertain = true,
+            _ => {}
+        }
+    }
+    if uncertain {
+        None
+    } else {
+        Some(false)
+    }
 }
 
 /// Only a visible battle with no paid trick, known replacement body, reflected
@@ -587,6 +650,15 @@ pub(super) fn allow_activation(t: &Turn, choice: &Choice) -> Option<bool> {
         return Some(allowed);
     }
     match code {
+        MEGAMORPH
+            if choice.description == 1068
+                && matches!(
+                    choice.at()?.location,
+                    Location::Hand | Location::SpellTrapZone
+                ) =>
+        {
+            megamorph(t)
+        }
         ARMORY_ARM
             if monster_source(t, choice, code)
                 && choice.description == knowledge::description(code, 0) =>
@@ -616,6 +688,18 @@ pub(super) fn select(t: &Turn, member: &Member) -> Option<f64> {
     let ctx = t.ctx;
     let source = ctx.canonical(t.memory.last_activated?);
     let card = ctx.card(member.at)?;
+    if source == MEGAMORPH && t.decision.hint == Hint::Equip {
+        // Megamorph has one activation (native description 1068). Its actual
+        // legal Equip prompt is the authority on available targets; do not
+        // reward the largest enemy just because Equip is normally a gain.
+        return megamorph_target(t, card).map(|gain| {
+            if gain > 0 {
+                10_000.0 + f64::from(gain)
+            } else {
+                -100_000.0
+            }
+        });
+    }
     if source == ARMORY_ARM && t.decision.hint == Hint::Equip {
         // The actual legal target prompt remains authoritative. Never let a
         // high-ATK enemy outrank a useful friendly equipment destination.
@@ -702,6 +786,7 @@ mod tests {
     const FODDER: u32 = 900_510_004;
     const TOON_BODY: u32 = 900_510_006;
     const EQUIPMENT: u32 = 900_510_008;
+    const VARIABLE_ATTACK: u32 = 900_510_009;
 
     fn db() -> MemoryCards {
         let cards = [
@@ -725,6 +810,18 @@ mod tests {
             CardData {
                 code: EQUIPMENT,
                 kind: types::SPELL | types::EQUIP,
+                ..CardData::default()
+            },
+            CardData {
+                code: MEGAMORPH,
+                kind: types::SPELL | types::EQUIP,
+                ..CardData::default()
+            },
+            CardData {
+                code: VARIABLE_ATTACK,
+                kind: types::MONSTER | types::EFFECT,
+                attack: -2,
+                level: 4,
                 ..CardData::default()
             },
             CardData {
@@ -1166,6 +1263,125 @@ mod tests {
         board.cards.push(equipment);
         board.cards.push(card(FODDER, 0, 1));
         assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+    }
+
+    fn megamorph_prompt() -> Decision {
+        let mut prompt = transaction_prompt(MEGAMORPH, 0, None);
+        prompt.kind = DecisionKind::Idle;
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::Hand;
+        prompt.choices[0].description = 1068;
+        prompt.choices[1].kind = ChoiceKind::EndTurn;
+        prompt.choices[1].card = None;
+        prompt
+    }
+
+    #[test]
+    fn megamorph_declines_native_enemy_only_buff_and_equal_life_points() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        // Native seed 110474261 seat 0 trace 328: 2800 vs 4700 LP, no own
+        // monster. Equipping the enemy Demise at trace 330 doubled its ATK.
+        let mut board = obs(vec![card(DEMISE, 1, 0)]);
+        board.cards[0].position = Position::FACE_UP_DEFENSE;
+        board.life_points = [2800, 4700];
+        let prompt = megamorph_prompt();
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+        assert_eq!(pilot.choose(&board, &prompt), 1);
+        board.cards.push(card(ORDINARY, 0, 1));
+        board.life_points = [8000, 8000];
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+    }
+
+    #[test]
+    fn megamorph_selection_uses_equip_controller_life_points_on_either_seat() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        for me in [0, 1] {
+            for lower in [true, false] {
+                let mut board = obs(vec![card(ORDINARY, me, 0), card(SMALL, 1 - me, 0)]);
+                board.me = me;
+                board.turn_player = Some(me);
+                board.life_points[usize::from(if lower { me } else { 1 - me })] = 6000;
+                let mut prompt = megamorph_prompt();
+                prompt.choices[0].card.as_mut().unwrap().at.controller = me;
+                let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+                assert_eq!(pilot.choose(&board, &prompt), 0);
+                prompt.kind = DecisionKind::SelectCards;
+                prompt.hint = Hint::Equip;
+                prompt.minimum = 1;
+                prompt.maximum = 1;
+                prompt.choices = board
+                    .cards
+                    .iter()
+                    .map(|card| Choice {
+                        kind: ChoiceKind::Cards,
+                        card: None,
+                        members: vec![member(card)],
+                        description: 0,
+                        place: None,
+                    })
+                    .collect();
+                assert_eq!(
+                    pilot.choose(&board, &prompt),
+                    usize::from(!lower),
+                    "seat {me}, lower {lower}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn megamorph_does_not_spend_on_already_modified_attack() {
+        let prompt = megamorph_prompt();
+        let mut board = obs(vec![card(ORDINARY, 0, 0)]);
+        board.life_points = [6000, 8000];
+        board.cards[0].attack = 3600;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards[0].attack = 4200;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards[0].attack = 1800;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        board.cards[0].at.controller = 1;
+        board.life_points = [8000, 6000];
+        board.cards[0].attack = 900;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards[0].attack = 600;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+    }
+
+    #[test]
+    fn megamorph_unknown_base_attack_preserves_fallback_without_claiming_gain() {
+        let prompt = megamorph_prompt();
+        let mut board = obs(vec![card(VARIABLE_ATTACK, 0, 0)]);
+        board.life_points = [6000, 8000];
+        board.cards[0].attack = 2500;
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        with_turn(&board, Hint::Equip, Some(MEGAMORPH), |t| {
+            assert_eq!(select(t, &member(&board.cards[0])), None);
+        });
+        board.cards[0].at.controller = 1;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+    }
+
+    #[test]
+    fn megamorph_matches_only_native_activation_and_equip_selection() {
+        let mut prompt = megamorph_prompt();
+        let mut board = obs(vec![card(ORDINARY, 0, 0)]);
+        board.life_points = [6000, 8000];
+        prompt.choices[0].description = knowledge::description(MEGAMORPH, 0);
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].description = 1068;
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::Graveyard;
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::SpellTrapZone;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        with_turn(&board, Hint::Target, Some(MEGAMORPH), |t| {
+            assert_eq!(select(t, &member(&board.cards[0])), None);
+        });
+        with_turn(&board, Hint::Equip, Some(EQUIPMENT), |t| {
+            assert_eq!(select(t, &member(&board.cards[0])), None);
+        });
     }
 
     #[test]
