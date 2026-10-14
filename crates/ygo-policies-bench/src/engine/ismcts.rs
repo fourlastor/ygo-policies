@@ -126,6 +126,8 @@ pub(super) struct Stats {
     pub missing: usize,
     pub mismatches: usize,
     pub errors: Vec<String>,
+    #[cfg(test)]
+    root_trials: Vec<(usize, usize)>,
 }
 
 impl Stats {
@@ -168,6 +170,25 @@ struct Action {
 
 struct Node {
     actions: Vec<Action>,
+}
+
+/// UCT selects a root action before any sampled world is inspected. Each
+/// action then sees the same world cycle, rather than inheriting the global
+/// iteration's world. Scheduled trials advance even when simulation fails or
+/// reaches its cap; completed returns alone still determine action values.
+#[derive(Default)]
+struct RootWorldSchedule {
+    scheduled: Vec<usize>,
+}
+
+impl RootWorldSchedule {
+    fn next(&mut self, action: usize, worlds: usize) -> usize {
+        self.scheduled
+            .resize(self.scheduled.len().max(action + 1), 0);
+        let world = self.scheduled[action] % worlds;
+        self.scheduled[action] += 1;
+        world
+    }
 }
 
 impl Node {
@@ -359,14 +380,17 @@ fn expired(deadline: Option<Instant>) -> bool {
 }
 
 enum Mode<'a> {
-    Search(&'a mut HashMap<Key, Node>),
+    Search {
+        tree: &'a mut HashMap<Key, Node>,
+        root_action: usize,
+    },
     Frozen(&'a FrozenPolicy),
 }
 
 impl Mode<'_> {
     fn tracks_history(&self, tree_active: bool) -> bool {
         match self {
-            Self::Search(_) => tree_active,
+            Self::Search { .. } => tree_active,
             Self::Frozen(policy) => !policy.choices.is_empty(),
         }
     }
@@ -429,7 +453,7 @@ fn simulate(
                 response = forced_root.unwrap().to_vec();
             } else {
                 match &mut mode {
-                    Mode::Search(tree) if tree_active => {
+                    Mode::Search { tree, root_action } if tree_active => {
                         let key = Key::new(&original, path);
                         let expanded = seats[pending_player].alternative_responses(12)?;
                         if !tree.contains_key(&key) && tree.len() < options.nodes {
@@ -448,8 +472,16 @@ fn simulate(
                             }
                         }
                         if let Some(node) = tree.get_mut(&key) {
-                            let selected = node.select();
-                            response = resolve_action(&node.actions[selected].planned, &expanded)
+                            // The root was selected before its world. Keep it
+                            // on the ordinary tree path so attempts, visited
+                            // edges and completed backpropagation are intact.
+                            let selected = if first { *root_action } else { node.select() };
+                            let planned = &node
+                                .actions
+                                .get(selected)
+                                .ok_or("ISMCTS scheduled root action is unavailable")?
+                                .planned;
+                            response = resolve_action(planned, &expanded)
                                 .ok_or("ISMCTS stored action differs from freshly expanded legal alternatives")?;
                             node.actions[selected].attempts += 1;
                             trial.visited.push((key, selected));
@@ -581,15 +613,23 @@ pub(super) fn search(
     validate(worlds, viewer, options)?;
     let root = duel.snapshot()?;
     let mut tree = HashMap::<Key, Node>::new();
+    let root_key = Key::new(root_original, Path::default());
+    let mut schedule = RootWorldSchedule::default();
     let mut stats = Stats::default();
     let result = (|| -> Result<()> {
-        for iteration in 0..options.iterations {
+        for _ in 0..options.iterations {
             if expired(deadline) {
                 break;
             }
-            let world = &worlds[iteration % worlds.len()];
+            // An unseen root expands generic-first, so its first action is 0.
+            // No hidden world data participates in this selection.
+            let root_action = tree.get(&root_key).map_or(0, Node::select);
+            let world_index = schedule.next(root_action, worlds.len());
+            let world = &worlds[world_index];
             duel.restore(&world.snapshot)?;
             stats.simulations += 1;
+            #[cfg(test)]
+            stats.root_trials.push((root_action, world_index));
             match simulate(
                 duel,
                 &world.seats,
@@ -601,7 +641,10 @@ pub(super) fn search(
                 options,
                 deadline,
                 evaluator,
-                Mode::Search(&mut tree),
+                Mode::Search {
+                    tree: &mut tree,
+                    root_action,
+                },
                 &mut stats,
             ) {
                 Ok(trial) => {
@@ -623,7 +666,6 @@ pub(super) fn search(
     duel.restore(&root)?;
     result?;
     stats.nodes = tree.len();
-    let root_key = Key::new(root_original, Path::default());
     let root_response = tree
         .get(&root_key)
         .map(|node| node.actions[node.best()].planned.response.clone());
@@ -793,6 +835,75 @@ mod tests {
         assert_eq!(node.best(), 1);
     }
 
+    fn assert_balanced_worlds(trials: &[(usize, usize)], worlds: usize) {
+        let mut counts = HashMap::<usize, Vec<usize>>::new();
+        for &(action, world) in trials {
+            let counts = counts.entry(action).or_insert_with(|| vec![0; worlds]);
+            // Check every prefix, not merely an accidentally balanced total.
+            assert_eq!(world, counts.iter().sum::<usize>() % worlds);
+            counts[world] += 1;
+            assert!(counts.iter().max().unwrap() - counts.iter().min().unwrap() <= 1);
+        }
+    }
+
+    #[test]
+    fn root_world_cycles_remove_action_order_bias_from_world_only_returns() {
+        let run = |balanced: bool| {
+            let original = answer();
+            let mut node = Node {
+                actions: actions(&original, &original, 2).unwrap(),
+            };
+            let mut schedule = RootWorldSchedule::default();
+            let mut trials = Vec::new();
+            for iteration in 0..8 {
+                let action = node.select();
+                let world = if balanced {
+                    schedule.next(action, 2)
+                } else {
+                    iteration % 2
+                };
+                // Both actions have identical outcomes. Only hidden-world
+                // difficulty differs, so neither action merits a higher mean.
+                let value = if world == 0 { 1.0 } else { -1.0 };
+                node.actions[action].attempts += 1;
+                node.actions[action].visits += 1;
+                node.actions[action].total += value;
+                trials.push((action, world));
+            }
+            (node, trials)
+        };
+        let (legacy, _) = run(false);
+        let legacy_means: Vec<_> = legacy
+            .actions
+            .iter()
+            .map(|a| a.total / a.visits as f64)
+            .collect();
+        assert!(legacy_means[0] - legacy_means[1] > 1.0, "{legacy_means:?}");
+        let (balanced, trials) = run(true);
+        assert_balanced_worlds(&trials, 2);
+        assert!(balanced
+            .actions
+            .iter()
+            .all(|action| action.visits == 4 && action.total == 0.0));
+        assert_eq!(balanced.best(), 0);
+    }
+
+    #[test]
+    fn scheduled_worlds_advance_independently_of_tree_visits_and_completion() {
+        for worlds in [1, 3, 4] {
+            let mut schedule = RootWorldSchedule::default();
+            let mut trials = Vec::new();
+            // Unequal, adaptive allocation, including the same root selected
+            // again after a failure before its tree attempt was recorded.
+            for action in [0, 0, 0, 1, 2, 0, 5, 1, 5, 5, 0, 2, 1, 1, 0] {
+                trials.push((action, schedule.next(action, worlds)));
+            }
+            assert_balanced_worlds(&trials, worlds);
+            assert_eq!(schedule.scheduled.iter().sum::<usize>(), trials.len());
+            assert_eq!(schedule.scheduled[0], 6);
+        }
+    }
+
     /// Native engine + real FFI seats: deterministic search, executable
     /// conditional continuations, caps/errors, and exact caller restoration.
     #[test]
@@ -874,6 +985,21 @@ mod tests {
         let expected = next_bytes(&mut duel);
         duel.restore(&snapshot).unwrap();
         let world = World { snapshot, seats };
+        let mut worlds = Vec::new();
+        for seed in [2493001, 2493002, 2493003] {
+            duel.restore(&world.snapshot).unwrap();
+            duel.reseed(seed).unwrap();
+            worlds.push(World {
+                snapshot: duel.snapshot().unwrap(),
+                seats: world
+                    .seats
+                    .iter()
+                    .map(LibrarySeat::fork)
+                    .collect::<Result<Vec<_>>>()
+                    .unwrap(),
+            });
+        }
+        duel.restore(&world.snapshot).unwrap();
         let options = Options {
             iterations: 32,
             actions: 3,
@@ -895,37 +1021,40 @@ mod tests {
                 * 0.2
         };
         let first = search(
-            &mut duel,
-            std::slice::from_ref(&world),
-            0,
-            &original,
-            decisions,
-            1024,
-            options,
-            None,
-            &evaluator,
+            &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
         assert_eq!(first.stats.failed, 0, "{:?}", first.stats.errors);
         assert_eq!(first.stats.completed, options.iterations);
+        assert_balanced_worlds(&first.stats.root_trials, worlds.len());
+        assert_eq!(first.stats.root_trials.len(), options.iterations);
+        assert_eq!(
+            first
+                .root_actions
+                .iter()
+                .map(|action| action.attempts)
+                .sum::<usize>(),
+            options.iterations
+        );
+        assert_eq!(
+            first
+                .root_actions
+                .iter()
+                .map(|action| action.visits)
+                .sum::<usize>(),
+            first.stats.completed
+        );
         assert!(first.stats.nodes > 1);
         assert!(first.policy.len() > 1);
         assert_eq!(world.seats[0].last_answer().unwrap(), original);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
         let repeated = search(
-            &mut duel,
-            std::slice::from_ref(&world),
-            0,
-            &original,
-            decisions,
-            1024,
-            options,
-            None,
-            &evaluator,
+            &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
         assert_eq!(first.root_actions, repeated.root_actions);
+        assert_eq!(first.stats.root_trials, repeated.stats.root_trials);
         let replayed = evaluate_frozen(
             &mut duel,
             &world,
@@ -964,9 +1093,37 @@ mod tests {
         assert_eq!(failed.value, None);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
+        let failed_search = search(
+            &mut duel,
+            &worlds,
+            0,
+            &original,
+            decisions,
+            1024,
+            Options {
+                iterations: 9,
+                ..options
+            },
+            None,
+            &|_, _| f64::NAN,
+        )
+        .unwrap();
+        assert_eq!(failed_search.stats.failed, 9);
+        assert_eq!(failed_search.stats.completed, 0);
+        assert_balanced_worlds(&failed_search.stats.root_trials, worlds.len());
+        assert_eq!(
+            failed_search
+                .root_actions
+                .iter()
+                .map(|action| action.attempts)
+                .sum::<usize>(),
+            9
+        );
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
         let capped = search(
             &mut duel,
-            std::slice::from_ref(&world),
+            &worlds,
             0,
             &original,
             decisions,
@@ -981,6 +1138,15 @@ mod tests {
         .unwrap();
         assert_eq!(capped.stats.completed, 0);
         assert_eq!(capped.stats.cutoffs, options.iterations);
+        assert_balanced_worlds(&capped.stats.root_trials, worlds.len());
+        assert_eq!(
+            capped
+                .root_actions
+                .iter()
+                .map(|action| action.attempts)
+                .sum::<usize>(),
+            options.iterations
+        );
         assert!(capped
             .root_actions
             .iter()
