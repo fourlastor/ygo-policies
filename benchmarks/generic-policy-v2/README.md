@@ -76,6 +76,15 @@ interval [-2.34, +14.84], exact McNemar p=0.289. All games completed without
 errors or caps. This is a weak positive signal for one preset, not an established
 strength improvement; defaults and the policy library remain unchanged.
 
+The [fresh v13 confirmation](manual-weights-chain-burn-confirm-v13/report.md)
+then kept that preset frozen across 256 new paired games: default 59/256 (23.05%)
+versus manual 77/256 (30.08%). Twenty-eight pairs improved and ten regressed:
++7.03 points, paired-normal 95% interval [+2.38, +11.68], supplementary Newcombe
+interval [+2.32, +11.76], exact McNemar p=0.00510. All 512 games completed without
+errors or caps. This is a clear positive signal for the preset on Chain Burn;
+it still falls short of 55% and does not validate automatic deck-derived weights
+or strength on other decks. The pilot is excluded from this confirmation result.
+
 The frozen specialist library is built from `7ddad06`. Metadata beside each run
 records binary fingerprints, engine/scripts, decks, seeds and settings.
 
