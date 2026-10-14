@@ -188,6 +188,11 @@ impl Evaluator {
             let bodies: Vec<_> = observation.pile(player, Location::MonsterZone).collect();
             let body_count = bodies.len();
             let hand_size = observation.pile_size(player, Location::Hand);
+            // Every occupied main Spell/Trap slot consumes capacity, including
+            // a monster stored there. The separate Field Zone does not.
+            let main_backrow_full = observation.pile(player, Location::SpellTrapZone)
+                .filter(|card| card.at.sequence < 5)
+                .fold(0u8, |slots, card| slots | (1u8 << card.at.sequence)) == 0b1_1111;
             let mut victory_pieces = 0u8;
             for card in observation.cards.iter().filter(|card| card.at.controller == player) {
                 let data = ctx.view_data(card);
@@ -204,7 +209,20 @@ impl Evaluator {
                             let self_summon = available().any(|effect| effect.range & HAND != 0 && effect.category & SUMMON != 0);
                             if !self_summon { side[1] -= 0.65; }
                         }
-                        side[6] += effect_access(available(), HAND, None, data.is_spell() || data.is_trap());
+                        let deployment_blocked = main_backrow_full && (data.is_spell() || data.is_trap())
+                            && !data.is(types::FIELD);
+                        // A Spell/Trap can also have a distinct effect used
+                        // from hand without occupying a zone. Even category-
+                        // zero actions prevent calling the entire card stranded;
+                        // their unknown usefulness and conditions stay unknown.
+                        let has_hand_action = deployment_blocked && available().any(|effect| {
+                            effect.effect_type & ACTIVATED != 0 && effect.effect_type & kind::ACTIVATE == 0
+                                && range::normalize(effect.range) & HAND != 0
+                        });
+                        if deployment_blocked && !has_hand_action { side[1] -= 0.65; }
+                        side[6] += effect_access(available().filter(|effect| {
+                            !deployment_blocked || effect.effect_type & kind::ACTIVATE == 0
+                        }), HAND, None, data.is_spell() || data.is_trap());
                     }
                     Location::MonsterZone => {
                         side[0] += if data.is(types::TOKEN) { 0.3 } else { 1.0 };
@@ -716,6 +734,160 @@ mod tests {
     fn observation(cards: Vec<Value>) -> Value {
         json!({"me":0,"cards":cards,"life_points":[8000,8000],"turn_player":0,"phase":"Main2",
             "can_attack_known":true,"pile_sizes":[[0,"Deck",30],[1,"Deck",30]]})
+    }
+
+    fn congestion_evaluator() -> Evaluator {
+        let mut cards = MemoryCards::default();
+        for (code, card_kind) in [(3, types::SPELL), (5, types::SPELL | types::FIELD),
+            (6, types::TRAP), (7, types::SPELL), (8, types::SPELL), (9, types::SPELL),
+            (10, types::MONSTER)] {
+            cards.0.insert(code, CardData { code, kind: card_kind, ..Default::default() });
+        }
+        let mut evaluator = Evaluator::new(Arc::new(cards));
+        evaluator.set_profiles(&json!({
+            "3":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0}],
+            "5":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0}],
+            // An explicit Hand range on an ACTIVATE descriptor does not make
+            // activating the card independent of its required field slot.
+            "6":[{"category":category::SPECIAL_SUMMON,"effect_type":kind::ACTIVATE,"range":HAND}],
+            "7":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0},
+                {"category":category::SPECIAL_SUMMON,"effect_type":kind::IGNITION,"range":HAND}],
+            "8":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0},
+                {"category":0,"effect_type":kind::QUICK,"range":HAND}],
+            "9":[{"category":category::DRAW,"effect_type":kind::ACTIVATE,"range":0},
+                {"category":category::DRAW,"effect_type":kind::IGNITION,"range":GRAVE}]
+        })).unwrap();
+        evaluator
+    }
+
+    fn occupied_backrow(player: u8, count: u32) -> Vec<Value> {
+        (0..count).map(|sequence| {
+            // The original printed type is irrelevant to zone occupancy.
+            let mut stored = card(player,"SpellTrapZone",10,0);
+            stored["at"]["sequence"] = json!(sequence);
+            stored
+        }).collect()
+    }
+
+    #[test]
+    fn main_backrow_congestion_blocks_ordinary_hand_activation_on_either_seat() {
+        let evaluator = congestion_evaluator();
+        for player in 0..2 {
+            let mut cards = occupied_backrow(player,4);
+            let mut field = card(player,"SpellTrapZone",5,0);
+            field["at"]["sequence"] = json!(5);
+            cards.extend([field,card(player,"Hand",3,0),card(player,"Hand",6,0)]);
+            let mut value = observation(cards);
+            value["me"] = json!(player);
+            let four = evaluator.features(&value,player);
+            assert_eq!(four[1],0.0, "the Field Zone is not the fifth main slot");
+            let mut fifth = card(player,"SpellTrapZone",10,0);
+            fifth["at"]["sequence"] = json!(4);
+            value["cards"].as_array_mut().unwrap().push(fifth);
+            let five = evaluator.features(&value,player);
+            assert!((five[1] + 1.3).abs() < 1e-12);
+            assert!((four[6] - five[6] - 0.55).abs() < 1e-12);
+            assert_eq!(five[0] - four[0],1.0, "resource counting itself stays unchanged");
+            assert_eq!(five[1],-evaluator.features(&value,1-player)[1]);
+            // Congestion on the other player's field cannot block our hand.
+            value["cards"].as_array_mut().unwrap().iter_mut()
+                .filter(|card| card["at"]["location"] == "SpellTrapZone")
+                .for_each(|card| card["at"]["controller"] = json!(1-player));
+            assert_eq!(evaluator.features(&value,player)[1],0.0);
+        }
+    }
+
+    #[test]
+    fn full_main_backrow_preserves_field_spell_activation_and_replacement() {
+        let evaluator = congestion_evaluator();
+        for player in 0..2 {
+            let mut cards = occupied_backrow(player,5);
+            cards.push(card(player,"Hand",5,0));
+            let mut value = observation(cards);
+            value["me"] = json!(player);
+            let empty_field = evaluator.features(&value,player);
+            assert_eq!((empty_field[1],empty_field[6]),(0.0,0.35));
+            let mut field = card(player,"SpellTrapZone",5,0);
+            field["at"]["sequence"] = json!(5);
+            value["cards"].as_array_mut().unwrap().push(field);
+            let replacement = evaluator.features(&value,player);
+            assert_eq!((replacement[1],replacement[6]),(0.0,0.7));
+        }
+    }
+
+    #[test]
+    fn full_backrow_preserves_distinct_hand_effects_without_inventing_their_usefulness() {
+        let evaluator = congestion_evaluator();
+        for (code, stranded, access) in [(3,-0.65,0.0),(7,0.0,0.2),(8,0.0,0.0),(9,-0.65,0.0)] {
+            let mut cards = occupied_backrow(0,5);
+            cards.push(card(0,"Hand",code,0));
+            let value = observation(cards);
+            let features = evaluator.features(&value,0);
+            assert_eq!((features[1],features[6]),(stranded,access), "card {code}");
+        }
+        let mut cards = occupied_backrow(0,4);
+        cards.push(card(0,"Hand",7,0));
+        assert_eq!(evaluator.features(&observation(cards),0)[6],0.35,
+            "an available ordinary activation can still outrank a distinct Hand effect");
+    }
+
+    #[test]
+    fn congestion_never_infers_unknown_opponent_hand_card_types() {
+        let evaluator = congestion_evaluator();
+        let mut cards = occupied_backrow(1,5);
+        cards.push(card(1,"Hand",3,0));
+        let mut value = observation(cards);
+        let baseline = evaluator.features(&value,0);
+        assert_eq!((baseline[1],baseline[6]),(0.0,0.0));
+        for code in [5,6,7,8,9,10] {
+            value["cards"][5]["code"] = json!(code);
+            assert_eq!(evaluator.features(&value,0),baseline);
+            assert_eq!(evaluator.features(&value,1),baseline.map(|feature| -feature));
+        }
+    }
+
+    #[test]
+    fn recorded_full_backrow_shape_marks_blocked_hand_spells_stranded() {
+        // Development trace: seed 1109097477, seat 1, decision 252. Five
+        // stored monsters occupy every main slot while these four Spells
+        // remain in hand. There is no own Field Spell to release a stored card.
+        // Only printed types and descriptor categories are used here; no
+        // Crystal-specific conditions or card values enter the capacity rule.
+        let hand = [72881007,35486099,10004783,8275702];
+        let stored = [32710364,21698716,32933942,32710364,7093411];
+        let mut cards = MemoryCards::default();
+        for code in hand {
+            cards.0.insert(code,CardData { code,kind:types::SPELL,..Default::default() });
+        }
+        for code in stored {
+            cards.0.insert(code,CardData { code,kind:types::MONSTER | types::EFFECT,..Default::default() });
+        }
+        let mut evaluator = Evaluator::new(Arc::new(cards));
+        evaluator.set_profiles(&json!({
+            "72881007":[{"category":category::TO_GRAVE | category::SPECIAL_SUMMON,"effect_type":kind::ACTIVATE,"range":0,"has_cost":true}],
+            "35486099":[{"category":0x4000000u64,"effect_type":kind::ACTIVATE,"range":0}],
+            "10004783":[{"category":category::EQUIP,"effect_type":kind::ACTIVATE,"range":0}],
+            "8275702":[{"category":category::SPECIAL_SUMMON,"effect_type":kind::ACTIVATE,"range":0}]
+        })).unwrap();
+        let mut visible_cards: Vec<_> = stored.into_iter().enumerate().map(|(sequence,code)| {
+            let mut stored = card(1,"SpellTrapZone",code,0);
+            stored["at"]["sequence"] = json!(sequence);
+            stored
+        }).collect();
+        visible_cards.extend(hand.into_iter().enumerate().map(|(sequence,code)| {
+            let mut spell = card(1,"Hand",code,0);
+            spell["at"]["sequence"] = json!(sequence);
+            spell
+        }));
+        let mut value = observation(visible_cards);
+        value["me"] = json!(1);
+        let blocked = evaluator.features(&value,1);
+        assert!((blocked[1] + 2.6).abs() < 1e-12);
+        assert_eq!(blocked[6],0.0);
+        value["cards"][4]["at"]["location"] = json!("Graveyard");
+        let open = evaluator.features(&value,1);
+        assert_eq!(open[1],0.0);
+        assert!((open[6] - 0.32).abs() < 1e-12);
     }
 
     #[test]
