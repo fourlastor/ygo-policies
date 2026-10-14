@@ -11,11 +11,20 @@ Card-knowledge work is scoped to the original 71 decks: 951 distinct main/extra
 cards and another 17 cards occurring only in side decks. This is the coverage
 scope, not a claim that every card's strategic use is understood. Changes being
 developed after a run are not evidence about that run's frozen candidate.
-The v6 card-knowledge audit confirmed 45 explicit active-card entries: 18 general
+The v6 card-knowledge audit confirmed 45 active card identities with at least one
+explicit contextual rule: 18 general
 knowledge entries, 16 alternate-condition entries and 11 conversion entries.
 All belong to those 951 main/extra cards; the 17 side-only cards remain outside
 the current active-card scope. This partial knowledge was added after the frozen
 v4 experiments below, so their results cannot validate it.
+The [v7 coverage inventory](card-coverage-v7.json) raises this to 65 identities
+with explicit partial rules within the same 951-card active scope. Registry sizes
+are 18 general knowledge, 16 alternate conditions, 11 conversions, 17 requirements,
+four transactions and two material rules; overlaps produce 65 distinct cards.
+Initial action metadata exists for 822 cards: 751 have a categorized action and
+71 have only category-zero actions. Shared lookup facts cover 270 active cards.
+These overlapping counts describe available facts, not complete card semantics
+or measured playing strength.
 
 ## Changes from the first experiment
 
@@ -62,6 +71,8 @@ records binary fingerprints, engine/scripts, decks, seeds and settings.
 | All-root validation versus best-only MCTS, four decks | 14/32 | 11/32 | -9.38 points [-31.57, +12.82] |
 | Larger MCTS budgets versus smaller all-root MCTS, four decks | 11/32 | 19/32 | +25.00 points [+7.40, +42.60] |
 | v6 generic pilot versus v4, same 71-deck schedule | 369/1136 | 397/1136 | +2.46 points [+1.47, +3.46] |
+| v6 MCTS versus v4 MCTS, same 71-deck schedule | 129/284 | 134/284 | +1.76 points [-1.08, +4.60] |
+| v7 generic pilot versus v6, same 71-deck schedule | 397/1136 | 398/1136 | +0.09 points [-0.21, +0.39] |
 
 Intervals are paired normal 95% intervals over the exact deck/seed/seat schedule.
 The earlier pilot and beam intervals include zero. The small MCTS smoke has only 11
@@ -100,6 +111,35 @@ outcomes and worsened three, reaching 34.95% overall. This is a candidate and
 executable revision comparison, so the gain cannot be assigned to one new rule.
 Only 6/70 required decks met the observed 55% target and none cleared it by the
 Wilson lower confidence bound.
+The largest observed gains were Cloudian and Exodia, each 0/16 to 8/16, and
+Destiny Board, 4/16 to 11/16. Heroes was the only deck with a net decline, 6/16
+to 5/16. These counts describe this schedule, not card-by-card causal effects.
+
+With the same smaller MCTS configuration, v6 won 134/284 (47.18%) versus v4's
+129/284, improving 11 paired outcomes and worsening six. The interval includes
+zero. Only 19/70 required decks met the observed 55% target, and none cleared the
+Wilson lower confidence bound. Agents, Cloudian and Heroes each lost two wins
+out of four relative to v4 MCTS, while eleven other decks gained one each. All
+games and searches completed without errors or caps. All 35,193 retained root
+candidates were visited and 1,906/9,247 searched roots accepted a proposal (20.6%).
+These results compare candidate revisions with unchanged effective search settings;
+historical missing `validate_roots` and v6's recorded false are equivalent.
+
+The v7 plain run, frozen at `405d163`, won 398/1136 (35.04%) versus v6's 397/1136.
+Only three paired win indicators changed: Deckout improved 1/16 to 2/16,
+Infernity improved 8/16 to 9/16, and Fabled declined 5/16 to 4/16. The interval
+includes zero; this does not establish a strength improvement. Seven of 70
+required decks met the observed target, none cleared the Wilson lower bound,
+and all games completed without failures or caps.
+
+The v6 small/large roster runs overlap, and their shared CPU affinity was reduced
+during execution to logical CPUs 8–23, leaving four complete physical cores
+(logical CPUs 0–7) free for the user. `cpu-affinity-intervention.json` preserves
+the intervention log from `/tmp/ygo-search-cpu-limit.json`. Treat these runs as strength evidence only:
+their latency is not a controlled speed comparison. These runs use fixed work
+budgets and no time deadline. Future concurrent searches must share at most
+16 worker threads total and use `taskset -c 8-23` on this host. While a 12-worker
+run remains active, any new benchmark may use at most four workers.
 
 The beam smoke search latency was
 about 963 ms mean and 2947 ms p95 under four concurrent workers, well above the
@@ -132,8 +172,10 @@ searched decision under four workers, with no time deadline. All 32 games and
 their searches completed without failures or caps. This is a strength diagnostic,
 not a fast configuration.
 
-The latest recorded workspace run passed 361 enabled tests, with seven native
-fixtures ignored by the ordinary suite. The native planner tests separately
+The v6 workspace run passed 361 enabled tests, with seven native
+fixtures ignored by the ordinary suite. All seven native fixtures were then run
+separately with the frozen v6 binary and passed in 402.23 seconds under concurrent
+load; that elapsed time is not a performance benchmark. The native planner tests
 check material-target optimization, exact continuation replay, terminal/cap
 semantics, and state restoration; the host test checks two deterministic real
 mirror games and replays their recorded actual responses. Fixed-validation
@@ -142,6 +184,9 @@ The policy library's clone operation preserves state and response while avoiding
 copying disposable JSON scratch.
 Separate native MCTS checks cover deterministic hidden-world search, continuation
 replay, budgets, and the all-root validation path; these do not establish strength.
+A subsequent v7 workspace run passed 392 enabled tests with the same seven native
+fixtures ignored by that ordinary run; it does not replace the separate v6 native
+validation above.
 
 Archived completed raw runs are stored as `.jsonl.gz`; metadata and summaries retain their
 original names. `archive-manifest.json` records original byte counts and SHA-256
@@ -155,7 +200,9 @@ terminal validation. Do not pool these modes.
 ## Reproduce
 
 Build and freeze the candidate separately from the frozen baseline. Use new
-output paths; the runner rejects overwriting results.
+output paths; the runner rejects overwriting results. On this host, prefix each
+benchmark command below with `taskset -c 8-23` and keep the sum of worker counts
+across concurrent runs at or below 16.
 
 ```sh
 cargo build --release -p ygo-policies-ffi -p ygo-policies-bench
