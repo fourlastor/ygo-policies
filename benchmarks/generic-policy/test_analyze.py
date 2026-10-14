@@ -2,6 +2,7 @@
 import contextlib
 import copy
 import io
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
@@ -251,6 +252,56 @@ class OpponentEvidenceTests(unittest.TestCase):
                     summary["overall"][counter] = summary["matchups"][0][counter] = 1
                     with self.assertRaisesRegex(ValueError, "opponent tree activity requires adversarial"):
                         self.load_fixture(meta, rows, summary)
+
+
+class LegacyPerformanceCompatibilityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        path = Path(__file__).resolve().parent.parent / "generic-policy-v2/summarize_perf_v9.py"
+        spec = importlib.util.spec_from_file_location("perf_summary", path)
+        cls.helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.helper)
+
+    def reports(self):
+        current = {"identities": {"deck": {"control": analyze.identity(metadata())}}, "timing": 123}
+        saved = copy.deepcopy(current)
+        old = saved["identities"]["deck"]["control"]
+        del old["search_opponent_model_source"]
+        del old["mcts_adversarial_opponent_source"]
+        del old["search"]["opponent_model"]
+        del old["search"]["mcts"]["adversarial_opponent"]
+        return current, saved
+
+    def test_only_expected_new_inferences_are_projected(self):
+        current, saved = self.reports()
+        original = copy.deepcopy(current)
+        self.assertEqual(self.helper.legacy_report_projection(current, saved), saved)
+        self.assertEqual(current, original)
+        current["timing"] += 1
+        self.assertNotEqual(self.helper.legacy_report_projection(current, saved), saved)
+
+    def test_recorded_or_nondefault_settings_are_never_hidden(self):
+        for source in ("search_opponent_model_source", "mcts_adversarial_opponent_source"):
+            current, saved = self.reports()
+            current["identities"]["deck"]["control"][source] = "recorded"
+            with self.assertRaisesRegex(ValueError, "Unexpected historical identity"):
+                self.helper.legacy_report_projection(current, saved)
+        for value in (True, 0):
+            current, saved = self.reports()
+            current["identities"]["deck"]["control"]["search"]["mcts"]["adversarial_opponent"] = value
+            with self.assertRaisesRegex(ValueError, "Unexpected historical identity"):
+                self.helper.legacy_report_projection(current, saved)
+        current, saved = self.reports()
+        current["identities"]["deck"]["control"]["search"]["opponent_model"] = "specialist"
+        with self.assertRaisesRegex(ValueError, "Unexpected historical identity"):
+            self.helper.legacy_report_projection(current, saved)
+
+    def test_unmeasured_counters_are_omitted_not_zero_filled(self):
+        rows = [{"game": {"old": 1}}, {"game": {"old": 2}}]
+        self.assertEqual(self.helper.recorded_counter_totals(rows, ["old", "new"]), {"old": 3})
+        rows[0]["game"]["new"] = 0
+        with self.assertRaisesRegex(ValueError, "Incomplete historical counter"):
+            self.helper.recorded_counter_totals(rows, ["old", "new"])
 
 
 if __name__ == "__main__":

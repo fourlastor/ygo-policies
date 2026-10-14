@@ -29,6 +29,15 @@ The [v8 inventory](card-coverage-v8.json), frozen at `3faafa3`, contains 67 such
 identities, adding partial rules for Honest and Black Rose Dragon. Its registries
 include five transaction entries and one combat entry; other registry sizes and
 the 951-card scope are unchanged. This remains partial contextual knowledge.
+The [v10 inventory](card-coverage-v10.json), frozen at `9574b13`, records 117
+distinct registry IDs. Applying the policy's near-alias lookup covers 119 active
+passcode rows, including the alternate Honest and Black Rose Dragon passcodes.
+Of these, 109 have ordinary-policy facts and 11 have search battle-evaluator
+facts, with one overlapping card. All registry IDs are inside the same 951-card
+pool. The inventory's 23 compiled-source fingerprints match the frozen commit;
+its 71 deck files and per-card coverage totals were checked. These are overlapping
+partial facts, not complete card models, and search-only facts do not improve
+ordinary plain play by themselves.
 
 ## Changes from the first experiment
 
@@ -80,6 +89,8 @@ records binary fingerprints, engine/scripts, decks, seeds and settings.
 | v8 generic pilot versus v7, same 71-deck schedule | 398/1136 | 420/1136 | +1.94 points [+0.85, +3.02] |
 | v6 larger MCTS budgets and all-root validation versus v6 small MCTS, all 71 decks | 134/284 | 156/284 | +7.75 points [+1.47, +14.02] |
 | v8 small MCTS versus v6 small MCTS, same 71-deck schedule | 134/284 | 151/284 | +5.99 points [-0.35, +12.32] |
+| v10 generic pilot versus v8, same 71-deck schedule | 420/1136 | 440/1136 | +1.76 points [+0.92, +2.60] |
+| v10 small MCTS versus v8 small MCTS, same 71-deck schedule | 151/284 | 151/284 | 0.00 points [-3.39, +3.39] |
 
 Intervals are paired normal 95% intervals over the exact deck/seed/seat schedule.
 The earlier pilot and beam intervals include zero. The small MCTS smoke has only 11
@@ -196,6 +207,42 @@ examples use candidate seat 0 and zero-based trace indices:
 Several fixes changed together and the game paths diverge, so these are behavior
 checks, not isolated causal evidence that any one fix produced the extra wins.
 
+The [v10 plain comparison](pilot-v10-comparison.json), frozen at `9574b13`, won
+440/1136 (38.73%) versus v8's 420/1136. It improved 22 paired win indicators,
+worsened two and left 1112 unchanged on the same 16-games-per-deck development
+schedule. Both library and executable revisions changed; all fixed inputs and
+recorded configuration matched. Both runs disabled search, so this result does
+not validate the new MCTS proposal or battle-evaluation changes. Several plain
+policy rules changed together, preventing attribution to one card rule.
+Nurse rose from 2/16 to 8/16; Chain Burn, Genex and Lightsworn each gained two
+wins, while Gemini declined from 6/16 to 5/16. Only 9/70 required decks met the
+observed target and none passed the Wilson lower-bound target. All 1136 games
+completed without failures or caps. The run used eight workers alongside a
+native test, so its latency is not a controlled performance comparison.
+
+The [v10 small-MCTS roster](mcts-v10-roster-comparison.json) also finished at
+151/284 (53.17%), matching v8's aggregate score with 12 improved paired win
+indicators, 12 regressed and 260 unchanged. Its paired interval is [-3.39, +3.39]
+percentage points; the result does not establish aggregate improvement. Search
+configuration and fixed inputs matched, while both candidate and executable
+revisions changed. The observed target count remains 25/70 and the Wilson
+lower-bound count remains zero. Naturia fell from 3/4 to 1/4; nine decks gained
+one win each. Four games per deck cannot establish per-deck changes in strength.
+All live games and 1,248,128 proposal simulations completed with zero failures,
+caps, proposal cutoffs or unresolved validation trials. All 36,381 retained root
+actions were visited and 1,925/9,751 searches accepted a proposal (19.7%). Search
+latency was 1013 ms median and 2299 ms p95 under 12 concurrent workers; its load
+and worker count differ from v8, so this is not a controlled speed comparison.
+
+The [snapshot-copy report](mcts-v10-snapshot-metrics.json) covers all 9,751 searched
+roots, each with 11 snapshots and 147 restores. The largest native image copied
+within each root had a median size of 3.59 MB, p95 of 9.55 MB and maximum of
+42.17 MB. Total logical payload was 470.885 GB copied into snapshots and
+6294.238 GB restored, or 6.765 TB combined, averaging 693.79 MB per root. Units
+here are decimal. These are counted native payload bytes, not hardware bandwidth,
+total allocation or resident-memory measurements, and do not identify the share
+of runtime spent copying.
+
 The v6 small/large roster runs overlap, and their shared CPU affinity was reduced
 during execution to logical CPUs 8–23, leaving four complete physical cores
 (logical CPUs 0–7) free for the user. `cpu-affinity-intervention.json` preserves
@@ -260,6 +307,10 @@ fixtures ignored by that ordinary run; it does not replace the separate v6 nativ
 validation above.
 The native host test for validated MCTS continuations and deterministic replay
 also passed with the frozen v8 library (one test, 85.97 seconds under load).
+The frozen v10 native MCTS replay test also passed (72.47 seconds), including
+snapshot-copy metrics for each searched root. These counters measure successful
+native snapshot/restore calls and logical payload bytes, not measured hardware
+memory bandwidth or total process memory use.
 
 Archived completed raw runs are stored as `.jsonl.gz`; metadata and summaries retain their
 original names. `archive-manifest.json` records original byte counts and SHA-256

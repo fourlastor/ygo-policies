@@ -5,6 +5,7 @@ Uses the unchanged measurement runner to revalidate all evidence and reproduce
 comparison.json in memory. It launches no games and does not modify input files.
 """
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import sys
@@ -16,6 +17,43 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 
 
+def legacy_report_projection(reconstructed, saved):
+    """Remove only newly inferred defaults absent from the original identities."""
+    result = copy.deepcopy(reconstructed)
+    for deck, variants in saved["identities"].items():
+        for variant, old in variants.items():
+            current = result["identities"][deck][variant]
+            for source, container, field, expected_source, expected in (
+                ("search_opponent_model_source", "search", "opponent_model",
+                 "inferred_legacy_generic_opponent", "generic"),
+                ("mcts_adversarial_opponent_source", "mcts", "adversarial_opponent",
+                 "inferred_legacy_viewer_only", False),
+            ):
+                if source in old:
+                    continue
+                previous_settings = old["search"] if container == "search" else old["search"]["mcts"]
+                current_settings = current["search"] if container == "search" else current["search"]["mcts"]
+                if (field in previous_settings or current.get(source) != expected_source
+                        or type(current_settings.get(field)) is not type(expected)
+                        or current_settings[field] != expected):
+                    raise ValueError(f"Unexpected historical identity difference: {source}")
+                del current[source]
+                del current_settings[field]
+    return result
+
+
+def recorded_counter_totals(rows, counters):
+    totals = {}
+    for key in counters:
+        present = [key in row["game"] for row in rows]
+        if not any(present):
+            continue  # Older binaries did not measure this counter.
+        if not all(present):
+            raise ValueError(f"Incomplete historical counter: {key}")
+        totals[key] = sum(row["game"][key] for row in rows)
+    return totals
+
+
 def summarize(directory):
     directory = directory.resolve()
     manifest = json.loads((directory / "manifest.json").read_text())
@@ -23,7 +61,8 @@ def summarize(directory):
         raise ValueError("Measurement runner source changed since execution")
     comparison = json.loads((directory / "comparison.json").read_text())
     def verify_report(path, reconstructed):
-        if path != directory / "comparison.json" or json.loads(json.dumps(reconstructed)) != comparison:
+        normalized = legacy_report_projection(json.loads(json.dumps(reconstructed)), comparison)
+        if path != directory / "comparison.json" or normalized != comparison:
             raise ValueError("Saved comparison does not reproduce exactly")
     runner.write_new = verify_report
     runner.report(directory)
@@ -77,8 +116,7 @@ def summarize(directory):
         "frozen_variants": comparison["frozen_variants"],
         "exact_non_timing_parity": comparison["exact_non_timing_parity"],
         "game_pairs": comparison["matched_pairs"],
-        "identical_counter_totals_per_variant": {key: sum(row["game"][key] for row in control_games)
-                                                  for key in analysis.TELEMETRY_COUNTERS},
+        "identical_counter_totals_per_variant": recorded_counter_totals(control_games, analysis.TELEMETRY_COUNTERS),
         "groups": groups,
         "per_deck_scheduling": {deck: {variant: states[(deck, variant)] for variant in runner.VARIANTS}
                                 for deck in runner.DECKS},
