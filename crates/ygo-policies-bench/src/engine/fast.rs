@@ -1,6 +1,7 @@
 //! Bounded rollout, transaction-beam and information-set MCTS search.
 //!
-//! Both simulated players use the generic policy. Alternatives share sampled
+//! By default both simulated players use Generic; an explicit benchmark switch
+//! can instead simulate the supplied specialist. Alternatives share sampled
 //! hidden worlds, and only complete rounds contribute to their comparison.
 //! The time budget is checked between engine steps; one engine call may overrun
 //! it. Hidden-card sampling currently assumes the opponent's deck composition
@@ -44,6 +45,9 @@ pub struct FastOptions {
     pub mcts_worlds: usize,
     /// Compare each measured root with the frozen continuation on common worlds.
     pub mcts_validate_roots: bool,
+    /// Benchmark diagnostic: simulate the supplied opposing specialist instead
+    /// of Generic. Uses public history and sampled cards, never its live memory.
+    pub specialist_opponent: bool,
 }
 
 #[derive(Default)]
@@ -74,6 +78,9 @@ struct Stats {
     mcts_nodes: u64,
     mcts_steps: u64,
     mcts_tree_hits: u64,
+    mcts_opponent_nodes: u64,
+    mcts_opponent_actions: u64,
+    mcts_opponent_tree_hits: u64,
     mcts_cutoffs: u64,
     mcts_live_hits: u64,
     mcts_live_missing: u64,
@@ -231,7 +238,8 @@ enum Trial {
 }
 
 struct Context<'a> {
-    library: &'a PolicyLibrary,
+    model_library: &'a PolicyLibrary,
+    model_name: &'a str,
     cards: &'a Path,
     viewer: u8,
     seed: u64,
@@ -241,7 +249,7 @@ struct Context<'a> {
     evaluator: Option<Evaluator>,
 }
 
-/// Build a generic opponent from public events only. Replaying the real
+/// Build the selected opponent model from public events only. Replaying the real
 /// opponent's private prompts would let its actual hand influence memory even
 /// after sampling a different hand, so spectator redaction deliberately drops
 /// every historical choice and hides every private draw/update.
@@ -251,13 +259,18 @@ fn public_opponent<'a>(
     decisions: usize,
 ) -> Result<LibrarySeat<'a>> {
     let player = 1 - context.viewer as usize;
-    let seat = context.library.seat(
-        "generic",
+    let seat = context.model_library.seat(
+        context.model_name,
         context.cards,
         player as i32,
         context.seed ^ (decisions as u64).wrapping_mul(0xD1B54A32D192ED03),
     )?;
-    if let Some(profiles) = &context.profiles { seat.set_effect_profiles(profiles)?; }
+    if !context.options.specialist_opponent {
+        if let Some(profiles) = &context.profiles { seat.set_effect_profiles(profiles)?; }
+    }
+    if context.options.mcts.is_some_and(|options| options.adversarial_opponent) {
+        seat.enable_response_overrides()?;
+    }
     seat.feed_buffer(&public_history(&logs[player])?)?;
     Ok(seat)
 }
@@ -895,6 +908,9 @@ fn choose_mcts_measured(
         stats.mcts_nodes += searched.stats.nodes as u64;
         stats.mcts_steps += searched.stats.steps as u64;
         stats.mcts_tree_hits += searched.stats.tree_hits as u64;
+        stats.mcts_opponent_nodes += searched.stats.opponent_nodes as u64;
+        stats.mcts_opponent_actions += searched.stats.opponent_actions as u64;
+        stats.mcts_opponent_tree_hits += searched.stats.opponent_tree_hits as u64;
         stats.mcts_cutoffs += searched.stats.cutoffs as u64;
         stats.failed_playouts += searched.stats.failed as u64;
         for error in &searched.stats.errors { stats.error(error.clone()); }
@@ -1006,6 +1022,9 @@ pub fn play_fast(
     run: PlayOptions,
     fast: FastOptions,
 ) -> Result<serde_json::Value> {
+    if fast.specialist_opponent && fast.mcts.is_some_and(|options| options.adversarial_opponent) {
+        return Err("Specialist opponent diagnostics cannot be combined with adversarial opponent UCT".into());
+    }
     if fast.planner.is_some() && fast.mcts.is_some() { return Err("Choose beam or MCTS, not both".into()); }
     if fast.mcts.is_some_and(|p| p.iterations == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0)
         || fast.mcts.is_some() && fast.mcts_worlds == 0 {
@@ -1038,6 +1057,9 @@ pub fn play_fast(
         return Err(
             "Generic search requires snapshots, random reseeding, positive worlds and at least two candidates".into(),
         );
+    }
+    if fast.specialist_opponent && fast.max_playouts > 0 && !policies[1 - fast.searcher].can_fork() {
+        return Err("Specialist opponent diagnostics require a copyable baseline policy library".into());
     }
     let PlayOptions {
         seed,
@@ -1084,7 +1106,8 @@ pub fn play_fast(
         Some(evaluator)
     } else { None };
     let context = Context {
-        library: policies[fast.searcher],
+        model_library: policies[if fast.specialist_opponent { 1 - fast.searcher } else { fast.searcher }],
+        model_name: if fast.specialist_opponent { names[1 - fast.searcher] } else { "generic" },
         cards,
         viewer: fast.searcher as u8,
         seed,
@@ -1167,6 +1190,9 @@ pub fn play_fast(
                 ("mcts_nodes", stats.mcts_nodes),
                 ("mcts_steps", stats.mcts_steps),
                 ("mcts_tree_hits", stats.mcts_tree_hits),
+                ("mcts_opponent_nodes", stats.mcts_opponent_nodes),
+                ("mcts_opponent_actions", stats.mcts_opponent_actions),
+                ("mcts_opponent_tree_hits", stats.mcts_opponent_tree_hits),
                 ("mcts_cutoffs", stats.mcts_cutoffs),
                 ("mcts_live_hits", stats.mcts_live_hits),
                 ("mcts_live_missing", stats.mcts_live_missing),
@@ -1175,6 +1201,12 @@ pub fn play_fast(
                 ("mcts_root_actions", stats.mcts_root_actions),
                 ("mcts_visited_root_actions", stats.mcts_visited_root_actions),
             ] { row[key] = serde_json::json!(value); }
+            row["search_opponent_model"] = serde_json::json!(if fast.specialist_opponent { "specialist" } else { "generic" });
+            if fast.specialist_opponent {
+                row["search_information"] = serde_json::json!("known deck composition and specialist opponent policy; sampled hidden arrangement and future RNG; public-history model memory");
+            } else if fast.mcts.is_some_and(|options| options.adversarial_opponent) {
+                row["search_information"] = serde_json::json!("known deck composition; sampled hidden arrangement and future RNG; pessimistic sampled-world opponent UCT proposals; Generic opponent validation");
+            }
             row["mcts_snapshot_copies"] = serde_json::Value::Array(stats.snapshot_copies.iter().map(|metrics| {
                 serde_json::json!({
                     "snapshots": metrics.snapshots, "restores": metrics.restores,
@@ -1363,6 +1395,107 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "load native policy libraries; cheap public-history specialist fixture"]
+    fn specialist_public_history_uses_sampled_hand_and_forks_without_new_ffi_hooks() {
+        use ygo_policies_ocgcore::wire::{location, Writer};
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let candidate_path = std::env::var_os("YGO_MCTS_TEST_LIBRARY")
+            .map(std::path::PathBuf::from).unwrap_or_else(|| root.join(format!(
+                "target/release/{}ygo_policies{}", std::env::consts::DLL_PREFIX,
+                std::env::consts::DLL_SUFFIX)));
+        let opponent_path = std::env::var_os("YGO_MCTS_TEST_OPPONENT")
+            .map(std::path::PathBuf::from).unwrap_or_else(|| candidate_path.clone());
+        let candidate = PolicyLibrary::open(&candidate_path).unwrap();
+        let opponent = PolicyLibrary::open(&opponent_path).unwrap();
+        assert!(opponent.can_fork());
+        let context = Context {
+            model_library: &opponent, model_name: "demise", cards: &cards,
+            viewer: 0, seed: 2472000, limit: 8192,
+            options: FastOptions {
+                searcher: 0, worlds: 4, depth: 1, max_candidates: 8,
+                max_playouts: 256, horizon: 1, millis: 0, strict: true,
+                effects: true, planner: None,
+                mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
+                    decisions: 384, replies: 1, terminal: false, adversarial_opponent: false }),
+                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true,
+            },
+            // Nonempty metadata must not be sent to the old specialist ABI.
+            profiles: Some(serde_json::json!({"95492061":[]})), evaluator: None,
+        };
+        let hand_update = |code| {
+            let record = Writer::default().u16(8).u32(query::CODE).u32(code)
+                .u16(8).u32(query::POSITION).u32(position::FACEDOWN_DEFENSE)
+                .u16(4).u32(query::END).0;
+            let mut update = Writer::default().u8(msg::UPDATE_DATA).u8(1).u8(location::HAND)
+                .u32(record.len() as u32).0;
+            update.extend(record);
+            update
+        };
+        let history = |private_code| {
+            let messages = [
+                message::start_message(1, [8000; 2], [40; 2], [0; 2]),
+                Writer::default().u8(msg::DRAW).u8(1).u32(1).u32(private_code)
+                    .u32(position::FACEDOWN_DEFENSE).0,
+                hand_update(private_code),
+                Writer::default().u8(msg::SELECT_OPTION).u8(1).u8(2)
+                    .u64(u64::from(private_code)).u64(1).0,
+                Writer::default().u8(msg::LPUPDATE).u8(0).u32(7600).0,
+                Writer::default().u8(msg::NEW_TURN).u8(0).0,
+                Writer::default().u8(msg::NEW_TURN).u8(1).0,
+                Writer::default().u8(msg::NEW_PHASE).u16(0x04).0,
+            ];
+            let mut logs = [Vec::new(), Vec::new()];
+            for bytes in messages {
+                logs[1].extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+                logs[1].extend(bytes);
+            }
+            logs
+        };
+        let first = public_opponent(&context, &history(72426662), 17).unwrap();
+        let second = public_opponent(&context, &history(46427957), 17).unwrap();
+        let public = first.observation().unwrap();
+        assert_eq!(public, second.observation().unwrap());
+        assert_eq!(public["life_points"][0], 7600, "public events must be retained");
+        assert!(first.last_answer().unwrap().is_null());
+        assert!(second.last_answer().unwrap().is_null(), "private historical prompts must never be answered");
+        assert!(public["cards"].as_array().unwrap().iter().all(|card| card["code"].is_null()));
+
+        // This is the hand refresh used after hidden-world sampling. Exercise
+        // paired updates across the actual old/new library boundary as well.
+        let viewers: Vec<_> = (0..2).map(|_| candidate.seat("generic", &cards, 0, 2472000).unwrap()).collect();
+        let sampled = hand_update(95492061); // Manju, unlike either historical private card.
+        for (viewer, model) in viewers.iter().zip([&first, &second]) {
+            viewer.feed(&message::start_message(0, [8000; 2], [40; 2], [0; 2])).unwrap();
+            viewer.feed_update_pair(model, &sampled).unwrap();
+            let observation = model.observation().unwrap();
+            let hand: Vec<_> = observation["cards"].as_array().unwrap().iter()
+                .filter(|card| card["at"]["controller"] == 1 && card["at"]["location"] == "Hand")
+                .map(|card| card["code"].clone()).collect();
+            assert_eq!(hand, vec![serde_json::json!(95492061)]);
+            assert!(viewer.observation().unwrap()["cards"].as_array().unwrap().iter()
+                .all(|card| card["code"].is_null()), "sampled opponent hand stays hidden from the root viewer");
+        }
+        let first_fork = first.fork().unwrap();
+        let second_fork = second.fork().unwrap();
+        let mut idle = Writer::default().u8(msg::SELECT_IDLECMD).u8(1)
+            .u32(1).u32(95492061).u8(1).u8(location::HAND).u32(0);
+        for _ in 0..5 { idle = idle.u32(0); }
+        let idle = idle.u8(0).u8(1).u8(0).0;
+        let mut answers = Vec::new();
+        for model in [&first, &second, &first_fork, &second_fork] {
+            assert_eq!(model.feed(&idle).unwrap(), Some(0u32.to_le_bytes().to_vec()),
+                "Demise should summon sampled Manju");
+            answers.push(model.last_answer().unwrap());
+        }
+        assert!(answers.windows(2).all(|pair| pair[0] == pair[1]),
+            "private histories and model forks must produce identical sampled decisions");
+        let selected = &answers[0]["decision"]["choices"][answers[0]["choice"].as_u64().unwrap() as usize];
+        assert_eq!(selected["kind"], "NormalSummon");
+        assert_eq!(selected["card"]["code"], 95492061);
+    }
+
+    #[test]
     fn shortlist_retains_different_action_kinds() {
         let mut choices = Vec::new();
         let mut responses = Vec::new();
@@ -1447,7 +1580,7 @@ mod tests {
             effects: false,
             planner: None,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false,
         };
         let first = play_fast(
             &core,
@@ -1518,7 +1651,7 @@ mod tests {
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
@@ -1555,6 +1688,16 @@ mod tests {
     #[test]
     #[ignore = "build the release policy library first; native MCTS integration"]
     fn mcts_adapter_executes_validated_conditionals_and_replays_deterministically() {
+        check_mcts_adapter(false);
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first; native specialist-model integration"]
+    fn mcts_specialist_model_replays_without_requiring_new_opponent_ffi_hooks() {
+        check_mcts_adapter(true);
+    }
+
+    fn check_mcts_adapter(specialist_opponent: bool) {
         let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         let cards = root.join("vendor/BabelCdb/cards.cdb");
         let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
@@ -1578,10 +1721,10 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
-                replies: 1, terminal: false,
+                replies: 1, terminal: false, adversarial_opponent: false,
             }),
         };
         let play = || play_fast(
@@ -1600,6 +1743,10 @@ mod tests {
                 "no {key}; digest={}, errors={}", first["digest"], first["search_errors"]);
         }
         for result in [&first, &second] {
+            assert_eq!(result["search_opponent_model"], if specialist_opponent { "specialist" } else { "generic" });
+            for key in ["mcts_opponent_nodes", "mcts_opponent_actions", "mcts_opponent_tree_hits"] {
+                assert_eq!(result[key], 0, "opponent UCT must remain disabled: {key}");
+            }
             assert_eq!(result["failed_playouts"], 0, "{}", result["search_errors"]);
             assert_eq!(result["failed_searches"], 0, "{}", result["search_errors"]);
             assert_eq!(result["limit"], false);
@@ -1647,10 +1794,10 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
-                replies: 1, terminal: false,
+                replies: 1, terminal: false, adversarial_opponent: false,
             }),
         };
         let result = play_fast(

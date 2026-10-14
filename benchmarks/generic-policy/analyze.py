@@ -82,6 +82,30 @@ def mcts_root_validation(metadata):
     return mcts["validate_roots"], "recorded"
 
 
+def mcts_adversarial_opponent(metadata):
+    mcts = metadata["search"].get("mcts")
+    if mcts is None:
+        return None, "not_applicable"
+    if not isinstance(mcts, dict):
+        raise ValueError("search.mcts must be an object or null")
+    if "adversarial_opponent" not in mcts:
+        # Historical MCTS branched only the root viewer's choices. The other
+        # seat followed its configured rollout policy without opponent nodes.
+        return False, "inferred_legacy_viewer_only"
+    if type(mcts["adversarial_opponent"]) is not bool:
+        raise ValueError("search.mcts.adversarial_opponent must be a recorded boolean")
+    return mcts["adversarial_opponent"], "recorded"
+
+
+def search_opponent_model(metadata):
+    search = metadata["search"]
+    if "opponent_model" not in search:
+        return "generic", "inferred_legacy_generic_opponent"
+    if search["opponent_model"] not in ("generic", "specialist"):
+        raise ValueError("search.opponent_model must be generic or specialist")
+    return search["opponent_model"], "recorded"
+
+
 def recorded_configuration(metadata):
     effects = metadata.get("effect_profiles")
     if "effect_profiles" in metadata and type(effects) is not bool:
@@ -90,6 +114,7 @@ def recorded_configuration(metadata):
         raise ValueError("search configuration must be an object")
     search = dict(metadata["search"])
     search["validation"], _ = search_validation(metadata)
+    search["opponent_model"], _ = search_opponent_model(metadata)
     if "method" in search and search["method"] not in ("rollout", "beam", "mcts"):
         raise ValueError("search.method must be rollout, beam or mcts")
     beam = search.get("beam")
@@ -116,8 +141,14 @@ def recorded_configuration(metadata):
             raise ValueError("search.mcts settings require method=mcts and no beam settings")
         search["mcts"] = dict(mcts)
         search["mcts"]["validate_roots"], _ = mcts_root_validation(metadata)
+        search["mcts"]["adversarial_opponent"], _ = mcts_adversarial_opponent(metadata)
     if search.get("method") == "mcts" and mcts is None:
         raise ValueError("MCTS search requires its recorded search.mcts settings")
+    if mcts is not None and search["mcts"]["adversarial_opponent"] and (
+            metadata["plain"] or search["opponent_model"] != "generic"):
+        raise ValueError("Adversarial opponent proposals require MCTS search with the generic opponent model")
+    if metadata["plain"] and search["opponent_model"] == "specialist":
+        raise ValueError("The specialist opponent model requires search")
     configuration = {"plain": metadata["plain"], "search": search}
     if "effect_profiles" in metadata:
         configuration["effect_profiles"] = effects
@@ -139,7 +170,9 @@ def configuration_changes(before_metadata, after_metadata):
     result = differences(recorded_configuration(before_metadata), recorded_configuration(after_metadata))
     for change in result:
         source_reader = {"search.validation": search_validation,
-                         "search.mcts.validate_roots": mcts_root_validation}.get(change["field"])
+                         "search.mcts.validate_roots": mcts_root_validation,
+                         "search.mcts.adversarial_opponent": mcts_adversarial_opponent,
+                         "search.opponent_model": search_opponent_model}.get(change["field"])
         if source_reader:
             for side, metadata in (("before", before_metadata), ("after", after_metadata)):
                 _, source = source_reader(metadata)
@@ -165,6 +198,8 @@ def identity(metadata):
         "search_validation_source": search_validation(metadata)[1],
         "search_validation_note": metadata.get("validation_note"),
         "mcts_root_validation_source": mcts_root_validation(metadata)[1],
+        "mcts_adversarial_opponent_source": mcts_adversarial_opponent(metadata)[1],
+        "search_opponent_model_source": search_opponent_model(metadata)[1],
         "seed": metadata["seed"],
         "games_per_matchup": metadata["games_per_matchup"],
         "workers": metadata["workers"],
@@ -183,6 +218,8 @@ def expected_schedule(metadata):
     return expected
 
 
+OPPONENT_COUNTERS = ("mcts_opponent_nodes", "mcts_opponent_actions", "mcts_opponent_tree_hits")
+
 TELEMETRY_COUNTERS = (
     "failed_playouts", "failed_searches", "searched", "playouts", "budget_exhausted",
     "incomplete_worlds", "truncated_playouts", "in_chain", "facing_set", "inner_playouts",
@@ -193,7 +230,7 @@ TELEMETRY_COUNTERS = (
     "mcts_nodes", "mcts_steps", "mcts_tree_hits", "mcts_cutoffs", "mcts_live_hits",
     "mcts_live_missing", "mcts_frozen_actions", "mcts_accepted", "mcts_root_actions",
     "mcts_visited_root_actions",
-)
+) + OPPONENT_COUNTERS
 
 
 def validate_telemetry(rows, summary, label):
@@ -206,7 +243,7 @@ def validate_telemetry(rows, summary, label):
         values = [row["game"][counter] for row in rows]
         if any(type(value) is not int or value < 0 for value in values):
             raise ValueError(f"{label}: invalid telemetry for {counter}")
-        if summary[counter] != sum(values):
+        if type(summary[counter]) is not int or summary[counter] != sum(values):
             raise ValueError(f"{label}: stale telemetry total for {counter}")
     for raw, aggregate in (("decision_ms", "decision_latency_ms"),
                            ("search_decision_ms", "search_latency_ms")):
@@ -270,6 +307,19 @@ def load(path):
             raise ValueError(f"{path}: invalid, capped or failed game/search at {key}")
         if row.get("candidate_policy") != metadata["candidate_policy"] or row.get("plain") != metadata["plain"]:
             raise ValueError(f"{path}: row/metadata candidate configuration differs at {key}")
+        opponent_model, _ = search_opponent_model(metadata)
+        if ("opponent_model" in metadata["search"]
+                and "search_opponent_model" not in row and "search_opponent_model" not in game):
+            raise ValueError(f"{path}: missing raw search_opponent_model at {key}")
+        for recorded in (row, game):
+            if ("search_opponent_model" in recorded
+                    and recorded["search_opponent_model"] != opponent_model):
+                raise ValueError(f"{path}: row/metadata search_opponent_model differs at {key}")
+        if mcts_adversarial_opponent(metadata)[0] is True:
+            if any(counter not in game for counter in OPPONENT_COUNTERS):
+                raise ValueError(f"{path}: missing adversarial opponent telemetry at {key}")
+        elif any(game.get(counter, 0) != 0 for counter in OPPONENT_COUNTERS):
+            raise ValueError(f"{path}: opponent tree activity requires adversarial mode at {key}")
         for field in ("effect_profiles", "search"):
             if field in row and (field not in metadata or row[field] != metadata[field]):
                 raise ValueError(f"{path}: row/metadata {field} differs at {key}")
@@ -388,6 +438,7 @@ def main(paths, allow_candidate_change=False, allow_metadata_ablation=()):
             not change[side + "_recorded"]
             and change.get(side + "_source") not in (
                 "inferred_from_rollout_horizon", "inferred_legacy_best_only",
+                "inferred_legacy_viewer_only", "inferred_legacy_generic_opponent",
             )
             for change in differences for side in ("before", "after")
         )

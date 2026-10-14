@@ -5,6 +5,10 @@
 //! finish the rollout. The frozen policy is a proposal, not a demonstrated
 //! improvement: callers must validate it against an unchanged generic control
 //! on separate common worlds before executing any of its actions.
+//! Optional opponent UCT is a pessimistic sampled-world proposal model: its
+//! values condition on the root player's known hand, not the opponent's own
+//! belief. Actor-redacted keys prevent accidental identity mixing but do not
+//! make this model an actor-fair determinization. Frozen validation stays Generic.
 use super::planner::{prompt_signature, resolve_action, PlannedAction};
 use super::*;
 use serde_json::Value;
@@ -19,11 +23,16 @@ pub struct Options {
     pub decisions: usize,
     pub replies: usize,
     pub terminal: bool,
+    /// Expand minimizing opponent nodes during proposals, within the existing
+    /// node/iteration limits. Frozen validation always uses Generic opponents.
+    pub adversarial_opponent: bool,
 }
 
 /// The caller samples these worlds without consulting their hidden contents
 /// when choosing actions. Seats must have pending root answers, and the viewer
 /// must have response overrides enabled before receiving that prompt.
+/// With adversarial_opponent, the other seat must also enable overrides before
+/// its first prompt. Enabling after an answer is pending cannot recover memory.
 pub(super) struct World<'a> {
     pub snapshot: Snapshot,
     pub seats: Vec<LibrarySeat<'a>>,
@@ -80,13 +89,23 @@ impl Path {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Key {
+    actor: u8,
     path: Path,
     signature: Arc<str>,
 }
 
 impl Key {
     fn new(original: &Value, path: Path) -> Self {
+        Self::for_actor(
+            original,
+            path,
+            original["observation"]["me"].as_u64().unwrap_or(0) as u8,
+        )
+    }
+
+    fn for_actor(original: &Value, path: Path, actor: u8) -> Self {
         Self {
+            actor,
             path,
             signature: prompt_signature(original),
         }
@@ -123,12 +142,19 @@ pub(super) struct Stats {
     pub nodes: usize,
     pub steps: usize,
     pub tree_hits: usize,
+    /// Opponent nodes/retained edges in the proposal tree; included in nodes.
+    pub opponent_nodes: usize,
+    pub opponent_actions: usize,
+    /// Opponent tree responses successfully committed during proposals.
+    pub opponent_tree_hits: usize,
     pub applied: usize,
     pub missing: usize,
     pub mismatches: usize,
     pub errors: Vec<String>,
     #[cfg(test)]
     root_trials: Vec<(usize, usize)>,
+    #[cfg(test)]
+    expansions_per_trial: Vec<usize>,
     #[cfg(test)]
     observation_reads: usize,
     #[cfg(test)]
@@ -210,6 +236,10 @@ impl RootWorldSchedule {
 
 impl Node {
     fn select(&self) -> usize {
+        self.select_for(true)
+    }
+
+    fn select_for(&self, maximize: bool) -> usize {
         if let Some(index) = self.actions.iter().position(|action| action.attempts == 0) {
             return index;
         }
@@ -224,7 +254,9 @@ impl Node {
             };
             // Attempts prevent a looping/capped generic continuation from
             // monopolizing expansion. Only completed returns enter the mean.
-            let uct = mean + std::f64::consts::SQRT_2 * (log / action.attempts as f64).sqrt();
+            let exploitation = if maximize { mean } else { -mean };
+            let uct =
+                exploitation + std::f64::consts::SQRT_2 * (log / action.attempts as f64).sqrt();
             if uct > best.0 + 1e-12 {
                 best = (uct, index);
             }
@@ -496,9 +528,16 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     // small public counter here so pre-horizon prompts do not need to build,
     // serialize and parse an entire observation just to read its turn.
     let mut turn = root_original["observation"]["turn"].as_u64().unwrap_or(0);
-    let mut path = Path::default();
+    let mut paths = [Path::default(); 2];
+    let search_opponents = options.adversarial_opponent && matches!(mode, Mode::Search { .. });
     let mut tree_active = true;
-    let mut plain_tail = false;
+    let mut plain_tail = [false; 2];
+    // A frozen proposal contains only the viewer's choices. The opponent is
+    // Generic in validation even when proposal search expanded both players.
+    if !KEEP_TAIL_CHECKPOINTS && matches!(mode, Mode::Frozen(_)) {
+        plain_tail[1 - viewer as usize] =
+            seats[1 - viewer as usize].disable_response_overrides()?;
+    }
     let mut first = true;
     let mut chain = !root_original["observation"]["chain"]
         .as_array()
@@ -517,7 +556,8 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             stats.cutoffs += 1;
             return Ok(trial);
         }
-        if pending_player == viewer as usize {
+        if pending_player == viewer as usize || search_opponents && tree_active {
+            let mut opponent_tree_response = false;
             if first && forced_root.is_some() {
                 // A supplied root can be a whole sequential alternative whose
                 // commit state has not yet been cached in this fresh fork.
@@ -526,7 +566,8 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             } else {
                 match &mut mode {
                     Mode::Search { tree, root_action } if tree_active => {
-                        let key = Key::new(&original, path);
+                        let key =
+                            Key::for_actor(&original, paths[pending_player], pending_player as u8);
                         let expanded = seats[pending_player].alternative_responses(12)?;
                         if !tree.contains_key(&key) && tree.len() < options.nodes {
                             let candidates = actions(&original, &expanded, options.actions)?;
@@ -547,7 +588,11 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                             // The root was selected before its world. Keep it
                             // on the ordinary tree path so attempts, visited
                             // edges and completed backpropagation are intact.
-                            let selected = if first { *root_action } else { node.select() };
+                            let selected = if first {
+                                *root_action
+                            } else {
+                                node.select_for(pending_player == viewer as usize)
+                            };
                             let planned = &node
                                 .actions
                                 .get(selected)
@@ -558,14 +603,17 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                             node.actions[selected].attempts += 1;
                             trial.visited.push((key, selected));
                             stats.tree_hits += 1;
+                            opponent_tree_response = pending_player != viewer as usize;
                         } else if tree.len() >= options.nodes {
                             tree_active = false;
                         }
                     }
                     Mode::Frozen(policy) if !policy.choices.is_empty() => {
-                        if policy.has(&original, path) {
+                        if policy.has(&original, paths[pending_player]) {
                             let expanded = seats[pending_player].alternative_responses(12)?;
-                            if let Some(planned) = policy.resolve(&original, &expanded, path) {
+                            if let Some(planned) =
+                                policy.resolve(&original, &expanded, paths[pending_player])
+                            {
                                 response = planned;
                                 stats.applied += 1;
                             } else {
@@ -579,6 +627,7 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                 }
             }
             seats[pending_player].override_response(&response)?;
+            stats.opponent_tree_hits += usize::from(opponent_tree_response);
             // This action has already committed the exact selected policy
             // state. A search rollout never returns to the tree after its one
             // expansion; an empty frozen policy likewise makes no later edits.
@@ -587,13 +636,19 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                 Mode::Search { .. } => !tree_active,
                 Mode::Frozen(policy) => policy.choices.is_empty(),
             };
-            if !KEEP_TAIL_CHECKPOINTS && !plain_tail && no_more_overrides {
-                plain_tail = seats[pending_player].disable_response_overrides()?;
-                #[cfg(test)]
-                { stats.tail_checkpoint_disables += usize::from(plain_tail); }
+            if !KEEP_TAIL_CHECKPOINTS && no_more_overrides {
+                for (player, seat) in seats.iter().enumerate() {
+                    if !plain_tail[player] {
+                        plain_tail[player] = seat.disable_response_overrides()?;
+                        #[cfg(test)]
+                        {
+                            stats.tail_checkpoint_disables += usize::from(plain_tail[player]);
+                        }
+                    }
+                }
             }
             if mode.tracks_history(tree_active) {
-                path.own_response(&response);
+                paths[pending_player].own_response(&response);
             }
         }
         #[cfg(test)]
@@ -612,9 +667,12 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             let mut quiescent = false;
             for sent in &step.messages {
                 if mode.tracks_history(tree_active) {
-                    path.message(&sent.bytes, viewer)?;
+                    paths[viewer as usize].message(&sent.bytes, viewer)?;
+                    if search_opponents {
+                        paths[1 - viewer as usize].message(&sent.bytes, 1 - viewer)?;
+                    }
                     #[cfg(test)]
-                    stats.history_digests.push(path);
+                    stats.history_digests.push(paths[viewer as usize]);
                 }
                 if sent.refresh {
                     seats[0].feed_update_pair(&seats[1], &sent.bytes)?;
@@ -631,7 +689,9 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                 for (player, seat) in seats.iter().enumerate() {
                     if let Some(given) = seat.feed(&sent.bytes)? {
                         #[cfg(test)]
-                        { stats.uncheckpointed_prompts += usize::from(plain_tail && player == viewer as usize); }
+                        {
+                            stats.uncheckpointed_prompts += usize::from(plain_tail[player]);
+                        }
                         if answer.replace((player, given)).is_some() {
                             return Err("Multiple ISMCTS answers in one batch".into());
                         }
@@ -669,7 +729,9 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                 }
                 pending_player = player;
                 response = given;
-                if player == viewer as usize && mode.tracks_history(tree_active) {
+                if (player == viewer as usize || search_opponents)
+                    && mode.tracks_history(tree_active)
+                {
                     original = seats[player].last_answer()?;
                 }
                 break;
@@ -737,7 +799,7 @@ fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     validate(worlds, viewer, options)?;
     let root = duel.snapshot()?;
     let mut tree = HashMap::<Key, Node>::new();
-    let root_key = Key::new(root_original, Path::default());
+    let root_key = Key::for_actor(root_original, Path::default(), viewer);
     let mut schedule = RootWorldSchedule::default();
     let mut stats = Stats::default();
     let result = (|| -> Result<()> {
@@ -754,6 +816,8 @@ fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             stats.simulations += 1;
             #[cfg(test)]
             stats.root_trials.push((root_action, world_index));
+            #[cfg(test)]
+            let nodes_before = tree.len();
             match simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS>(
                 duel,
                 &world.seats,
@@ -784,12 +848,20 @@ fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                 }
                 Err(error) => stats.error(error),
             }
+            #[cfg(test)]
+            stats.expansions_per_trial.push(tree.len() - nodes_before);
         }
         Ok(())
     })();
     duel.restore(&root)?;
     result?;
     stats.nodes = tree.len();
+    for (key, node) in &tree {
+        if key.actor != viewer {
+            stats.opponent_nodes += 1;
+            stats.opponent_actions += node.actions.len();
+        }
+    }
     let root_response = tree
         .get(&root_key)
         .map(|node| node.actions[node.best()].planned.response.clone());
@@ -810,6 +882,7 @@ fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
     let policy = FrozenPolicy {
         choices: tree
             .into_iter()
+            .filter(|(key, _)| key.actor == viewer)
             .filter_map(|(key, node)| {
                 let best = node.best();
                 (node.actions[best].visits > 0).then(|| (key, node.actions[best].planned.clone()))
@@ -890,7 +963,11 @@ pub(super) fn evaluate_frozen_in_place(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn evaluate_frozen_impl<const LEGACY_HORIZON: bool, const RESTORE_CALLER: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
+fn evaluate_frozen_impl<
+    const LEGACY_HORIZON: bool,
+    const RESTORE_CALLER: bool,
+    const KEEP_TAIL_CHECKPOINTS: bool,
+>(
     duel: &mut Duel,
     world: &World<'_>,
     viewer: u8,
@@ -1091,29 +1168,46 @@ mod tests {
 
     #[test]
     fn path_hides_opponent_draws_and_private_prompts() {
-        let draw = |code: u32| {
-            let mut message = vec![msg::DRAW, 1];
+        let draw = |player: u8, code: u32| {
+            let mut message = vec![msg::DRAW, player];
             message.extend_from_slice(&1u32.to_le_bytes());
             message.extend_from_slice(&code.to_le_bytes());
             message.extend_from_slice(&position::FACEDOWN.to_le_bytes());
             message
         };
-        let mut a = Path::default();
-        let mut b = Path::default();
-        a.message(&draw(123), 0).unwrap();
-        b.message(&draw(456), 0).unwrap();
-        assert_eq!(a, b);
-        let mut own_a = Path::default();
-        let mut own_b = Path::default();
-        own_a.message(&draw(123), 1).unwrap();
-        own_b.message(&draw(456), 1).unwrap();
-        assert_ne!(own_a, own_b);
-        let before = a;
-        a.message(&[msg::SELECT_YESNO, 1], 0).unwrap();
-        assert_eq!(a, before);
-        a.own_response(&[0]);
-        b.own_response(&[1]);
-        assert_ne!(a, b);
+        for actor in 0..2 {
+            let mut a = Path::default();
+            let mut b = Path::default();
+            a.message(&draw(1 - actor, 123), actor).unwrap();
+            b.message(&draw(1 - actor, 456), actor).unwrap();
+            assert_eq!(a, b);
+            let mut own_a = Path::default();
+            let mut own_b = Path::default();
+            own_a.message(&draw(actor, 123), actor).unwrap();
+            own_b.message(&draw(actor, 456), actor).unwrap();
+            assert_ne!(own_a, own_b);
+            let before = a;
+            a.message(&[msg::SELECT_YESNO, 1 - actor], actor).unwrap();
+            assert_eq!(a, before);
+            a.own_response(&[0]);
+            b.own_response(&[1]);
+            assert_ne!(a, b);
+        }
+    }
+
+    #[test]
+    fn identical_visible_prompts_are_separate_for_each_actor() {
+        let original = answer();
+        let viewer = Key::for_actor(&original, Path::default(), 0);
+        let opponent = Key::for_actor(&original, Path::default(), 1);
+        assert_eq!(viewer.signature, opponent.signature);
+        assert_ne!(viewer, opponent);
+        let mut actual_opponent = original.clone();
+        actual_opponent["observation"]["me"] = serde_json::json!(1);
+        assert_eq!(
+            Key::new(&actual_opponent, Path::default()),
+            Key::for_actor(&actual_opponent, Path::default(), 1)
+        );
     }
 
     #[test]
@@ -1156,6 +1250,33 @@ mod tests {
         assert_eq!(node.best(), 0);
         node.actions[1].total = 2.0;
         assert_eq!(node.best(), 1);
+    }
+
+    #[test]
+    fn opponent_uct_minimizes_root_returns_without_negating_exploration() {
+        let original = answer();
+        let mut node = Node {
+            actions: actions(&original, &original, 2).unwrap(),
+        };
+        // The shared backup convention stores exactly the same root reward
+        // at both actors' edges. Only selection changes sign.
+        for (action, value) in node.actions.iter_mut().zip([0.8, -0.4]) {
+            action.attempts = 100;
+            action.visits = 100;
+            action.total = value * 100.0;
+        }
+        assert_eq!(node.select_for(true), 0);
+        assert_eq!(node.select_for(false), 1);
+        assert_eq!(node.best(), 0);
+        // A poorly explored high-root-reward action must still be visited
+        // by the minimizing player. Negating the entire UCT score fails this.
+        node.actions[0].attempts = 1;
+        node.actions[0].visits = 1;
+        node.actions[0].total = 0.8;
+        assert_eq!(node.select_for(false), 0);
+        node.actions[1].attempts = 0;
+        assert_eq!(node.select_for(true), 1);
+        assert_eq!(node.select_for(false), 1);
     }
 
     fn assert_balanced_worlds(trials: &[(usize, usize)], worlds: usize) {
@@ -1330,6 +1451,7 @@ mod tests {
             decisions: 128,
             replies: 0,
             terminal: false,
+            adversarial_opponent: false,
         };
         let evaluator = |observation: &Value, viewer: u8| {
             observation["cards"]
@@ -1374,7 +1496,8 @@ mod tests {
         duel.restore(&world.snapshot).unwrap();
         let retained = search_impl::<false, true>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
-        ).unwrap();
+        )
+        .unwrap();
         assert_search_equivalent(&first, &retained);
         assert!(first.stats.tail_checkpoint_disables > 0);
         assert!(first.stats.uncheckpointed_prompts > 0);
@@ -1382,8 +1505,10 @@ mod tests {
         assert_eq!(retained.stats.uncheckpointed_prompts, 0);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        eprintln!("plain search tails: {} pre-choice checkpoints omitted across {} identical simulations",
-            first.stats.uncheckpointed_prompts, first.stats.simulations);
+        eprintln!(
+            "plain search tails: {} pre-choice checkpoints omitted across {} identical simulations",
+            first.stats.uncheckpointed_prompts, first.stats.simulations
+        );
         let legacy = search_impl::<true, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
@@ -1738,9 +1863,19 @@ mod tests {
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
             let retained = evaluate_frozen_impl::<false, true, true>(
-                &mut duel, trial_world, 0, &original, response, decisions, 1024,
-                *options, *deadline, evaluate, policy,
-            ).unwrap();
+                &mut duel,
+                trial_world,
+                0,
+                &original,
+                response,
+                decisions,
+                1024,
+                *options,
+                *deadline,
+                evaluate,
+                policy,
+            )
+            .unwrap();
             let actual = references.last().unwrap();
             assert_evaluation_equivalent(actual, &retained);
             assert_eq!(retained.stats.tail_checkpoint_disables, 0);
@@ -1751,7 +1886,9 @@ mod tests {
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
         }
-        assert!(references.iter().any(|trial| trial.stats.uncheckpointed_prompts > 0));
+        assert!(references
+            .iter()
+            .any(|trial| trial.stats.uncheckpointed_prompts > 0));
         // This is the same restoration boundary as choose_mcts: all work is
         // captured first, then the live root is restored before handling it.
         let result = (|| -> Result<Vec<Evaluation>> {
@@ -1969,6 +2106,7 @@ mod tests {
                     decisions: 128,
                     replies,
                     terminal: false,
+                    adversarial_opponent: false,
                 };
                 let goal = goal_turn(&original["observation"], viewer, replies);
                 let evaluator = |observation: &Value, _: u8| {
@@ -2014,6 +2152,248 @@ mod tests {
                 assert_eq!(next_bytes(&mut duel), expected);
                 duel.restore(&world.snapshot).unwrap();
             }
+
+            // Both seats have checkpoints here. Turning on opponent UCT must
+            // share the existing trial/node budgets, and its frozen output
+            // must still contain only executable viewer decisions.
+            let options = Options {
+                iterations: 96,
+                actions: 3,
+                nodes: 128,
+                decisions: 128,
+                replies: 1,
+                terminal: false,
+                adversarial_opponent: true,
+            };
+            let evaluator = |observation: &Value, player: u8| {
+                assert_eq!(player, viewer);
+                assert_eq!(observation["me"].as_u64(), Some(u64::from(viewer)));
+                observation["cards"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .fold(0.0, |value, card| {
+                        if card["at"]["location"] != "MonsterZone" {
+                            value
+                        } else if card["at"]["controller"].as_u64() == Some(u64::from(viewer)) {
+                            value + 0.1
+                        } else {
+                            value - 0.1
+                        }
+                    })
+            };
+            let adversarial = search(
+                &mut duel,
+                std::slice::from_ref(&world),
+                viewer,
+                &original,
+                decisions,
+                1024,
+                options,
+                None,
+                &evaluator,
+            )
+            .unwrap();
+            assert_eq!(
+                adversarial.stats.failed, 0,
+                "{:?}",
+                adversarial.stats.errors
+            );
+            assert_eq!(adversarial.stats.simulations, options.iterations);
+            assert_eq!(adversarial.stats.completed, options.iterations);
+            assert!(adversarial.stats.opponent_nodes > 0);
+            assert!(adversarial.stats.opponent_tree_hits > 0);
+            assert!(adversarial.stats.opponent_tree_hits <= adversarial.stats.tree_hits);
+            assert!(
+                adversarial.stats.opponent_actions
+                    <= adversarial.stats.opponent_nodes * options.actions
+            );
+            assert!(adversarial.stats.nodes <= options.nodes.min(options.iterations));
+            assert_eq!(
+                adversarial.stats.expansions_per_trial.len(),
+                options.iterations
+            );
+            assert!(adversarial
+                .stats
+                .expansions_per_trial
+                .iter()
+                .all(|count| *count <= 1));
+            assert_eq!(
+                adversarial.stats.expansions_per_trial.iter().sum::<usize>(),
+                adversarial.stats.nodes
+            );
+            assert!(adversarial.stats.steps <= options.iterations * options.decisions);
+            assert_eq!(
+                adversarial
+                    .root_actions
+                    .iter()
+                    .map(|action| action.attempts)
+                    .sum::<usize>(),
+                options.iterations
+            );
+            assert_balanced_worlds(&adversarial.stats.root_trials, 1);
+            assert!(adversarial
+                .policy
+                .choices
+                .keys()
+                .all(|key| key.actor == viewer));
+            assert_eq!(
+                world.seats[usize::from(viewer)].last_answer().unwrap(),
+                original
+            );
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+
+            // Retaining both players' policy checkpoints is a behavioral
+            // reference: dropping them after the single expansion must not
+            // change either actor's decisions, returns, or root allocation.
+            let retained = search_impl::<false, true>(
+                &mut duel,
+                std::slice::from_ref(&world),
+                viewer,
+                &original,
+                decisions,
+                1024,
+                options,
+                None,
+                &evaluator,
+            )
+            .unwrap();
+            assert_search_equivalent(&adversarial, &retained);
+            assert!(adversarial.stats.uncheckpointed_prompts > 0);
+            assert_eq!(retained.stats.uncheckpointed_prompts, 0);
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+
+            // False mode ignores whether the other pilot was provisioned for
+            // overrides. Its complete response/history trace stays identical.
+            let ordinary_options = Options {
+                iterations: 16,
+                adversarial_opponent: false,
+                ..options
+            };
+            let ordinary = search(
+                &mut duel,
+                std::slice::from_ref(&world),
+                viewer,
+                &original,
+                decisions,
+                1024,
+                ordinary_options,
+                None,
+                &evaluator,
+            )
+            .unwrap();
+            let ordinary_world = World {
+                snapshot: duel.snapshot().unwrap(),
+                seats: world
+                    .seats
+                    .iter()
+                    .map(LibrarySeat::fork)
+                    .collect::<Result<Vec<_>>>()
+                    .unwrap(),
+            };
+            assert!(ordinary_world.seats[1 - usize::from(viewer)]
+                .disable_response_overrides()
+                .unwrap());
+            let without_opponent_checkpoints = search(
+                &mut duel,
+                std::slice::from_ref(&ordinary_world),
+                viewer,
+                &original,
+                decisions,
+                1024,
+                ordinary_options,
+                None,
+                &evaluator,
+            )
+            .unwrap();
+            assert_search_equivalent(&ordinary, &without_opponent_checkpoints);
+            assert_eq!(ordinary.stats.opponent_nodes, 0);
+            assert_eq!(ordinary.stats.opponent_actions, 0);
+            assert_eq!(ordinary.stats.opponent_tree_hits, 0);
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+
+            // Validation is the same Generic-opponent experiment regardless
+            // of how the proposed viewer policy was constructed. Check both
+            // the learned conditional map and unchanged plain control.
+            let control = FrozenPolicy::default();
+            for policy in [&adversarial.policy, &control] {
+                let forced = adversarial.root_response.as_deref().unwrap();
+                let enabled = evaluate_frozen(
+                    &mut duel, &world, viewer, &original, forced, decisions, 1024, options, None,
+                    &evaluator, policy,
+                )
+                .unwrap();
+                let disabled = evaluate_frozen(
+                    &mut duel,
+                    &world,
+                    viewer,
+                    &original,
+                    forced,
+                    decisions,
+                    1024,
+                    ordinary_options,
+                    None,
+                    &evaluator,
+                    policy,
+                )
+                .unwrap();
+                assert_evaluation_equivalent(&enabled, &disabled);
+                assert_eq!(enabled.stats.failed, 0, "{:?}", enabled.stats.errors);
+                assert_eq!(enabled.stats.completed, 1);
+                assert_eq!(enabled.stats.opponent_tree_hits, 0);
+                assert_eq!(enabled.stats.tree_hits, 0);
+                assert_eq!(next_bytes(&mut duel), expected);
+                duel.restore(&world.snapshot).unwrap();
+            }
+
+            // An invalid heuristic return or decision cap cannot become a
+            // scored win, alter the caller, or exceed the shared trial cap.
+            for fail in [false, true] {
+                let bounded = Options {
+                    iterations: 4,
+                    decisions: if fail { 128 } else { 1 },
+                    ..options
+                };
+                let invalid = search(
+                    &mut duel,
+                    std::slice::from_ref(&world),
+                    viewer,
+                    &original,
+                    decisions,
+                    1024,
+                    bounded,
+                    None,
+                    &|_, _| f64::NAN,
+                )
+                .unwrap();
+                assert_eq!(invalid.stats.simulations, bounded.iterations);
+                assert_eq!(invalid.stats.completed, 0);
+                assert_eq!(
+                    invalid.stats.failed,
+                    if fail { bounded.iterations } else { 0 }
+                );
+                assert_eq!(
+                    invalid.stats.cutoffs,
+                    if fail { 0 } else { bounded.iterations }
+                );
+                assert!(invalid
+                    .stats
+                    .expansions_per_trial
+                    .iter()
+                    .all(|count| *count <= 1));
+                assert!(invalid
+                    .root_actions
+                    .iter()
+                    .all(|action| action.visits == 0 && action.mean.is_none()));
+                assert_eq!(next_bytes(&mut duel), expected);
+                duel.restore(&world.snapshot).unwrap();
+            }
+            eprintln!("opponent UCT viewer={viewer}: {} nodes, {} actions, {} committed hits in {} shared simulations",
+                adversarial.stats.opponent_nodes, adversarial.stats.opponent_actions,
+                adversarial.stats.opponent_tree_hits, adversarial.stats.simulations);
         }
     }
 }
