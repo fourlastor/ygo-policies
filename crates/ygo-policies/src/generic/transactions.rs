@@ -4,7 +4,7 @@
 //! Sources: `vendor/CardScripts/official/c35480699.lua` (Eclipse),
 //! `c10026986.lua` (King), `c73580471.lua` (Black Rose), `c57774843.lua`
 //! (Judgment Dragon), `c29071332.lua` (Armory Arm), `c39402797.lua`
-//! (Trident Dragion), and the
+//! (Trident Dragion), `c72426662.lua` (Demise), and the
 //! mandatory-removal facts in `knowledge`.
 //! An ordinary NormalSummon choice does not expose its actual tribute cost.
 //! Consequently this module never vetoes a summon from printed Level alone.
@@ -19,6 +19,7 @@ const BOOK_OF_ECLIPSE: u32 = 35480699;
 const WORM_KING: u32 = 10026986;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const JUDGMENT_DRAGON: u32 = 57774843;
+const DEMISE: u32 = 72426662;
 const ARMORY_ARM: u32 = 29071332;
 const TRIDENT_DRAGION: u32 = 39402797;
 const WORM_SET: u16 = 0x3e;
@@ -31,6 +32,7 @@ pub const SUPPORTED_CODES: &[u32] = &[
     73125233,
     BLACK_ROSE_DRAGON,
     JUDGMENT_DRAGON,
+    DEMISE,
     ARMORY_ARM,
     TRIDENT_DRAGION,
 ];
@@ -125,11 +127,28 @@ pub(super) fn yes_no(t: &Turn) -> Option<bool> {
     })
 }
 
-fn judgment(t: &Turn, choice: &Choice) -> bool {
-    t.ctx.my_lp() > 1000
-        && !t.ctx.effects_drained()
-        && !t.ctx.wasted(JUDGMENT_DRAGON)
-        && global_destruction_profitable(t, JUDGMENT_DRAGON, choice.at(), 1000)
+/// Both ignition effects destroy every other field card after paying LP.
+/// Match the actual source and slot; legal availability can come entirely
+/// from our own cards and therefore does not establish a useful wipe.
+fn paid_sweep(t: &Turn, choice: &Choice) -> Option<bool> {
+    let source = t.ctx.canonical(choice.code()?);
+    let (slot, lp_cost) = match source {
+        JUDGMENT_DRAGON => (1, 1000),
+        DEMISE => (0, 2000),
+        _ => return None,
+    };
+    if choice.kind != ChoiceKind::Activate
+        || !monster_source(t, choice, source)
+        || choice.description != knowledge::description(source, slot)
+    {
+        return None;
+    }
+    Some(
+        t.ctx.my_lp() > lp_cost
+            && !t.ctx.effects_drained()
+            && !t.ctx.wasted(source)
+            && global_destruction_profitable(t, source, choice.at(), lp_cost),
+    )
 }
 
 /// Install this in the early generic main-phase hook, before committing new
@@ -139,10 +158,7 @@ pub(super) fn activate_before_development(t: &Turn, choice: &Choice) -> bool {
         && t.ctx.main1()
         && t.ctx.my_turn()
         && t.ctx.obs.chain.is_empty()
-        && choice.kind == ChoiceKind::Activate
-        && monster_source(t, choice, JUDGMENT_DRAGON)
-        && choice.description == knowledge::description(JUDGMENT_DRAGON, 1)
-        && judgment(t, choice)
+        && paid_sweep(t, choice) == Some(true)
 }
 
 /// Only a visible battle with no paid trick, known replacement body, reflected
@@ -567,13 +583,10 @@ pub(super) fn allow_activation(t: &Turn, choice: &Choice) -> Option<bool> {
     if matches!(t.decision.kind, DecisionKind::Chain { triggers: true, .. }) {
         return None;
     }
+    if let Some(allowed) = paid_sweep(t, choice) {
+        return Some(allowed);
+    }
     match code {
-        JUDGMENT_DRAGON
-            if monster_source(t, choice, code)
-                && choice.description == knowledge::description(code, 1) =>
-        {
-            Some(judgment(t, choice))
-        }
         ARMORY_ARM
             if monster_source(t, choice, code)
                 && choice.description == knowledge::description(code, 0) =>
@@ -688,6 +701,7 @@ mod tests {
     const FLIP: u32 = 900_510_003;
     const FODDER: u32 = 900_510_004;
     const TOON_BODY: u32 = 900_510_006;
+    const EQUIPMENT: u32 = 900_510_008;
 
     fn db() -> MemoryCards {
         let cards = [
@@ -697,6 +711,20 @@ mod tests {
                 attack: 3000,
                 defense: 2600,
                 level: 8,
+                ..CardData::default()
+            },
+            CardData {
+                code: DEMISE,
+                kind: types::MONSTER | types::EFFECT | types::RITUAL,
+                attack: 2400,
+                defense: 2000,
+                level: 8,
+                attribute: attributes::DARK,
+                ..CardData::default()
+            },
+            CardData {
+                code: EQUIPMENT,
+                kind: types::SPELL | types::EQUIP,
                 ..CardData::default()
             },
             CardData {
@@ -1119,6 +1147,137 @@ mod tests {
     }
 
     #[test]
+    fn demise_prices_two_thousand_lp_and_own_collateral_without_charging_its_body() {
+        let prompt = transaction_prompt(DEMISE, 0, None);
+        let source = card(DEMISE, 0, 0);
+        let mut board = obs(vec![source.clone(), card(FODDER, 0, 1)]);
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards = vec![source, card(ORDINARY, 1, 0), card(SMALL, 1, 1)];
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        board.life_points[0] = 2000;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.life_points[0] = 2001;
+        assert_eq!(black_rose_answer(&board, &prompt), Some(true));
+        board.cards.push(card(ORDINARY, 0, 1));
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+        board.cards.pop();
+        let mut equipment = card(EQUIPMENT, 0, 0);
+        equipment.at.location = Location::SpellTrapZone;
+        board.cards.push(equipment);
+        board.cards.push(card(FODDER, 0, 1));
+        assert_eq!(black_rose_answer(&board, &prompt), Some(false));
+    }
+
+    #[test]
+    fn demise_early_sweep_matches_exact_source_slot_and_main_phase() {
+        let mut prompt = transaction_prompt(DEMISE, 0, None);
+        prompt.kind = DecisionKind::Idle;
+        let mut board = obs(vec![
+            card(DEMISE, 0, 0),
+            card(ORDINARY, 1, 0),
+            card(SMALL, 1, 1),
+        ]);
+        let check = |board: &Observation, prompt: &Decision| {
+            let database = db();
+            let mut memory = Memory::default();
+            let turn = Turn {
+                ctx: Ctx::new(board, &database),
+                decision: prompt,
+                memory: &mut memory,
+            };
+            activate_before_development(&turn, &prompt.choices[0])
+        };
+        assert!(check(&board, &prompt));
+        board.phase = Some(Phase::Main2);
+        assert!(!check(&board, &prompt));
+        board.phase = Some(Phase::Main1);
+        prompt.choices[0].description = knowledge::description(DEMISE, 1);
+        assert!(!check(&board, &prompt));
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].description = knowledge::description(DEMISE, 0);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::Graveyard;
+        assert!(!check(&board, &prompt));
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+        prompt.choices[0].card.as_mut().unwrap().at.location = Location::MonsterZone;
+        prompt.kind = DecisionKind::Chain {
+            forced: false,
+            triggers: true,
+        };
+        assert_eq!(black_rose_answer(&board, &prompt), None);
+    }
+
+    #[test]
+    fn generic_wipes_before_developing_unfamiliar_bodies_or_equipment() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        for (kind, code) in [
+            (ChoiceKind::NormalSummon, ORDINARY),
+            (ChoiceKind::SpecialSummon, ORDINARY),
+            (ChoiceKind::Activate, EQUIPMENT),
+        ] {
+            let mut hand = card(code, 0, 0);
+            hand.at.location = Location::Hand;
+            let board = obs(vec![
+                card(DEMISE, 0, 0),
+                card(ORDINARY, 1, 0),
+                card(SMALL, 1, 1),
+                hand.clone(),
+            ]);
+            let mut prompt = transaction_prompt(DEMISE, 0, None);
+            prompt.kind = DecisionKind::Idle;
+            prompt.choices[1].kind = ChoiceKind::EndTurn;
+            prompt.choices[1].card = None;
+            prompt.choices.insert(
+                0,
+                Choice {
+                    kind,
+                    card: Some(member(&hand)),
+                    members: vec![],
+                    description: 0,
+                    place: None,
+                },
+            );
+            let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+            assert_eq!(pilot.choose(&board, &prompt), 1, "development {kind:?}");
+        }
+    }
+
+    #[test]
+    fn generic_declines_native_demise_prompts_that_spend_its_last_life_points() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        // Native traces offer this payment at exactly 2000 LP. Both the Idle
+        // and post-summon free-chain paths must decline before paying it.
+        for me in [0, 1] {
+            for kind in [
+                DecisionKind::Idle,
+                DecisionKind::Chain {
+                    forced: false,
+                    triggers: false,
+                },
+            ] {
+                let mut board = obs(vec![
+                    card(DEMISE, me, 0),
+                    card(ORDINARY, 1 - me, 0),
+                    card(SMALL, 1 - me, 1),
+                ]);
+                board.me = me;
+                board.turn_player = Some(me);
+                board.life_points[usize::from(me)] = 2000;
+                let mut prompt = transaction_prompt(DEMISE, 0, None);
+                prompt.kind = kind;
+                prompt.choices[0].card.as_mut().unwrap().at.controller = me;
+                prompt.choices[1].card = None;
+                if kind == DecisionKind::Idle {
+                    prompt.choices[1].kind = ChoiceKind::EndTurn;
+                }
+                let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+                assert_eq!(pilot.choose(&board, &prompt), 1, "seat {me}, {kind:?}");
+            }
+        }
+    }
+
+    #[test]
     fn armory_refuses_enemy_only_targets_and_wasted_open_field_conversion() {
         let prompt = transaction_prompt(ARMORY_ARM, 0, None);
         let mut own_set = card(FODDER, 0, 1);
@@ -1262,6 +1421,12 @@ mod tests {
         use crate::agent::{Agent, Policy};
         use std::sync::Arc;
         for (source, slot, yes, board) in [
+            (
+                DEMISE,
+                0,
+                None,
+                obs(vec![card(DEMISE, 0, 0), card(FODDER, 0, 1)]),
+            ),
             (
                 JUDGMENT_DRAGON,
                 1,
