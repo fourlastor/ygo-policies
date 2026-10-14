@@ -133,6 +133,54 @@ class EvaluationWeightTests(unittest.TestCase):
                     self.assertIn("not recorded on both sides", result["interpretation"])
 
 
+class RootWarmupProvenanceTests(unittest.TestCase):
+    def test_legacy_absence_remains_unknown_and_is_not_filled_into_identity(self):
+        old = metadata()
+        original = copy.deepcopy(old)
+        self.assertEqual(analyze.mcts_root_warmup(old), (None, "legacy_unrecorded"))
+        self.assertNotIn("root_warmup", analyze.recorded_configuration(old)["search"]["mcts"])
+        self.assertNotIn("root_warmup", analyze.identity(old)["search"]["mcts"])
+        self.assertEqual(analyze.configuration_changes(old, copy.deepcopy(old)), [])
+        self.assertEqual(old, original)
+
+    def test_recorded_flag_is_strict_boolean_and_requires_declared_change(self):
+        for value in (None, 0, 1, "false", [], {}):
+            invalid = metadata()
+            invalid["search"]["mcts"]["root_warmup"] = value
+            with self.assertRaisesRegex(ValueError, "root_warmup must be a recorded boolean"):
+                analyze.recorded_configuration(invalid)
+        old, new = metadata(), metadata()
+        old["search"]["mcts"]["root_warmup"] = False
+        new["search"]["mcts"]["root_warmup"] = True
+        self.assertEqual(analyze.mcts_root_warmup(old), (False, "recorded"))
+        for allow_revision in (False, True):
+            with self.assertRaisesRegex(ValueError, "Undeclared metadata ablation.*root_warmup"):
+                analyze.validate_comparison(old, new, allow_revision)
+        analyze.validate_comparison(old, new, False, ["search.mcts.root_warmup"])
+
+    def test_missing_to_either_value_is_unrecorded_not_an_isolated_known_ablation(self):
+        for value in (False, True):
+            old, new = metadata(), metadata()
+            new["search"]["mcts"]["root_warmup"] = value
+            with self.assertRaisesRegex(ValueError, "Undeclared metadata ablation.*root_warmup"):
+                analyze.validate_comparison(old, new, True)
+            change, = analyze.configuration_changes(old, new)
+            self.assertIsNone(change["before"])
+            self.assertFalse(change["before_recorded"])
+            self.assertEqual(change["before_source"], "legacy_unrecorded")
+            self.assertIs(change["after"], value)
+            self.assertTrue(change["after_recorded"])
+            rows, summary = fixture(old)
+            keyed = {(row["opponent"], row["seed"], row["seat"]): row for row in rows}
+            with patch.object(analyze, "load", side_effect=[(keyed, summary, old), (keyed, summary, new)]):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    analyze.main(["old", "new"], allow_metadata_ablation=["search.mcts.root_warmup"])
+            comparison = json.loads(output.getvalue())["comparisons"][0]
+            self.assertFalse(comparison["isolated_metadata_ablation"])
+            self.assertIn("not recorded on both sides", comparison["interpretation"])
+
+
 class OpponentProvenanceTests(unittest.TestCase):
     def test_legacy_defaults_normalize_without_mutating_metadata(self):
         old = metadata()

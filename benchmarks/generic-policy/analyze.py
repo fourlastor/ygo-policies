@@ -105,6 +105,21 @@ def mcts_adversarial_opponent(metadata):
     return mcts["adversarial_opponent"], "recorded"
 
 
+def mcts_root_warmup(metadata):
+    mcts = metadata["search"].get("mcts")
+    if mcts is None:
+        return None, "not_applicable"
+    if not isinstance(mcts, dict):
+        raise ValueError("search.mcts must be an object or null")
+    if "root_warmup" not in mcts:
+        # Both ordinary-UCT releases and the hardcoded v22 warmup release
+        # omitted this field. No single default can identify those artifacts.
+        return None, "legacy_unrecorded"
+    if type(mcts["root_warmup"]) is not bool:
+        raise ValueError("search.mcts.root_warmup must be a recorded boolean")
+    return mcts["root_warmup"], "recorded"
+
+
 def search_opponent_model(metadata):
     search = metadata["search"]
     if "opponent_model" not in search:
@@ -163,6 +178,9 @@ def recorded_configuration(metadata):
         search["mcts"] = dict(mcts)
         search["mcts"]["validate_roots"], _ = mcts_root_validation(metadata)
         search["mcts"]["adversarial_opponent"], _ = mcts_adversarial_opponent(metadata)
+        # Preserve absent legacy configuration and its identity exactly;
+        # comparisons with a newly recorded value report an unknown old side.
+        mcts_root_warmup(metadata)
     if search.get("method") == "mcts" and mcts is None:
         raise ValueError("MCTS search requires its recorded search.mcts settings")
     if mcts is not None and search["mcts"]["adversarial_opponent"] and (
@@ -193,6 +211,7 @@ def configuration_changes(before_metadata, after_metadata):
         source_reader = {"search.validation": search_validation,
                          "search.mcts.validate_roots": mcts_root_validation,
                          "search.mcts.adversarial_opponent": mcts_adversarial_opponent,
+                         "search.mcts.root_warmup": mcts_root_warmup,
                          "search.opponent_model": search_opponent_model}.get(change["field"])
         if source_reader:
             for side, metadata in (("before", before_metadata), ("after", after_metadata)):

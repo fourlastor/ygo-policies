@@ -33,7 +33,8 @@ pub struct FastOptions {
     pub horizon: usize,
     /// Soft wall-clock budget per decision, or zero for deterministic work caps.
     pub millis: u64,
-    /// Skip search when an opposing face-down monster has unknown identity.
+    /// Skip fresh search for unknown opposing face-down monsters or any
+    /// opposing face-down banished card; these cannot be safely resampled.
     pub strict: bool,
     /// Attach public registered-effect metadata to the generic pilot.
     pub effects: bool,
@@ -108,6 +109,7 @@ struct Stats {
     mcts_visited_root_actions: u64,
     mcts_root_actions_all_worlds_attempted: u64,
     mcts_root_actions_all_worlds_completed: u64,
+    search_skipped_facedown_banished: u64,
     snapshot_copies: Vec<ygo_policies_duel::SnapshotMetrics>,
     errors: Vec<String>,
 }
@@ -1066,7 +1068,7 @@ pub fn play_fast(
     }
     if fast.max_playouts > 0 && !fast.strict {
         return Err(
-            "Generic search requires strict=true: face-down monsters cannot be sampled safely"
+            "Generic search requires strict=true: unknown opposing face-down monsters and opposing face-down banished cards cannot be sampled safely"
                 .into(),
         );
     }
@@ -1198,6 +1200,7 @@ pub fn play_fast(
                 "unresolved_playouts": stats.unresolved_playouts,
                 "budget_exhausted": stats.budget_exhausted, "incomplete_worlds": stats.incomplete_worlds,
                 "failed_searches": stats.failed_searches, "unsafe_selections": stats.unsafe_selection, "search_errors": stats.errors,
+                "search_skipped_facedown_banished": stats.search_skipped_facedown_banished,
                 "proposal_nodes": stats.proposal_nodes, "proposal_leaves": stats.proposal_leaves,
                 "proposal_improvements": stats.proposal_improvements,
                 "proposal_completed_prefixes": stats.proposal_completed_prefixes,
@@ -1298,6 +1301,9 @@ pub fn play_fast(
                     else if fast.strict && public_memory.has_unknown_monsters(&original["observation"], context.viewer) {
                         facing_set += 1;
                     }
+                    else if fast.strict && public_memory.has_facedown_banished(&original["observation"], context.viewer) {
+                        stats.search_skipped_facedown_banished += 1;
+                    }
                     else if unsafe_selection(&described, context.viewer) { stats.unsafe_selection += 1; }
                     else {
                         stats.searched += 1;
@@ -1367,7 +1373,7 @@ mod tests {
         };
         assert!(options.validate_evaluation_weights().is_err());
         options.mcts = Some(MctsOptions { iterations: 128, actions: 6, nodes: 1024,
-            decisions: 256, replies: 1, terminal: false, adversarial_opponent: false });
+            decisions: 256, replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false });
         assert!(options.validate_evaluation_weights().is_ok());
         options.max_playouts = 0;
         assert!(options.validate_evaluation_weights().is_err());
@@ -1477,7 +1483,7 @@ mod tests {
                 max_playouts: 256, horizon: 1, millis: 0, strict: true,
                 effects: true, planner: None,
                 mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
-                    decisions: 384, replies: 1, terminal: false, adversarial_opponent: false }),
+                    decisions: 384, replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false }),
                 mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None,
             },
             // Nonempty metadata must not be sent to the old specialist ABI.
@@ -1784,7 +1790,7 @@ mod tests {
             effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
-                replies: 1, terminal: false, adversarial_opponent: false,
+                replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,
             }),
         };
         let play = || play_fast(
@@ -1857,7 +1863,7 @@ mod tests {
             effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
-                replies: 1, terminal: false, adversarial_opponent: false,
+                replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,
             }),
         };
         let result = play_fast(

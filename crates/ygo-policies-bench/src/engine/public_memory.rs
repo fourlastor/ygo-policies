@@ -78,6 +78,30 @@ impl PublicIdentityMemory {
         })
     }
 
+    /// Concealed banished cards cannot be resampled by the native swap API.
+    /// Doom Lord and Slip of Fortune can later return them to the field, so
+    /// ignoring their current zone does not make a simulated continuation safe.
+    /// Deliberately read only public location/controller/position metadata:
+    /// even a stale remembered code must not authorize this search root.
+    pub(super) fn has_facedown_banished(&self, observation: &serde_json::Value, viewer: u8) -> bool {
+        if viewer > 1 { return true; }
+        let Some(cards) = observation["cards"].as_array() else { return true };
+        cards.iter().any(|card| {
+            match card["at"]["location"].as_str() {
+                Some("Banished") => {}
+                Some("Deck" | "Hand" | "MonsterZone" | "SpellTrapZone" | "Graveyard"
+                    | "Extra" | "Overlay" | "Other") => return false,
+                _ => return true,
+            }
+            let controller = card["at"]["controller"].as_u64().filter(|player| *player < 2);
+            let face_up = card["position"]["face_up"].as_bool();
+            match (controller, face_up) {
+                (Some(controller), Some(face_up)) => controller != u64::from(viewer) && !face_up,
+                _ => true,
+            }
+        })
+    }
+
     fn remember(&mut self, at: Loc, code: Option<u32>) {
         if !(field_zone(at.location)
             || at.location == location::GRAVE
@@ -426,5 +450,89 @@ mod tests {
         memory.observe(&change(100, banished, 1, 8)).unwrap();
         memory.observe(&movement(100, at(1, location::REMOVED, 0, false), at(1, location::MZONE, 0, false))).unwrap();
         assert!(memory.has_unknown_monsters(&observation(0), 0));
+    }
+
+    #[test]
+    fn facedown_banished_guard_uses_only_public_metadata_on_either_seat() {
+        let memory = PublicIdentityMemory::default();
+        for viewer in [0, 1] {
+            let mut view = serde_json::json!({"cards":[{
+                "at":{"controller":1-viewer,"location":"Banished","sequence":0},
+                "position":{"face_up":false,"attack":false},"code":null
+            }]});
+            for private in [serde_json::Value::Null, serde_json::json!(100), serde_json::json!(999)] {
+                view["cards"][0]["code"] = private;
+                view["cards"][0]["attack"] = serde_json::json!(9000);
+                view["cards"][0]["defense"] = serde_json::json!(12);
+                assert!(memory.has_facedown_banished(&view, viewer));
+            }
+            view["cards"][0]["position"]["face_up"] = serde_json::json!(true);
+            assert!(!memory.has_facedown_banished(&view, viewer));
+            view["cards"][0]["position"]["face_up"] = serde_json::json!(false);
+            view["cards"][0]["at"]["controller"] = serde_json::json!(viewer);
+            assert!(!memory.has_facedown_banished(&view, viewer));
+            view["cards"][0]["at"]["controller"] = serde_json::json!(1-viewer);
+            for location in ["Deck", "Hand", "MonsterZone", "SpellTrapZone", "Graveyard", "Extra", "Overlay", "Other"] {
+                view["cards"][0]["at"]["location"] = serde_json::json!(location);
+                assert!(!memory.has_facedown_banished(&view, viewer));
+            }
+        }
+        assert!(!memory.has_facedown_banished(&serde_json::json!({"cards":[]}), 0));
+    }
+
+    #[test]
+    fn facedown_banished_guard_rejects_missing_or_invalid_public_metadata() {
+        let memory = PublicIdentityMemory::default();
+        for view in [serde_json::Value::Null, serde_json::json!({}),
+            serde_json::json!({"cards":null}), serde_json::json!({"cards":[null]}),
+            serde_json::json!({"cards":[{"at":{"location":"unknown"}}]})] {
+            assert!(memory.has_facedown_banished(&view, 0));
+        }
+        let view = serde_json::json!({"cards":[{
+            "at":{"controller":1,"location":"Banished"},"position":{"face_up":false}
+        }]});
+        for controller in [serde_json::Value::Null, serde_json::json!(2), serde_json::json!(-1)] {
+            let mut malformed = view.clone();
+            malformed["cards"][0]["at"]["controller"] = controller;
+            assert!(memory.has_facedown_banished(&malformed, 0));
+        }
+        for face_up in [serde_json::Value::Null, serde_json::json!(0), serde_json::json!("false")] {
+            let mut malformed = view.clone();
+            malformed["cards"][0]["position"]["face_up"] = face_up;
+            assert!(memory.has_facedown_banished(&malformed, 0));
+        }
+        assert!(memory.has_facedown_banished(&serde_json::json!({"cards":[]}), 2));
+    }
+
+    #[test]
+    fn hidden_temporary_banish_does_not_make_a_search_root_safe() {
+        // Doom Lord (c41613948) preserves the target's facedown position and
+        // returns it later. Reproduce that wire transition without consulting
+        // the native identity; Slip of Fortune can produce the same boundary.
+        for viewer in [0, 1] {
+            let opponent = 1-viewer;
+            let monster = at(opponent, location::MZONE, 0, false);
+            let banished = at(opponent, location::REMOVED, 0, false);
+            let mut outcomes = Vec::new();
+            for private_code in [100, 999] {
+                let mut memory = PublicIdentityMemory::default();
+                memory.observe(&movement(private_code, at(opponent, location::HAND, 0, false), monster)).unwrap();
+                let before = serde_json::json!({"cards":[{
+                    "at":{"controller":opponent,"location":"MonsterZone","sequence":0},
+                    "position":{"face_up":false},"code":null
+                }]});
+                assert!(memory.has_unknown_monsters(&before, viewer));
+                memory.observe(&movement(private_code, monster, banished)).unwrap();
+                memory.observe(&update(private_code, banished)).unwrap();
+                let after = serde_json::json!({"cards":[{
+                    "at":{"controller":opponent,"location":"Banished","sequence":0},
+                    "position":{"face_up":false},"code":null
+                }]});
+                assert!(!memory.has_unknown_monsters(&after, viewer));
+                assert!(memory.has_facedown_banished(&after, viewer));
+                outcomes.push(memory);
+            }
+            assert_eq!(outcomes[0], outcomes[1]);
+        }
     }
 }

@@ -250,6 +250,7 @@ generic mirrors each selected specialist deck: generic versus the frozen baselin
   --mcts-iterations 128 --mcts-worlds 4 --mcts-actions 6 --mcts-nodes 1024\n\
   --mcts-decisions 512 --mcts-replies 1 --mcts-terminal false (proposal return mode); --mcts-validate-roots false\n\
   --mcts-adversarial-opponent false (pessimistic opponent UCT proposals; shared fixed budget)\n\
+  --mcts-root-warmup false (experimental complete root-world cycle; shared fixed budget)\n\
   --opponent-model generic|specialist (default generic; specialist is a benchmark diagnostic)\n\
   --evaluation-weights JSON_OBJECT (sparse nonnegative existing-feature overrides; beam/MCTS only)\n\
   --worlds 4 --max-candidates 6 --max-playouts 24 --horizon 0 --millis 200\n\
@@ -345,6 +346,7 @@ fn run() -> Result<()> {
             "--mcts-worlds",
             "--mcts-validate-roots",
             "--mcts-adversarial-opponent",
+            "--mcts-root-warmup",
             "--opponent-model",
             "--evaluation-weights",
         ]
@@ -360,7 +362,7 @@ fn run() -> Result<()> {
         }
     }
     if mode != "generic" {
-        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--opponent-model", "--evaluation-weights"] {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights"] {
             if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
@@ -1001,6 +1003,7 @@ fn generic_run(
             "--mcts-worlds",
             "--mcts-validate-roots",
             "--mcts-adversarial-opponent",
+            "--mcts-root-warmup",
             "--opponent-model",
             "--evaluation-weights",
         ]
@@ -1065,6 +1068,7 @@ fn generic_run(
     let mcts_worlds = number("--mcts-worlds", 4)?;
     let mcts_validate_roots = flag("--mcts-validate-roots", false)?;
     let adversarial_opponent = flag("--mcts-adversarial-opponent", false)?;
+    let root_warmup = flag("--mcts-root-warmup", false)?;
     let opponent_model = args.get("--opponent-model").map(String::as_str).unwrap_or("generic");
     let specialist_opponent = match opponent_model {
         "generic" => false,
@@ -1077,11 +1081,14 @@ fn generic_run(
     if specialist_opponent && plain {
         return Err("--opponent-model specialist requires search".into());
     }
+    if root_warmup && (method != "mcts" || plain) {
+        return Err("--mcts-root-warmup true requires MCTS search".into());
+    }
     let mcts = if method == "mcts" {
         Some(engine::MctsOptions { iterations: number("--mcts-iterations", 128)?,
             actions: number("--mcts-actions", 6)?, nodes: number("--mcts-nodes", 1024)?,
             decisions: number("--mcts-decisions", 512)?, replies: number("--mcts-replies", 1)?,
-            terminal: flag("--mcts-terminal", false)?, adversarial_opponent })
+            terminal: flag("--mcts-terminal", false)?, adversarial_opponent, root_warmup })
     } else { None };
     if mcts.is_some_and(|p| p.iterations == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0)
         || mcts.is_some() && mcts_worlds == 0 {
@@ -1148,7 +1155,7 @@ fn generic_run(
         "decision_limit": limit, "life_points": [8000,8000], "target": 0.55, "exceptions": exceptions,
         "plain": plain, "effect_profiles": effects, "search": {"opponent_model": opponent_model, "evaluation_weights": engine::evaluation::named_weights(&effective_weights), "worlds": worlds, "max_candidates": max_candidates,
             "max_playouts": max_playouts, "horizon": horizon, "depth": depth, "millis": millis, "strict": strict,
-            "method": method, "mcts": mcts.map(|p| json!({"iterations":p.iterations,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies,"terminal":p.terminal,"worlds":mcts_worlds,"validate_roots":mcts_validate_roots,"adversarial_opponent":p.adversarial_opponent})), "validation": if horizon == 0 { "terminal" } else { "heuristic" }, "beam": planner.map(|p| json!({"width":p.width,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies}))},
+            "method": method, "mcts": mcts.map(|p| json!({"iterations":p.iterations,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies,"terminal":p.terminal,"worlds":mcts_worlds,"validate_roots":mcts_validate_roots,"adversarial_opponent":p.adversarial_opponent,"root_warmup":p.root_warmup})), "validation": if horizon == 0 { "terminal" } else { "heuristic" }, "beam": planner.map(|p| json!({"width":p.width,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies}))},
         "timing_reproducibility": if millis == 0 || plain { "deterministic work cap" } else { "wall-time budget may change choices under machine load" },
         "engine": core_path.map(file_identity).unwrap_or_else(|| json!({"linked": true})),
         "executable": std::env::current_exe().ok().map(|p| file_identity(&p)),

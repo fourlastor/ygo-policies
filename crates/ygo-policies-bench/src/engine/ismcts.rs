@@ -27,6 +27,9 @@ pub struct Options {
     /// Expand minimizing opponent nodes during proposals, within the existing
     /// node/iteration limits. Frozen validation always uses Generic opponents.
     pub adversarial_opponent: bool,
+    /// Experimental root-only full-world warmup. False preserves ordinary UCT
+    /// allocation; true spends the same trial budget on a complete first cycle.
+    pub root_warmup: bool,
 }
 
 /// The caller samples these worlds without consulting their hidden contents
@@ -234,7 +237,8 @@ struct RootWorldSchedule {
 }
 
 impl RootWorldSchedule {
-    fn select(&self, root: &Node, worlds: usize) -> usize {
+    fn select(&self, root: &Node, worlds: usize, warmup: bool) -> usize {
+        if !warmup { return root.select(); }
         // Stable ties keep Generic first and yield fair round-robin prefixes
         // even when the trial budget cannot finish the warmup. Use scheduled
         // attempts: failures before an edge commits still consume its world.
@@ -842,7 +846,7 @@ pub(super) fn search(
     deadline: Option<Instant>,
     evaluator: &dyn Fn(&Value, u8, Option<&Value>) -> f64,
 ) -> Result<SearchResult> {
-    search_impl::<false, false, false>(
+    search_impl::<false, false, false, false>(
         duel,
         worlds,
         viewer,
@@ -862,6 +866,7 @@ fn search_impl<
     const LEGACY_HORIZON: bool,
     const KEEP_TAIL_CHECKPOINTS: bool,
     const EXPAND_NONSEQUENTIAL: bool,
+    const LEGACY_ROOT_UCT: bool,
 >(
     duel: &mut Duel,
     worlds: &[World<'_>],
@@ -887,7 +892,11 @@ fn search_impl<
             // An unseen root expands generic-first, so its first action is 0.
             // No hidden world data participates in this selection.
             let root_action = tree.get(&root_key)
-                .map_or(0, |node| schedule.select(node, worlds.len()));
+                .map_or(0, |node| if LEGACY_ROOT_UCT {
+                    node.select()
+                } else {
+                    schedule.select(node, worlds.len(), options.root_warmup)
+                });
             let world_index = schedule.next(root_action, worlds.len());
             let world = &worlds[world_index];
             duel.restore(&world.snapshot)?;
@@ -1595,7 +1604,7 @@ mod tests {
             let mut schedule = RootWorldSchedule::default();
             let mut trials = Vec::new();
             for _ in 0..budget {
-                let action = schedule.select(&node, 4);
+                let action = schedule.select(&node, 4, true);
                 let world = schedule.next(action, 4);
                 node.actions[action].attempts += 1;
                 node.actions[action].visits += 1;
@@ -1613,12 +1622,45 @@ mod tests {
     }
 
     #[test]
+    fn disabled_root_warmup_preserves_ordinary_uct_scheduling_even_after_failed_trials() {
+        for worlds in [1usize, 4] {
+            let mut actual = node_with_actions(8);
+            let mut reference = node_with_actions(8);
+            let mut schedule = RootWorldSchedule::default();
+            let mut legacy_schedule = RootWorldSchedule::default();
+            for trial in 0..32 {
+                let selected = schedule.select(&actual, worlds, false);
+                let expected = reference.select();
+                assert_eq!(selected, expected);
+                let world = schedule.next(selected, worlds);
+                assert_eq!(world, legacy_schedule.next(expected, worlds));
+                // Some trials fail before recording an attempt; others cap
+                // after an attempt. Neither may change default allocation.
+                if trial % 7 == 0 { continue; }
+                for node in [&mut actual, &mut reference] {
+                    node.actions[selected].attempts += 1;
+                    if trial % 5 != 0 {
+                        node.actions[selected].visits += 1;
+                        node.actions[selected].total += (selected + world) as f64 / 12.0 - 0.5;
+                    }
+                }
+            }
+            assert_eq!(schedule.scheduled, legacy_schedule.scheduled);
+            assert_eq!(actual.best(), reference.best());
+            for (actual, expected) in actual.actions.iter().zip(&reference.actions) {
+                assert_eq!((actual.attempts, actual.visits, actual.total),
+                    (expected.attempts, expected.visits, expected.total));
+            }
+        }
+    }
+
+    #[test]
     fn root_warmup_can_recover_an_action_with_bad_early_worlds_without_more_trials() {
         let run = |warmup: bool| {
             let mut node = node_with_actions(8);
             let mut schedule = RootWorldSchedule::default();
             for _ in 0..32 {
-                let action = if warmup { schedule.select(&node, 4) } else { node.select() };
+                let action = if warmup { schedule.select(&node, 4, true) } else { node.select() };
                 let world = schedule.next(action, 4);
                 // Action 7 averages zero and beats every constant -0.1 action,
                 // but its first two worlds alone misleadingly average -1.
@@ -1660,15 +1702,15 @@ mod tests {
         };
         assert_eq!(node.select(), 0, "inner maximizing UCT still favors its evidence");
         assert_eq!(node.select_for(false), 1, "inner minimizing UCT is unchanged");
-        assert_eq!(schedule.select(&node, 4), 1, "only the root completes the world cycle");
+        assert_eq!(schedule.select(&node, 4, true), 1, "only the root completes the world cycle");
         schedule.scheduled = vec![4, 4];
-        assert_eq!(schedule.select(&node, 4), node.select());
+        assert_eq!(schedule.select(&node, 4, true), node.select());
         // With one supplied world, the warmup is exactly UCT's existing
         // first-unvisited pass, including uneven values and every prefix.
         let mut one_world = node_with_actions(3);
         let mut schedule = RootWorldSchedule::default();
         for _ in 0..16 {
-            let action = schedule.select(&one_world, 1);
+            let action = schedule.select(&one_world, 1, true);
             assert_eq!(action, one_world.select());
             schedule.next(action, 1);
             one_world.actions[action].attempts += 1;
@@ -1682,7 +1724,7 @@ mod tests {
         let mut node = node_with_actions(2);
         let mut schedule = RootWorldSchedule::default();
         for _ in 0..8 {
-            let action = schedule.select(&node, 4);
+            let action = schedule.select(&node, 4, true);
             let world = schedule.next(action, 4);
             // Simulate failures before edge-attempt accounting on action 0.
             // They must consume its scheduled worlds without starving action 1.
@@ -1886,6 +1928,7 @@ mod tests {
             replies: 0,
             terminal: false,
             adversarial_opponent: false,
+            root_warmup: true,
         };
         let heuristic_calls = std::cell::Cell::new(0);
         let menus_seen = std::cell::Cell::new(0);
@@ -1937,7 +1980,22 @@ mod tests {
         assert_eq!(world.seats[0].last_answer().unwrap(), original);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let expanded_nonsequential = search_impl::<false, false, true>(
+        // Default false must reproduce the previous root Node::select path,
+        // including full native response/history traces, values, coverage,
+        // frozen continuations and restored caller state.
+        let ordinary_options = Options { root_warmup: false, ..options };
+        let ordinary = search(&mut duel, &worlds, 0, &original, decisions, 1024,
+            ordinary_options, None, &evaluator).unwrap();
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        let old_root = search_impl::<false, false, false, true>(
+            &mut duel, &worlds, 0, &original, decisions, 1024,
+            ordinary_options, None, &evaluator).unwrap();
+        assert_search_equivalent(&ordinary, &old_root);
+        assert_eq!(ordinary.stats.simulations, options.iterations);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        let expanded_nonsequential = search_impl::<false, false, true, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -1952,7 +2010,7 @@ mod tests {
         duel.restore(&world.snapshot).unwrap();
         eprintln!("nonsequential answer reuse: {} JSON roundtrips omitted across {} identical simulations",
             first.stats.reused_answers, options.iterations);
-        let retained = search_impl::<false, true, false>(
+        let retained = search_impl::<false, true, false, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -1967,7 +2025,7 @@ mod tests {
             "plain search tails: {} pre-choice checkpoints omitted across {} identical simulations",
             first.stats.uncheckpointed_prompts, first.stats.simulations
         );
-        let legacy = search_impl::<true, false, false>(
+        let legacy = search_impl::<true, false, false, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -2102,7 +2160,7 @@ mod tests {
         );
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed_search = search_impl::<true, false, false>(
+        let legacy_failed_search = search_impl::<true, false, false, false>(
             &mut duel,
             &worlds,
             0,
@@ -2155,7 +2213,7 @@ mod tests {
             .all(|action| action.attempts > 0));
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_capped = search_impl::<true, false, false>(
+        let legacy_capped = search_impl::<true, false, false, false>(
             &mut duel,
             &worlds,
             0,
@@ -2190,7 +2248,7 @@ mod tests {
             .unwrap();
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
-            let legacy = search_impl::<true, false, false>(
+            let legacy = search_impl::<true, false, false, false>(
                 &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
             )
             .unwrap();
@@ -2592,6 +2650,7 @@ mod tests {
                     replies,
                     terminal: false,
                     adversarial_opponent: false,
+                    root_warmup: true,
                 };
                 let goal = goal_turn(&original["observation"], viewer, replies);
                 let menus_seen = std::cell::Cell::new(0);
@@ -2617,7 +2676,7 @@ mod tests {
                 .unwrap();
                 assert_eq!(next_bytes(&mut duel), expected);
                 duel.restore(&world.snapshot).unwrap();
-                let legacy = search_impl::<true, false, false>(
+                let legacy = search_impl::<true, false, false, false>(
                     &mut duel,
                     std::slice::from_ref(&world),
                     viewer,
@@ -2660,6 +2719,7 @@ mod tests {
                 replies: 1,
                 terminal: false,
                 adversarial_opponent: true,
+                root_warmup: true,
             };
             let evaluator = |observation: &Value, player: u8, _: Option<&Value>| {
                 assert_eq!(player, viewer);
@@ -2743,7 +2803,7 @@ mod tests {
             // Retaining both players' policy checkpoints is a behavioral
             // reference: dropping them after the single expansion must not
             // change either actor's decisions, returns, or root allocation.
-            let retained = search_impl::<false, true, false>(
+            let retained = search_impl::<false, true, false, false>(
                 &mut duel,
                 std::slice::from_ref(&world),
                 viewer,
@@ -2766,6 +2826,7 @@ mod tests {
             let ordinary_options = Options {
                 iterations: 16,
                 adversarial_opponent: false,
+                root_warmup: true,
                 ..options
             };
             let ordinary = search(
