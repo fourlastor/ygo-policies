@@ -5,7 +5,8 @@
 //! `c10026986.lua` (King), `c73580471.lua` (Black Rose), `c57774843.lua`
 //! (Judgment Dragon), `c29071332.lua` (Armory Arm), `c39402797.lua`
 //! (Trident Dragion), `c72426662.lua` (Demise), `c22046459.lua`
-//! (Megamorph), `c10004783.lua` (Crystal Release, with `proc_equip.lua`), and the
+//! (Megamorph), `c10004783.lua` (Crystal Release, with `proc_equip.lua`),
+//! `c38699854.lua` / `c81843628.lua` (Taiyou / Needle Worm), and the
 //! mandatory-removal facts in `knowledge`.
 //! An ordinary NormalSummon choice does not expose its actual tribute cost.
 //! Consequently this module never vetoes a summon from printed Level alone.
@@ -17,6 +18,8 @@ use crate::model::{CardRef, CardView, Choice, ChoiceKind, DecisionKind, Hint, Lo
 use crate::tactics;
 
 const BOOK_OF_ECLIPSE: u32 = 35480699;
+const BOOK_OF_TAIYOU: u32 = 38699854;
+const NEEDLE_WORM: u32 = 81843628;
 const WORM_KING: u32 = 10026986;
 const BLACK_ROSE_DRAGON: u32 = 73580471;
 const JUDGMENT_DRAGON: u32 = 57774843;
@@ -33,6 +36,8 @@ pub const SUPPORTED_CODES: &[u32] = &[
     9748752,
     WORM_KING,
     BOOK_OF_ECLIPSE,
+    BOOK_OF_TAIYOU,
+    NEEDLE_WORM,
     73125233,
     BLACK_ROSE_DRAGON,
     JUDGMENT_DRAGON,
@@ -720,6 +725,21 @@ pub(super) fn select(t: &Turn, member: &Member) -> Option<f64> {
     let ctx = t.ctx;
     let source = ctx.canonical(t.memory.last_activated?);
     let card = ctx.card(member.at)?;
+    if source == BOOK_OF_TAIYOU && t.decision.kind == DecisionKind::SelectCards
+        && t.decision.hint == Hint::FaceDown && t.decision.minimum == 1 && t.decision.maximum == 1
+        && member.at.controller == ctx.me && member.at.location == Location::MonsterZone
+        && member.code.is_some_and(|code| ctx.canonical(code) == NEEDLE_WORM)
+        && ctx.is(card, NEEDLE_WORM) && !card.position.face_up
+        && !ctx.effects_drained() && ctx.deck_size(ctx.opp) > 0
+        && t.choices().any(|(_, choice)| choice.card.as_ref() == Some(member) || choice.members.contains(member))
+    {
+        // Taiyou's native HINTMSG_FACEDOWN (515) selects one monster on
+        // either field and flips it face-up Attack. Needle's FLIP then mills
+        // the opponent's top five cards. Treat that known own target as a
+        // productive option, not as a hostile selection to avoid. This does
+        // not claim an immediate win or change activation/other target rules.
+        return Some(10_000.0);
+    }
     if source == CRYSTAL_RELEASE && t.decision.hint == Hint::Equip {
         // Actual offered members remain the legality authority. Valid own
         // recipients keep Generic's existing gain score; do not let an enemy
@@ -832,6 +852,24 @@ mod tests {
 
     fn db() -> MemoryCards {
         let cards = [
+            CardData {
+                code: BOOK_OF_TAIYOU,
+                kind: types::SPELL,
+                ..CardData::default()
+            },
+            CardData {
+                code: NEEDLE_WORM,
+                kind: types::MONSTER | types::EFFECT | types::FLIP,
+                attack: 750,
+                defense: 600,
+                level: 2,
+                ..CardData::default()
+            },
+            CardData {
+                code: crate::knowledge::SKILL_DRAIN,
+                kind: types::TRAP | types::CONTINUOUS,
+                ..CardData::default()
+            },
             CardData {
                 code: JUDGMENT_DRAGON,
                 kind: types::MONSTER | types::EFFECT,
@@ -1355,6 +1393,154 @@ mod tests {
         source.code = Some(CRYSTAL_RELEASE);
         source.at.controller = me;
         prompt
+    }
+
+    fn taiyou_targets(board: &Observation) -> Decision {
+        Decision {
+            kind: DecisionKind::SelectCards,
+            hint: Hint::FaceDown,
+            minimum: 1,
+            maximum: 1,
+            selected: vec![],
+            subject: None,
+            choices: board.cards.iter().filter(|card| card.at.location == Location::MonsterZone)
+                .map(|card| Choice { kind: ChoiceKind::Cards, card: None,
+                    members: vec![member(card)], description: 0, place: None }).collect(),
+        }
+    }
+
+    fn taiyou_score(board: &Observation, prompt: &Decision, source: Option<u32>, target: &Member) -> Option<f64> {
+        let database = db();
+        let mut memory = Memory::default();
+        memory.last_activated = source;
+        let turn = Turn { ctx: Ctx::new(board, &database), decision: prompt, memory: &mut memory };
+        select(&turn, target)
+    }
+
+    #[test]
+    fn taiyou_native_facedown_selection_prefers_own_needle_on_either_seat() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        for me in [0, 1] {
+            let mut enemy = card(ORDINARY, 1-me, 0);
+            enemy.position = Position::FACE_DOWN_DEFENSE;
+            enemy.code = None;
+            let mut needle = card(NEEDLE_WORM, me, 1);
+            needle.position = Position::FACE_DOWN_DEFENSE;
+            let mut source = card(BOOK_OF_TAIYOU, me, 0);
+            source.at.location = Location::Hand;
+            let mut board = obs(vec![enemy,needle,source]);
+            board.me = me;
+            board.turn_player = Some(me);
+            let mut activate = crystal_release_prompt(me);
+            activate.choices[0].card.as_mut().unwrap().code = Some(BOOK_OF_TAIYOU);
+            activate.choices[0].description = 0;
+            let mut pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+            assert_eq!(pilot.choose(&board,&activate),0);
+            let targets = taiyou_targets(&board);
+            assert_eq!(pilot.choose(&board,&targets),1, "seat {me}");
+            // Native SelectCards uses individual Toggle choices as well as
+            // the whole-subset representation above.
+            let mut toggles = targets.clone();
+            for choice in &mut toggles.choices {
+                choice.kind = ChoiceKind::Toggle;
+                choice.card = choice.members.pop();
+            }
+            let mut native_pilot = Agent::seeded(Generic, Arc::new(db()), 1);
+            assert_eq!(native_pilot.choose(&board,&activate),0);
+            assert_eq!(native_pilot.choose(&board,&toggles),1, "native seat {me}");
+            assert_eq!(taiyou_score(&board,&targets,Some(BOOK_OF_TAIYOU),&member(&board.cards[0])),None,
+                "opposing targets keep their existing score");
+        }
+    }
+
+    #[test]
+    fn taiyou_needle_prior_requires_its_exact_offered_target_context() {
+        let mut needle = card(NEEDLE_WORM,0,0);
+        needle.position = Position::FACE_DOWN_DEFENSE;
+        let mut board = obs(vec![needle]);
+        let prompt = taiyou_targets(&board);
+        let target = member(&board.cards[0]);
+        assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),Some(10_000.0));
+        for source in [None,Some(BOOK_OF_ECLIPSE)] {
+            assert_eq!(taiyou_score(&board,&prompt,source,&target),None);
+        }
+        for hint in [Hint::Target,Hint::FaceUp,Hint::Other(515)] {
+            let mut wrong = prompt.clone();
+            wrong.hint = hint;
+            assert_eq!(taiyou_score(&board,&wrong,Some(BOOK_OF_TAIYOU),&target),None);
+        }
+        for kind in [DecisionKind::Idle,DecisionKind::SelectToggle,DecisionKind::SelectSum] {
+            let mut wrong = prompt.clone();
+            wrong.kind = kind;
+            assert_eq!(taiyou_score(&board,&wrong,Some(BOOK_OF_TAIYOU),&target),None);
+        }
+        for (minimum,maximum) in [(0,1),(1,2)] {
+            let mut wrong = prompt.clone();
+            wrong.minimum = minimum;
+            wrong.maximum = maximum;
+            assert_eq!(taiyou_score(&board,&wrong,Some(BOOK_OF_TAIYOU),&target),None);
+        }
+        let mut absent = prompt.clone();
+        absent.choices.clear();
+        assert_eq!(taiyou_score(&board,&absent,Some(BOOK_OF_TAIYOU),&target),None);
+        let mut unknown = target;
+        unknown.code = None;
+        assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&unknown),None);
+        board.cards[0].position = Position::FACE_UP_ATTACK;
+        assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),None);
+        board.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        board.cards[0].at.location = Location::SpellTrapZone;
+        assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&member(&board.cards[0])),None);
+        board.cards[0] = card(FLIP,0,0);
+        board.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        assert_eq!(taiyou_score(&board,&taiyou_targets(&board),Some(BOOK_OF_TAIYOU),&member(&board.cards[0])),None,
+            "unannotated FLIP effects, including symmetric ones, are not credited");
+        board.cards[0] = card(NEEDLE_WORM,1,0);
+        board.cards[0].position = Position::FACE_DOWN_DEFENSE;
+        assert_eq!(taiyou_score(&board,&taiyou_targets(&board),Some(BOOK_OF_TAIYOU),&member(&board.cards[0])),None);
+    }
+
+    #[test]
+    fn taiyou_needle_prior_needs_remaining_cards_and_an_unsuppressed_flip() {
+        for me in [0,1] {
+            let mut needle = card(NEEDLE_WORM,me,0);
+            needle.position = Position::FACE_DOWN_DEFENSE;
+            let mut board = obs(vec![needle]);
+            board.me = me;
+            board.turn_player = Some(me);
+            let prompt = taiyou_targets(&board);
+            let target = member(&board.cards[0]);
+            for controller in [0,1] {
+                let mut drain = card(crate::knowledge::SKILL_DRAIN,controller,1);
+                drain.at.location = Location::SpellTrapZone;
+                board.cards.push(drain);
+                assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),None);
+                board.cards.last_mut().unwrap().position = Position::FACE_DOWN_DEFENSE;
+                assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),Some(10_000.0));
+                board.cards.pop();
+            }
+            board.pile_sizes = vec![(1-me,Location::Deck,0)];
+            assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),None);
+            board.pile_sizes = vec![(1-me,Location::Deck,1)];
+            assert_eq!(taiyou_score(&board,&prompt,Some(BOOK_OF_TAIYOU),&target),Some(10_000.0));
+        }
+    }
+
+    #[test]
+    fn taiyou_activation_remains_available_when_only_an_opponent_target_exists() {
+        use crate::agent::{Agent, Policy};
+        use std::sync::Arc;
+        let mut enemy = card(ORDINARY,1,0);
+        enemy.position = Position::FACE_DOWN_DEFENSE;
+        let mut source = card(BOOK_OF_TAIYOU,0,0);
+        source.at.location = Location::Hand;
+        let board = obs(vec![enemy,source]);
+        let mut prompt = crystal_release_prompt(0);
+        prompt.choices[0].card.as_mut().unwrap().code = Some(BOOK_OF_TAIYOU);
+        prompt.choices[0].description = 0;
+        assert_eq!(black_rose_answer(&board,&prompt),None);
+        assert_eq!(Agent::seeded(Generic,Arc::new(db()),1).choose(&board,&prompt),0);
     }
 
     #[test]
