@@ -24,6 +24,7 @@ use ygo_policies::generic::requirements;
 use ygo_policies::knowledge::{Burn, Fate, ALWAYS};
 use ygo_policies::model::{CardRef, CardView, Coin, CoinEffect, Location, Observation, Phase, Position};
 use ygo_policies::tactics;
+use ygo_policies::staples;
 use ygo_policies_ocgcore::SqliteCards;
 
 pub const FEATURE_NAMES: [&str; 13] = [
@@ -52,6 +53,17 @@ const HAND: u16 = range::HAND;
 const MONSTER: u16 = range::MONSTER;
 const BACKROW: u16 = range::SPELL_TRAP;
 const GRAVE: u16 = range::GRAVEYARD;
+
+/// Partial, source-backed battle semantics added by this evaluator. All are
+/// in the active Main/Extra pool; membership is not full card understanding.
+pub const BATTLE_SUPPORTED_CODES: &[u32] = &[
+    44789585, 69750546, 29552709, 94004268,
+    staples::SWORDS_OF_REVEALING_LIGHT, staples::MESSENGER_OF_PEACE,
+    staples::GRAVITY_BIND, staples::MORPHTRONIC_BIND, staples::NIGHTMARES_STEELCAGE,
+    staples::LEVEL_LIMIT_AREA_B, staples::SPIDER_WEB,
+];
+const NATURIA_BEANS: u32 = 44789585;
+const VOLCANIC_SCATTERSHOT: u32 = 69750546;
 
 /// Cheap cloneable evaluator. The printed database is loaded once per path;
 /// loading profiles is separate so callers can reuse their native-core cache.
@@ -215,10 +227,9 @@ impl Evaluator {
             let discount = if current { if battle_soon { 1.0 } else { 0.0 } } else { 0.55 };
             let battle = battle_projection(&ctx, player, current, protection);
             side[7] = battle.cards * discount;
-            side[8] = (battle.damage / 2500.0).clamp(-4.0, 4.0) * discount;
-            let opposing_lp = f64::from(observation.life_points[(1 - player) as usize].max(1));
+            side[8] = (battle.damage() / 2500.0).clamp(-4.0, 4.0) * discount;
             let backrow = observation.pile_size(1 - player, Location::SpellTrapZone) as f64;
-            if current && battle_soon && battle.damage >= opposing_lp {
+            if current && battle_soon && battle.lethal && !battle.uncertain {
                 side[9] = 1.0 / (1.0 + 0.25 * backrow);
             }
             let life = f64::from(observation.life_points[player as usize].max(0));
@@ -283,10 +294,23 @@ fn quick_interaction<'a>(effects: impl IntoIterator<Item = &'a Effect>, location
 }
 
 #[derive(Clone, Copy, Default)]
-struct BattleEstimate { cards: f64, damage: f64 }
+struct BattleEstimate {
+    cards: f64,
+    dealt: f64,
+    received: f64,
+    lethal: bool,
+    uncertain: bool,
+}
 
 impl BattleEstimate {
-    fn score(self) -> f64 { self.cards + self.damage / 2500.0 }
+    fn damage(self) -> f64 { self.dealt - self.received }
+    fn score(self) -> f64 { self.cards + self.damage() / 2500.0 }
+
+    fn better_than(self, other: Self) -> bool {
+        let wins = self.lethal && !self.uncertain;
+        let other_wins = other.lethal && !other.uncertain;
+        if wins != other_wins { wins } else { self.score() > other.score() }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -294,7 +318,95 @@ struct BattleChoice {
     target: Option<usize>,
     destroys_target: bool,
     loses_attacker: bool,
+    consumes_protection: bool,
     value: BattleEstimate,
+}
+
+/// Damage is applied in event order to each recipient. A losing attack is
+/// never selected merely because a later attack would improve net LP change.
+#[derive(Clone, Copy, Default)]
+struct BattleDamage {
+    dealt: f64,
+    received: f64,
+    lethal: bool,
+    fatal: bool,
+    uncertain: bool,
+}
+
+impl BattleDamage {
+    fn apply(&mut self, dealt: f64, received: f64, life: [f64; 2]) {
+        if self.lethal || self.fatal { return; }
+        self.dealt += dealt.max(0.0);
+        self.received += received.max(0.0);
+        self.fatal = self.received >= life[0];
+        self.lethal = !self.fatal && self.dealt >= life[1];
+    }
+}
+
+fn field_traps_suppressed(ctx: &Ctx<'_>) -> bool {
+    let drained = ctx.effects_drained();
+    ctx.obs.cards.iter().any(|source| {
+        let data = ctx.view_data(source);
+        let active_zone = data.is_monster() && source.at.location == Location::MonsterZone
+            || (data.is_spell() || data.is_trap()) && source.at.location == Location::SpellTrapZone;
+        active_zone && source.position.face_up
+            && !(source.at.location == Location::MonsterZone && drained)
+            && source.code.is_some_and(|code| card_knowledge::profile(ctx.canonical(code)).negates_field_traps)
+    })
+}
+
+/// The observer's current `can_attack` can be either an offered native battle
+/// action or its Main Phase approximation. A current false is still a veto;
+/// a true does not bypass visible continuous restrictions. Future turns ignore
+/// spent current attacks, but retain those restrictions while their source is
+/// still visible. Exact hidden disable ordering and unknown paid thresholds
+/// are not inferred.
+fn attack_permitted(ctx: &Ctx<'_>, attacker: &CardView, current: bool, traps_suppressed: bool) -> bool {
+    if current && ctx.obs.can_attack_known && !attacker.can_attack { return false; }
+    let data = ctx.view_data(attacker);
+    let has_level = !data.is(types::XYZ | types::LINK);
+    for source in ctx.obs.cards.iter().filter(|source| {
+        source.at.location == Location::SpellTrapZone && source.position.face_up
+    }) {
+        let Some(code) = source.code.map(|code| ctx.canonical(code)) else { continue; };
+        if !staples::ATTACK_LOCKS.contains(&code) { continue; }
+        let source_data = ctx.view_data(source);
+        if source_data.is_trap() && traps_suppressed { continue; }
+        if source_data.is(types::FIELD) && source.at.sequence != 5 { continue; }
+        let source_kind = if source_data.is_trap() {
+            ygo_policies::knowledge::kind::TRAP
+        } else { ygo_policies::knowledge::kind::SPELL };
+        if source.at.controller != attacker.at.controller
+            && ctx.facts(attacker).unaffected & source_kind != 0 { continue; }
+        // Sources: official/c<code>.lua, target ranges and atktarget/tg.
+        let stopped = match code {
+            staples::SWORDS_OF_REVEALING_LIGHT => source.at.controller != attacker.at.controller,
+            staples::NIGHTMARES_STEELCAGE => true,
+            staples::MESSENGER_OF_PEACE => attacker.attack >= 1500,
+            staples::GRAVITY_BIND => has_level && attacker.level >= 4,
+            staples::MORPHTRONIC_BIND => source.at.controller != attacker.at.controller
+                && has_level && attacker.level >= 4
+                && ctx.monsters(source.at.controller).iter().any(|monster| {
+                    monster.position.face_up
+                        && ctx.view_data(monster).in_set(ygo_policies::knowledge::SET_MORPHTRONIC)
+                }),
+            // Area B changes position (already observed); Spider Web changes
+            // it after an attack. Neither forbids every first attack.
+            staples::LEVEL_LIMIT_AREA_B | staples::SPIDER_WEB => false,
+            // Existing lock knowledge may depend on an unobserved paid value.
+            // Do not claim an attack through it from its identity alone.
+            _ => source.at.controller != attacker.at.controller,
+        };
+        if stopped { return false; }
+    }
+    true
+}
+
+/// Only Beans' count is established here from c44789585.lua. Other shared
+/// `survives: n` facts can describe conditional or shared protection, not n
+/// independently consumable charges. Public `battles` is not a use counter.
+fn counted_battle_protection(ctx: &Ctx<'_>, target: &CardView) -> Option<u32> {
+    ctx.is(target, NATURIA_BEANS).then_some(1)
 }
 
 /// Public continuous protections are collected once, outside the attack-pair
@@ -309,17 +421,9 @@ struct BattleProtection {
 impl BattleProtection {
     fn from_public_board(ctx: &Ctx<'_>) -> Self {
         let mut result = Self::default();
-        let drained = ctx.effects_drained();
         // Exact disable ordering is not observable. A visible suppressor is
         // enough to avoid claiming guaranteed protection from a field trap.
-        let field_traps_suppressed = ctx.obs.cards.iter().any(|source| {
-            let data = ctx.view_data(source);
-            let active_zone = data.is_monster() && source.at.location == Location::MonsterZone
-                || (data.is_spell() || data.is_trap()) && source.at.location == Location::SpellTrapZone;
-            active_zone && source.position.face_up
-                && !(source.at.location == Location::MonsterZone && drained)
-                && source.code.is_some_and(|code| card_knowledge::profile(ctx.canonical(code)).negates_field_traps)
-        });
+        let field_traps_suppressed = field_traps_suppressed(ctx);
         for source in ctx.obs.cards.iter().filter(|source| source.at.location == Location::SpellTrapZone && source.position.face_up) {
             let data = ctx.view_data(source);
             if field_traps_suppressed && data.is_trap() { continue; }
@@ -343,28 +447,40 @@ impl BattleProtection {
 /// A cheap two-order greedy exchange estimate. Real search resolves actual
 /// battles; this only prices the remaining tactical exposure at a safe leaf.
 fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool, protection: BattleProtection) -> BattleEstimate {
+    let traps_suppressed = field_traps_suppressed(ctx);
     let mut attackers: Vec<_> = ctx.obs.pile(player, Location::MonsterZone)
         .filter(|card| card.position.face_up && card.position.attack
-            && (!current || !ctx.obs.can_attack_known || card.can_attack)).collect();
+            && attack_permitted(ctx, card, current, traps_suppressed)).collect();
     if attackers.is_empty() { return BattleEstimate::default(); }
-    // The shared rules distinguish which controller a known attack lock stops.
-    let locked = if player == ctx.me { !ctx.attack_locks().is_empty() } else { !ctx.own_attack_locks().is_empty() };
-    if locked { return BattleEstimate::default(); }
     attackers.sort_by_key(|card| card.attack);
     let mut best = BattleEstimate::default();
     for reversed in [false, true] {
-        let mut targets: Vec<_> = ctx.obs.pile(1 - player, Location::MonsterZone).collect();
+        let mut targets: Vec<_> = ctx.obs.pile(1 - player, Location::MonsterZone).cloned().map(|mut card| {
+            // A recorded battle does not prove that destruction protection was
+            // used. Start with the conservative full allowance. Only verified
+            // independent counts are consumed below; ambiguous shared/position
+            // protections retain their conservative bound throughout the line.
+            if ctx.facts(&card).attacked.iter().any(|met| met.survives > 0 && met.survives != ALWAYS) {
+                card.battles = 0;
+            }
+            card
+        }).collect();
         let mut remaining_own_bodies = ctx.obs.pile(player, Location::MonsterZone).count();
         let mut estimate = BattleEstimate::default();
         let ordered: Vec<_> = if reversed { attackers.iter().rev().copied().collect() } else { attackers.clone() };
-        for attacker in ordered {
+        for (attack_index, attacker) in ordered.iter().copied().enumerate() {
+            let life = [
+                f64::from(ctx.obs.life_points[player as usize].max(1)) - estimate.received,
+                f64::from(ctx.obs.life_points[(1 - player) as usize].max(1)) - estimate.dealt,
+            ];
             let striking = ctx.facts(attacker).striking;
             let mut selected = if targets.is_empty() || striking.direct {
-                let damage = if protection.prevents(ctx, 1 - player, None, targets.len()) {
+                let dealt = if protection.prevents(ctx, 1 - player, None, targets.len()) {
                     0.0
                 } else { f64::from(attacker.attack.max(0)) };
                 Some(BattleChoice { target: None, destroys_target: false, loses_attacker: false,
-                    value: BattleEstimate { cards: 0.0, damage } })
+                    consumes_protection: false,
+                    value: BattleEstimate { dealt, lethal: dealt >= life[1], ..BattleEstimate::default() } })
             } else { None };
             for (index, target) in targets.iter().enumerate() {
                 // An available repeatable attack negation is not a free kill.
@@ -381,37 +497,93 @@ fn battle_projection(ctx: &Ctx<'_>, player: u8, current: bool, protection: Battl
                     cards -= if met.facts.collateral == ALWAYS { attackers.len().saturating_sub(1) as f64 }
                         else { f64::from(met.facts.collateral) };
                 }
-                let mut damage = 0.0;
                 let before = met.facts.before_damage && met.facts.attacker != Fate::Unharmed
                     || striking.before_damage && ctx.strike_removes(attacker, target).is_some();
+                let mut damage = BattleDamage::default();
+                // Shared finite protection and collateral victims are not
+                // fully represented by the public snapshot. Neither may
+                // establish a certain terminal result from later attacks.
+                damage.uncertain = (met.facts.survives > 0 && met.facts.survives != ALWAYS
+                    && counted_battle_protection(ctx, target).is_none())
+                    || destroyed && (met.facts.collateral > 0
+                        || target.code.is_some_and(|code|
+                            card_knowledge::profile(ctx.canonical(code)).negates_field_traps));
+                let beans = ctx.is(target, NATURIA_BEANS);
+                let scattershot = ctx.is(target, VOLCANIC_SCATTERSHOT);
+                let battle_reflection = ctx.gusto_reflects(target)
+                    || target.code.is_some_and(|code| matches!(ctx.canonical(code), 29552709 | 94004268));
+                if beans && target.position.face_up && !ctx.effects_drained() {
+                    // c44789585: EVENT_BE_BATTLE_TARGET, before damage; not
+                    // conditional on destruction or reaching the Graveyard.
+                    damage.apply(0.0, 500.0, life);
+                } else if !beans && !scattershot {
+                    // Shared Burn facts lose event timing, conditions, and in
+                    // some cases damage recipients. Treat their cost estimate
+                    // as a possible prior loss, never as proof of lethal.
+                    let bound = match met.facts.burn {
+                        Burn::None => None,
+                        Burn::Reflected if battle_reflection => None,
+                        Burn::Fixed(amount) => Some(amount),
+                        Burn::AttackerAtk | Burn::Reflected => Some(attack.max(attacker.attack)),
+                    };
+                    if let Some(bound) = bound {
+                        damage.uncertain = true;
+                        damage.apply(0.0, f64::from(bound.max(0)), life);
+                    }
+                }
+                if damage.fatal { continue; }
                 if !before {
+                    let mut dealt = 0.0;
                     if !met.facts.no_damage && (!met.defending || striking.piercing)
                         && !protection.prevents(ctx, 1 - player, Some(target), targets.len()) {
-                        damage += f64::from((attack - met.stat).max(0));
+                        dealt = f64::from((attack - met.stat).max(0));
                     }
                     let own_protected = protection.prevents(ctx, player, Some(attacker), remaining_own_bodies);
-                    if !own_protected { damage -= f64::from((met.stat - attack).max(0)); }
-                    damage -= f64::from(match met.facts.burn {
-                        Burn::None => 0,
-                        Burn::Fixed(amount) => amount,
-                        Burn::AttackerAtk => attack,
-                        Burn::Reflected => if !own_protected && (!met.defending || striking.piercing) { (attack - met.stat).max(0) } else { 0 },
-                    });
+                    let mut received = if own_protected { 0.0 } else { f64::from((met.stat - attack).max(0)) };
+                    if met.facts.burn == Burn::Reflected && battle_reflection
+                        && !own_protected && (!met.defending || striking.piercing) {
+                        received += f64::from((attack - met.stat).max(0));
+                    }
+                    damage.apply(dealt, received, life);
                 }
-                let value = BattleEstimate { cards, damage };
-                if value.score() > selected.map_or(0.0, |choice| choice.value.score()) {
+                if !damage.lethal && !damage.fatal && scattershot && destroyed
+                    && matches!(striking.target, Fate::Unharmed | Fate::Destroyed)
+                    && !ctx.monsters_banished() {
+                    // c69750546: EVENT_TO_GRAVE. Fatal battle damage ends the
+                    // duel before this trigger; banishing replacement prevents
+                    // it entirely. Skill Drain does not negate the GY effect.
+                    damage.apply(0.0, 500.0, life);
+                }
+                if damage.fatal { continue; }
+                let consumes_protection = !before && met.survives && !ctx.battle_proof(target)
+                    && counted_battle_protection(ctx, target).is_some_and(|limit| target.battles < limit)
+                    && (attack > met.stat || attack == met.stat && !met.defending && attack > 0);
+                let value = BattleEstimate { cards, dealt: damage.dealt, received: damage.received,
+                    lethal: damage.lethal, uncertain: damage.uncertain };
+                // Spending a verified protection charge can enable a later
+                // attack even when this setup attack has no immediate gain.
+                let prepares_later_attack = consumes_protection && attack_index + 1 < ordered.len();
+                if selected.is_none() && prepares_later_attack
+                    || value.better_than(selected.map_or(BattleEstimate::default(), |choice| choice.value)) {
                     selected = Some(BattleChoice { target: Some(index), destroys_target: destroyed,
-                        loses_attacker: lost, value });
+                        loses_attacker: lost, consumes_protection, value });
                 }
             }
             if let Some(choice) = selected {
                 estimate.cards += choice.value.cards;
-                estimate.damage += choice.value.damage;
+                estimate.dealt += choice.value.dealt;
+                estimate.received += choice.value.received;
+                estimate.lethal |= choice.value.lethal;
+                estimate.uncertain |= choice.value.uncertain;
+                if estimate.lethal { break; }
                 if choice.loses_attacker { remaining_own_bodies = remaining_own_bodies.saturating_sub(1); }
-                if let Some(index) = choice.target.filter(|_| choice.destroys_target) { targets.remove(index); }
+                if let Some(index) = choice.target {
+                    if choice.destroys_target { targets.remove(index); }
+                    else if choice.consumes_protection { targets[index].battles += 1; }
+                }
             }
         }
-        if estimate.score() > best.score() { best = estimate; }
+        if estimate.better_than(best) { best = estimate; }
     }
     best
 }
@@ -502,6 +674,226 @@ mod tests {
     fn observation(cards: Vec<Value>) -> Value {
         json!({"me":0,"cards":cards,"life_points":[8000,8000],"turn_player":0,"phase":"Main2",
             "can_attack_known":true,"pile_sizes":[[0,"Deck",30],[1,"Deck",30]]})
+    }
+
+    fn battle_evaluator() -> Evaluator {
+        let mut cards = MemoryCards::default();
+        for code in [1, 4, NATURIA_BEANS, VOLCANIC_SCATTERSHOT, 33236860, 2851070, 77585513] {
+            cards.0.insert(code, CardData { code, kind: types::MONSTER | types::EFFECT, ..Default::default() });
+        }
+        for (code, kind) in [(5, types::XYZ), (6, types::LINK)] {
+            cards.0.insert(code, CardData { code, kind: types::MONSTER | kind, ..Default::default() });
+        }
+        cards.0.insert(7, CardData { code: 7, kind: types::MONSTER,
+            setcodes: vec![ygo_policies::knowledge::SET_MORPHTRONIC], ..Default::default() });
+        for code in [staples::GRAVITY_BIND, staples::MORPHTRONIC_BIND,
+            staples::WALL_OF_REVEALING_LIGHT, 53239672, 51452091,
+            ygo_policies::knowledge::SKILL_DRAIN, ygo_policies::knowledge::MACRO_COSMOS] {
+            cards.0.insert(code, CardData { code, kind: types::TRAP | types::CONTINUOUS, ..Default::default() });
+        }
+        for code in [staples::MESSENGER_OF_PEACE, staples::SWORDS_OF_REVEALING_LIGHT,
+            staples::NIGHTMARES_STEELCAGE, staples::LEVEL_LIMIT_AREA_B, staples::SPIDER_WEB] {
+            cards.0.insert(code, CardData { code, kind: types::SPELL,
+                ..Default::default() });
+        }
+        Evaluator::new(Arc::new(cards))
+    }
+
+    fn project(evaluator: &Evaluator, value: &Value, player: u8, current: bool) -> BattleEstimate {
+        let obs = visible_observation(value, 0);
+        let ctx = Ctx::new(&obs, evaluator.cards.as_ref());
+        battle_projection(&ctx, player, current, BattleProtection::from_public_board(&ctx))
+    }
+
+    fn permitted(evaluator: &Evaluator, value: &Value, current: bool) -> bool {
+        let obs = visible_observation(value, 0);
+        let ctx = Ctx::new(&obs, evaluator.cards.as_ref());
+        attack_permitted(&ctx, &obs.cards[0], current, field_traps_suppressed(&ctx))
+    }
+
+    #[test]
+    fn fatal_battle_damage_ends_before_scattershots_grave_trigger() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",4,2600),
+            card(1,"MonsterZone",VOLCANIC_SCATTERSHOT,500)]);
+        value["life_points"] = json!([500,2100]);
+        let win = project(&evaluator,&value,0,true);
+        assert!(win.lethal && !win.uncertain);
+        assert_eq!((win.dealt,win.received),(2100.0,0.0));
+
+        value["life_points"][1] = json!(2200);
+        let fatal_trigger = project(&evaluator,&value,0,true);
+        assert_eq!((fatal_trigger.dealt,fatal_trigger.received),(0.0,0.0),
+            "a nonlethal battle followed by fatal grave damage is not a useful attack");
+        value["life_points"][0] = json!(501);
+        let survive = project(&evaluator,&value,0,true);
+        assert_eq!((survive.dealt,survive.received),(2100.0,500.0));
+        assert!(!survive.lethal);
+    }
+
+    #[test]
+    fn target_trigger_damage_precedes_battle_and_bypasses_battle_shields() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",4,2600),
+            card(1,"MonsterZone",NATURIA_BEANS,100),card(0,"SpellTrapZone",53239672,0)]);
+        value["life_points"] = json!([500,2500]);
+        assert_eq!(project(&evaluator,&value,0,true).dealt,0.0,
+            "Beans' targeting trigger is fatal before the otherwise winning battle");
+        value["life_points"][0] = json!(501);
+        let win = project(&evaluator,&value,0,true);
+        assert!(win.lethal && !win.uncertain);
+        assert_eq!((win.dealt,win.received),(2500.0,500.0),
+            "winning damage is dealt, not the net change after damage to both players");
+    }
+
+    #[test]
+    fn grave_burn_requires_reaching_grave_and_is_not_negated_by_skill_drain() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",4,2600),
+            card(1,"MonsterZone",VOLCANIC_SCATTERSHOT,500),
+            card(0,"SpellTrapZone",ygo_policies::knowledge::MACRO_COSMOS,0)]);
+        value["life_points"] = json!([500,2200]);
+        let banished = project(&evaluator,&value,0,true);
+        assert_eq!((banished.dealt,banished.received),(2100.0,0.0));
+        value["cards"][2]["code"] = json!(ygo_policies::knowledge::SKILL_DRAIN);
+        assert_eq!(project(&evaluator,&value,0,true).dealt,0.0,
+            "Skill Drain on the field does not prevent the fatal GY trigger");
+        value["life_points"][0] = json!(501);
+        assert_eq!(project(&evaluator,&value,0,true).received,500.0);
+    }
+
+    #[test]
+    fn unknown_burn_timing_cannot_certify_a_win_or_fund_later_attacks() {
+        let evaluator = battle_evaluator();
+        // Existing shared Bounder knowledge is deliberately lossy. This test
+        // adds no new source-specific rule outside the active card pool.
+        let mut value = observation(vec![card(0,"MonsterZone",4,2600),card(0,"MonsterZone",1,3000),
+            card(1,"MonsterZone",2851070,1700)]);
+        value["phase"] = json!("Main1");
+        value["life_points"] = json!([1000,1000]);
+        assert_eq!(project(&evaluator,&value,0,true).dealt,0.0);
+        assert_eq!(evaluator.features(&value,0)[9],0.0);
+        value["life_points"][0] = json!(8000);
+        let bounded = project(&evaluator,&value,0,true);
+        assert!(bounded.uncertain);
+        assert_eq!(evaluator.features(&value,0)[9],0.0);
+    }
+
+    #[test]
+    fn messenger_threshold_is_symmetric_and_future_attacks_ignore_spent_flags() {
+        let evaluator = battle_evaluator();
+        for controller in [0,1] {
+            let mut value = observation(vec![card(0,"MonsterZone",1,1000),
+                card(controller,"SpellTrapZone",staples::MESSENGER_OF_PEACE,0)]);
+            assert!(permitted(&evaluator,&value,true));
+            value["cards"][0]["attack"] = json!(1500);
+            assert!(!permitted(&evaluator,&value,true), "the Main1 true approximation cannot bypass a visible lock");
+            assert!(!permitted(&evaluator,&value,false));
+            value["cards"][0]["attack"] = json!(1000);
+            value["cards"][0]["can_attack"] = json!(false);
+            assert!(!permitted(&evaluator,&value,true));
+            assert!(permitted(&evaluator,&value,false));
+        }
+        let mixed = observation(vec![card(0,"MonsterZone",1,1000),card(0,"MonsterZone",4,2600),
+            card(1,"SpellTrapZone",staples::MESSENGER_OF_PEACE,0)]);
+        assert_eq!(project(&evaluator,&mixed,0,true).dealt,1000.0,
+            "only the smaller attacker contributes, rather than blanking the whole battle");
+    }
+
+    #[test]
+    fn level_locks_check_actual_level_and_morphtronic_controller_condition() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,1000),
+            card(0,"SpellTrapZone",staples::GRAVITY_BIND,0)]);
+        assert!(!permitted(&evaluator,&value,true));
+        value["cards"][0]["level"] = json!(3);
+        assert!(permitted(&evaluator,&value,true));
+        value["cards"][0]["level"] = json!(4);
+        for code in [5,6] {
+            value["cards"][0]["code"] = json!(code);
+            assert!(permitted(&evaluator,&value,true), "Rank and Link rating are not Level");
+        }
+        value["cards"][0]["code"] = json!(1);
+        value["cards"][1]["code"] = json!(staples::MORPHTRONIC_BIND);
+        value["cards"][1]["at"]["controller"] = json!(1);
+        assert!(permitted(&evaluator,&value,true), "Bind needs its controller's Morphtronic");
+        value["cards"].as_array_mut().unwrap().push(card(1,"MonsterZone",7,500));
+        assert!(!permitted(&evaluator,&value,true));
+        value["cards"][2]["position"]["face_up"] = json!(false);
+        assert!(permitted(&evaluator,&value,true));
+        value["cards"][2]["position"]["face_up"] = json!(true);
+        value["cards"][1]["at"]["controller"] = json!(0);
+        value["cards"][2]["at"]["controller"] = json!(0);
+        assert!(permitted(&evaluator,&value,true), "Bind does not stop its controller's own attacker");
+    }
+
+    #[test]
+    fn trap_attack_locks_respect_visible_suppression_and_monster_negation() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,1000),
+            card(0,"SpellTrapZone",staples::GRAVITY_BIND,0),card(1,"SpellTrapZone",51452091,0)]);
+        assert!(permitted(&evaluator,&value,true));
+        value["cards"][2]["code"] = json!(77585513);
+        value["cards"][2]["at"]["location"] = json!("MonsterZone");
+        assert!(permitted(&evaluator,&value,true));
+        value["cards"].as_array_mut().unwrap().push(card(0,"SpellTrapZone",ygo_policies::knowledge::SKILL_DRAIN,0));
+        assert!(!permitted(&evaluator,&value,true), "a drained monster does not prove the trap disabled");
+        value["cards"][2]["code"] = json!(51452091);
+        value["cards"][2]["at"]["location"] = json!("SpellTrapZone");
+        assert!(permitted(&evaluator,&value,true), "Skill Drain does not suppress Decree");
+    }
+
+    #[test]
+    fn one_sided_locks_and_position_changers_are_not_blanket_attack_bans() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,1000),
+            card(0,"SpellTrapZone",staples::SWORDS_OF_REVEALING_LIGHT,0)]);
+        assert!(permitted(&evaluator,&value,true));
+        value["cards"][1]["at"]["controller"] = json!(1);
+        assert!(!permitted(&evaluator,&value,true));
+        for controller in [0,1] {
+            value["cards"][1]["at"]["controller"] = json!(controller);
+            value["cards"][1]["code"] = json!(staples::NIGHTMARES_STEELCAGE);
+            assert!(!permitted(&evaluator,&value,true));
+            for code in [staples::LEVEL_LIMIT_AREA_B, staples::SPIDER_WEB] {
+                value["cards"][1]["code"] = json!(code);
+                assert!(permitted(&evaluator,&value,true));
+            }
+        }
+        value["cards"][1]["at"]["controller"] = json!(0);
+        value["cards"][1]["code"] = json!(staples::WALL_OF_REVEALING_LIGHT);
+        assert!(permitted(&evaluator,&value,true), "even an unknown paid threshold cannot block the controller");
+    }
+
+    #[test]
+    fn beans_protection_is_consumed_only_by_destructive_battles_in_this_line() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",1,1800),card(0,"MonsterZone",4,2600),
+            card(0,"MonsterZone",1,3000),card(1,"MonsterZone",NATURIA_BEANS,100)]);
+        let first = project(&evaluator,&value,0,true);
+        assert_eq!((first.dealt,first.received,first.cards),(7200.0,1000.0,1.0));
+        value["cards"][3]["battles"] = json!(99);
+        let previous = project(&evaluator,&value,0,true);
+        assert_eq!((previous.dealt,previous.received,previous.cards),(first.dealt,first.received,first.cards),
+            "observed battles do not say whether the destruction shield was spent");
+        value["cards"][3]["position"]["attack"] = json!(false);
+        value["cards"][3]["defense"] = json!(1200);
+        value["cards"].as_array_mut().unwrap().insert(0,card(0,"MonsterZone",1,500));
+        let defense = project(&evaluator,&value,0,true);
+        assert_eq!((defense.dealt,defense.received,defense.cards),(3000.0,1000.0,1.0),
+            "an unproductive weak hit cannot consume the shield to create an extra direct attack");
+    }
+
+    #[test]
+    fn ambiguous_shared_finite_protection_cannot_certify_lethal() {
+        let evaluator = battle_evaluator();
+        let mut value = observation(vec![card(0,"MonsterZone",4,3000),
+            card(1,"MonsterZone",33236860,100)]);
+        value["cards"][1]["battles"] = json!(99);
+        value["life_points"][1] = json!(1000);
+        value["phase"] = json!("Main1");
+        assert!(project(&evaluator,&value,0,true).uncertain);
+        assert_eq!(evaluator.features(&value,0)[9],0.0);
     }
 
     #[test]

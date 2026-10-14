@@ -15,7 +15,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use ygo_policies::cards::effect_types;
 use ygo_policies::{generic, knowledge, registry, staples};
-use ygo_policies_bench::engine::{Core, Deck};
+use ygo_policies_bench::engine::{evaluation, Core, Deck};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -167,6 +167,7 @@ fn compiled_sources() -> Value {
         "../ygo-policies/src/knowledge.rs",
         "../ygo-policies/src/knowledge/pool.rs",
         "../ygo-policies/src/staples.rs",
+        "src/engine/evaluation.rs",
         "../ygo-policies-duel/src/core.rs",
         "../ygo-policies-duel/src/duel.rs",
         "../ygo-policies-duel/src/search_bridge.cpp",
@@ -284,13 +285,15 @@ fn run() -> Result<()> {
         let transactions = generic::TRANSACTION_SUPPORTED_CODES.contains(&canonical);
         let materials = generic::MATERIAL_SUPPORTED_CODES.contains(&canonical);
         let combat = generic::COMBAT_SUPPORTED_CODES.contains(&canonical);
-        let explicit = generic_facts
+        let search_battle = evaluation::BATTLE_SUPPORTED_CODES.contains(&canonical);
+        let policy_explicit = generic_facts
             || alternate
             || conversion
             || requirements
             || transactions
             || materials
             || combat;
+        let explicit = policy_explicit || search_battle;
         let existing = battle
             || owner_value != 0
             || staple_value.is_some()
@@ -324,6 +327,8 @@ fn run() -> Result<()> {
             ("explicit_transaction_facts", transactions),
             ("explicit_material_facts", materials),
             ("explicit_combat_facts", combat),
+            ("explicit_policy_any", policy_explicit),
+            ("explicit_search_battle_facts", search_battle),
             ("explicit_new_any", explicit),
             (
                 "any_initial_or_shared_fact",
@@ -364,6 +369,7 @@ fn run() -> Result<()> {
         generic::TRANSACTION_SUPPORTED_CODES,
         generic::MATERIAL_SUPPORTED_CODES,
         generic::COMBAT_SUPPORTED_CODES,
+        evaluation::BATTLE_SUPPORTED_CODES,
     ]
     .into_iter()
     .flatten()
@@ -381,6 +387,7 @@ fn run() -> Result<()> {
         "interpretation": [
             "Coverage flags overlap and mean at least one partial fact, not complete card understanding or measured playing strength.",
             "Explicit requirements, transaction guards and material facts are contextual partial rules; registry membership does not mean that a card's effect is currently legal, active or profitable.",
+            "Explicit search battle facts belong to the native-search leaf evaluator, not the exported ordinary Generic policy. The explicit policy subtotal excludes this registry; the explicit union includes it and deduplicates overlapping cards.",
             "Initial metadata comes only from isolated unstarted card definitions; dynamic conditions, costs, targets, operations and later-created effects are not executed or inferred.",
             "An empty initial profile may describe a normal monster or an opaque/missing script; it is not proof that the card has no useful rules.",
             "Category zero is opaque metadata, not a useless action. Nonzero categories do not establish who benefits or whether a cost is profitable.",
@@ -408,6 +415,7 @@ fn run() -> Result<()> {
             "transactions": generic::TRANSACTION_SUPPORTED_CODES,
             "materials": generic::MATERIAL_SUPPORTED_CODES,
             "combat": generic::COMBAT_SUPPORTED_CODES,
+            "search_battle": evaluation::BATTLE_SUPPORTED_CODES,
         },
         "explicit_registry_codes_outside_active_pool": {
             "generic_knowledge": generic::knowledge::SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
@@ -417,6 +425,7 @@ fn run() -> Result<()> {
             "transactions": generic::TRANSACTION_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "materials": generic::MATERIAL_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
             "combat": generic::COMBAT_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
+            "search_battle": evaluation::BATTLE_SUPPORTED_CODES.iter().filter(|code| !active.contains(code)).collect::<Vec<_>>(),
         },
         "explicit_registry_union": {
             "unique_codes": explicit_registry_union.len(),
