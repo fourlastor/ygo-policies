@@ -40,6 +40,39 @@ pub const FEATURE_NAMES: [&str; 13] = [
 /// Engine-confirmed outcomes remain outside this estimate.
 pub const HEURISTIC_COEFFICIENTS: [f64; 13] = [0.8, 0.5, 0.2, 0.45, 0.6, 0.8, 0.45, 0.6, 0.45, 2.5, 0.55, 0.7, 1.0];
 
+/// Parse a sparse, explicitly named benchmark override. Unspecified features
+/// retain their defaults; this never derives weights from cards or duel state.
+pub fn parse_weights(json: &str) -> Result<[f64; 13], String> {
+    let value: Value = serde_json::from_str(json)
+        .map_err(|error| format!("Invalid evaluation weights JSON: {error}"))?;
+    let object = value.as_object().ok_or("Evaluation weights must be a JSON object")?;
+    let mut weights = HEURISTIC_COEFFICIENTS;
+    for (name, value) in object {
+        let index = FEATURE_NAMES.iter().position(|feature| feature == name)
+            .ok_or_else(|| format!("Unknown evaluation feature: {name}"))?;
+        weights[index] = value.as_f64()
+            .ok_or_else(|| format!("Evaluation weight {name} must be a finite nonnegative number"))?;
+    }
+    validate_weights(&weights)?;
+    Ok(weights)
+}
+
+pub fn validate_weights(weights: &[f64; 13]) -> Result<(), String> {
+    for (name, weight) in FEATURE_NAMES.iter().zip(weights) {
+        if !weight.is_finite() || *weight < 0.0 {
+            return Err(format!("Evaluation weight {name} must be a finite nonnegative number"));
+        }
+    }
+    Ok(())
+}
+
+/// Full effective configuration for benchmark provenance. Callers pass either
+/// defaults or weights already accepted by parse_weights/set_weights.
+pub fn named_weights(weights: &[f64; 13]) -> Value {
+    Value::Object(FEATURE_NAMES.iter().zip(weights)
+        .map(|(name, weight)| ((*name).into(), Value::from(*weight))).collect())
+}
+
 // Stable OCGCore category/type/location flags. These are facts about generic
 // effect semantics, not a lookup of benchmark cards or deck families.
 const REMOVE: u64 = category::DESTROY | category::REMOVE | category::TO_DECK | category::CONTROL;
@@ -71,6 +104,7 @@ const VOLCANIC_SCATTERSHOT: u32 = 69750546;
 pub struct Evaluator {
     cards: Arc<dyn CardDatabase>,
     profiles: Option<Arc<ProfiledCards>>,
+    weights: [f64; 13],
 }
 
 impl Evaluator {
@@ -90,7 +124,15 @@ impl Evaluator {
     }
 
     pub fn new(cards: Arc<dyn CardDatabase>) -> Self {
-        Self { cards, profiles: None }
+        Self { cards, profiles: None, weights: HEURISTIC_COEFFICIENTS }
+    }
+
+    /// Explicit benchmark settings, fixed before evaluating any branch.
+    /// Validation is atomic: a rejected vector leaves this evaluator unchanged.
+    pub fn set_weights(&mut self, weights: [f64; 13]) -> Result<(), String> {
+        validate_weights(&weights)?;
+        self.weights = weights;
+        Ok(())
     }
 
     /// Set a code-keyed object of native effect descriptor arrays. Reading an
@@ -127,7 +169,7 @@ impl Evaluator {
 
     pub fn value(&self, observation: &Value, viewer: u8) -> f64 {
         let features = self.features(observation, viewer);
-        let score: f64 = features.iter().zip(HEURISTIC_COEFFICIENTS).map(|(feature, coefficient)| feature * coefficient).sum();
+        let score: f64 = features.iter().zip(self.weights).map(|(feature, coefficient)| feature * coefficient).sum();
         // Proven engine wins/losses are +/-1. Even an extreme estimated board
         // must stay strictly inside those outcomes.
         (score / 6.0).tanh() * 0.95
@@ -674,6 +716,81 @@ mod tests {
     fn observation(cards: Vec<Value>) -> Value {
         json!({"me":0,"cards":cards,"life_points":[8000,8000],"turn_player":0,"phase":"Main2",
             "can_attack_known":true,"pile_sizes":[[0,"Deck",30],[1,"Deck",30]]})
+    }
+
+    #[test]
+    fn default_and_explicit_default_weights_preserve_exact_values() {
+        let mut evaluator = evaluator();
+        let defaults = parse_weights("{}").unwrap();
+        assert_eq!(defaults, HEURISTIC_COEFFICIENTS);
+        let named = named_weights(&defaults);
+        assert_eq!(named.as_object().unwrap().len(), FEATURE_NAMES.len());
+        assert_eq!(parse_weights(&named.to_string()).unwrap(), defaults);
+        let cases = [
+            observation(vec![]),
+            observation(vec![card(0,"Hand",3,0)]),
+            observation(vec![card(0,"MonsterZone",4,2600),card(1,"MonsterZone",1,1800)]),
+        ];
+        for value in cases {
+            for viewer in 0..2 {
+                let score: f64 = evaluator.features(&value,viewer).iter()
+                    .zip(HEURISTIC_COEFFICIENTS).map(|(feature, coefficient)| feature * coefficient).sum();
+                let legacy = (score / 6.0).tanh() * 0.95;
+                assert_eq!(evaluator.value(&value,viewer).to_bits(), legacy.to_bits());
+                evaluator.set_weights(defaults).unwrap();
+                assert_eq!(evaluator.value(&value,viewer).to_bits(), legacy.to_bits());
+            }
+        }
+    }
+
+    #[test]
+    fn manual_weights_change_the_isolated_card_for_direct_damage_trade() {
+        let mut evaluator = evaluator();
+        // A completed generic exchange: spend one otherwise inert spell and
+        // deal 800 damage. No named card ability or new feature is assumed.
+        let before = observation(vec![card(0,"Hand",3,0)]);
+        let mut after = observation(vec![card(0,"Graveyard",3,0)]);
+        after["life_points"][1] = json!(7200);
+        let before_features = evaluator.features(&before,0);
+        let after_features = evaluator.features(&after,0);
+        for index in 0..FEATURE_NAMES.len() {
+            if index != 0 && index != 10 {
+                assert_eq!(before_features[index], after_features[index], "{}", FEATURE_NAMES[index]);
+            }
+        }
+        assert_eq!(after_features[0] - before_features[0], -1.0);
+        assert!((after_features[10] - before_features[10] - (9000.0_f64/8200.0).ln()).abs() < 1e-12);
+        assert!(evaluator.value(&before,0) > evaluator.value(&after,0));
+        let weights = parse_weights(r#"{"accessible_cards":0.3,"life_buffer":4.0}"#).unwrap();
+        for index in 0..FEATURE_NAMES.len() {
+            if index != 0 && index != 10 { assert_eq!(weights[index], HEURISTIC_COEFFICIENTS[index]); }
+        }
+        evaluator.set_weights(weights).unwrap();
+        assert_eq!(evaluator.features(&before,0), before_features);
+        assert_eq!(evaluator.features(&after,0), after_features);
+        assert!(evaluator.value(&after,0) > evaluator.value(&before,0));
+        assert_eq!(evaluator.clone().value(&after,0), evaluator.value(&after,0));
+        assert!(evaluator.value(&after,0).abs() <= 0.95);
+    }
+
+    #[test]
+    fn invalid_weight_settings_are_rejected_without_mutating_the_evaluator() {
+        for invalid in ["null", "[]", "0", r#"{"unknown":1}"#, r#"{"life_buffer":true}"#,
+            r#"{"life_buffer":"4"}"#, r#"{"life_buffer":null}"#, r#"{"life_buffer":[]}"#,
+            r#"{"life_buffer":-0.1}"#, r#"{"life_buffer":NaN}"#, r#"{"life_buffer":1e999}"#] {
+            assert!(parse_weights(invalid).is_err(), "{invalid}");
+        }
+        let mut evaluator = evaluator();
+        let before = observation(vec![card(0,"Hand",3,0)]);
+        let value = evaluator.value(&before,0);
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0] {
+            let mut weights = HEURISTIC_COEFFICIENTS;
+            weights[10] = invalid;
+            assert!(evaluator.set_weights(weights).is_err());
+            assert_eq!(evaluator.value(&before,0).to_bits(), value.to_bits());
+        }
+        evaluator.set_weights([0.0; 13]).unwrap();
+        assert_eq!(evaluator.value(&before,0), 0.0);
     }
 
     fn battle_evaluator() -> Evaluator {

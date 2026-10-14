@@ -55,6 +55,84 @@ def fixture(meta, raw_model=None, counters=False):
     return rows, summary
 
 
+class EvaluationWeightTests(unittest.TestCase):
+    def with_weights(self):
+        meta = metadata()
+        meta["search"]["evaluation_weights"] = dict.fromkeys(analyze.EVALUATION_FEATURES, 1.0)
+        return meta
+
+    def test_valid_recorded_map_preserves_values_and_legacy_absence(self):
+        old = metadata()
+        original_identity = analyze.identity(old)
+        self.assertNotIn("evaluation_weights", original_identity["search"])
+        self.assertNotIn("evaluation_weights", analyze.recorded_configuration(old)["search"])
+        meta = self.with_weights()
+        meta["search"]["evaluation_weights"]["accessible_cards"] = 0
+        meta["search"]["evaluation_weights"]["life_buffer"] = 0.25
+        original = copy.deepcopy(meta)
+        self.assertEqual(analyze.identity(meta)["search"]["evaluation_weights"],
+                         original["search"]["evaluation_weights"])
+        self.assertEqual(meta, original)
+        self.assertEqual(analyze.identity(old), original_identity)
+
+    def test_map_must_record_exactly_all_known_features(self):
+        weights = self.with_weights()["search"]["evaluation_weights"]
+        missing = dict(weights)
+        del missing["life_buffer"]
+        unknown = {**missing, "unknown_feature": 1}
+        extra = {**weights, "unknown_feature": 1}
+        for value in (None, True, [], 1, {}, missing, unknown, extra):
+            with self.subTest(value=value):
+                meta = metadata()
+                meta["search"]["evaluation_weights"] = value
+                with self.assertRaisesRegex(ValueError, "exactly the 13 known feature names"):
+                    analyze.recorded_configuration(meta)
+
+    def test_weights_reject_nonfinite_negative_and_nonnumeric_values(self):
+        for value in (True, False, None, "1", [], {}, -1, -0.01,
+                      float("inf"), float("-inf"), float("nan"), 10 ** 400):
+            with self.subTest(value=value):
+                meta = self.with_weights()
+                meta["search"]["evaluation_weights"]["life_buffer"] = value
+                with self.assertRaisesRegex(ValueError, "life_buffer must be a finite nonnegative number"):
+                    analyze.recorded_configuration(meta)
+
+    def test_nested_weight_override_requires_its_explicit_ablation(self):
+        old, new = self.with_weights(), self.with_weights()
+        new["search"]["evaluation_weights"]["life_buffer"] = 2
+        for allow_revision in (False, True):
+            with self.assertRaisesRegex(ValueError, "Undeclared metadata ablation.*evaluation_weights.life_buffer"):
+                analyze.validate_comparison(old, new, allow_revision)
+        self.assertEqual(analyze.validate_comparison(
+            old, new, False, ["search.evaluation_weights"]), [])
+        change, = analyze.configuration_changes(old, new)
+        self.assertEqual(change, {"field": "search.evaluation_weights.life_buffer",
+                                  "before": 1.0, "after": 2,
+                                  "before_recorded": True, "after_recorded": True})
+
+    def test_declared_weight_change_is_isolated_only_when_both_maps_are_known(self):
+        for recorded in (False, True):
+            with self.subTest(previously_recorded=recorded):
+                old = self.with_weights() if recorded else metadata()
+                new = self.with_weights()
+                new["search"]["evaluation_weights"]["life_buffer"] = 2
+                with self.assertRaisesRegex(ValueError, "Undeclared metadata ablation"):
+                    analyze.validate_comparison(old, new, False)
+                rows, summary = fixture(old)
+                keyed = {(row["opponent"], row["seed"], row["seat"]): row for row in rows}
+                with patch.object(analyze, "load", side_effect=[(keyed, summary, old), (keyed, summary, new)]):
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        analyze.main(["old", "new"], allow_metadata_ablation=["search.evaluation_weights"])
+                report = json.loads(output.getvalue())
+                result = report["comparisons"][0]
+                self.assertEqual(result["isolated_metadata_ablation"], recorded)
+                if not recorded:
+                    self.assertNotIn("evaluation_weights", report["baseline_identity"]["search"])
+                    self.assertFalse(result["configuration_changes"][0]["before_recorded"])
+                    self.assertIn("not recorded on both sides", result["interpretation"])
+
+
 class OpponentProvenanceTests(unittest.TestCase):
     def test_legacy_defaults_normalize_without_mutating_metadata(self):
         old = metadata()

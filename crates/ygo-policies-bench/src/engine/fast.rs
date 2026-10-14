@@ -48,6 +48,24 @@ pub struct FastOptions {
     /// Benchmark diagnostic: simulate the supplied opposing specialist instead
     /// of Generic. Uses public history and sampled cards, never its live memory.
     pub specialist_opponent: bool,
+    /// Explicit existing-feature coefficients, fixed across all branches.
+    /// Only beam/MCTS search uses this evaluator; plain/rollout reject overrides.
+    pub evaluation_weights: Option<[f64; 13]>,
+}
+
+impl FastOptions {
+    fn validate_evaluation_weights(&self) -> Result<()> {
+        if let Some(weights) = &self.evaluation_weights {
+            if self.max_playouts == 0 || self.planner.is_none() && self.mcts.is_none() {
+                return Err("Evaluation weights require active beam or MCTS search".into());
+            }
+            if self.mcts.is_some_and(|options| options.terminal) && self.horizon == 0 {
+                return Err("Evaluation weights are unused by terminal-only MCTS proposals and validation".into());
+            }
+            super::evaluation::validate_weights(weights)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -1022,6 +1040,7 @@ pub fn play_fast(
     run: PlayOptions,
     fast: FastOptions,
 ) -> Result<serde_json::Value> {
+    fast.validate_evaluation_weights()?;
     if fast.specialist_opponent && fast.mcts.is_some_and(|options| options.adversarial_opponent) {
         return Err("Specialist opponent diagnostics cannot be combined with adversarial opponent UCT".into());
     }
@@ -1102,6 +1121,7 @@ pub fn play_fast(
     }
     let evaluator = if fast.planner.is_some() || fast.mcts.is_some() {
         let mut evaluator = Evaluator::open(cards)?;
+        if let Some(weights) = fast.evaluation_weights { evaluator.set_weights(weights)?; }
         if let Some(profiles) = &profiles { evaluator.set_profiles(profiles)?; }
         Some(evaluator)
     } else { None };
@@ -1329,6 +1349,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn direct_api_rejects_ignored_or_invalid_evaluation_overrides() {
+        let mut options = FastOptions {
+            searcher: 0, worlds: 4, depth: 1, max_candidates: 6,
+            max_playouts: 256, horizon: 1, millis: 0, strict: true,
+            effects: true, planner: None, mcts: None, mcts_worlds: 4,
+            mcts_validate_roots: false, specialist_opponent: false,
+            evaluation_weights: Some(super::super::evaluation::HEURISTIC_COEFFICIENTS),
+        };
+        assert!(options.validate_evaluation_weights().is_err());
+        options.mcts = Some(MctsOptions { iterations: 128, actions: 6, nodes: 1024,
+            decisions: 256, replies: 1, terminal: false, adversarial_opponent: false });
+        assert!(options.validate_evaluation_weights().is_ok());
+        options.max_playouts = 0;
+        assert!(options.validate_evaluation_weights().is_err());
+        options.max_playouts = 256;
+        options.mcts.as_mut().unwrap().terminal = true;
+        options.horizon = 0;
+        assert!(options.validate_evaluation_weights().is_err());
+        options.horizon = 1;
+        assert!(options.validate_evaluation_weights().is_ok());
+        options.horizon = 0;
+        options.mcts.as_mut().unwrap().terminal = false;
+        assert!(options.validate_evaluation_weights().is_ok());
+        options.evaluation_weights.as_mut().unwrap()[0] = f64::NAN;
+        assert!(options.validate_evaluation_weights().is_err());
+        options.evaluation_weights = None;
+        options.mcts = None;
+        options.max_playouts = 0;
+        assert!(options.validate_evaluation_weights().is_ok());
+    }
+
+    #[test]
     fn mcts_validation_keeps_plain_continuation_and_only_completed_distinct_roots() {
         let actions = vec![
             ismcts::RootAction { response: vec![1], mean: Some(0.2), visits: 2, attempts: 2 },
@@ -1418,7 +1470,7 @@ mod tests {
                 effects: true, planner: None,
                 mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
                     decisions: 384, replies: 1, terminal: false, adversarial_opponent: false }),
-                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true,
+                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None,
             },
             // Nonempty metadata must not be sent to the old specialist ABI.
             profiles: Some(serde_json::json!({"95492061":[]})), evaluator: None,
@@ -1580,7 +1632,7 @@ mod tests {
             effects: false,
             planner: None,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None,
         };
         let first = play_fast(
             &core,
@@ -1651,7 +1703,7 @@ mod tests {
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
@@ -1721,7 +1773,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false,
@@ -1794,7 +1846,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false,

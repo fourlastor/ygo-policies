@@ -19,6 +19,14 @@ from pathlib import Path
 import statistics
 
 
+EVALUATION_FEATURES = frozenset((
+    "accessible_cards", "stranded_hand", "body_power", "dominant_attack",
+    "reusable_grave", "interaction", "effect_access", "battle_card_gain",
+    "battle_damage", "immediate_lethal", "life_buffer", "deck_reserve",
+    "alternate_win_progress",
+))
+
+
 def file_identity(value, label):
     if (not isinstance(value, dict) or value.get("error")
             or not isinstance(value.get("fnv1a64"), str)
@@ -113,6 +121,19 @@ def recorded_configuration(metadata):
     if not isinstance(metadata["search"], dict):
         raise ValueError("search configuration must be an object")
     search = dict(metadata["search"])
+    # Only new runs record effective weights. Historical defaults varied, so
+    # absence must remain unknown rather than being filled from current code.
+    if "evaluation_weights" in search:
+        weights = search["evaluation_weights"]
+        if not isinstance(weights, dict) or set(weights) != EVALUATION_FEATURES:
+            raise ValueError("search.evaluation_weights must contain exactly the 13 known feature names")
+        for key, value in weights.items():
+            try:
+                valid = type(value) in (int, float) and value >= 0 and math.isfinite(value)
+            except OverflowError:
+                valid = False
+            if not valid:
+                raise ValueError(f"search.evaluation_weights.{key} must be a finite nonnegative number")
     search["validation"], _ = search_validation(metadata)
     search["opponent_model"], _ = search_opponent_model(metadata)
     if "method" in search and search["method"] not in ("rollout", "beam", "mcts"):

@@ -251,6 +251,7 @@ generic mirrors each selected specialist deck: generic versus the frozen baselin
   --mcts-decisions 512 --mcts-replies 1 --mcts-terminal false (proposal return mode); --mcts-validate-roots false\n\
   --mcts-adversarial-opponent false (pessimistic opponent UCT proposals; shared fixed budget)\n\
   --opponent-model generic|specialist (default generic; specialist is a benchmark diagnostic)\n\
+  --evaluation-weights JSON_OBJECT (sparse nonnegative existing-feature overrides; beam/MCTS only)\n\
   --worlds 4 --max-candidates 6 --max-playouts 24 --horizon 0 --millis 200\n\
   --depth 1|2 (default 1; depth 2 adds nested sampled rollout search; ignored by --plain true)\n\
   --millis 0 uses only deterministic work limits; --horizon 0 rolls out to the duel limit.\n\
@@ -345,6 +346,7 @@ fn run() -> Result<()> {
             "--mcts-validate-roots",
             "--mcts-adversarial-opponent",
             "--opponent-model",
+            "--evaluation-weights",
         ]
         .contains(&key.as_str())
         {
@@ -358,7 +360,7 @@ fn run() -> Result<()> {
         }
     }
     if mode != "generic" {
-        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--opponent-model"] {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--opponent-model", "--evaluation-weights"] {
             if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
@@ -936,6 +938,19 @@ fn generic_summary(
         "wall_seconds": elapsed, "overall": overall, "matchups": matchups})
 }
 
+fn generic_evaluation_weights(value: Option<&str>, method: &str, plain: bool, max_playouts: usize,
+    terminal_only_mcts: bool)
+    -> Result<Option<[f64; 13]>> {
+    let Some(value) = value else { return Ok(None); };
+    if plain || max_playouts == 0 || !["beam", "mcts"].contains(&method) {
+        return Err("--evaluation-weights requires active --method beam or mcts search (not --plain true)".into());
+    }
+    if terminal_only_mcts {
+        return Err("--evaluation-weights is unused with --mcts-terminal true and --horizon 0".into());
+    }
+    engine::evaluation::parse_weights(value).map(Some)
+}
+
 fn generic_run(
     args: &BTreeMap<String, String>,
     root: &Path,
@@ -987,6 +1002,7 @@ fn generic_run(
             "--mcts-validate-roots",
             "--mcts-adversarial-opponent",
             "--opponent-model",
+            "--evaluation-weights",
         ]
         .contains(&key.as_str())
         {
@@ -1077,6 +1093,10 @@ fn generic_run(
         number("--max-playouts", if planner.is_some() { 1024 } else if mcts.is_some() { 256 } else { 24 })?
     };
     let horizon = number("--horizon", 0)?;
+    let evaluation_weights = generic_evaluation_weights(
+        args.get("--evaluation-weights").map(String::as_str), method, plain, max_playouts,
+        mcts.is_some_and(|options| options.terminal) && horizon == 0)?;
+    let effective_weights = evaluation_weights.unwrap_or(engine::evaluation::HEURISTIC_COEFFICIENTS);
     let depth = number("--depth", 1)?;
     if (planner.is_some() || mcts.is_some()) && depth != 1 { return Err("--depth applies only to rollout search".into()); }
     if !(1..=2).contains(&depth) {
@@ -1126,7 +1146,7 @@ fn generic_run(
         "shuffle": "SplitMix64 Fisher-Yates v1; stable generic-mirror/deck-name seed",
         "policy_seed": "engine seed + seat", "rules": "MasterRule1 (0xD0700)",
         "decision_limit": limit, "life_points": [8000,8000], "target": 0.55, "exceptions": exceptions,
-        "plain": plain, "effect_profiles": effects, "search": {"opponent_model": opponent_model, "worlds": worlds, "max_candidates": max_candidates,
+        "plain": plain, "effect_profiles": effects, "search": {"opponent_model": opponent_model, "evaluation_weights": engine::evaluation::named_weights(&effective_weights), "worlds": worlds, "max_candidates": max_candidates,
             "max_playouts": max_playouts, "horizon": horizon, "depth": depth, "millis": millis, "strict": strict,
             "method": method, "mcts": mcts.map(|p| json!({"iterations":p.iterations,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies,"terminal":p.terminal,"worlds":mcts_worlds,"validate_roots":mcts_validate_roots,"adversarial_opponent":p.adversarial_opponent})), "validation": if horizon == 0 { "terminal" } else { "heuristic" }, "beam": planner.map(|p| json!({"width":p.width,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies}))},
         "timing_reproducibility": if millis == 0 || plain { "deterministic work cap" } else { "wall-time budget may change choices under machine load" },
@@ -1170,7 +1190,7 @@ fn generic_run(
                             ([&candidate, &baseline], ["generic", specialist])
                         } else { ([&baseline, &candidate], [specialist, "generic"]) };
                         let options = PlayOptions { seed: job.seed, limit, trace, life_points: [8000; 2], record };
-                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent };
+                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights };
                         let game_started = std::time::Instant::now();
                         let game = match engine::play_fast(&core, &decks, libraries, names, cards, options, fast) {
                             Ok(game) => game, Err(error) => json!({"error": error}),
@@ -1238,6 +1258,29 @@ fn generic_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn evaluation_weight_overrides_require_an_active_matching_evaluator() {
+        let value = r#"{"accessible_cards":0.3,"life_buffer":4.0}"#;
+        for method in ["beam", "mcts"] {
+            let weights = generic_evaluation_weights(Some(value), method, false, 256, false).unwrap().unwrap();
+            let metadata = engine::evaluation::named_weights(&weights);
+            assert_eq!(metadata.as_object().unwrap().len(), 13);
+            assert_eq!(metadata["accessible_cards"], json!(0.3));
+            assert_eq!(metadata["life_buffer"], json!(4.0));
+            assert!(generic_evaluation_weights(Some(value), method, true, 256, false).is_err());
+            assert!(generic_evaluation_weights(Some(value), method, false, 0, false).is_err());
+            assert!(generic_evaluation_weights(Some(r#"{"life_buffer":false}"#), method, false, 256, false).is_err());
+        }
+        assert!(generic_evaluation_weights(Some(value), "rollout", false, 256, false).is_err());
+        assert!(generic_evaluation_weights(Some(value), "mcts", false, 256, true).is_err());
+        assert_eq!(generic_evaluation_weights(None, "mcts", false, 256, true).unwrap(), None);
+        assert_eq!(generic_evaluation_weights(None, "rollout", true, 0, false).unwrap(), None);
+        let defaults = generic_evaluation_weights(None, "mcts", false, 256, false).unwrap()
+            .unwrap_or(engine::evaluation::HEURISTIC_COEFFICIENTS);
+        assert_eq!(engine::evaluation::named_weights(&defaults).as_object().unwrap().len(), 13);
+        assert_eq!(defaults, engine::evaluation::HEURISTIC_COEFFICIENTS);
+    }
+
     #[test]
     fn generic_mirrors_are_balanced_unique_and_subset_stable() {
         let all = generic_jobs(&["b".into(), "a".into(), "a".into()], 8, 42);
