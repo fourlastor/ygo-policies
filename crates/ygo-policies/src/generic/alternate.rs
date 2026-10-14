@@ -10,6 +10,7 @@ use crate::model::{Choice, DecisionKind, Hint, Location, Member, Phase};
 
 const PIECES: [u32; 5] = [33396948, 70903634, 7902349, 8124921, 44519536];
 const HEART: u32 = 35762283;
+const DUALITY: u32 = 98645731;
 const RELOAD: u32 = 22589918;
 const CARD_DESTRUCTION: u32 = 72892473;
 const GOLD_SARCOPHAGUS: u32 = 75500286;
@@ -27,6 +28,7 @@ pub const SUPPORTED_CODES: &[u32] = &[
     PIECES[3],
     PIECES[4],
     HEART,
+    DUALITY,
     BOARD,
     LETTERS[0],
     LETTERS[1],
@@ -207,12 +209,82 @@ pub(super) fn special_summon(t: &Turn, choice: &Choice) -> Option<bool> {
     summon_score(t, choice).map(|_| false)
 }
 
+/// Duality reveals three cards and adds one (`c98645731.lua`). Establishing
+/// the first Heart can make future Normal-Monster draws repeat in the Draw
+/// Phase (`c35762283.lua`). This is a selection-order prior, not a claim
+/// about the unseen Deck: require visible support and a real offered choice.
+fn first_heart_from_duality(t: &Turn) -> bool {
+    let ctx = t.ctx;
+    if t.decision.kind != DecisionKind::SelectCards
+        || t.decision.hint != Hint::AddToHand
+        || t.decision.minimum != 1
+        || t.decision.maximum != 1
+        || t.memory.last_activated.map(|code| ctx.canonical(code)) != Some(DUALITY)
+        || !ctx.obs.chain_known
+        || !ctx
+            .obs
+            .chain
+            .last()
+            .is_some_and(|link| link.controller == ctx.me && ctx.canonical(link.code) == DUALITY)
+        || !ctx.my_turn()
+        || !matches!(ctx.phase(), Some(Phase::Main1 | Phase::Main2))
+        || distinct_pieces(&ctx) >= 4
+        || used_spell_zones(&ctx) >= 5
+        || ctx.deck_size(ctx.me) <= 1
+        || board_visible(&ctx)
+        || ctx.wasted(HEART)
+        || ctx.obs.cards.iter().any(|card| {
+            card.at.controller == ctx.me
+                && matches!(card.at.location, Location::Hand | Location::SpellTrapZone)
+                && ctx.is(card, HEART)
+        })
+    {
+        return false;
+    }
+    // A lone Exodia limb is not evidence of a supported draw engine. Any
+    // unfamiliar ordinary Normal Monster in our visible resources qualifies.
+    let normal_support = ctx.obs.cards.iter().any(|card| {
+        card.at.controller == ctx.me
+            && (card.at.location == Location::Hand
+                || card.at.location == Location::MonsterZone && card.position.face_up)
+            && card.code.is_some_and(|code| {
+                exodia_piece(ctx.canonical(code)).is_none()
+                    && ctx.data(code).is(types::MONSTER)
+                    && ctx.data(code).is(types::NORMAL)
+                    && !ctx.data(code).is(types::TOKEN)
+            })
+    });
+    let offered = |predicate: &dyn Fn(u32) -> bool| {
+        t.choices().any(|(_, choice)| {
+            matches!(
+                choice.kind,
+                crate::model::ChoiceKind::Cards | crate::model::ChoiceKind::Toggle
+            ) && choice.card.iter().chain(&choice.members).any(|member| {
+                member.at.controller == ctx.me
+                    && member.at.location == Location::Deck
+                    && !member.required
+                    && member
+                        .code
+                        .is_some_and(|code| predicate(ctx.canonical(code)))
+            })
+        })
+    };
+    normal_support
+        && offered(&|code| code == HEART)
+        && offered(&|code| exodia_piece(code).is_some() && copies_in_hand(&ctx, code) == 0)
+}
+
 pub(super) fn select(t: &Turn, member: &Member) -> Option<f64> {
     if member.at.controller != t.ctx.me {
         return None;
     }
     let code = t.ctx.canonical(member.code?);
     let hint = t.decision.hint;
+    if code == HEART && member.at.location == Location::Deck && first_heart_from_duality(t) {
+        // The guard is a single-card choice: express ordering directly without
+        // changing Heart's keep value, evaluator weights, or other searches.
+        return Some(f64::MAX);
+    }
     if PIECES.contains(&code) {
         let copies = unselected_hand_copies(t, code);
         if hint == Hint::AddToHand
@@ -825,5 +897,276 @@ mod tests {
         assert!(!allow_staple(&turn, RELOAD));
         assert!(!allow_staple(&turn, CARD_DESTRUCTION));
         assert!(allow_staple(&turn, 900_400_004));
+    }
+
+    const ORDINARY_NORMAL: u32 = 900_400_030;
+    const ORDINARY_BACKROW: u32 = 900_400_031;
+
+    fn duality_fixture(me: u8) -> (Observation, Decision, MemoryCards) {
+        let mut obs = observation();
+        obs.me = me;
+        obs.turn_player = Some(me);
+        obs.pile_sizes = vec![(me, Location::Deck, 30)];
+        obs.cards = vec![
+            card(PIECES[1], Location::Hand, 0),
+            card(ORDINARY_NORMAL, Location::Hand, 1),
+            card(DUALITY, Location::SpellTrapZone, 1),
+            card(ORDINARY_BACKROW, Location::SpellTrapZone, 2),
+            card(ORDINARY_BACKROW, Location::SpellTrapZone, 3),
+        ];
+        for card in &mut obs.cards {
+            card.at.controller = me;
+        }
+        obs.chain.push(ChainLink {
+            code: DUALITY,
+            controller: me,
+            source: obs.cards[2].at,
+            targets: vec![],
+        });
+        let mut prompt = decision(Hint::AddToHand);
+        prompt.choices = [PIECES[4], HEART, ORDINARY_NORMAL]
+            .into_iter()
+            .enumerate()
+            .map(|(sequence, code)| {
+                let mut candidate = card(code, Location::Deck, sequence as u32);
+                candidate.at.controller = me;
+                Choice {
+                    kind: ChoiceKind::Cards,
+                    card: None,
+                    members: vec![member(&candidate)],
+                    description: 0,
+                    place: None,
+                }
+            })
+            .collect();
+        let mut db = MemoryCards::default();
+        for code in PIECES.into_iter().chain([HEART, DUALITY, ORDINARY_NORMAL]) {
+            db.0.insert(
+                code,
+                CardData {
+                    code,
+                    kind: if code == HEART {
+                        types::SPELL | types::CONTINUOUS
+                    } else if code == DUALITY {
+                        types::SPELL
+                    } else if code == PIECES[0] {
+                        types::MONSTER | types::EFFECT
+                    } else {
+                        types::MONSTER | types::NORMAL
+                    },
+                    attack: if code == ORDINARY_NORMAL { 1000 } else { 0 },
+                    defense: if code == ORDINARY_NORMAL { 2000 } else { 0 },
+                    level: 4,
+                    ..CardData::default()
+                },
+            );
+        }
+        (obs, prompt, db)
+    }
+
+    fn first_heart_enabled(obs: &Observation, prompt: &Decision, db: &MemoryCards) -> bool {
+        let mut memory = Memory::default();
+        memory.last_activated = Some(DUALITY);
+        first_heart_from_duality(&Turn {
+            ctx: Ctx::new(obs, db),
+            decision: prompt,
+            memory: &mut memory,
+        })
+    }
+
+    fn duality_pick(obs: &Observation, prompt: &Decision, db: &MemoryCards) -> usize {
+        let mut pilot = Agent::seeded(
+            super::super::Generic,
+            std::sync::Arc::new(MemoryCards(db.0.clone())),
+            1,
+        );
+        let mut activation = decision(Hint::None);
+        activation.kind = DecisionKind::Idle;
+        activation.choices.push(Choice {
+            kind: ChoiceKind::Activate,
+            card: Some(member(
+                obs.cards
+                    .iter()
+                    .find(|card| card.code == Some(DUALITY))
+                    .unwrap(),
+            )),
+            members: vec![],
+            description: (DUALITY as u64) << 20,
+            place: None,
+        });
+        assert!(pilot.commit_choice(obs, &activation, 0));
+        pilot.choose(obs, prompt)
+    }
+
+    #[test]
+    fn duality_establishes_first_heart_with_unfamiliar_normal_support_on_either_seat() {
+        // Frozen v17 seed1326585873 seat1 trace108 offered Left Leg, Heart,
+        // and Charcoal Inpachi while only Right Arm was held and no Heart
+        // was available. Use an unfamiliar Normal to avoid a deck recipe.
+        for me in [0, 1] {
+            for held_piece in [false, true] {
+                let (mut obs, mut prompt, db) = duality_fixture(me);
+                if !held_piece {
+                    obs.cards.retain(|card| card.code != Some(PIECES[1]));
+                }
+                assert!(first_heart_enabled(&obs, &prompt, &db));
+                assert_eq!(duality_pick(&obs, &prompt, &db), 1);
+                // The native sequential path presents a Toggle for each
+                // legal candidate rather than a complete Cards answer.
+                for choice in &mut prompt.choices {
+                    choice.kind = ChoiceKind::Toggle;
+                    choice.card = choice.members.first().copied();
+                }
+                assert_eq!(duality_pick(&obs, &prompt, &db), 1);
+                assert_eq!(value(&Ctx::new(&obs, &db), HEART), Some(7000));
+            }
+        }
+    }
+
+    #[test]
+    fn duality_completion_uses_distinct_names_and_keeps_the_fifth_piece_first() {
+        for me in [0, 1] {
+            let (mut obs, prompt, db) = duality_fixture(me);
+            obs.cards.retain(|card| card.at.location != Location::Hand);
+            for (sequence, code) in [
+                PIECES[0],
+                PIECES[1],
+                PIECES[2],
+                PIECES[3],
+                PIECES[0],
+                ORDINARY_NORMAL,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let mut hand = card(code, Location::Hand, sequence as u32);
+                hand.at.controller = me;
+                obs.cards.push(hand);
+            }
+            assert!(!first_heart_enabled(&obs, &prompt, &db));
+            assert_eq!(duality_pick(&obs, &prompt, &db), 0);
+            // Four cards containing only three names cannot complete Exodia.
+            obs.cards.retain(|card| card.code != Some(PIECES[3]));
+            assert!(first_heart_enabled(&obs, &prompt, &db));
+            assert_eq!(duality_pick(&obs, &prompt, &db), 1);
+        }
+    }
+
+    #[test]
+    fn duality_first_heart_keeps_existing_engine_behavior() {
+        for (location, position) in [
+            (Location::Hand, Position::FACE_DOWN_ATTACK),
+            (Location::SpellTrapZone, Position::FACE_UP_ATTACK),
+            (Location::SpellTrapZone, Position::FACE_DOWN_DEFENSE),
+        ] {
+            let (mut obs, prompt, db) = duality_fixture(0);
+            let mut heart = card(HEART, location, 4);
+            heart.position = position;
+            obs.cards.push(heart);
+            assert!(!first_heart_enabled(&obs, &prompt, &db));
+            assert_eq!(duality_pick(&obs, &prompt, &db), 0);
+        }
+    }
+
+    #[test]
+    fn duality_first_heart_requires_visible_support_and_a_place_to_install_it() {
+        let (base, prompt, db) = duality_fixture(0);
+        let mut obs = base.clone();
+        obs.cards.retain(|card| card.code != Some(ORDINARY_NORMAL));
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        let mut enemy = card(ORDINARY_NORMAL, Location::MonsterZone, 0);
+        enemy.at.controller = 1;
+        obs.cards.push(enemy);
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        let mut hidden = card(ORDINARY_NORMAL, Location::MonsterZone, 0);
+        hidden.position = Position::FACE_DOWN_DEFENSE;
+        obs.cards.push(hidden);
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        obs.cards.last_mut().unwrap().position = Position::FACE_UP_DEFENSE;
+        assert!(first_heart_enabled(&obs, &prompt, &db));
+
+        let mut obs = base.clone();
+        obs.cards
+            .push(card(ORDINARY_BACKROW, Location::SpellTrapZone, 0));
+        obs.cards
+            .push(card(ORDINARY_BACKROW, Location::SpellTrapZone, 4));
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        obs.cards.last_mut().unwrap().at.sequence = 5;
+        assert!(
+            first_heart_enabled(&obs, &prompt, &db),
+            "Field Zone is separate"
+        );
+        let mut obs = base.clone();
+        obs.cards.push(card(BOARD, Location::Hand, 4));
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        let mut obs = base.clone();
+        obs.pile_sizes = vec![(0, Location::Deck, 1)];
+        assert!(!first_heart_enabled(&obs, &prompt, &db));
+        let mut obs = base;
+        let mut negator = card(33198837, Location::MonsterZone, 0);
+        negator.at.controller = 1;
+        obs.cards.push(negator);
+        assert!(
+            !first_heart_enabled(&obs, &prompt, &db),
+            "shared known Spell negation"
+        );
+    }
+
+    #[test]
+    fn duality_first_heart_does_not_change_other_searches_or_unoffered_choices() {
+        let (obs, prompt, db) = duality_fixture(0);
+        for hint in [Hint::ToGraveyard, Hint::ReturnToHand, Hint::Discard] {
+            let mut wrong = prompt.clone();
+            wrong.hint = hint;
+            assert!(!first_heart_enabled(&obs, &wrong, &db));
+        }
+        for kind in [DecisionKind::SelectSum, DecisionKind::SelectToggle] {
+            let mut wrong = prompt.clone();
+            wrong.kind = kind;
+            assert!(!first_heart_enabled(&obs, &wrong, &db));
+        }
+        let mut wrong = prompt.clone();
+        wrong.maximum = 2;
+        assert!(!first_heart_enabled(&obs, &wrong, &db));
+        let mut wrong = prompt.clone();
+        wrong.choices.remove(1);
+        assert!(!first_heart_enabled(&obs, &wrong, &db));
+        let mut wrong = prompt.clone();
+        wrong.choices[1].members[0].at.location = Location::Graveyard;
+        assert!(!first_heart_enabled(&obs, &wrong, &db));
+        let mut wrong = prompt.clone();
+        wrong.choices[0].members[0].code = Some(PIECES[1]);
+        assert!(!first_heart_enabled(&obs, &wrong, &db));
+        let mut wrong = obs.clone();
+        wrong.chain_known = false;
+        assert!(!first_heart_enabled(&wrong, &prompt, &db));
+        let mut wrong = obs.clone();
+        wrong.chain[0].controller = 1;
+        assert!(!first_heart_enabled(&wrong, &prompt, &db));
+        wrong.chain.clear();
+        assert!(!first_heart_enabled(&wrong, &prompt, &db));
+        let mut memory = Memory::default();
+        memory.last_activated = Some(RELOAD);
+        assert!(!first_heart_from_duality(&Turn {
+            ctx: Ctx::new(&obs, &db),
+            decision: &prompt,
+            memory: &mut memory,
+        }));
+    }
+
+    #[test]
+    fn duality_first_heart_is_invariant_to_opponent_hidden_card_identity() {
+        for me in [0, 1] {
+            let (mut obs, prompt, db) = duality_fixture(me);
+            let mut hidden = card(HEART, Location::Hand, 0);
+            hidden.at.controller = 1 - me;
+            hidden.position = Position::FACE_DOWN_ATTACK;
+            obs.cards.push(hidden);
+            for code in [None, Some(HEART), Some(PIECES[0]), Some(ORDINARY_NORMAL)] {
+                obs.cards.last_mut().unwrap().code = code;
+                assert!(first_heart_enabled(&obs, &prompt, &db));
+                assert_eq!(duality_pick(&obs, &prompt, &db), 1);
+            }
+        }
     }
 }
