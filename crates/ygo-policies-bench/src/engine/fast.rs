@@ -903,7 +903,9 @@ fn choose_mcts(
             for (response, policy) in std::iter::once((given, &control))
                 .chain(responses.iter().map(|response| (response.as_slice(), &frozen))) {
                 if expired(deadline) { break; }
-                let trial = ismcts::evaluate_frozen(duel, &world, context.viewer, original,
+                // Each trial restores its world; this closure's outer restore
+                // below owns recovery of the live root on every Result path.
+                let trial = ismcts::evaluate_frozen_in_place(duel, &world, context.viewer, original,
                     response, decisions, context.limit, validation, deadline, &evaluate, policy)?;
                 stats.playouts += 1;
                 stats.plan_evaluations += 1;

@@ -133,6 +133,12 @@ pub(super) struct Stats {
     observation_reads: usize,
     #[cfg(test)]
     responses: Vec<(usize, Vec<u8>)>,
+    #[cfg(test)]
+    caller_snapshots: usize,
+    #[cfg(test)]
+    caller_restores: usize,
+    #[cfg(test)]
+    world_restores: usize,
 }
 
 impl Stats {
@@ -796,7 +802,8 @@ fn search_impl<const LEGACY_HORIZON: bool>(
 
 /// Fixed-policy validation never updates its decisions from the sampled
 /// world's returns. An empty map is the unchanged generic continuation.
-#[allow(clippy::too_many_arguments)]
+/// Restores the caller's original duel state before returning.
+#[allow(dead_code, clippy::too_many_arguments)]
 pub(super) fn evaluate_frozen(
     duel: &mut Duel,
     world: &World<'_>,
@@ -810,7 +817,40 @@ pub(super) fn evaluate_frozen(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
-    evaluate_frozen_impl::<false>(
+    evaluate_frozen_impl::<false, true>(
+        duel,
+        world,
+        viewer,
+        root_original,
+        forced_root,
+        root_decisions,
+        game_limit,
+        options,
+        deadline,
+        evaluator,
+        policy,
+    )
+}
+
+/// Validation for a caller that already owns a root snapshot and guarantees
+/// its restoration on every exit. Restores the sampled world before each
+/// trial, but leaves the duel at that trial's terminal, cutoff or error state.
+/// Do not inspect or continue this duel before restoring a known snapshot.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn evaluate_frozen_in_place(
+    duel: &mut Duel,
+    world: &World<'_>,
+    viewer: u8,
+    root_original: &Value,
+    forced_root: &[u8],
+    root_decisions: usize,
+    game_limit: usize,
+    options: Options,
+    deadline: Option<Instant>,
+    evaluator: &dyn Fn(&Value, u8) -> f64,
+    policy: &FrozenPolicy,
+) -> Result<Evaluation> {
+    evaluate_frozen_impl::<false, false>(
         duel,
         world,
         viewer,
@@ -826,7 +866,7 @@ pub(super) fn evaluate_frozen(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn evaluate_frozen_impl<const LEGACY_HORIZON: bool>(
+fn evaluate_frozen_impl<const LEGACY_HORIZON: bool, const RESTORE_CALLER: bool>(
     duel: &mut Duel,
     world: &World<'_>,
     viewer: u8,
@@ -840,10 +880,22 @@ fn evaluate_frozen_impl<const LEGACY_HORIZON: bool>(
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
     validate(std::slice::from_ref(world), viewer, options)?;
-    let root = duel.snapshot()?;
+    let root = if RESTORE_CALLER {
+        Some(duel.snapshot()?)
+    } else {
+        None
+    };
     let mut stats = Stats::default();
+    #[cfg(test)]
+    {
+        stats.caller_snapshots = usize::from(RESTORE_CALLER);
+    }
     let result = (|| -> Result<Trial> {
         duel.restore(&world.snapshot)?;
+        #[cfg(test)]
+        {
+            stats.world_restores += 1;
+        }
         stats.simulations = 1;
         simulate::<LEGACY_HORIZON>(
             duel,
@@ -860,7 +912,13 @@ fn evaluate_frozen_impl<const LEGACY_HORIZON: bool>(
             &mut stats,
         )
     })();
-    duel.restore(&root)?;
+    if let Some(root) = root {
+        duel.restore(&root)?;
+        #[cfg(test)]
+        {
+            stats.caller_restores += 1;
+        }
+    }
     match result {
         Ok(trial) => {
             stats.completed = usize::from(trial.value.is_some());
@@ -913,6 +971,19 @@ mod tests {
         assert_eq!(optimized.value, legacy.value);
         assert_eq!(optimized.terminal, legacy.terminal);
         assert_stats_equivalent(&optimized.stats, &legacy.stats);
+    }
+
+    fn assert_in_place_equivalent(in_place: &Evaluation, restoring: &Evaluation) {
+        assert_eq!(in_place.value, restoring.value);
+        assert_eq!(in_place.terminal, restoring.terminal);
+        assert_eq!(restoring.stats.caller_snapshots, 1);
+        assert_eq!(restoring.stats.caller_restores, 1);
+        assert_eq!(in_place.stats.caller_snapshots, 0);
+        assert_eq!(in_place.stats.caller_restores, 0);
+        let mut expected = restoring.stats.clone();
+        expected.caller_snapshots = 0;
+        expected.caller_restores = 0;
+        assert_eq!(in_place.stats, expected);
     }
 
     fn answer() -> Value {
@@ -1306,7 +1377,7 @@ mod tests {
         assert_eq!(replayed.stats.mismatches, 0);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_replayed = evaluate_frozen_impl::<true>(
+        let legacy_replayed = evaluate_frozen_impl::<true, true>(
             &mut duel,
             &world,
             0,
@@ -1341,7 +1412,7 @@ mod tests {
         assert_eq!(failed.value, None);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed = evaluate_frozen_impl::<true>(
+        let legacy_failed = evaluate_frozen_impl::<true, true>(
             &mut duel,
             &world,
             0,
@@ -1492,6 +1563,262 @@ mod tests {
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
         }
+
+        // Compare a whole validation batch. The in-place version deliberately
+        // does not restore between trials, including after terminal and error
+        // results. Its next trial must reset the world before touching it.
+        let mut foreign_duel = core.deal(&DuelOptions::seeded(2493200), &decks).unwrap();
+        loop {
+            let step = foreign_duel.step().unwrap();
+            if step.state == State::Awaiting {
+                break;
+            }
+            assert!(!matches!(step.state, State::Over(_)));
+        }
+        let foreign_world = World {
+            snapshot: foreign_duel.snapshot().unwrap(),
+            seats: world
+                .seats
+                .iter()
+                .map(LibrarySeat::fork)
+                .collect::<Result<Vec<_>>>()
+                .unwrap(),
+        };
+        let control = FrozenPolicy::default();
+        let frozen_root = first.root_response.as_deref().unwrap();
+        let bad_evaluator = |_: &Value, _: u8| f64::NAN;
+        let evaluator: &dyn Fn(&Value, u8) -> f64 = &evaluator;
+        let trial_cases = [
+            (
+                "control",
+                &worlds[0],
+                &control,
+                root_response.as_slice(),
+                options,
+                None,
+                evaluator,
+            ),
+            (
+                "frozen",
+                &worlds[1],
+                &first.policy,
+                frozen_root,
+                options,
+                None,
+                evaluator,
+            ),
+            (
+                "cap",
+                &world,
+                &control,
+                root_response.as_slice(),
+                Options {
+                    decisions: 1,
+                    ..options
+                },
+                None,
+                evaluator,
+            ),
+            (
+                "expired",
+                &world,
+                &control,
+                root_response.as_slice(),
+                options,
+                Some(Instant::now() - std::time::Duration::from_secs(1)),
+                evaluator,
+            ),
+            (
+                "evaluator error",
+                &world,
+                &control,
+                root_response.as_slice(),
+                options,
+                None,
+                &bad_evaluator,
+            ),
+            (
+                "after error",
+                &worlds[2],
+                &control,
+                root_response.as_slice(),
+                options,
+                None,
+                evaluator,
+            ),
+            (
+                "terminal",
+                &world,
+                &control,
+                root_response.as_slice(),
+                Options {
+                    terminal: true,
+                    ..options
+                },
+                None,
+                evaluator,
+            ),
+            (
+                "foreign snapshot",
+                &foreign_world,
+                &control,
+                root_response.as_slice(),
+                options,
+                None,
+                evaluator,
+            ),
+            (
+                "after foreign snapshot",
+                &world,
+                &first.policy,
+                frozen_root,
+                options,
+                None,
+                evaluator,
+            ),
+        ];
+        let mut references = Vec::new();
+        for (_, trial_world, policy, response, options, deadline, evaluate) in &trial_cases {
+            references.push(
+                evaluate_frozen(
+                    &mut duel,
+                    trial_world,
+                    0,
+                    &original,
+                    response,
+                    decisions,
+                    1024,
+                    *options,
+                    *deadline,
+                    evaluate,
+                    policy,
+                )
+                .unwrap(),
+            );
+            assert_eq!(next_bytes(&mut duel), expected);
+            duel.restore(&world.snapshot).unwrap();
+        }
+        // This is the same restoration boundary as choose_mcts: all work is
+        // captured first, then the live root is restored before handling it.
+        let result = (|| -> Result<Vec<Evaluation>> {
+            trial_cases
+                .iter()
+                .map(
+                    |(_, trial_world, policy, response, options, deadline, evaluate)| {
+                        evaluate_frozen_in_place(
+                            &mut duel,
+                            trial_world,
+                            0,
+                            &original,
+                            response,
+                            decisions,
+                            1024,
+                            *options,
+                            *deadline,
+                            evaluate,
+                            policy,
+                        )
+                    },
+                )
+                .collect()
+        })();
+        duel.restore(&world.snapshot).unwrap();
+        let in_place = result.unwrap();
+        for (((name, ..), reference), actual) in trial_cases.iter().zip(&references).zip(&in_place)
+        {
+            assert_in_place_equivalent(actual, reference);
+            match *name {
+                "cap" => {
+                    assert_eq!(actual.value, None);
+                    assert_eq!(actual.stats.cutoffs, 1);
+                }
+                "expired" => {
+                    assert_eq!(actual.value, None);
+                    assert_eq!(actual.stats.simulations, 1);
+                    assert_eq!(actual.stats.cutoffs, 1);
+                    assert_eq!(actual.stats.steps, 0);
+                }
+                "evaluator error" => {
+                    assert_eq!(actual.value, None);
+                    assert_eq!(actual.stats.failed, 1);
+                    assert!(actual.stats.errors[0].contains("non-finite"));
+                }
+                "foreign snapshot" => {
+                    assert_eq!(actual.value, None);
+                    assert_eq!(actual.stats.failed, 1);
+                    assert_eq!(actual.stats.simulations, 0);
+                    assert_eq!(actual.stats.world_restores, 0);
+                    assert!(actual.stats.errors[0].contains("OCG_DuelRestoreSnapshot"));
+                }
+                "terminal" => assert!(actual.terminal),
+                _ => assert!(actual.value.is_some(), "{name}: {:?}", actual.stats.errors),
+            }
+        }
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        assert_eq!(world.seats[0].last_answer().unwrap(), original);
+        eprintln!(
+            "in-place validation: {} caller snapshots and {} caller restores removed across {} identical trials",
+            references.iter().map(|trial| trial.stats.caller_snapshots).sum::<usize>(),
+            references.iter().map(|trial| trial.stats.caller_restores).sum::<usize>(),
+            in_place.len()
+        );
+
+        // Validation errors remain outer errors. Exercise that exit while the
+        // duel is terminal from a prior in-place trial, then restore the root.
+        let invalid_options = Options {
+            iterations: 0,
+            ..options
+        };
+        let reference_error = evaluate_frozen(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            &root_response,
+            decisions,
+            1024,
+            invalid_options,
+            None,
+            evaluator,
+            &control,
+        )
+        .unwrap_err();
+        let terminal = evaluate_frozen_in_place(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            &root_response,
+            decisions,
+            1024,
+            Options {
+                terminal: true,
+                ..options
+            },
+            None,
+            evaluator,
+            &control,
+        )
+        .unwrap();
+        assert!(terminal.terminal);
+        let error = evaluate_frozen_in_place(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            &root_response,
+            decisions,
+            1024,
+            invalid_options,
+            None,
+            evaluator,
+            &control,
+        );
+        duel.restore(&world.snapshot).unwrap();
+        assert_eq!(error.unwrap_err(), reference_error);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
     }
 
     #[test]
