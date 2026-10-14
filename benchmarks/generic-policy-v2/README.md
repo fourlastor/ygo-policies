@@ -80,6 +80,18 @@ games completed, with zero errors, live caps, failed/unresolved searches or
 proposal cutoffs. Crystal regressed from 10/16 to 5/16 and is a follow-up diagnostic.
 The fast setting requires `--mcts-iterations 32`; the CLI default remains 128.
 
+The [v17 Crystal replay](crystal-diagnostic-v17/report.md) reproduces that deck's
+16 paired outcomes and trajectories with full traces. It exposed concrete
+recipient and resource-availability mistakes, but is selected diagnostic data,
+not another strength sample. The first follow-up,
+[v18 backrow capacity](capacity-v18/report.md), removes ordinary hand activation
+credit when all five main Spell/Trap slots are occupied, using the existing
+stranded-card penalty. Field Spells and separate hand effects remain available.
+On 64 fresh paired Crystal mirrors, control won 42 and the correction won 40:
+three gains, five losses, paired interval [-11.82, +5.57] points. The logical
+correction has no demonstrated strength benefit. All games completed cleanly;
+default weights stayed fixed.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain

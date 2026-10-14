@@ -1,0 +1,11 @@
+# Selected Crystal replay diagnostic
+
+This is a **post hoc replay of the 16 Crystal pairs from the completed roster screen**, selected after search underperformed plain Generic. It is not a fresh strength sample and must not be counted again as independent evidence.
+
+At base seed **2485000**, plain won **10/16** and 32-iteration search **5/16**: search gained one win, lost six and left nine outcomes unchanged. All **16 outcomes and trajectory digests in each arm exactly match the original roster records**. The six lost-win keys and their plain/search turn counts also reproduce [replay-checks.json](replay-checks.json). Both arms completed without game errors, caps or failed searches/playouts.
+
+Full traces and recorded actual responses were enabled to inspect those six losses. [pilot-diagnosis.md](pilot-diagnosis.md) preserves the detailed legal-choice evidence and its limits. Observations include full backrow preventing hand-spell activation, Ruby's unpriced companion-summon payoff, Cat/Ruins damage and effect valuation, and Crystal Release targeting an opposing monster. The Release example occurs outside the six selected losses. These are specific behavioral observations or modeling gaps, **not proof that any one rule caused the lost wins**; some apparently attractive alternatives could be negated or sacrifice useful stored resources.
+
+The frozen host is **62614aedd48a4cbaa17695b179d9bc68592160fb**, with policy library **9bacb1307f988af737c788ea844cfdc4cd902ac5**. Default weights, known opponent deck composition and the Generic rollout model were unchanged. The replay used eight workers per serial arm on CPUs 8–23. [plan.json](plan.json) and [manifest.json](manifest.json) preserve exact commands, settings, source/build records and artifact hashes; later fixes are separate experiments.
+
+Both completed raw traces are archived as deterministic `.jsonl.gz` files. Original plans, runner, metadata, comparison, replay checks and pilot diagnosis remain unchanged. Their `.jsonl` references resolve to adjacent `.gz` files; decompression preserves line numbers, trace indices and bytes exactly. The archive manifest records logical/compressed SHA-256 hashes, and archive verification confirms round-trip integrity, unchanged comparison results and replay-check parity against the original archived roster.

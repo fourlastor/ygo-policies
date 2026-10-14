@@ -1,0 +1,13 @@
+# Spell/Trap capacity evaluator diagnostic
+
+The capacity correction **did not show an improvement** on the fixed Crystal sample: control won **42/64 (65.6%)**, candidate **40/64 (62.5%)**. The candidate gained three paired wins and lost five; 56 outcomes were unchanged. The paired change was **−3.13 percentage points**, with a normal 95% interval of **−11.82 to +5.57 points**. This does not establish either improvement or a regression. Trajectory digests changed in 34/64 games.
+
+The candidate's observed win rate exceeded 55%, but its Wilson 95% interval was **50.3–73.3%**. This one-deck development diagnostic does not qualify the per-deck target or support a broader strength claim.
+
+Both arms completed all **64 unique Crystal pairs**, 32 games per candidate seat, at base seed **2486000**. Independent raw-data checks reproduced the saved comparison and validated the full schedule, summaries, metadata arguments and pinned fingerprints. There were zero errors, live caps, failed searches/playouts, unresolved validation, incomplete worlds, budget exhaustion or proposal cutoffs. All 63,808 control and 60,320 candidate proposal simulations completed. The configured heuristic horizon produced 12,686 and 12,357 truncated validation playouts respectively; these were not failed games or terminal proofs.
+
+Only the host executable changed, from source **62614aedd48a4cbaa17695b179d9bc68592160fb** to **aea6dd818208509eb382edc69caa31893749c42e**, implementing the evaluator's Spell/Trap capacity correction. The v16 policy library (**9bacb1307f988af737c788ea844cfdc4cd902ac5**), specialist baseline, default weights and 32-iteration search configuration stayed fixed. Opponent deck composition was known, with Generic as the sampled opponent model. Arms ran serially with 16 workers on CPUs 8–23 and no outcome-based early stopping.
+
+Loaded median searched-decision latency was 193 ms control and 191 ms candidate; p95 was 421 ms and 365 ms. Different trajectories and search counts prevent treating this as an isolated speed comparison or latency guarantee.
+
+[plan.json](plan.json) and [manifest.json](manifest.json) preserve exact commands, build records, source revisions and binary SHA-256 hashes. [independent-analysis.json](independent-analysis.json) records the separate audit; [comparison.json](comparison.json) is unchanged. Only this folder's completed control/candidate raw files were archived as deterministic `.jsonl.gz` files. The archive manifest records logical/compressed hashes, and archive verification confirms round-trip integrity and equivalent comparison results after resolving original `.jsonl` paths to adjacent `.gz` files. Separate Crystal diagnostic traces were left untouched.
