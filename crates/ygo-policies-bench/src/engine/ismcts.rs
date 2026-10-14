@@ -12,6 +12,7 @@
 use super::planner::{prompt_signature, resolve_action, PlannedAction};
 use super::*;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -158,6 +159,8 @@ pub(super) struct Stats {
     #[cfg(test)]
     observation_reads: usize,
     #[cfg(test)]
+    reused_answers: usize,
+    #[cfg(test)]
     responses: Vec<(usize, Vec<u8>)>,
     #[cfg(test)]
     caller_snapshots: usize,
@@ -296,6 +299,27 @@ fn given(answer: &Value) -> Result<Vec<u8>> {
         .as_u64()
         .ok_or("ISMCTS prompt lacks original choice")? as usize;
     bytes(&answer["responses"][index]).ok_or_else(|| "ISMCTS prompt lacks original response".into())
+}
+
+/// An explicit null `picks` identifies an ordinary pending answer: expanding
+/// alternatives would return that same answer through another JSON roundtrip.
+/// Borrow the fresh original instead. Sequential or missing/unknown metadata
+/// still takes the library path, including its cached policy-state creation.
+/// EXPAND_NONSEQUENTIAL is true only in differential-test specializations.
+fn expanded_answer<'a, const EXPAND_NONSEQUENTIAL: bool>(
+    original: &'a Value,
+    expand: impl FnOnce() -> Result<Value>,
+    _stats: &mut Stats,
+) -> Result<Cow<'a, Value>> {
+    if !EXPAND_NONSEQUENTIAL && matches!(original.get("picks"), Some(Value::Null)) {
+        #[cfg(test)]
+        {
+            _stats.reused_answers += 1;
+        }
+        Ok(Cow::Borrowed(original))
+    } else {
+        expand().map(Cow::Owned)
+    }
 }
 
 fn supported(answer: &Value) -> bool {
@@ -502,7 +526,11 @@ struct Trial {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
+fn simulate<
+    const LEGACY_HORIZON: bool,
+    const KEEP_TAIL_CHECKPOINTS: bool,
+    const EXPAND_NONSEQUENTIAL: bool,
+>(
     duel: &mut Duel,
     seats: &[LibrarySeat<'_>],
     viewer: u8,
@@ -561,14 +589,22 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             if first && forced_root.is_some() {
                 // A supplied root can be a whole sequential alternative whose
                 // commit state has not yet been cached in this fresh fork.
-                seats[pending_player].alternative_responses(12)?;
+                let _ = expanded_answer::<EXPAND_NONSEQUENTIAL>(
+                    &original,
+                    || seats[pending_player].alternative_responses(12),
+                    stats,
+                )?;
                 response = forced_root.unwrap().to_vec();
             } else {
                 match &mut mode {
                     Mode::Search { tree, root_action } if tree_active => {
                         let key =
                             Key::for_actor(&original, paths[pending_player], pending_player as u8);
-                        let expanded = seats[pending_player].alternative_responses(12)?;
+                        let expanded = expanded_answer::<EXPAND_NONSEQUENTIAL>(
+                            &original,
+                            || seats[pending_player].alternative_responses(12),
+                            stats,
+                        )?;
                         if !tree.contains_key(&key) && tree.len() < options.nodes {
                             let candidates = actions(&original, &expanded, options.actions)?;
                             // Forced and administrative prompts are executed
@@ -610,7 +646,11 @@ fn simulate<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
                     }
                     Mode::Frozen(policy) if !policy.choices.is_empty() => {
                         if policy.has(&original, paths[pending_player]) {
-                            let expanded = seats[pending_player].alternative_responses(12)?;
+                            let expanded = expanded_answer::<EXPAND_NONSEQUENTIAL>(
+                                &original,
+                                || seats[pending_player].alternative_responses(12),
+                                stats,
+                            )?;
                             if let Some(planned) =
                                 policy.resolve(&original, &expanded, paths[pending_player])
                             {
@@ -769,7 +809,7 @@ pub(super) fn search(
     deadline: Option<Instant>,
     evaluator: &dyn Fn(&Value, u8) -> f64,
 ) -> Result<SearchResult> {
-    search_impl::<false, false>(
+    search_impl::<false, false, false>(
         duel,
         worlds,
         viewer,
@@ -782,10 +822,14 @@ pub(super) fn search(
     )
 }
 
-// The true specialization is instantiated only by native differential tests.
-// Production has no runtime switch and always skips pre-horizon observations.
+// Reference specializations are instantiated only by differential tests.
+// Production has no runtime switches for the host-side optimizations.
 #[allow(clippy::too_many_arguments)]
-fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
+fn search_impl<
+    const LEGACY_HORIZON: bool,
+    const KEEP_TAIL_CHECKPOINTS: bool,
+    const EXPAND_NONSEQUENTIAL: bool,
+>(
     duel: &mut Duel,
     worlds: &[World<'_>],
     viewer: u8,
@@ -818,7 +862,7 @@ fn search_impl<const LEGACY_HORIZON: bool, const KEEP_TAIL_CHECKPOINTS: bool>(
             stats.root_trials.push((root_action, world_index));
             #[cfg(test)]
             let nodes_before = tree.len();
-            match simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS>(
+            match simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS, EXPAND_NONSEQUENTIAL>(
                 duel,
                 &world.seats,
                 viewer,
@@ -914,7 +958,7 @@ pub(super) fn evaluate_frozen(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
-    evaluate_frozen_impl::<false, true, false>(
+    evaluate_frozen_impl::<false, true, false, false>(
         duel,
         world,
         viewer,
@@ -947,7 +991,7 @@ pub(super) fn evaluate_frozen_in_place(
     evaluator: &dyn Fn(&Value, u8) -> f64,
     policy: &FrozenPolicy,
 ) -> Result<Evaluation> {
-    evaluate_frozen_impl::<false, false, false>(
+    evaluate_frozen_impl::<false, false, false, false>(
         duel,
         world,
         viewer,
@@ -967,6 +1011,7 @@ fn evaluate_frozen_impl<
     const LEGACY_HORIZON: bool,
     const RESTORE_CALLER: bool,
     const KEEP_TAIL_CHECKPOINTS: bool,
+    const EXPAND_NONSEQUENTIAL: bool,
 >(
     duel: &mut Duel,
     world: &World<'_>,
@@ -998,7 +1043,7 @@ fn evaluate_frozen_impl<
             stats.world_restores += 1;
         }
         stats.simulations = 1;
-        simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS>(
+        simulate::<LEGACY_HORIZON, KEEP_TAIL_CHECKPOINTS, EXPAND_NONSEQUENTIAL>(
             duel,
             &world.seats,
             viewer,
@@ -1050,6 +1095,8 @@ mod tests {
         let mut legacy = legacy.clone();
         optimized.observation_reads = 0;
         legacy.observation_reads = 0;
+        optimized.reused_answers = 0;
+        legacy.reused_answers = 0;
         optimized.tail_checkpoint_disables = 0;
         legacy.tail_checkpoint_disables = 0;
         optimized.uncheckpointed_prompts = 0;
@@ -1093,6 +1140,186 @@ mod tests {
 
     fn answer() -> Value {
         serde_json::json!({"observation":{"turn":1,"cards":[]},"decision":{"kind":"YesNo","choices":[{"kind":"No"},{"kind":"Yes"}]},"responses":[[0],[1]],"choice":0})
+    }
+
+    #[test]
+    fn explicit_nonsequential_answer_is_borrowed_without_reordering() {
+        let mut original = answer();
+        original["picks"] = Value::Null;
+        original["choice"] = serde_json::json!(1);
+        let mut stats = Stats::default();
+        let expanded = expanded_answer::<false>(
+            &original,
+            || panic!("an explicit nonsequential answer needs no expansion roundtrip"),
+            &mut stats,
+        )
+        .unwrap();
+        assert!(matches!(&expanded, Cow::Borrowed(_)));
+        assert!(std::ptr::eq(expanded.as_ref(), &original));
+        assert_eq!(stats.reused_answers, 1);
+        let actual = actions(&original, &expanded, 2).unwrap();
+        let mut legacy_stats = Stats::default();
+        let legacy =
+            expanded_answer::<true>(&original, || Ok(original.clone()), &mut legacy_stats).unwrap();
+        let expected = actions(&original, &legacy, 2).unwrap();
+        assert_eq!(
+            actual
+                .iter()
+                .map(|action| action.planned.response.clone())
+                .collect::<Vec<_>>(),
+            vec![vec![1], vec![0]]
+        );
+        for (actual, expected) in actual.iter().zip(&expected) {
+            assert_eq!(actual.planned.signature, expected.planned.signature);
+            assert_eq!(actual.planned.response, expected.planned.response);
+            assert_eq!(actual.planned.action, expected.planned.action);
+            assert_eq!(
+                resolve_action(&actual.planned, &expanded),
+                Some(actual.planned.response.clone())
+            );
+        }
+        assert_eq!(legacy_stats.reused_answers, 0);
+    }
+
+    #[test]
+    fn missing_sequential_and_unknown_picks_keep_library_expansion_and_errors() {
+        for picks in [
+            None,
+            Some(serde_json::json!([])),
+            Some(serde_json::json!([0])),
+            Some(serde_json::json!(false)),
+            Some(serde_json::json!("unknown")),
+        ] {
+            let mut original = answer();
+            if let Some(picks) = picks {
+                original["picks"] = picks;
+            }
+            let mut described = original.clone();
+            described["responses"] = serde_json::json!([[1], [0], [2]]);
+            let calls = std::cell::Cell::new(0);
+            let mut stats = Stats::default();
+            let expanded = expanded_answer::<false>(
+                &original,
+                || {
+                    calls.set(calls.get() + 1);
+                    Ok(described.clone())
+                },
+                &mut stats,
+            )
+            .unwrap();
+            assert!(matches!(&expanded, Cow::Owned(_)));
+            assert_eq!(expanded.as_ref(), &described);
+            assert_eq!(calls.get(), 1);
+            assert_eq!(stats.reused_answers, 0);
+            let error =
+                expanded_answer::<false>(&original, || Err("expansion failed".into()), &mut stats)
+                    .unwrap_err();
+            assert_eq!(error, "expansion failed");
+        }
+    }
+
+    #[test]
+    fn sequential_answer_reuse_fallback_preserves_cached_policy_commits() {
+        use std::sync::Mutex;
+        use ygo_policies::agent::Policy;
+        use ygo_policies::cards::MemoryCards;
+        use ygo_policies::model::{Decision, Observation};
+        use ygo_policies_ocgcore::{
+            wire::{location, Loc, Writer},
+            Seat,
+        };
+        #[derive(Clone)]
+        struct Recording {
+            committed: Vec<usize>,
+            observed: Arc<Mutex<Vec<Vec<usize>>>>,
+        }
+        impl Policy for Recording {
+            fn choose(&mut self, _: &Observation, _: &Decision) -> usize {
+                self.observed.lock().unwrap().push(self.committed.clone());
+                self.committed.push(100);
+                0
+            }
+            fn fork(&self) -> Option<Box<dyn Policy>> {
+                Some(Box::new(self.clone()))
+            }
+            fn commit_choice(&mut self, _: &Observation, _: &Decision, index: usize) -> bool {
+                self.committed.push(index);
+                true
+            }
+        }
+        let describe = |seat: &Seat| {
+            let answer = seat.last_answer().unwrap();
+            serde_json::json!({"picks":answer.picks,"responses":answer.responses,"choice":answer.choice})
+        };
+        let observed = Arc::new(Mutex::new(Vec::new()));
+        let mut seat = Seat::new(
+            Box::new(Recording {
+                committed: Vec::new(),
+                observed: observed.clone(),
+            }),
+            Arc::new(MemoryCards::default()),
+            Some(0),
+        );
+        seat.enable_response_overrides().unwrap();
+        let mut prompt = Writer::default()
+            .u8(msg::SELECT_CARD)
+            .u8(0)
+            .u8(0)
+            .u32(2)
+            .u32(2)
+            .u32(3);
+        for sequence in 0..3 {
+            prompt = prompt.u32(10 + sequence).loc(Loc {
+                controller: 0,
+                location: location::HAND,
+                sequence,
+                position: position::FACEDOWN_DEFENSE,
+            });
+        }
+        seat.feed(&prompt.0).unwrap();
+        let mut legacy_seat = seat.fork().unwrap();
+        let original = describe(&seat);
+        let mut stats = Stats::default();
+        let expanded = expanded_answer::<false>(
+            &original,
+            || {
+                seat.alternative_responses(12)
+                    .map_err(|error| error.to_string())?;
+                Ok(describe(&seat))
+            },
+            &mut stats,
+        )
+        .unwrap();
+        let legacy = expanded_answer::<true>(
+            &original,
+            || {
+                legacy_seat
+                    .alternative_responses(12)
+                    .map_err(|error| error.to_string())?;
+                Ok(describe(&legacy_seat))
+            },
+            &mut Stats::default(),
+        )
+        .unwrap();
+        assert_eq!(expanded, legacy);
+        assert_eq!(stats.reused_answers, 0);
+        assert_eq!(expanded["responses"].as_array().unwrap().len(), 3);
+        let selected = bytes(&expanded["responses"][2]).unwrap();
+        seat.override_response(&selected).unwrap();
+        legacy_seat.override_response(&selected).unwrap();
+        assert_eq!(seat.last_answer().unwrap().picks, Some(vec![1, 2]));
+        assert_eq!(describe(&seat), describe(&legacy_seat));
+        observed.lock().unwrap().clear();
+        let next = Writer::default()
+            .u8(msg::SELECT_OPTION)
+            .u8(0)
+            .u8(2)
+            .u64(10)
+            .u64(20)
+            .0;
+        seat.feed(&next).unwrap();
+        legacy_seat.feed(&next).unwrap();
+        assert_eq!(*observed.lock().unwrap(), vec![vec![1, 1], vec![1, 1]]);
     }
 
     fn extra_summon(code: u32, sequence: usize) -> Value {
@@ -1494,7 +1721,22 @@ mod tests {
         assert_eq!(world.seats[0].last_answer().unwrap(), original);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let retained = search_impl::<false, true>(
+        let expanded_nonsequential = search_impl::<false, false, true>(
+            &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
+        )
+        .unwrap();
+        assert_search_equivalent(&first, &expanded_nonsequential);
+        assert!(
+            first.stats.reused_answers >= options.iterations,
+            "every simulation's ordinary root must avoid a redundant answer roundtrip"
+        );
+        assert_eq!(expanded_nonsequential.stats.reused_answers, 0);
+        assert_eq!(world.seats[0].last_answer().unwrap(), original);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        eprintln!("nonsequential answer reuse: {} JSON roundtrips omitted across {} identical simulations",
+            first.stats.reused_answers, options.iterations);
+        let retained = search_impl::<false, true, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -1509,7 +1751,7 @@ mod tests {
             "plain search tails: {} pre-choice checkpoints omitted across {} identical simulations",
             first.stats.uncheckpointed_prompts, first.stats.simulations
         );
-        let legacy = search_impl::<true, false>(
+        let legacy = search_impl::<true, false, false>(
             &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
         )
         .unwrap();
@@ -1542,7 +1784,26 @@ mod tests {
         assert_eq!(replayed.stats.mismatches, 0);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_replayed = evaluate_frozen_impl::<true, true, false>(
+        let expanded_nonsequential_replayed = evaluate_frozen_impl::<false, true, false, true>(
+            &mut duel,
+            &world,
+            0,
+            &original,
+            first.root_response.as_ref().unwrap(),
+            decisions,
+            1024,
+            options,
+            None,
+            &evaluator,
+            &first.policy,
+        )
+        .unwrap();
+        assert_evaluation_equivalent(&replayed, &expanded_nonsequential_replayed);
+        assert!(replayed.stats.reused_answers > 0);
+        assert_eq!(expanded_nonsequential_replayed.stats.reused_answers, 0);
+        assert_eq!(next_bytes(&mut duel), expected);
+        duel.restore(&world.snapshot).unwrap();
+        let legacy_replayed = evaluate_frozen_impl::<true, true, false, false>(
             &mut duel,
             &world,
             0,
@@ -1577,7 +1838,7 @@ mod tests {
         assert_eq!(failed.value, None);
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed = evaluate_frozen_impl::<true, true, false>(
+        let legacy_failed = evaluate_frozen_impl::<true, true, false, false>(
             &mut duel,
             &world,
             0,
@@ -1622,7 +1883,7 @@ mod tests {
         );
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_failed_search = search_impl::<true, false>(
+        let legacy_failed_search = search_impl::<true, false, false>(
             &mut duel,
             &worlds,
             0,
@@ -1673,7 +1934,7 @@ mod tests {
             .all(|action| action.attempts > 0));
         assert_eq!(next_bytes(&mut duel), expected);
         duel.restore(&world.snapshot).unwrap();
-        let legacy_capped = search_impl::<true, false>(
+        let legacy_capped = search_impl::<true, false, false>(
             &mut duel,
             &worlds,
             0,
@@ -1707,7 +1968,7 @@ mod tests {
             .unwrap();
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
-            let legacy = search_impl::<true, false>(
+            let legacy = search_impl::<true, false, false>(
                 &mut duel, &worlds, 0, &original, decisions, 1024, options, None, &evaluator,
             )
             .unwrap();
@@ -1862,7 +2123,7 @@ mod tests {
             );
             assert_eq!(next_bytes(&mut duel), expected);
             duel.restore(&world.snapshot).unwrap();
-            let retained = evaluate_frozen_impl::<false, true, true>(
+            let retained = evaluate_frozen_impl::<false, true, true, false>(
                 &mut duel,
                 trial_world,
                 0,
@@ -2127,7 +2388,7 @@ mod tests {
                 .unwrap();
                 assert_eq!(next_bytes(&mut duel), expected);
                 duel.restore(&world.snapshot).unwrap();
-                let legacy = search_impl::<true, false>(
+                let legacy = search_impl::<true, false, false>(
                     &mut duel,
                     std::slice::from_ref(&world),
                     viewer,
@@ -2247,7 +2508,7 @@ mod tests {
             // Retaining both players' policy checkpoints is a behavioral
             // reference: dropping them after the single expansion must not
             // change either actor's decisions, returns, or root allocation.
-            let retained = search_impl::<false, true>(
+            let retained = search_impl::<false, true, false>(
                 &mut duel,
                 std::slice::from_ref(&world),
                 viewer,
