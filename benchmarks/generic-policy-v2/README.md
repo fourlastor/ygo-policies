@@ -68,6 +68,14 @@ ordinary plain play by themselves.
 
 ## Development evidence
 
+The [v13 manual-weight diagnostic](manual-weights-chain-burn-v13/report.md)
+tested one frozen Chain Burn preset on 64 paired mirrors: default weights won
+9/64 (14.06%), and lower card-count/higher LP weights won 13/64 (20.31%). Six
+pairs improved and two regressed; +6.25 points, approximate paired-normal 95%
+interval [-2.34, +14.84], exact McNemar p=0.289. All games completed without
+errors or caps. This is a weak positive signal for one preset, not an established
+strength improvement; defaults and the policy library remain unchanged.
+
 The frozen specialist library is built from `7ddad06`. Metadata beside each run
 records binary fingerprints, engine/scripts, decks, seeds and settings.
 
@@ -333,6 +341,15 @@ Build and freeze the candidate separately from the frozen baseline. Use new
 output paths; the runner rejects overwriting results. On this host, prefix each
 benchmark command below with `taskset -c 8-23` and keep the sum of worker counts
 across concurrent runs at or below 16.
+
+For a controlled feature-weight experiment, beam/MCTS accepts a sparse named
+override such as `--evaluation-weights '{"accessible_cards":0.3,"life_buffer":4.0}'`.
+Unspecified coefficients retain their defaults; the same fixed weights apply to
+proposal search and fresh validation. Metadata records all 13 effective weights.
+Plain play, rollout search, zero-work search and terminal-only MCTS reject an
+explicit override because they would not use it. Compare otherwise identical
+runs with `--allow-metadata-ablation search.evaluation_weights`; historical runs
+without recorded weights retain unknown weight configuration.
 
 ```sh
 cargo build --release -p ygo-policies-ffi -p ygo-policies-bench
