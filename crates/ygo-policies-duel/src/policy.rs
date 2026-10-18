@@ -31,6 +31,8 @@ pub struct PolicyLibrary {
     override_response: Option<unsafe extern "C" fn(Handle, *const u8, usize) -> i32>,
     alternative_responses: Option<unsafe extern "C" fn(Handle, usize) -> *const c_char>,
     set_effect_profiles: Option<unsafe extern "C" fn(Handle, *const c_char) -> i32>,
+    create_search: Option<unsafe extern "C" fn(*const c_char, i32, u64, *const c_char, Handle, *const c_char) -> Handle>,
+    search_stats: Option<unsafe extern "C" fn(Handle) -> *const c_char>,
     /// Policy id to the name of its deck list.
     pub catalog: HashMap<String, String>,
 }
@@ -75,6 +77,8 @@ impl PolicyLibrary {
                 override_response: symbol(&library, b"ygo_policy_override_response").ok(),
                 alternative_responses: symbol(&library, b"ygo_policy_alternative_responses_json").ok(),
                 set_effect_profiles: symbol(&library, b"ygo_policy_set_effect_profiles_json").ok(),
+                create_search: symbol(&library, b"ygo_policy_create_search").ok(),
+                search_stats: symbol(&library, b"ygo_policy_search_stats_json").ok(),
                 catalog,
                 _library: library,
             })
@@ -94,6 +98,30 @@ impl PolicyLibrary {
             library: self,
             handle,
         })
+    }
+
+    /// The generic policy with the staged search, seated as `player` of the
+    /// duel `duel` (its `OCG_Duel`), on which it plays its worlds while it
+    /// answers.  `options` are what `ygo_policy_create_search` reads, `None`
+    /// for the measured ones.
+    ///
+    /// # Safety
+    /// `duel` is a live duel of the engine library at `engine`, which
+    /// outlives the seat, and which the caller leaves alone while it feeds
+    /// the seat.
+    pub unsafe fn search_seat(&self, cards: &Path, player: i32, seed: u64, engine: &Path, duel: *mut c_void,
+        options: Option<&serde_json::Value>) -> Result<LibrarySeat<'_>> {
+        let create = self.create_search.ok_or("policy library has no search seat")?;
+        let text = |text: &str| CString::new(text).map_err(|e| e.to_string());
+        let cards = text(&cards.to_string_lossy())?;
+        let engine = text(&engine.to_string_lossy())?;
+        let options = options.map(|options| text(&options.to_string())).transpose()?;
+        let handle = create(cards.as_ptr(), player, seed, engine.as_ptr(), duel,
+            options.as_ref().map_or(std::ptr::null(), |options| options.as_ptr()));
+        if handle.is_null() {
+            return Err(self.last_error());
+        }
+        Ok(LibrarySeat { library: self, handle })
     }
 
     /// Older policy libraries are still usable through history replay.
@@ -251,6 +279,11 @@ impl LibrarySeat<'_> {
     /// search does not support. Older libraries supply the full answer instead.
     pub fn search_view(&self) -> Result<serde_json::Value> {
         self.read_json(self.library.search_view.unwrap_or(self.library.answer))
+    }
+
+    /// What a search seat ([`PolicyLibrary::search_seat`]) has done so far.
+    pub fn search_stats(&self) -> Result<serde_json::Value> {
+        self.read_json(self.library.search_stats.ok_or("policy library has no search seat")?)
     }
 
     fn read_json(&self, read: unsafe extern "C" fn(Handle) -> *const c_char) -> Result<serde_json::Value> {

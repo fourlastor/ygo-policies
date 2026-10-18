@@ -1,9 +1,10 @@
-//! Compiles OCGCore (`vendor/ocgcore`) and its Lua (`vendor/ocgcore/lua/src`)
-//! the way the core's own premake script does: Lua as C++, without the
-//! libraries OCGCore strips, with `luaconf-customize.h` force-included.
+//! With the `bundled` feature: compiles OCGCore (`vendor/ocgcore`) and its Lua
+//! (`vendor/ocgcore/lua/src`) the way the core's own premake script does: Lua
+//! as C++, without the libraries OCGCore strips, with `luaconf-customize.h`
+//! force-included.  Without it the crate has no engine of its own, and plays
+//! on one loaded from a file.
 
-use std::path::PathBuf;
-
+#[cfg(feature = "bundled")]
 const LUA_EXCLUDED: &[&str] = &[
     "lbitlib.c",
     "lcorolib.c",
@@ -19,6 +20,15 @@ const LUA_EXCLUDED: &[&str] = &[
 ];
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    #[cfg(feature = "bundled")]
+    bundle();
+}
+
+#[cfg(feature = "bundled")]
+fn bundle() {
+    use std::path::PathBuf;
+
     let root =
         PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../vendor/ocgcore");
     let lua = root.join("lua/src");
@@ -50,6 +60,7 @@ fn main() {
         "card.cpp",
         "duel.cpp",
         "duel_arena.cpp",
+        "duel_search.cpp",
         "duel_swap.cpp",
         "effect.cpp",
         "field.cpp",
@@ -66,29 +77,9 @@ fn main() {
         "processor_visit.cpp",
         "scriptlib.cpp",
     ];
-    // Add the simulation-only RNG setter to a build-local copy. The pinned
-    // vendor checkout stays untouched, and every compiled core translation
-    // unit sees the same declaration (no private-access or layout tricks).
-    let search_core = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("search-core");
-    std::fs::create_dir_all(&search_core).unwrap();
-    for entry in std::fs::read_dir(&root).unwrap() {
-        let source = entry.unwrap().path();
-        if source.is_file() && source.extension().is_some_and(|ext| ext == "h" || ext == "cpp") {
-            std::fs::copy(&source, search_core.join(source.file_name().unwrap())).unwrap();
-        }
-    }
-    let header = search_core.join("duel.h");
-    let declaration = std::fs::read_to_string(&header).unwrap();
-    let anchor = "\tbool restore_snapshot(const snapshot_state& snapshot);";
-    assert_eq!(declaration.matches(anchor).count(), 1, "vendor duel API changed: review the search RNG bridge");
-    std::fs::write(&header, declaration.replace(anchor, &format!(
-        "{anchor}\n\tvoid reseed_for_search(const RNG::Xoshiro256StarStar::StateType& state) {{ random = RNG::Xoshiro256StarStar(state); }}"
-    ))).unwrap();
     cc::Build::new()
         .cpp(true)
-        .files(core.iter().map(|file| search_core.join(file)))
-        .file("src/search_bridge.cpp")
-        .include(&search_core)
+        .files(core.iter().map(|file| root.join(file)))
         .include(&root)
         .include(&lua)
         .include(root.join("lua"))
@@ -99,7 +90,5 @@ fn main() {
         .opt_level(2)
         .compile("ocgcore");
 
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/search_bridge.cpp");
     println!("cargo:rerun-if-changed={}", root.display());
 }

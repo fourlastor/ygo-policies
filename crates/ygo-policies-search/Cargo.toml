@@ -1,0 +1,16 @@
+[package]
+name = "ygo-policies-search"
+description = "The generic policy's staged search: alternatives played out to the end in worlds dealt again from what a seat cannot see"
+edition.workspace = true
+version.workspace = true
+
+[features]
+default = ["bundled"]
+# Plays on `ygo-policies-duel`'s bundled engine too, besides one loaded from a file.
+bundled = ["ygo-policies-duel/bundled"]
+
+[dependencies]
+serde_json.workspace = true
+ygo-policies = { workspace = true, features = ["serde"] }
+ygo-policies-duel.workspace = true
+ygo-policies-ocgcore = { workspace = true, features = ["sqlite", "serde"] }

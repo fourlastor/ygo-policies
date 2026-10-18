@@ -95,7 +95,8 @@ pub(crate) struct Query {
 
 type LoadScript = unsafe extern "C" fn(Handle, *const u8, u32, *const c_char) -> i32;
 
-/// ABI layout of the read-only declaration fields in search_bridge.cpp.
+/// `OCG_InitialEffect` (the fork's `ocgapi_types.h`): what a card's
+/// initial_effect declares, read-only.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct InitialEffect {
@@ -113,8 +114,12 @@ type InitialEffects = unsafe extern "C" fn(
     Handle, u32, Handle, unsafe extern "C" fn(Handle, *const InitialEffect),
 ) -> i32;
 
-// Linked from the pinned vendor tree by build.rs.  Another build of the
-// engine can be loaded in its place (see [`Core::open`]).
+/// `OCG_LogHandler`.
+pub(crate) type LogHandler = unsafe extern "C" fn(Handle, *const c_char, i32);
+
+// Linked from the pinned vendor tree by build.rs, with the `bundled` feature.
+// Another build of the engine can be loaded in its place (see [`Core::open`]).
+#[cfg(feature = "bundled")]
 extern "C" {
     fn OCG_CreateDuel(out: *mut Handle, options: *const Options) -> i32;
     fn OCG_DestroyDuel(duel: Handle);
@@ -127,15 +132,17 @@ extern "C" {
     fn OCG_LoadScript(duel: Handle, bytes: *const u8, length: u32, name: *const c_char) -> i32;
     fn OCG_DuelQueryCount(duel: Handle, team: u8, location: u32) -> u32;
     fn OCG_DuelQuery(duel: Handle, length: *mut u32, query: *const Query) -> *const u8;
-    // The fork's additions: arena snapshots and the hidden-card swap.
+    // The fork's additions: arena snapshots, the hidden-card swap and what
+    // else a search needs.
     fn OCG_DuelCreateSnapshot(duel: Handle, out: *mut Handle) -> i32;
     fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
     fn OCG_DuelDestroySnapshot(snapshot: Handle);
     fn OCG_DuelArenaUsed(duel: Handle) -> u64;
     fn OCG_DuelSnapshotSize(snapshot: Handle) -> u64;
     fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
-    fn YGO_DuelReseed(duel: Handle, seed: u64) -> i32;
-    fn YGO_DuelInitialEffects(
+    fn OCG_DuelReseed(duel: Handle, seed: u64) -> i32;
+    fn OCG_DuelSwapLogHandler(duel: Handle, handler: *mut LogHandler, payload: *mut Handle) -> i32;
+    fn OCG_DuelInitialEffects(
         duel: Handle, code: u32, output: Handle,
         append: unsafe extern "C" fn(Handle, *const InitialEffect),
     ) -> i32;
@@ -152,6 +159,8 @@ pub(crate) struct Extensions {
     pub(crate) count: unsafe extern "C" fn(Handle, u8, u32) -> u32,
     pub(crate) card: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
     pub(crate) reseed: Option<unsafe extern "C" fn(Handle, u64) -> i32>,
+    /// A search on a duel the host created logs through its own handler.
+    pub(crate) swap_log: Option<unsafe extern "C" fn(Handle, *mut LogHandler, *mut Handle) -> i32>,
     /// These diagnostics are optional independently of each other and of
     /// search support on older dynamically loaded cores.
     pub(crate) arena_used: Option<unsafe extern "C" fn(Handle) -> u64>,
@@ -160,6 +169,7 @@ pub(crate) struct Extensions {
 
 impl Extensions {
     /// Those of the engine this crate is built with.
+    #[cfg(feature = "bundled")]
     fn built_in() -> Self {
         Self {
             snapshot: OCG_DuelCreateSnapshot,
@@ -168,14 +178,16 @@ impl Extensions {
             swap: OCG_DuelSwapHiddenCards,
             count: OCG_DuelQueryCount,
             card: OCG_DuelQuery,
-            reseed: Some(YGO_DuelReseed),
+            reseed: Some(OCG_DuelReseed),
+            swap_log: Some(OCG_DuelSwapLogHandler),
             arena_used: Some(OCG_DuelArenaUsed),
             snapshot_size: Some(OCG_DuelSnapshotSize),
         }
     }
 
-    /// Those of an engine loaded from a file, if it has them.  The swap was
-    /// `YGO_DuelSwapHiddenCards` before it moved into the engine's fork.
+    /// Those of an engine loaded from a file, if it has them.  The swap, the
+    /// reseed and the effect probe were `YGO_` functions before they moved
+    /// into the engine's fork.
     unsafe fn load(library: &Library) -> Option<Self> {
         Some(Self {
             snapshot: symbol(library, b"OCG_DuelCreateSnapshot").ok()?,
@@ -184,7 +196,8 @@ impl Extensions {
             swap: symbol(library, b"OCG_DuelSwapHiddenCards").or_else(|_| symbol(library, b"YGO_DuelSwapHiddenCards")).ok()?,
             count: symbol(library, b"OCG_DuelQueryCount").ok()?,
             card: symbol(library, b"OCG_DuelQuery").ok()?,
-            reseed: symbol(library, b"YGO_DuelReseed").ok(),
+            reseed: symbol(library, b"OCG_DuelReseed").or_else(|_| symbol(library, b"YGO_DuelReseed")).ok(),
+            swap_log: symbol(library, b"OCG_DuelSwapLogHandler").ok(),
             arena_used: symbol(library, b"OCG_DuelArenaUsed").ok(),
             snapshot_size: symbol(library, b"OCG_DuelSnapshotSize").ok(),
         })
@@ -194,7 +207,7 @@ impl Extensions {
 pub(crate) struct Resources {
     cards: HashMap<u32, (CardData, Box<[u16]>)>,
     scripts: HashMap<String, Vec<u8>>,
-    load: LoadScript,
+    pub(crate) load: LoadScript,
 }
 
 pub(crate) unsafe extern "C" fn reader(payload: Handle, code: u32, out: *mut CardData) {
@@ -259,10 +272,40 @@ impl Core {
     /// helpers, then `official/`, then `pre-errata/` for names still missing.
     ///
     /// `path` is another build of OCGCore to load instead of the one this
-    /// crate compiles (its C API must match).  [`Core::has_snapshots`] says
-    /// whether that build can do what [`Duel::snapshot`](crate::Duel::snapshot)
-    /// and [`Duel::swap`](crate::Duel::swap) need.
+    /// crate compiles (its C API must match), and the only one there is
+    /// without the `bundled` feature.  [`Core::has_snapshots`] says whether
+    /// that build can do what [`Duel::snapshot`](crate::Duel::snapshot) and
+    /// [`Duel::swap`](crate::Duel::swap) need.
     pub fn open(path: Option<&Path>, cards: &Path, script_dir: &Path) -> Result<Self> {
+        let data = Self::read_cards(cards)?;
+        let mut script_data = HashMap::new();
+        // Root helpers first, then official cards, then missing pre-errata scripts.
+        for folder in ["", "official", "pre-errata"] {
+            let dir = script_dir.join(folder);
+            if !dir.is_dir() {
+                continue;
+            }
+            for file in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+                let file = file.map_err(|e| e.to_string())?;
+                if file.path().extension().and_then(|e| e.to_str()) == Some("lua") {
+                    script_data
+                        .entry(file.file_name().to_string_lossy().into_owned())
+                        .or_insert(std::fs::read(file.path()).map_err(|e| e.to_string())?);
+                }
+            }
+        }
+        Self::with_engine(path, data, script_data)
+    }
+
+    /// The engine built at `path` and the card database `cards`, without
+    /// the scripts: it makes no duel, and plays one a host made on it
+    /// ([`Duel::borrow`](crate::Duel::borrow)), where a search reads printed
+    /// cards ([`Duel::printed`](crate::Duel::printed)).
+    pub fn load(path: &Path, cards: &Path) -> Result<Self> {
+        Self::with_engine(Some(path), Self::read_cards(cards)?, HashMap::new())
+    }
+
+    fn read_cards(cards: &Path) -> Result<HashMap<u32, (CardData, Box<[u16]>)>> {
         let mut data = HashMap::new();
         let db = rusqlite::Connection::open_with_flags(
             cards,
@@ -311,21 +354,17 @@ impl Core {
                 ),
             );
         }
-        let mut script_data = HashMap::new();
-        // Root helpers first, then official cards, then missing pre-errata scripts.
-        for folder in ["", "official", "pre-errata"] {
-            let dir = script_dir.join(folder);
-            if !dir.is_dir() {
-                continue;
-            }
-            for file in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
-                let file = file.map_err(|e| e.to_string())?;
-                if file.path().extension().and_then(|e| e.to_str()) == Some("lua") {
-                    script_data
-                        .entry(file.file_name().to_string_lossy().into_owned())
-                        .or_insert(std::fs::read(file.path()).map_err(|e| e.to_string())?);
-                }
-            }
+        Ok(data)
+    }
+
+    fn with_engine(
+        path: Option<&Path>,
+        cards: HashMap<u32, (CardData, Box<[u16]>)>,
+        scripts: HashMap<String, Vec<u8>>,
+    ) -> Result<Self> {
+        #[cfg(not(feature = "bundled"))]
+        if path.is_none() {
+            return Err("This build has no engine of its own: give the path of one".into());
         }
         unsafe {
             let library = path
@@ -335,14 +374,17 @@ impl Core {
                 ($name:ident) => {
                     match &library {
                         Some(library) => symbol(library, stringify!($name).as_bytes())?,
+                        #[cfg(feature = "bundled")]
                         None => $name,
+                        #[cfg(not(feature = "bundled"))]
+                        None => unreachable!(),
                     }
                 };
             }
             Ok(Self {
                 resources: Box::new(Resources {
-                    cards: data,
-                    scripts: script_data,
+                    cards,
+                    scripts,
                     load: api!(OCG_LoadScript),
                 }),
                 create: api!(OCG_CreateDuel),
@@ -354,13 +396,21 @@ impl Core {
                 respond: api!(OCG_DuelSetResponse),
                 query: api!(OCG_DuelQueryLocation),
                 initial_effects: match &library {
-                    Some(library) => symbol(library, b"YGO_DuelInitialEffects").ok(),
-                    None => Some(YGO_DuelInitialEffects),
+                    Some(library) => symbol(library, b"OCG_DuelInitialEffects")
+                        .or_else(|_| symbol(library, b"YGO_DuelInitialEffects"))
+                        .ok(),
+                    #[cfg(feature = "bundled")]
+                    None => Some(OCG_DuelInitialEffects),
+                    #[cfg(not(feature = "bundled"))]
+                    None => unreachable!(),
                 },
                 effect_profile_cache: RefCell::new(HashMap::new()),
                 extensions: match &library {
                     Some(library) => Extensions::load(library),
+                    #[cfg(feature = "bundled")]
                     None => Some(Extensions::built_in()),
+                    #[cfg(not(feature = "bundled"))]
+                    None => unreachable!(),
                 },
                 _library: library,
             })

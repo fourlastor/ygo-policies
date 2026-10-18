@@ -279,6 +279,7 @@ dependencies = [
  "ygo-policies",
  "ygo-policies-duel",
  "ygo-policies-ocgcore",
+ "ygo-policies-search",
 ]
 
 [[package]]
@@ -308,7 +309,9 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "ygo-policies",
+ "ygo-policies-duel",
  "ygo-policies-ocgcore",
+ "ygo-policies-search",
 ]
 
 [[package]]
@@ -320,6 +323,16 @@ dependencies = [
  "serde",
  "serde_json",
  "ygo-policies",
+]
+
+[[package]]
+name = "ygo-policies-search"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "ygo-policies",
+ "ygo-policies-duel",
+ "ygo-policies-ocgcore",
 ]
 
 [[package]]

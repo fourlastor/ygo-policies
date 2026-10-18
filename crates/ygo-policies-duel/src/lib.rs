@@ -1,7 +1,8 @@
 //! Duels on OCGCore, for any program that wants to run them.
 //!
-//! This crate compiles the engine of `vendor/ocgcore` and its Lua, and holds
-//! what it takes to play a duel on it:
+//! With its `bundled` feature (the default) this crate compiles the engine of
+//! `vendor/ocgcore` and its Lua; without it, every [`Core`] is an engine
+//! library loaded from a file.  It holds what it takes to play a duel on it:
 //!
 //! * [`Core`]: the engine with a card database and the card scripts.  One
 //!   per thread; it plays any number of duels.

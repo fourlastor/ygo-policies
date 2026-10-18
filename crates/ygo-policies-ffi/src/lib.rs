@@ -3,21 +3,64 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::json;
 use ygo_policies::cards::CardDatabase;
 use ygo_policies::model::{DecisionKind, Location};
 use ygo_policies::registry;
-use ygo_policies_ocgcore::{Seat, SqliteCards};
+use ygo_policies_duel::{Core, Duel};
+use ygo_policies_ocgcore::{wire, Seat, SqliteCards};
+use ygo_policies_search::local::answer_json;
+use ygo_policies_search::{LocalPilots, PilotSeat, SearchOptions, SearchSeat};
 
 pub struct YgoPolicy {
-    seat: Seat,
+    player: Player,
     response: Vec<u8>,
     json: CString,
+}
+
+/// What answers for a handle: a policy's seat, or the staged search over the
+/// generic policy's (`ygo_policy_create_search`).
+enum Player {
+    Plain(Seat),
+    Search(Box<SearchSeat<'static, LocalPilots>>),
+}
+
+impl Player {
+    /// The seat whose answers these are, to read: the policy's own, or the
+    /// search's pilot.
+    fn read<T>(&self, read: impl FnOnce(&Seat) -> T) -> T {
+        match self {
+            Player::Plain(seat) => read(seat),
+            Player::Search(search) => read(&search.pilot().seat()),
+        }
+    }
+
+    fn feed(&mut self, message: &[u8]) -> Result<Option<Vec<u8>>, String> {
+        match self {
+            Player::Plain(seat) => seat.feed(message).map_err(|e| e.to_string()),
+            Player::Search(search) => search.feed(message),
+        }
+    }
+}
+
+impl YgoPolicy {
+    fn handle(player: Player) -> *mut YgoPolicy {
+        Box::into_raw(Box::new(YgoPolicy { player, response: Vec::new(), json: CString::default() }))
+    }
+
+    /// Plain seats only: the search keeps its pilot's to itself.
+    fn plain(&mut self) -> Result<&mut Seat, String> {
+        match &mut self.player {
+            Player::Plain(seat) => Ok(seat),
+            Player::Search(_) => Err("not for a search seat".into()),
+        }
+    }
 }
 
 thread_local! {
@@ -27,6 +70,26 @@ thread_local! {
 fn set_error(message: impl Into<String>) {
     let message = CString::new(message.into().replace('\0', " ")).unwrap_or_default();
     LAST_ERROR.with(|e| *e.borrow_mut() = Some(message));
+}
+
+/// Engines are loaded once per path, card database and thread, and kept: a
+/// search seat plays on its duel's engine for as long as it lives, reading
+/// printed cards from the same database as its policies.
+fn engine(path: &str, cards: &str) -> Result<&'static Core, String> {
+    thread_local! {
+        static ENGINES: RefCell<HashMap<(PathBuf, PathBuf), &'static Core>> = RefCell::new(HashMap::new());
+    }
+    let canonical = |path: &str| std::fs::canonicalize(path).map_err(|e| format!("{path}: {e}"));
+    let key = (canonical(path)?, canonical(cards)?);
+    ENGINES.with(|engines| {
+        if let Some(core) = engines.borrow().get(&key) {
+            return Ok(*core);
+        }
+        let core = Core::load(&key.0, &key.1).map_err(|e| format!("{path}: {e}"))?;
+        let core: &'static Core = Box::leak(Box::new(core));
+        engines.borrow_mut().insert(key, core);
+        Ok(core)
+    })
 }
 
 /// Card databases are large and immutable: load each path once per process.
@@ -80,19 +143,6 @@ fn store_json(policy: &mut YgoPolicy, value: serde_json::Value) -> *const c_char
     policy.json.as_ptr()
 }
 
-fn answer_json(seat: &Seat) -> serde_json::Value {
-    match seat.last_answer() {
-        None => serde_json::Value::Null,
-        Some(answer) => json!({
-            "observation": answer.observation,
-            "decision": answer.decision,
-            "choice": answer.choice,
-            "responses": answer.responses,
-            "picks": answer.picks,
-        }),
-    }
-}
-
 /// # Safety
 /// `policy_id` and `cards_cdb_path` must be NUL-terminated strings.
 #[no_mangle]
@@ -126,8 +176,44 @@ pub unsafe extern "C" fn ygo_policy_create_seeded(
         };
         let db = cards(text(cards_cdb_path, "cards_cdb_path")?)?;
         let policy = registry::create_seeded(id, db.clone(), seed).ok_or_else(|| format!("unknown policy {id:?}"))?;
-        let seat = Seat::new(policy, db, seat);
-        Ok(Box::into_raw(Box::new(YgoPolicy { seat, response: Vec::new(), json: CString::default() })))
+        Ok(YgoPolicy::handle(Player::Plain(Seat::new(policy, db, seat))))
+    })
+}
+
+/// The generic policy with the staged search, seated as `seat` of the host's
+/// `duel`, on which it plays its worlds while it answers.
+///
+/// # Safety
+/// `cards_cdb_path` and `engine_path` are NUL-terminated strings, and so is
+/// `options_json` unless it is NULL.  `duel` is a live `OCG_Duel` made by the
+/// engine library at `engine_path`; it outlives the handle, and the host
+/// leaves it alone while the handle is fed.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_create_search(
+    cards_cdb_path: *const c_char,
+    seat: i32,
+    seed: u64,
+    engine_path: *const c_char,
+    duel: *mut c_void,
+    options_json: *const c_char,
+) -> *mut YgoPolicy {
+    guarded(std::ptr::null_mut(), || {
+        let seat = u8::try_from(seat).ok().filter(|seat| *seat < 2).ok_or(format!("seat must be 0 or 1, got {seat}"))?;
+        if duel.is_null() {
+            return Err("duel is NULL".into());
+        }
+        let cards_cdb_path = text(cards_cdb_path, "cards_cdb_path")?;
+        let db = cards(cards_cdb_path)?;
+        let core = engine(text(engine_path, "engine_path")?, cards_cdb_path)?;
+        let options = match options_json.is_null() {
+            true => SearchOptions::MEASURED,
+            false => SearchOptions::from_json(
+                &serde_json::from_str(text(options_json, "options_json")?).map_err(|e| format!("search options: {e}"))?,
+            )?,
+        };
+        let duel = Rc::new(RefCell::new(Duel::borrow(core, duel)));
+        let search = SearchSeat::new(duel, LocalPilots { cards: db }, seat, seed, None, options)?;
+        Ok(YgoPolicy::handle(Player::Search(Box::new(search))))
     })
 }
 
@@ -138,11 +224,12 @@ pub unsafe extern "C" fn ygo_policy_create_seeded(
 pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoPolicy {
     guarded(std::ptr::null_mut(), || {
         let policy = policy.as_ref().ok_or("policy is NULL")?;
-        let seat = policy.seat.fork().ok_or("policy does not support copying")?;
+        let Player::Plain(seat) = &policy.player else { return Err("a search seat cannot be copied".into()) };
+        let seat = seat.fork().ok_or("policy does not support copying")?;
         Ok(Box::into_raw(Box::new(YgoPolicy {
             // Getter output is disposable scratch, regenerated from the seat
             // on every JSON request; search forks need not copy that buffer.
-            seat, response: policy.response.clone(), json: CString::default(),
+            player: Player::Plain(seat), response: policy.response.clone(), json: CString::default(),
         })))
     })
 }
@@ -154,7 +241,10 @@ pub unsafe extern "C" fn ygo_policy_clone(policy: *const YgoPolicy) -> *mut YgoP
 #[no_mangle]
 pub unsafe extern "C" fn ygo_policy_enable_response_overrides(policy: *mut YgoPolicy) -> i32 {
     guarded(-1, || {
-        handle(policy)?.seat.enable_response_overrides().map_err(|e| e.to_string())?;
+        // A search seat's pilot takes them from the start.
+        if let Player::Plain(seat) = &mut handle(policy)?.player {
+            seat.enable_response_overrides().map_err(|e| e.to_string())?;
+        }
         Ok(0)
     })
 }
@@ -167,7 +257,7 @@ pub unsafe extern "C" fn ygo_policy_enable_response_overrides(policy: *mut YgoPo
 #[no_mangle]
 pub unsafe extern "C" fn ygo_policy_disable_response_overrides(policy: *mut YgoPolicy) -> i32 {
     guarded(-1, || {
-        handle(policy)?.seat.disable_response_overrides();
+        handle(policy)?.plain()?.disable_response_overrides();
         Ok(0)
     })
 }
@@ -178,9 +268,16 @@ pub unsafe extern "C" fn ygo_policy_disable_response_overrides(policy: *mut YgoP
 #[no_mangle]
 pub unsafe extern "C" fn ygo_policy_set_effect_profiles_json(policy: *mut YgoPolicy, profiles_json: *const c_char) -> i32 {
     guarded(-1, || {
-        let profiles = serde_json::from_str(text(profiles_json, "profiles_json")?)
-            .map_err(|e| format!("effect profiles: {e}"))?;
-        handle(policy)?.seat.set_effect_profiles(profiles).map_err(|e| e.to_string())?;
+        let profiles = text(profiles_json, "profiles_json")?;
+        match &mut handle(policy)?.player {
+            Player::Plain(seat) => {
+                let profiles = serde_json::from_str(profiles).map_err(|e| format!("effect profiles: {e}"))?;
+                seat.set_effect_profiles(profiles).map_err(|e| e.to_string())?;
+            }
+            Player::Search(search) => {
+                search.set_effect_profiles(serde_json::from_str(profiles).map_err(|e| format!("effect profiles: {e}"))?)?;
+            }
+        }
         Ok(0)
     })
 }
@@ -194,7 +291,11 @@ pub unsafe extern "C" fn ygo_policy_override_response(policy: *mut YgoPolicy, re
     guarded(-1, || {
         let policy = handle(policy)?;
         let response = bytes(response, length)?;
-        policy.seat.override_response(response).map_err(|e| e.to_string())?;
+        match &mut policy.player {
+            Player::Plain(seat) => seat.override_response(response).map_err(|e| e.to_string())?,
+            // The answer played in the search's place, for its pilot to remember.
+            Player::Search(search) => search.pilot().override_response(response)?,
+        }
         policy.response = response.to_vec();
         Ok(0)
     })
@@ -208,8 +309,13 @@ pub unsafe extern "C" fn ygo_policy_override_response(policy: *mut YgoPolicy, re
 pub unsafe extern "C" fn ygo_policy_alternative_responses_json(policy: *mut YgoPolicy, maximum: usize) -> *const c_char {
     guarded(std::ptr::null(), || {
         let policy = handle(policy)?;
-        policy.seat.alternative_responses(maximum).map_err(|e| e.to_string())?;
-        let value = answer_json(&policy.seat);
+        let value = match &mut policy.player {
+            Player::Plain(seat) => {
+                seat.alternative_responses(maximum).map_err(|e| e.to_string())?;
+                answer_json(seat)
+            }
+            Player::Search(search) => search.pilot().alternative_responses(maximum)?,
+        };
         Ok(store_json(policy, value))
     })
 }
@@ -220,7 +326,7 @@ pub unsafe extern "C" fn ygo_policy_alternative_responses_json(policy: *mut YgoP
 pub unsafe extern "C" fn ygo_policy_feed(policy: *mut YgoPolicy, message: *const u8, length: usize) -> i32 {
     guarded(-1, || {
         let policy = handle(policy)?;
-        let answer = policy.seat.feed(bytes(message, length)?).map_err(|e| e.to_string())?;
+        let answer = policy.player.feed(bytes(message, length)?)?;
         Ok(answer.map_or(0, |response| {
             policy.response = response;
             1
@@ -236,8 +342,16 @@ pub unsafe extern "C" fn ygo_policy_feed_update_pair(first: *mut YgoPolicy, seco
     guarded(-1, || {
         if first == second { return Err("update pair requires distinct handles".into()); }
         let (first, second) = (handle(first)?, handle(second)?);
-        Seat::feed_update_pair(&mut first.seat, &mut second.seat, bytes(message, length)?)
-            .map_err(|e| e.to_string())?;
+        let message = bytes(message, length)?;
+        match (&mut first.player, &mut second.player) {
+            (Player::Plain(first), Player::Plain(second)) => {
+                Seat::feed_update_pair(first, second, message).map_err(|e| e.to_string())?;
+            }
+            (first, second) => {
+                first.feed(message)?;
+                second.feed(message)?;
+            }
+        }
         Ok(0)
     })
 }
@@ -248,7 +362,17 @@ pub unsafe extern "C" fn ygo_policy_feed_update_pair(first: *mut YgoPolicy, seco
 pub unsafe extern "C" fn ygo_policy_feed_buffer(policy: *mut YgoPolicy, buffer: *const u8, length: usize) -> i32 {
     guarded(-1, || {
         let policy = handle(policy)?;
-        let answer = policy.seat.feed_buffer(bytes(buffer, length)?).map_err(|e| e.to_string())?;
+        let buffer = bytes(buffer, length)?;
+        let answer = match &mut policy.player {
+            Player::Plain(seat) => seat.feed_buffer(buffer).map_err(|e| e.to_string())?,
+            Player::Search(search) => {
+                let mut answer = None;
+                for message in wire::split_messages(buffer).map_err(|e| e.to_string())? {
+                    answer = search.feed(message)?.or(answer);
+                }
+                answer
+            }
+        };
         Ok(answer.map_or(0, |response| {
             policy.response = response;
             1
@@ -271,7 +395,7 @@ pub unsafe extern "C" fn ygo_policy_response(policy: *const YgoPolicy, length: *
 /// `policy` comes from `ygo_policy_create`.
 #[no_mangle]
 pub unsafe extern "C" fn ygo_policy_seat(policy: *const YgoPolicy) -> i32 {
-    policy.as_ref().and_then(|p| p.seat.seat()).map_or(-1, i32::from)
+    policy.as_ref().and_then(|p| p.player.read(Seat::seat)).map_or(-1, i32::from)
 }
 
 /// # Safety
@@ -280,7 +404,7 @@ pub unsafe extern "C" fn ygo_policy_seat(policy: *const YgoPolicy) -> i32 {
 pub unsafe extern "C" fn ygo_policy_observation_json(policy: *mut YgoPolicy) -> *const c_char {
     guarded(std::ptr::null(), || {
         let policy = handle(policy)?;
-        let value = serde_json::to_value(policy.seat.observation()).map_err(|e| e.to_string())?;
+        let value = policy.player.read(|seat| serde_json::to_value(seat.observation())).map_err(|e| e.to_string())?;
         Ok(store_json(policy, value))
     })
 }
@@ -291,7 +415,7 @@ pub unsafe extern "C" fn ygo_policy_observation_json(policy: *mut YgoPolicy) -> 
 pub unsafe extern "C" fn ygo_policy_last_answer_json(policy: *mut YgoPolicy) -> *const c_char {
     guarded(std::ptr::null(), || {
         let policy = handle(policy)?;
-        let value = answer_json(&policy.seat);
+        let value = policy.player.read(answer_json);
         Ok(store_json(policy, value))
     })
 }
@@ -304,7 +428,7 @@ pub unsafe extern "C" fn ygo_policy_last_answer_json(policy: *mut YgoPolicy) -> 
 pub unsafe extern "C" fn ygo_policy_search_view_json(policy: *mut YgoPolicy) -> *const c_char {
     guarded(std::ptr::null(), || {
         let policy = handle(policy)?;
-        let value = match policy.seat.last_answer() {
+        let value = policy.player.read(|seat| match seat.last_answer() {
             Some(answer) if matches!(answer.decision.kind,
                 DecisionKind::Idle | DecisionKind::Battle | DecisionKind::YesNo
                 | DecisionKind::Position | DecisionKind::Option | DecisionKind::SelectCards
@@ -335,7 +459,21 @@ pub unsafe extern "C" fn ygo_policy_search_view_json(policy: *mut YgoPolicy) -> 
                 })
             }
             _ => serde_json::Value::Null,
-        };
+        });
+        Ok(store_json(policy, value))
+    })
+}
+
+/// What a search seat has done so far: its questions, searches, deviations
+/// from its pilot and how long each search took.
+/// # Safety
+/// `policy` comes from `ygo_policy_create_search`.
+#[no_mangle]
+pub unsafe extern "C" fn ygo_policy_search_stats_json(policy: *mut YgoPolicy) -> *const c_char {
+    guarded(std::ptr::null(), || {
+        let policy = handle(policy)?;
+        let Player::Search(search) = &policy.player else { return Err("not a search seat".into()) };
+        let value = search.stats().to_json();
         Ok(store_json(policy, value))
     })
 }
@@ -384,11 +522,7 @@ mod tests {
                 code: DRAW_TRAP, kind: types::TRAP, ..CardData::default()
             })].into()));
             let policy = registry::create_seeded("generic", db.clone(), 1).unwrap();
-            Self(Box::into_raw(Box::new(YgoPolicy {
-                seat: Seat::new(policy, db, Some(0)),
-                response: Vec::new(),
-                json: CString::default(),
-            })))
+            Self(YgoPolicy::handle(Player::Plain(Seat::new(policy, db, Some(0)))))
         }
 
         fn install(&self, profiles: &str) -> i32 {

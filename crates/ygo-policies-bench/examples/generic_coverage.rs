@@ -173,7 +173,7 @@ fn compiled_sources() -> Value {
         "src/engine/evaluation.rs",
         "../ygo-policies-duel/src/core.rs",
         "../ygo-policies-duel/src/duel.rs",
-        "../ygo-policies-duel/src/search_bridge.cpp",
+        "../../vendor/ocgcore/duel_search.cpp",
         "../ygo-policies-duel/build.rs",
     ])
 }

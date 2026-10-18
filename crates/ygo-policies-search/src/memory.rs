@@ -12,12 +12,12 @@ use ygo_policies_ocgcore::{
     wire::{location, msg, Loc},
 };
 
-use super::Result;
+use crate::Result;
 
 type Slot = (u8, u8, u32);
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(super) struct PublicIdentityMemory {
+pub struct PublicIdentityMemory {
     known: BTreeMap<Slot, u32>,
 }
 
@@ -36,7 +36,7 @@ fn public_pile(location: u8) -> bool {
 impl PublicIdentityMemory {
     /// Feed each live engine message once, including refresh messages. The
     /// spectator filter is applied before any card code is inspected.
-    pub(super) fn observe(&mut self, raw: &[u8]) -> Result<()> {
+    pub fn observe(&mut self, raw: &[u8]) -> Result<()> {
         let visible = redact::redact(raw, None).map_err(|error| error.to_string())?;
         let id = *raw.first().ok_or("Empty public-memory message")?;
         // These protocol events can invalidate locations wholesale. Forgetting
@@ -54,13 +54,13 @@ impl PublicIdentityMemory {
         Ok(())
     }
 
-    pub(super) fn knows(&self, controller: u8, location: u8, sequence: u32) -> bool {
+    pub fn knows(&self, controller: u8, location: u8, sequence: u32) -> bool {
         self.known.contains_key(&(controller, location, sequence))
     }
 
     /// Read locations and face-up flags from the policy's redacted observation,
     /// never identities or attributes from the live native monster query.
-    pub(super) fn has_unknown_monsters(&self, observation: &serde_json::Value, viewer: u8) -> bool {
+    pub fn has_unknown_monsters(&self, observation: &serde_json::Value, viewer: u8) -> bool {
         let Some(cards) = observation["cards"].as_array() else { return true };
         cards.iter().any(|card| {
             if card["at"]["location"] != "MonsterZone"
@@ -83,7 +83,7 @@ impl PublicIdentityMemory {
     /// ignoring their current zone does not make a simulated continuation safe.
     /// Deliberately read only public location/controller/position metadata:
     /// even a stale remembered code must not authorize this search root.
-    pub(super) fn has_facedown_banished(&self, observation: &serde_json::Value, viewer: u8) -> bool {
+    pub fn has_facedown_banished(&self, observation: &serde_json::Value, viewer: u8) -> bool {
         if viewer > 1 { return true; }
         let Some(cards) = observation["cards"].as_array() else { return true };
         cards.iter().any(|card| {

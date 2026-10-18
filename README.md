@@ -133,13 +133,19 @@ engines and play styles available in the pool for future additions.
   parser, redaction, the event-driven projection, and the decision/response
   encoding, plus `Seat`, the thing you feed. `SqliteCards` reads `cards.cdb`.
 - `crates/ygo-policies-ffi`: the C ABI (`libygo_policies.so`/`.a`); see
-  `include/ygo_policies.h`.
+  `include/ygo_policies.h`.  Besides the policies, it seats the generic
+  policy with the staged search in a host's duel
+  (`ygo_policy_create_search`), on the host's own engine.
 - `crates/ygo-policies-edopro`: `edopro-bot`, a native EDOPro network client
   that joins a room as a player.
 - `crates/ygo-policies-duel`: duels on the native engine for any program. It
-  builds OCGCore and Lua from `vendor/`, loads the card database, the scripts
-  and the Decks, and gives a duel its caller steps, with snapshots and
-  records of duels to play again.
+  builds OCGCore and Lua from `vendor/` (its `bundled` feature) or loads a
+  build of them, loads the card database, the scripts and the Decks, and
+  gives a duel its caller steps, with snapshots and records of duels to play
+  again.  It can also play on a duel a host made (`Duel::borrow`).
+- `crates/ygo-policies-search`: the generic policy's staged search, shared by
+  the benchmark and the C ABI.  `SearchSeat` is one more seat of a duel: fed
+  like any other, it plays its worlds on that duel while it answers.
 - `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
   baseline/candidate comparisons, round robins, generated tier lists, the
   card probes that generate the shared card knowledge, and a search on top
@@ -147,10 +153,11 @@ engines and play styles available in the pool for future additions.
 - `data/`: the World Championship 2011 card pool and Forbidden & Limited list
   (an EDOPro lflist), and what the engine shows about each of its monsters.
 
-The policy libraries do not link OCGCore. Card data comes from any `cards.cdb`
-(EDOPro ships one). `ygo-policies-duel` builds the pinned engine and Lua from
-`vendor/`; it and the benchmark crate on top of it are excluded from the
-workspace's default build members.
+The policy libraries do not link OCGCore: the search seat plays on the engine
+library its host gives it. Card data comes from any `cards.cdb` (EDOPro ships
+one). `ygo-policies-duel` builds the pinned engine and Lua from `vendor/` only
+with its `bundled` feature, which the benchmark crate asks for; those two are
+excluded from the workspace's default build members.
 
 ## Using it
 

@@ -1,5 +1,9 @@
 //! One duel on the engine, stepped by its caller.
-use std::{cell::RefCell, ffi::CString, ptr};
+use std::{
+    cell::RefCell,
+    ffi::{c_void, CString},
+    ptr,
+};
 
 use ygo_policies_ocgcore::{
     message::{self, Message},
@@ -193,6 +197,8 @@ impl Drop for Snapshot {
 pub struct Duel<'a> {
     core: &'a Core,
     handle: Handle,
+    /// Made by this crate, and destroyed with it; not [`Duel::borrow`]ed.
+    owned: bool,
     /// Script errors the engine logged since they were last looked at.
     errors: Box<RefCell<Vec<String>>>,
     life_points: [u32; 2],
@@ -204,7 +210,9 @@ pub struct Duel<'a> {
 
 impl Drop for Duel<'_> {
     fn drop(&mut self) {
-        unsafe { (self.core.destroy)(self.handle) }
+        if self.owned {
+            unsafe { (self.core.destroy)(self.handle) }
+        }
     }
 }
 
@@ -282,7 +290,7 @@ impl Core {
             if status != 0 {
                 return Err(format!("OCG_CreateDuel: {status}"));
             }
-            let duel = Duel { core: self, handle, errors, life_points: options.life_points,
+            let duel = Duel { core: self, handle, owned: true, errors, life_points: options.life_points,
                 piles: [[0; 2]; 2], snapshot_metrics: None };
             for name in ["constant.lua", "utility.lua"] {
                 let name = CString::new(name).unwrap();
@@ -320,7 +328,68 @@ impl Core {
     }
 }
 
-impl Duel<'_> {
+impl<'a> Duel<'a> {
+    /// A duel a host made on `core`'s engine, played through this one too:
+    /// a search snapshots it, plays its worlds on it and restores it.  It is
+    /// still the host's: dropping this leaves it be.  Its script errors go
+    /// to the host's log handler, but in [`Duel::with_logs`]; and since the
+    /// host started it, [`Duel::start_message`] knows nothing of it.
+    ///
+    /// # Safety
+    /// `handle` is a live `OCG_Duel` of `core`'s engine.  It outlives this
+    /// duel, and the host leaves it alone while this one steps it.
+    pub unsafe fn borrow(core: &'a Core, handle: *mut c_void) -> Self {
+        Duel { core, handle, owned: false, errors: Box::default(), life_points: [0; 2], piles: [[0; 2]; 2],
+            snapshot_metrics: None }
+    }
+
+    /// The engine's `OCG_Duel`.
+    pub fn handle(&self) -> *mut c_void {
+        self.handle
+    }
+
+    /// Whether a search can play worlds on this duel: its engine has arena
+    /// snapshots, the hidden-card swap and random reseeding, and, for a
+    /// borrowed duel, can lend its log handler ([`Duel::with_logs`]).
+    pub fn can_search(&self) -> bool {
+        self.core.has_reseed()
+            && (self.owned || self.core.extensions.as_ref().is_some_and(|extensions| extensions.swap_log.is_some()))
+    }
+
+    /// Run `f` with the engine logging to this duel, so that [`Duel::step`]
+    /// returns what a script got wrong in `f` (and [`Duel::restore`] forgets
+    /// it): a duel this crate made always does; a borrowed one only here,
+    /// and logs to the host's handler again once `f` returns.
+    pub fn with_logs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Result<T> {
+        if self.owned {
+            return Ok(f(self));
+        }
+        let swap = self.extensions()?.swap_log.ok_or("This engine cannot lend its log handler")?;
+        /// Gives the host's handler back, even when `f` panics.
+        struct Lent {
+            swap: unsafe extern "C" fn(Handle, *mut core::LogHandler, *mut Handle) -> i32,
+            duel: Handle,
+            handler: core::LogHandler,
+            payload: Handle,
+        }
+        impl Drop for Lent {
+            fn drop(&mut self) {
+                unsafe { (self.swap)(self.duel, &mut self.handler, &mut self.payload) };
+            }
+        }
+        let mut lent = Lent {
+            swap,
+            duel: self.handle,
+            handler: core::log,
+            payload: (&*self.errors) as *const RefCell<Vec<String>> as Handle,
+        };
+        if unsafe { swap(self.handle, &mut lent.handler, &mut lent.payload) } != 1 {
+            std::mem::forget(lent);
+            return Err("The engine would not lend its log handler".into());
+        }
+        Ok(f(self))
+    }
+
     // Private: exposing this on a live duel would mutate it and would also
     // allow an accidental dependency on the live field during initialization.
     fn initial_effect_profile(&mut self, code: u32) -> Result<serde_json::Value> {
@@ -513,6 +582,11 @@ impl Duel<'_> {
     /// Printed data of a card, from the duel's [`Core`].
     pub fn printed(&self, code: u32) -> Option<crate::Printed> {
         self.core.printed(code)
+    }
+
+    /// The engine this duel is played on.
+    pub fn core(&self) -> &Core {
+        self.core
     }
 
     fn extensions(&self) -> Result<&core::Extensions> {
@@ -912,5 +986,38 @@ mod tests {
             duel.respond(&response);
         }
         panic!("Breaker never gained its native Spell Counter");
+    }
+
+    /// A script the engine refuses: it logs why, as an error.
+    fn break_a_script(duel: &Duel) {
+        let source = b"this is not Lua";
+        let loaded = unsafe {
+            (duel.core.resources.load)(duel.handle, source.as_ptr(), source.len() as u32, c"broken.lua".as_ptr())
+        };
+        assert_eq!(loaded, 0);
+    }
+
+    #[test]
+    fn a_borrowed_duel_keeps_script_errors_to_itself_only_while_it_lends_the_log() {
+        let core = core();
+        let mut host = snapshot_boundary(&core);
+        let mut borrowed = unsafe { Duel::borrow(&core, host.handle()) };
+        assert!(borrowed.can_search());
+        borrowed.with_logs(|duel| break_a_script(duel)).unwrap();
+        assert_eq!(borrowed.errors.borrow().len(), 1, "the error goes to the duel that lent the log");
+        assert!(host.errors.borrow().is_empty());
+        break_a_script(&borrowed);
+        assert_eq!(borrowed.errors.borrow().len(), 1, "and only while it does");
+        assert_eq!(host.errors.borrow().len(), 1);
+        // A panic gives the host's handler back too.
+        let unwound = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            borrowed.with_logs(|_| panic!("a search failed")).unwrap();
+        }));
+        assert!(unwound.is_err());
+        break_a_script(&borrowed);
+        assert_eq!(host.errors.borrow().len(), 2);
+        // Dropping the borrowed duel leaves the host's to play on.
+        drop(borrowed);
+        assert!(host.snapshot().is_ok());
     }
 }

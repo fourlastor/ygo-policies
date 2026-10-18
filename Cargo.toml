@@ -12,6 +12,7 @@ members = [
     "crates/ygo-policies-edopro",
     "crates/ygo-policies-ffi",
     "crates/ygo-policies-duel",
+    "crates/ygo-policies-search",
     "crates/ygo-policies-bench",
 ]
 
@@ -25,7 +26,9 @@ serde_json = "1"
 rusqlite = { version = "0.37", features = ["bundled"] }
 ygo-policies = { path = "crates/ygo-policies" }
 ygo-policies-ocgcore = { path = "crates/ygo-policies-ocgcore" }
-ygo-policies-duel = { path = "crates/ygo-policies-duel" }
+# Members that play on the bundled engine ask for its `bundled` feature.
+ygo-policies-duel = { path = "crates/ygo-policies-duel", default-features = false }
+ygo-policies-search = { path = "crates/ygo-policies-search", default-features = false }
 
 [profile.release]
 debug = 1

@@ -6,7 +6,7 @@ use ygo_policies_duel::{Duel, LibrarySeat, Snapshot, State};
 pub use ygo_policies_duel::{Asked, Core, Deck, DuelOptions, Monster, Placed, PolicyLibrary, Printed, Recorded, Replayed, Result};
 use ygo_policies_ocgcore::{
     message::{self, Message},
-    wire::{msg, position, query},
+    wire::{msg, position},
 };
 
 mod search;
@@ -17,7 +17,6 @@ pub mod evaluation;
 mod planner;
 pub use planner::PlannerOptions;
 mod ismcts;
-mod public_memory;
 pub use ismcts::Options as MctsOptions;
 
 #[derive(Clone, Copy)]

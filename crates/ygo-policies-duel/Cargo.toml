@@ -4,6 +4,12 @@ description = "OCGCore duels a caller steps: the engine build, card data and scr
 edition.workspace = true
 version.workspace = true
 
+[features]
+default = ["bundled"]
+# The engine of `vendor/ocgcore`, compiled into the crate.  Without it every
+# Core is an engine library loaded from a file (`Core::open`, `Core::load`).
+bundled = ["dep:cc"]
+
 [dependencies]
 libloading = "0.8.9"
 rusqlite.workspace = true
@@ -14,4 +20,4 @@ ygo-policies-ocgcore.workspace = true
 ygo-policies.workspace = true
 
 [build-dependencies]
-cc = "1"
+cc = { version = "1", optional = true }

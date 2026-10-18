@@ -8,8 +8,9 @@ version.workspace = true
 rusqlite.workspace = true
 serde_json.workspace = true
 ygo-policies.workspace = true
-ygo-policies-duel.workspace = true
+ygo-policies-duel = { workspace = true, features = ["bundled"] }
 ygo-policies-ocgcore.workspace = true
+ygo-policies-search = { workspace = true, features = ["bundled"] }
 
 [[bin]]
 name = "policy-bench"

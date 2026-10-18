@@ -11,4 +11,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 ygo-policies = { workspace = true, features = ["serde"] }
 ygo-policies-ocgcore = { workspace = true, features = ["sqlite", "serde"] }
+# The search plays on its host's engine: neither bundles one.
+ygo-policies-duel.workspace = true
+ygo-policies-search.workspace = true
 serde_json.workspace = true

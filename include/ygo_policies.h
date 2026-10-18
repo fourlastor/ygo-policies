@@ -36,6 +36,39 @@ YgoPolicy *ygo_policy_create(const char *policy_id, const char *cards_cdb_path, 
 YgoPolicy *ygo_policy_create_seeded(const char *policy_id, const char *cards_cdb_path, int32_t seat,
                                     uint64_t seed);
 
+/* The generic policy with the staged search, as seat `seat` (0 or 1) of the
+   host's duel `duel` (an OCG_Duel), made by the engine library at
+   `engine_path`: a build of the policies' engine fork (vendor/ocgcore), which
+   has snapshots, the hidden-card swap, OCG_DuelReseed and
+   OCG_DuelSwapLogHandler.  Feed it like any other seat.  When a message asks it
+   to decide, the feed call snapshots the duel, deals again in each world what
+   the seat cannot see, plays the alternatives out on the duel itself, restores
+   it and only then returns: the host must not use the duel meanwhile (nor
+   from another thread), and the duel must outlive the handle.  Script errors
+   of the worlds stay out of the duel's log handler.
+   `seed` seeds the pilot (with seed + seat) and the worlds, as the benchmark's
+   `generic --method staged` does.  `options_json` may be NULL (the measured
+   search: stages [8, 24, 64], z 1.645, kept 2, chains and Set monsters dealt
+   again, 8 candidates, a world is a draw after 8192 answers) or an object
+   setting any of "stages", "z", "kept", "chains", "set_monsters",
+   "candidates" and "limit".  NULL on failure.
+   A search seat cannot be cloned, and keeps response overrides on; the other
+   calls apply to its pilot: ygo_policy_set_effect_profiles_json describes the
+   seat's own cards to its pilot and to the opponent's model (recommended, as
+   measured), and ygo_policy_override_response tells it which answer was played
+   when the host played another one. */
+YgoPolicy *ygo_policy_create_search(const char *cards_cdb_path, int32_t seat, uint64_t seed,
+                                    const char *engine_path, void *duel, const char *options_json);
+
+/* JSON of what a search seat has done so far: "asked", "searched", the
+   decisions left to its pilot ("in_chain", "facing_set",
+   "search_skipped_facedown_banished", "unsafe_selections", "undealt_roots"),
+   "resampled_set_monsters", "deviations" (each answer that is not the pilot's),
+   "search_decision_ms", "playouts", "failed_playouts", "unresolved_playouts",
+   "failed_searches" and "search_errors".  NULL for a plain seat; valid until
+   the next call. */
+const char *ygo_policy_search_stats_json(YgoPolicy *policy);
+
 /* Independent copy, including pending response, policy memory and RNG. NULL on
    failure; destroy the copy with ygo_policy_destroy. Optional in older libraries. */
 YgoPolicy *ygo_policy_clone(const YgoPolicy *policy);
