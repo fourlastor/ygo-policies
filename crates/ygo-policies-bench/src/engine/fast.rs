@@ -54,6 +54,40 @@ pub struct FastOptions {
     pub evaluation_weights: Option<[f64; 13]>,
     /// Opt-in own-deck composition experiment, fixed before any branch.
     pub evaluation_profile: EvaluationProfile,
+    /// The staged search instead of the rollout choice: see [`StagedOptions`].
+    pub staged: Option<StagedOptions>,
+}
+
+/// The staged choice of `policy-bench search` (`search.rs`) on this module's
+/// worlds.  Every alternative is played out to the end of the duel, both
+/// players Generic (or the specialist model), in the same sampled worlds as
+/// the pilot's answer, which is tried first: where it wins every first-stage
+/// world no alternative is tried.  After each stage only the alternatives
+/// ahead of the pilot's answer go on, the best `kept` of them after the
+/// first; after the middle stage one far enough ahead (paired z 2.33) is
+/// taken and one too close (z 0.67) ends the search.  The pilot's answer is
+/// left only for an alternative ahead by a paired z of at least `z` after
+/// the last stage.
+#[derive(Clone, Copy, Debug)]
+pub struct StagedOptions {
+    /// Worlds every surviving alternative has been played in after each stage.
+    pub stages: [usize; 3],
+    /// How far ahead (paired z) an alternative must be after the last stage.
+    pub z: f64,
+    /// Alternatives that go on after the first stage.
+    pub kept: usize,
+    /// Also search inside an open chain.  The native swap refuses any card a
+    /// link of the chain is handled by or targets.
+    pub chains: bool,
+    /// Deal the other player's unknown Set monsters again (from the monsters
+    /// it could have Set) instead of leaving every decision taken while one is
+    /// on the field to the pilot.  Needs an engine that swaps Set monsters.
+    pub set_monsters: bool,
+}
+
+impl StagedOptions {
+    /// The settings measured on 2026-10-17 (benchmarks/generic-policy-v3).
+    pub const MEASURED: Self = Self { stages: [8, 24, 64], z: 1.645, kept: 2, chains: true, set_monsters: true };
 }
 
 impl FastOptions {
@@ -120,6 +154,10 @@ struct Stats {
     mcts_root_actions_all_worlds_attempted: u64,
     mcts_root_actions_all_worlds_completed: u64,
     search_skipped_facedown_banished: u64,
+    resampled_set_monsters: u64,
+    /// Staged roots left to the pilot because their worlds could not be dealt
+    /// (the engine refused to swap a Set monster that was not untouched).
+    undealt_roots: u64,
     snapshot_copies: Vec<ygo_policies_duel::SnapshotMetrics>,
     errors: Vec<String>,
 }
@@ -632,6 +670,163 @@ fn best_candidate(totals: &[f64], complete: usize) -> usize {
     best
 }
 
+/// Mean, paired z and count of a candidate's payoff differences from the
+/// pilot's answer over the worlds both were played out in.
+fn paired(candidate: &[Option<f64>], pilot: &[Option<f64>]) -> (f64, f64, usize) {
+    let differences: Vec<f64> = candidate.iter().zip(pilot).filter_map(|(a, b)| Some((*a)? - (*b)?)).collect();
+    let n = differences.len();
+    if n < 2 {
+        return (0.0, 0.0, n);
+    }
+    let mean = differences.iter().sum::<f64>() / n as f64;
+    let variance = differences.iter().map(|d| (d - mean).powi(2)).sum::<f64>() / (n - 1) as f64;
+    let z = if variance > 0.0 {
+        mean / (variance / n as f64).sqrt()
+    } else if mean > 0.0 {
+        f64::INFINITY
+    } else if mean < 0.0 {
+        f64::NEG_INFINITY
+    } else {
+        0.0
+    };
+    (mean, z, n)
+}
+
+/// The other player's face-down monsters whose identity the viewer does not
+/// know, by zone: read from the viewer's own observation and public memory.
+fn unknown_set_monsters(memory: &PublicIdentityMemory, observation: &serde_json::Value, viewer: u8) -> Vec<u32> {
+    let Some(cards) = observation["cards"].as_array() else { return Vec::new() };
+    cards
+        .iter()
+        .filter_map(|card| {
+            if card["at"]["location"] != "MonsterZone"
+                || card["at"]["controller"].as_u64() == Some(viewer as u64)
+                || card["position"]["face_up"] == true
+            {
+                return None;
+            }
+            let controller = u8::try_from(card["at"]["controller"].as_u64()?).ok()?;
+            let sequence = u32::try_from(card["at"]["sequence"].as_u64()?).ok()?;
+            (!memory.knows(controller, 4, sequence)).then_some(sequence)
+        })
+        .collect()
+}
+
+/// The staged search (see [`StagedOptions`]): the index of the response to
+/// give, the worlds it was decided on, and its mean gain over the pilot's.
+#[allow(clippy::too_many_arguments)]
+fn choose_staged(
+    duel: &mut Duel,
+    context: &Context<'_>,
+    table: &Table<'_>,
+    listed: &Listed,
+    decisions: usize,
+    stats: &mut Stats,
+    staged: StagedOptions,
+    monsters: Vec<u32>,
+) -> Result<(usize, usize, f64)> {
+    const EARLY_ACCEPT: f64 = 2.33;
+    const EARLY_REJECT: f64 = 0.67;
+    let root = duel.snapshot()?;
+    let known = pending_known_slots(&table.seats[context.viewer as usize].last_answer()?, context.viewer);
+    let mut hidden = HiddenWorlds::with_known(known).with_monsters(monsters);
+    let n = listed.responses.len();
+    let mut payoffs: Vec<Vec<Option<f64>>> = vec![Vec::new(); n];
+    let mut alive: Vec<usize> = (1..n).collect();
+    let (mut chosen, mut gain, mut worlds_used) = (0usize, 0.0f64, 0usize);
+    let mut undealt = false;
+    let result = (|| -> Result<()> {
+        let opponent = public_opponent(context, &table.logs, decisions)?;
+        let mut done = 0;
+        let mut won_everywhere = false;
+        for (stage, total) in staged.stages.iter().copied().enumerate() {
+            for pilot_pass in [true, false] {
+                if !pilot_pass && won_everywhere {
+                    break;
+                }
+                for world in done..total {
+                    // The worlds of the rollout choice, the same for every alternative.
+                    let world_seed = context.seed
+                        ^ (decisions as u64).wrapping_mul(0x9E3779B97F4A7C15)
+                        ^ (world as u64 + 1).wrapping_mul(0xD1B54A32D192ED03);
+                    if let Err(error) = hidden.restore(duel, &root, context.viewer, world_seed) {
+                        undealt = true;
+                        return Err(error);
+                    }
+                    duel.reseed(world_seed ^ 0x94D049BB133111EB)?;
+                    let seats = prepare(duel, context, table, &opponent)?;
+                    let sampled = duel.snapshot()?;
+                    let indices: Vec<usize> = if pilot_pass { vec![0] } else { alive.clone() };
+                    for index in indices {
+                        duel.restore(&sampled)?;
+                        let copies = seats.iter().map(LibrarySeat::fork).collect::<Result<Vec<_>>>()?;
+                        let mut remaining = usize::MAX;
+                        let value = match rollout(duel, &copies, context, &listed.responses[index], decisions, 0, false, false, None, &mut remaining, stats) {
+                            Ok(Trial::Scored(value, _)) => Some(value),
+                            Ok(Trial::Unresolved) => {
+                                // The duel limit: a draw.
+                                stats.unresolved_playouts += 1;
+                                Some(0.0)
+                            }
+                            Ok(Trial::Budget) => None,
+                            Err(error) => {
+                                stats.failed_playouts += 1;
+                                stats.error(error);
+                                None
+                            }
+                        };
+                        payoffs[index].push(value);
+                    }
+                }
+                if pilot_pass && stage == 0 {
+                    won_everywhere = payoffs[0].iter().all(|p| p.map_or(true, |p| p >= 1.0));
+                }
+            }
+            worlds_used = total;
+            if won_everywhere {
+                break;
+            }
+            done = total;
+            let mut ranked: Vec<(usize, f64, f64)> = alive
+                .iter()
+                .map(|&index| {
+                    let (mean, z, _) = paired(&payoffs[index], &payoffs[0]);
+                    (index, mean, z)
+                })
+                .filter(|(_, mean, _)| *mean > 0.0)
+                .collect();
+            ranked.sort_by(|a, b| b.1.total_cmp(&a.1));
+            let Some(best) = ranked.first().copied() else { break };
+            let last = stage + 1 == staged.stages.len();
+            let accept = if last { best.2 >= staged.z } else { stage > 0 && best.2 >= EARLY_ACCEPT };
+            if accept {
+                chosen = best.0;
+                gain = best.1;
+                break;
+            }
+            if last || (stage > 0 && best.2 < EARLY_REJECT) {
+                break;
+            }
+            alive = ranked.iter().take(staged.kept).map(|r| r.0).collect();
+        }
+        Ok(())
+    })();
+    // The live duel goes on from the decision itself.
+    duel.restore(&root)?;
+    if let Err(error) = result {
+        // The pilot's answer.  A world the engine would not deal is expected
+        // (a Set monster something has touched); anything else is a failure.
+        if undealt {
+            stats.undealt_roots += 1;
+        } else {
+            stats.failed_searches += 1;
+            stats.error(error);
+        }
+        return Ok((0, 0, 0.0));
+    }
+    Ok((chosen, worlds_used, gain))
+}
+
 fn choose(
     duel: &mut Duel,
     context: &Context<'_>,
@@ -1063,6 +1258,21 @@ pub fn play_fast(
         return Err("Specialist opponent diagnostics cannot be combined with adversarial opponent UCT".into());
     }
     if fast.planner.is_some() && fast.mcts.is_some() { return Err("Choose beam or MCTS, not both".into()); }
+    if let Some(staged) = fast.staged {
+        if fast.planner.is_some() || fast.mcts.is_some() {
+            return Err("The staged search replaces the rollout choice; it cannot be combined with beam or MCTS".into());
+        }
+        if fast.depth != 1 || fast.horizon != 0 || fast.millis != 0 {
+            return Err("The staged search plays every world to the end: depth 1, horizon 0, no time budget".into());
+        }
+        if staged.stages[0] == 0 || staged.stages[0] > staged.stages[1] || staged.stages[1] > staged.stages[2]
+            || staged.kept == 0 || !staged.z.is_finite() {
+            return Err("Staged search needs 0 < first stage <= middle stage <= last stage, kept > 0 and a finite z".into());
+        }
+        if staged.set_monsters && !fast.strict {
+            return Err("Dealing Set monsters again replaces the strict guard; it needs strict=true".into());
+        }
+    }
     if fast.mcts.is_some_and(|p| p.iterations == 0 || p.actions == 0 || p.nodes == 0 || p.decisions == 0)
         || fast.mcts.is_some() && fast.mcts_worlds == 0 {
         return Err("MCTS iterations/actions/nodes/decisions/worlds must be positive".into());
@@ -1251,6 +1461,8 @@ pub fn play_fast(
                 ("mcts_root_actions_all_worlds_completed", stats.mcts_root_actions_all_worlds_completed),
             ] { row[key] = serde_json::json!(value); }
             row["search_opponent_model"] = serde_json::json!(if fast.specialist_opponent { "specialist" } else { "generic" });
+            row["resampled_set_monsters"] = serde_json::json!(stats.resampled_set_monsters);
+            row["undealt_roots"] = serde_json::json!(stats.undealt_roots);
             if fast.specialist_opponent {
                 row["search_information"] = serde_json::json!("known deck composition and specialist opponent policy; sampled hidden arrangement and future RNG; public-history model memory");
             } else if fast.mcts.is_some_and(|options| options.adversarial_opponent) {
@@ -1318,8 +1530,15 @@ pub fn play_fast(
                 let described = table.seats[player].alternative_responses(expanded_limit)?;
                 if let Some(listed) = candidates(&described, &answer,
                     fast.max_candidates.min(fast.max_playouts)) {
-                    if chain { in_chain += 1; }
-                    else if fast.strict && public_memory.has_unknown_monsters(&original["observation"], context.viewer) {
+                    let staged = fast.staged;
+                    let resample = staged.is_some_and(|staged| staged.set_monsters);
+                    let unknown = if resample {
+                        unknown_set_monsters(&public_memory, &original["observation"], context.viewer)
+                    } else {
+                        Vec::new()
+                    };
+                    if chain && !staged.is_some_and(|staged| staged.chains) { in_chain += 1; }
+                    else if fast.strict && !resample && public_memory.has_unknown_monsters(&original["observation"], context.viewer) {
                         facing_set += 1;
                     }
                     else if fast.strict && public_memory.has_facedown_banished(&original["observation"], context.viewer) {
@@ -1347,6 +1566,9 @@ pub fn play_fast(
                                 &mut duel, &context, &table, &listed, decisions, &mut stats)?;
                             plan = continuation.into();
                             (chosen, worlds, gain)
+                        } else if let Some(staged) = staged {
+                            stats.resampled_set_monsters += u64::from(!unknown.is_empty());
+                            choose_staged(&mut duel, &context, &table, &listed, decisions, &mut stats, staged, unknown)?
                         } else { choose(&mut duel, &context, &table, &listed, decisions, &mut stats)? };
                         if chosen != 0 {
                             answer = listed.responses[chosen].clone();
@@ -1391,7 +1613,7 @@ mod tests {
             effects: true, planner: None, mcts: None, mcts_worlds: 4,
             mcts_validate_roots: false, specialist_opponent: false,
             evaluation_weights: Some(super::super::evaluation::HEURISTIC_COEFFICIENTS),
-            evaluation_profile: EvaluationProfile::Off,
+            evaluation_profile: EvaluationProfile::Off, staged: None,
         };
         assert!(options.validate_evaluation_weights().is_err());
         options.mcts = Some(MctsOptions { iterations: 128, actions: 6, nodes: 1024,
@@ -1523,7 +1745,7 @@ mod tests {
                 effects: true, planner: None,
                 mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
                     decisions: 384, replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false }),
-                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
             },
             // Nonempty metadata must not be sent to the old specialist ABI.
             profiles: Some(serde_json::json!({"95492061":[]})), evaluator: None,
@@ -1646,6 +1868,45 @@ mod tests {
 
     #[test]
     #[ignore = "build the release policy library first"]
+    fn staged_search_deals_set_monsters_again_and_replays_deterministically() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let library = PolicyLibrary::open(&root.join(format!(
+            "target/release/{}ygo_policies{}",
+            std::env::consts::DLL_PREFIX,
+            std::env::consts::DLL_SUFFIX
+        )))
+        .unwrap();
+        // A mirror of Set flip monsters (Morphing Jar #2 Special Summons face-down).
+        let deck = Deck::load(&root.join("decks/Last Page.ydk")).unwrap();
+        let decks = [deck.clone(), deck];
+        let run = PlayOptions { seed: 2700001, limit: 2048, trace: false, life_points: [8000, 8000], record: false };
+        let fast = FastOptions {
+            searcher: 0, worlds: 4, depth: 1, max_candidates: 6, max_playouts: 1_000_000, horizon: 0, millis: 0,
+            strict: true, effects: true, planner: None, mcts: None, mcts_worlds: 4, mcts_validate_roots: false,
+            specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+            staged: Some(StagedOptions { stages: [2, 4, 8], ..StagedOptions::MEASURED }),
+        };
+        let play = || play_fast(&core, &decks, [&library, &library], ["generic", "deckout"], &cards, run, fast).unwrap();
+        let (first, second) = (play(), play());
+        assert_eq!(first["digest"], second["digest"]);
+        assert_eq!(first["winner"], second["winner"]);
+        assert!(first["resampled_set_monsters"].as_u64().unwrap() > 0, "no Set monster was dealt again");
+        assert_eq!(first["facing_set"], 0);
+        assert_eq!(first["in_chain"], 0);
+        for key in ["failed_playouts", "failed_searches"] {
+            assert_eq!(first[key], 0, "{key}: {}", first["search_errors"]);
+        }
+        // Without a staged search the strict guards stay as they were.
+        let strict = play_fast(&core, &decks, [&library, &library], ["generic", "deckout"], &cards, run,
+            FastOptions { staged: Some(StagedOptions { stages: [2, 4, 8], chains: false, set_monsters: false, ..StagedOptions::MEASURED }), ..fast }).unwrap();
+        assert_eq!(strict["resampled_set_monsters"], 0);
+        assert!(strict["facing_set"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    #[ignore = "build the release policy library first"]
     fn depth_two_respects_budget_and_restores_a_replayable_live_duel() {
         let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         let cards = root.join("vendor/BabelCdb/cards.cdb");
@@ -1685,7 +1946,7 @@ mod tests {
             effects: false,
             planner: None,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
         };
         let first = play_fast(
             &core,
@@ -1756,7 +2017,7 @@ mod tests {
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
@@ -1830,7 +2091,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,
@@ -1907,7 +2168,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,

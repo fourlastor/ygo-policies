@@ -1,5 +1,9 @@
 # Generic policy: planning and MCTS experiments
 
+Continued in [v3](../generic-policy-v3/README.md): a staged search with full-game
+playouts, searching inside open chains and facing Set monsters, wins 62.7% of the
+roster's mirrors (51 of 70 decks at 55% or more) where the MCTS below wins 51.5%.
+
 Work on `codex/fast-generic-policy` continues. The 55% per-specialist mirror target
 has **not** been achieved. These are development experiments, not a final held-out
 qualification. The 71 decks are fixtures; there is no deck-name dispatch in the

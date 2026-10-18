@@ -242,7 +242,23 @@ running `compare` with the same library twice should produce identical transcrip
 `policy-bench generic --policies all --baseline FROZEN_LIBRARY --games 64
 --output generic.jsonl` seats the same `generic` policy on each specialist's
 deck against that frozen specialist, alternating seats. `--plain true` disables
-search. `--method rollout|beam|mcts` chooses the planner (default `rollout`).
+search. `--method rollout|beam|mcts|staged` chooses the planner (default `rollout`).
+
+`--method staged` is the strongest measured setting: the choice of
+`policy-bench search` on these information-safe worlds.  Every alternative is
+played to the end of the duel in the same sampled worlds as the pilot's answer;
+after each of `--stages 8,24,64` (worlds) only the alternatives ahead of the
+pilot's go on, the best `--kept 2` after the first; the pilot's answer is left
+only for one ahead by a paired z of `--z 1.645` after the last stage.
+`--search-chains true` also searches inside an open chain, and
+`--resample-set-monsters true` deals the other player's unknown Set monsters
+again (from the monsters it could have Set: the engine's swap takes an
+untouched face-down monster) instead of leaving every decision taken while
+one is on the field to the pilot.  These are the defaults; `--max-candidates`
+defaults to 8 and no `--millis`, `--horizon` or `--depth` applies.  Rows count
+`resampled_set_monsters` and `undealt_roots` (roots left to the pilot because
+a Set monster could not be swapped).  See
+[the measured results](../../benchmarks/generic-policy-v3/README.md).
 The search accepts `--worlds`, `--max-candidates`, `--max-playouts`, `--horizon`,
 and a soft per-decision `--millis` budget; `--depth 1|2` applies to rollouts only.
 Beam/MCTS construct executable continuations in proposal worlds and compare

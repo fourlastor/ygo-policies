@@ -244,7 +244,12 @@ one-step search at each of its decisions (see the bench README).\n\
 generic mirrors each selected specialist deck: generic versus the frozen baseline specialist.\n\
   --plain true (use the generic policy without engine search)\n\
   --effects true|false (public initial-effect metadata; default true)\n\
-  --method rollout|beam|mcts (default rollout; planners preserve executable continuations)\n\
+  --method rollout|beam|mcts|staged (default rollout; planners preserve executable continuations)\n\
+  Staged: every alternative played to the end in the same sampled worlds, the pilot's answer\n\
+  left only for one ahead by a paired z after the last stage (policy-bench search's choice).\n\
+  --stages 8,24,64 (worlds after each stage) --z 1.645 --kept 2 --max-candidates 8\n\
+  --search-chains true (also inside an open chain) --resample-set-monsters true (deal the\n\
+  other player's unknown Set monsters again, instead of leaving those decisions to the pilot)\n\
   --beam-width 8 --beam-actions 6 --beam-nodes 128 --beam-decisions 256 --beam-replies 1\n\
   Beam/MCTS: --horizon 0 validates to terminal; nonzero validates at the requested turn horizon.\n\
   --mcts-iterations 128 --mcts-worlds 4 --mcts-actions 6 --mcts-nodes 1024\n\
@@ -351,6 +356,10 @@ fn run() -> Result<()> {
             "--opponent-model",
             "--evaluation-weights",
             "--evaluation-profile",
+            "--stages",
+            "--kept",
+            "--search-chains",
+            "--resample-set-monsters",
         ]
         .contains(&key.as_str())
         {
@@ -364,7 +373,7 @@ fn run() -> Result<()> {
         }
     }
     if mode != "generic" {
-        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights", "--evaluation-profile"] {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights", "--evaluation-profile", "--stages", "--kept", "--search-chains", "--resample-set-monsters"] {
             if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
@@ -1057,6 +1066,11 @@ fn generic_run(
             "--opponent-model",
             "--evaluation-weights",
             "--evaluation-profile",
+            "--stages",
+            "--kept",
+            "--search-chains",
+            "--resample-set-monsters",
+            "--z",
         ]
         .contains(&key.as_str())
         {
@@ -1104,10 +1118,31 @@ fn generic_run(
     }
     let trace = flag("--trace", false)?;
     let record = flag("--record", false)?;
-    let worlds = number("--worlds", 4)?;
-    let max_candidates = number("--max-candidates", 6)?;
     let method = args.get("--method").map(String::as_str).unwrap_or("rollout");
-    if !["rollout", "beam", "mcts"].contains(&method) { return Err("--method must be rollout, beam or mcts".into()); }
+    if !["rollout", "beam", "mcts", "staged"].contains(&method) { return Err("--method must be rollout, beam, mcts or staged".into()); }
+    let worlds = number("--worlds", 4)?;
+    let max_candidates = number("--max-candidates", if method == "staged" { 8 } else { 6 })?;
+    let staged = if method == "staged" {
+        let measured = engine::StagedOptions::MEASURED;
+        let stages = match args.get("--stages") {
+            None => measured.stages,
+            Some(value) => {
+                let numbers = value.split(',').map(|n| n.trim().parse::<usize>()).collect::<std::result::Result<Vec<_>, _>>();
+                match numbers.as_deref() {
+                    Ok([first, middle, last]) => [*first, *middle, *last],
+                    _ => return Err("--stages takes three numbers: FIRST,MIDDLE,LAST".into()),
+                }
+            }
+        };
+        let z: f64 = args.get("--z").map_or(Ok(measured.z), |v| v.parse().map_err(|_| "Invalid --z".to_string()))?;
+        Some(engine::StagedOptions { stages, z, kept: number("--kept", measured.kept)?,
+            chains: flag("--search-chains", measured.chains)?, set_monsters: flag("--resample-set-monsters", measured.set_monsters)? })
+    } else {
+        for key in ["--stages", "--kept", "--search-chains", "--resample-set-monsters", "--z"] {
+            if args.contains_key(key) { return Err(format!("{key} applies only to --method staged")); }
+        }
+        None
+    };
     let planner = if method == "beam" {
         Some(engine::PlannerOptions { width: number("--beam-width", 8)?,
             actions: number("--beam-actions", 6)?, nodes: number("--beam-nodes", 128)?,
@@ -1148,7 +1183,7 @@ fn generic_run(
     let max_playouts = if plain {
         0
     } else {
-        number("--max-playouts", if planner.is_some() { 1024 } else if mcts.is_some() { 256 } else { 24 })?
+        number("--max-playouts", if planner.is_some() { 1024 } else if mcts.is_some() { 256 } else if staged.is_some() { 1_000_000 } else { 24 })?
     };
     let horizon = number("--horizon", 0)?;
     let evaluation_weights = generic_evaluation_weights(
@@ -1163,7 +1198,10 @@ fn generic_run(
     if !(1..=2).contains(&depth) {
         return Err("generic --depth must be 1 or 2".into());
     }
-    let millis = number("--millis", 200)? as u64;
+    let millis = number("--millis", if staged.is_some() { 0 } else { 200 })? as u64;
+    if staged.is_some() && (millis != 0 || horizon != 0 || depth != 1) {
+        return Err("--method staged plays every world to the end: no --millis, --horizon or --depth".into());
+    }
     if games == 0 || games % 2 != 0 || workers == 0 || limit == 0 || pilots.is_empty() {
         return Err(
             "generic requires positive even games, positive workers/limit and at least one policy"
@@ -1221,6 +1259,10 @@ fn generic_run(
     if evaluation_profile != engine::evaluation::EvaluationProfile::Off {
         metadata["search"].as_object_mut().unwrap().remove("evaluation_weights");
     }
+    if let Some(s) = staged {
+        metadata["search"]["staged"] = json!({"stages": s.stages, "z": s.z, "kept": s.kept,
+            "chains": s.chains, "set_monsters": s.set_monsters});
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -1255,7 +1297,7 @@ fn generic_run(
                             ([&candidate, &baseline], ["generic", specialist])
                         } else { ([&baseline, &candidate], [specialist, "generic"]) };
                         let options = PlayOptions { seed: job.seed, limit, trace, life_points: [8000; 2], record };
-                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights, evaluation_profile };
+                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights, evaluation_profile, staged };
                         let game_started = std::time::Instant::now();
                         let game = match engine::play_fast(&core, &decks, libraries, names, cards, options, fast) {
                             Ok(game) => game, Err(error) => json!({"error": error}),
