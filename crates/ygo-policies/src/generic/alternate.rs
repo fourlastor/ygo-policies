@@ -146,22 +146,17 @@ fn safe_heart_draw(t: &Turn) -> bool {
 }
 
 fn reload_heart(t: &Turn) -> bool {
-    // Reload can restart Heart's engine in the Draw Phase, but shuffling away
-    // four assembled names is a poor fallback for drawing the missing fifth.
-    t.ctx.my_turn()
-        && t.ctx.phase() == Some(Phase::Draw)
-        && hearts(&t.ctx) > 0
-        && t.ctx.obs.chain.is_empty()
-        && distinct_pieces(&t.ctx) < 4
-        && t.ctx
-            .obs
-            .pile(t.ctx.me, Location::Hand)
-            .filter(|card| {
-                let data = t.ctx.view_data(card);
-                data.is(types::MONSTER) && data.is(types::NORMAL)
-            })
-            .count()
-            >= 2
+    // Reload restarts Heart's engine in the Draw Phase (each Normal Monster
+    // it draws there draws again), and digs for a Heart when none is out or in
+    // hand, as the Exodia specialist plays it. Shuffling away four assembled
+    // names is a poor fallback for drawing the missing fifth.
+    let ctx = t.ctx;
+    let digging = ctx.my_turn() && ctx.obs.chain.is_empty() && distinct_pieces(&ctx) < 4 && ctx.hand_size(ctx.me) >= 3;
+    digging && match ctx.phase() {
+        Some(Phase::Draw) => hearts(&ctx) > 0,
+        Some(Phase::Main1 | Phase::Main2) => hearts(&ctx) == 0 && copies_in_hand(&ctx, HEART) == 0,
+        _ => false,
+    }
 }
 
 pub(super) fn value(ctx: &Ctx, code: u32) -> Option<i32> {

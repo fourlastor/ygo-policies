@@ -1,8 +1,8 @@
 # Generic policy: the staged search (v3)
 
 Work on `codex/fast-generic-policy` after astra's v2 experiments
-([v2 README](../generic-policy-v2/README.md)), started 2026-10-17. The generic pilot
-is unchanged; what changes is the search on top of it.
+([v2 README](../generic-policy-v2/README.md)), started 2026-10-17. First the search
+on top of the generic pilot changes, then (2026-10-18) the pilot itself.
 
 **Result.** On the whole roster (70 decks, 32 games each) the staged search wins
 62.7%, against 51.5% for astra's fast MCTS and 36.9% for the plain pilot; 51 of
@@ -12,6 +12,10 @@ upper end of their 95% interval is under 55%); the other 16 are at 14 to 17 wins
 of 32. On the 16 decks where the generic was weakest it goes from 36.3% (plain)
 and 43.8% (astra's MCTS) to 59.4%. No knowledge of the opponent's policy is
 used: both players of every simulated world are the generic pilot.
+
+**With a better pilot** ([below](#a-better-pilot)) the same search wins 65.3% of
+the whole roster, with 57 of 70 decks at 55% or more; only Exodia is clearly
+under (11 of 32).
 
 ## Why v2 stalled: the search decided on noise
 
@@ -218,6 +222,145 @@ Per deck (wins of 32), weakest first under the staged search:
 | fabled | 18 | 26 | 28 |
 | zombie | 21 | 24 | 30 |
 
+## Headroom: the same search with each deck's own specialist
+
+Is 55% out of reach in the mirrors where the generic is weakest, or is the
+generic pilot what holds them back? `run.sh headroom` runs the final search
+with the deck's own specialist in place of the generic pilot (`--pilot
+specialist`): it plays the searching seat and that seat's side of every
+simulated game. The specialist is also the opponent model. This is a benchmark
+only, because that model is then exactly the opponent. `run.sh
+specialist-plain` is the control: the same specialist alone. Both cover the 19
+decks under 55% in the roster run, on its deals (seed 2700000, 32 games each).
+The specialists come from this branch's build, which can take the search's
+overrides. In plain play they replay the frozen `7ddad06` specialists in all
+1,216 mirror games checked (64 per deck).
+
+Wins of 32 on the same deals, by the arm's result:
+
+| Deck | Generic plain | Generic search | Specialist alone | Specialist search | 95% interval | Search vs alone |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| destiny-board | 9 | 17 | 12 | 17 | 36–69% | +6 / −1 |
+| burn | 7 | 15 | 15 | 18 | 39–72% | +4 / −1 |
+| chain-burn | 8 | 11 | 15 | 18 | 39–72% | +5 / −2 |
+| harpie | 10 | 14 | 13 | 19 | 42–74% | +8 / −2 |
+| exodia | 11 | 11 | 16 | 20 | 45–77% | +4 / −0 |
+| batteryman | 11 | 14 | 19 | 21 | 48–80% | +4 / −2 |
+| machina | 7 | 15 | 13 | 22 | 51–82% | +9 / −0 |
+| six-samurai | 10 | 17 | 16 | 22 | 51–82% | +6 / −0 |
+| volcanic | 10 | 15 | 14 | 22 | 51–82% | +9 / −1 |
+| fish | 9 | 17 | 12 | 23 | 55–84% | +13 / −2 |
+| gravekeeper | 10 | 15 | 17 | 23 | 55–84% | +9 / −3 |
+| infernity | 8 | 17 | 15 | 23 | 55–84% | +11 / −3 |
+| morphtronic | 10 | 15 | 18 | 23 | 55–84% | +5 / −0 |
+| pyramid | 7 | 16 | 18 | 24 | 58–87% | +6 / −0 |
+| deckout | 6 | 12 | 16 | 25 | 61–89% | +11 / −2 |
+| monarch | 14 | 15 | 21 | 25 | 61–89% | +5 / −1 |
+| reptilianne | 16 | 17 | 20 | 25 | 61–89% | +6 / −1 |
+| toon | 11 | 17 | 17 | 25 | 61–89% | +9 / −1 |
+| gladiator | 11 | 17 | 14 | 29 | 76–97% | +16 / −1 |
+| **total** | 30.4% | 47.2% | 49.5% | **69.7%** | | +146 / −23 |
+
+- **These mirrors have room above 55%.** With a pilot that knows the deck,
+  the same search wins 69.7%: 20.2 points over the specialist alone on the
+  same deals. It gains on every deck, and 18 of the 19 decks reach 18 of 32 or
+  better (Destiny Board: 17). The 95% interval is above 50% on 13 decks.
+- **The gap is the pilot.** On these decks the generic with search plays like
+  the specialist alone: −2.3 points on the same deals (87 games gained, 101
+  lost), and 22.5 points under the specialist with search.
+- **It is an upper bound.** The opponent model here is exactly the opponent.
+  In a mirror, though, a generic pilot that played the deck as well would also
+  model the opponent that well: the generic opponent model is that same pilot.
+- **The smallest gains** over the specialist alone are on Batteryman (+2 net),
+  Chain Burn and Burn (+3), and Exodia and Monarch (+4).
+- **The specialists pass too, at the same windows.** Their searches correct
+  the same passes as the generic's. Of 1,386 overrides, the most frequent are
+  Waboku 26, Solemn Warning 24, Compulsory Evacuation Device 24, Threatening
+  Roar 24 and Book of Moon 17. These staples' shared timing (`staples.rs`) is
+  where both pilots fall short.
+- **Deal luck.** The specialist alone, a 50% policy in its own mirror, won
+  between 12 and 21 of these 32 deals depending on the deck. Results on the
+  same deal correlate at only 0.38 to 0.49 across arms, so a same-deal control
+  removes little of that noise.
+
+## A better pilot
+
+The headroom run put the gap in the generic pilot, so the pilot came next.
+Two benchmark-only tools showed where it falls short of the specialists:
+
+- `policy-bench replay --recheck true --ask DECK` asks the deck's specialist at
+  every decision of a generic game. The specialist follows the duel as
+  played, and the replay tells where it would have answered otherwise.
+- `policy-bench generic --plain true --borrow KINDS` makes the generic play the
+  specialist's answer on the chosen decision kinds. `Idle:ACTION` names a
+  Main Phase decision by what the specialist does in it. Borrowing every
+  decision plays like the specialist (49.5% on the 19 decks of the headroom
+  table, against 31.5% for the generic alone), so each kind's gain is its
+  share of the gap.
+
+The Main Phase carried most of the gap: borrowed alone, it gave +11.6 of the
+18 points, against +1.1 for chain windows. The disagreements the shadow
+specialist counts most often were not the ones that cost games. Skill Drain,
+for instance, does nothing in the Exodia mirror, whose monsters are Normal
+Monsters. Only borrowing measured the cost.
+
+Every rule below reads the card's printed type and its effect descriptors,
+never a deck name. The specialists are unchanged. Plain games, all 71 decks,
+128 games each (seed 3100000, the same deals for every version):
+
+| Change | Win rate | Paired difference | Largest changes (wins of 128) |
+| --- | ---: | ---: | --- |
+| Committed pilot | 36.74% | | |
+| Set Continuous cards turned face-up (attack locks, Skill Drain, Pyramid of Light, Morphtronic Bind, Ojama Trio); Waboku and Threatening Roar used freely with no attacker of ours | 36.62% | −0.12 [−0.34, +0.10] | Destiny Board +4, Pyramid −3 |
+| A Set Flip monster is Flip Summoned when its Flip effect has something to do, unless the opponent could then attack it for lethal damage | 37.87% | +1.25 [+0.90, +1.61] | Pyramid +37, Deck-out +23, Nordic +15, Gravekeeper +8 |
+| A pure hand trap (ATK and DEF 300 or less, a Quick or Trigger effect used from the hand) is never Summoned | 38.12% | +0.24 [+0.04, +0.45] | Chain Burn +31 |
+| A weak Effect Monster with no effect that needs it face-up is Set, Tuners excepted; Special Summon picks favour what the monster does as it arrives (not for Fusion or Ritual Monsters); Gravity Bind is used alongside Messenger of Peace, and Reload as the Exodia specialist uses it | 38.58% | +0.46 [+0.19, +0.73] | Gladiator +12, Reptilianne +12, Exodia +5, Venom +5 |
+
+Measured and dropped:
+- **Toon Defense:** its optional trigger, used blindly, turns attacks on our
+  Toons into direct attacks (Toon 17 → 11 of 32 with the search).
+- **Summoning, not Setting, any monster with an effect that needs it face-up:**
+  +289 and −288 games, with Arcana, Gladiator and Reptilianne down by 10 or more.
+- **Every specialist's return of Honest to the hand:** −0.06.
+- **Holding Secret Barrel and Magical Explosion for a bigger turn:** −1 game.
+
+With the staged search, on the deals of the roster run (32 games a deck), the
+19 decks of the headroom table:
+
+| Pilot | Win rate | Decks at 18 of 32 or more |
+| --- | ---: | ---: |
+| Committed | 47.2% | 0 |
+| After the hand-trap rule | 50.3% | 5 |
+| **After the Summon and pick rules** | **54.3%** | 9 |
+| Specialist (headroom) | 69.7% | 18 |
+
+The last pilot against the committed one: +7.1 [+3.7, +10.5] points (78
+games gained, 35 lost). Gladiator went from 17 to 25, Volcanic and Reptilianne
+from 15 and 17 to 22, Chain Burn from 11 to 18. Exodia (11) and Machina (13)
+did not move. Plain gains do not carry over one for one: the search had
+already been finding Pyramid's Flip Summons, so Pyramid's +37 of 128 in plain
+play was +1 of 32 with the search.
+
+The whole roster with the last pilot, on the deals of the roster run (the 19
+decks above and the other 52 in a second run, `pilot/`):
+
+| Arm | Wins (70 decks) | Rate | Decks at 55% or more | Wilson lower bound at 55% | Wilson upper bound under 55% |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Staged search, committed pilot | 1405/2240 | 62.7% | 51 | 13 | 3 |
+| **Staged search, last pilot** | 1463/2240 | **65.3%** | 57 | 18 | 1 |
+
+Paired over the 2,240 required games: +2.6 [+0.9, +4.3] points (219 gained,
+161 lost); Countdown 17 of 32 (was 18). Still under 55%, wins of 32:
+
+- Exodia 11 (the only one whose interval is all under 55%), Machina 13,
+  Gravekeeper 14, Harpie 14;
+- Benkei 15, Deck-out 15, Burn 16, Destiny Board 16;
+- Batteryman 17, Chaos 17, Dragunity 17, Pyramid 17, Six Samurai 17.
+
+Some decks lost games: Chaos fell from 23 to 17 (3 gained, 9 lost), Naturia
+from 25 to 20, Garden from 26 to 22. At 32 games a deck these are within
+noise one by one; Chaos is the one to look at first.
+
 ## Cost
 
 Single-threaded, a searched decision of the final setting takes 0.34 s at the
@@ -229,23 +372,19 @@ deterministic: no time budget, the same results under any load.
 
 ## What is still missing
 
-- **The pilot on stall and burn decks.** Chain Burn, Exodia, Deck-out and Burn
-  stay furthest from 55%. The search's most frequent overrides of the pilot are
-  passes at a chain window it should have taken. Two kinds:
-  - cards with no shared rule, where the generic chain rule falls back to effect
-    categories and these have none: Skill Drain, Royal Oppression, Pyramid of
-    Light, Pyramid Energy, Curse of Anubis, Battle Fader, Trap Stun, Fires of
-    Doomsday (only their decks' specialists know them);
-  - staples whose shared timing (`staples.rs`) suits beatdown decks, while a
-    stall deck should use them more freely: Waboku, Threatening Roar, Compulsory
-    Evacuation Device, Book of Moon, Mystical Space Typhoon.
-
-  Card rules for the first kind, and a deck-composition switch for the second,
-  are measured in seconds with plain runs, and a better pilot also plays better
-  playouts.
+- **The rest of the pilot's gap.** Borrowing every decision of the
+  specialists still adds 12.5 points of plain play on the 19 weakest decks
+  (37.1% → 49.6%), most of it in the Main Phase. It is now archetype play
+  rather than card timing: Six Samurai's summon chains, Morphtronics that work
+  in Attack Position, Harpie's chain windows, Exodia keeping its Spell & Trap
+  Zones for Heart of the Underdog rather than a second lock. The simple
+  card-fact rules tried after the last pilot measured flat or worse (above).
+  Archetype rules would be card knowledge too, but they help unknown decks
+  little.
 - **Tribute Sets.** Pyramid's Level 5 and 6 Sphinxes are Tribute Set: their
-  roots stay undealt (638 in `fd2-resample`). Dealing them needs the Level range
-  the Tributes allow.
+  roots stay undealt (638 in `fd2-resample`; about 11 a game for Pyramid and 12
+  for Monarch in `roster/best`). Dealing them needs the Level range the Tributes
+  allow.
 - **Latency.** Parallel worlds, above.
 - **The target.** 32 games a deck measure a win rate to about ±9 points; a
   per-deck 55% needs a statistical criterion and about 200 games a deck.
@@ -262,7 +401,7 @@ python3 benchmarks/generic-policy-v3/compare.py hard16/plain.jsonl.gz final.json
 python3 benchmarks/generic-policy-v3/roster.py roster/plain.jsonl.gz roster/mcts32.jsonl.gz roster/best.jsonl.gz
 ```
 
-The raw rows and metadata (`hard16/`, `roster/`) are not in the repository;
+The raw rows and metadata (`hard16/`, `roster/`, `headroom/`, `pilot/`) are not in the repository;
 `run.sh` regenerates any arm. The arms of `hard16/` other than `final`, and `roster/best`, ran from scratch
 copies of the branch with environment switches, which their metadata does not
 record. The repository's build reproduces them game for game: plain 512/512,
@@ -281,3 +420,6 @@ games of `roster/best`.
 | `fd-resample`, `combined` | first engine version (Normal Sets only), `YGO_RESAMPLE_FACEDOWN=1`, `combined` also `YGO_SEARCH_CHAINS=1` | not kept: the engine now takes face-down Special Summons too |
 | `fd2-resample`, `roster/best` | the final engine; `fd2-resample` without chains, `roster/best` with both | `--search-chains false`; `run.sh staged` |
 | `final` | `run.sh staged` | |
+| `headroom/specialist`, `headroom/specialist-plain` | `run.sh headroom`, `run.sh specialist-plain` with the 19 decks of the table and seed 2700000 | |
+| `pilot/hand2-staged` | `run.sh staged`, the 19 decks of the headroom table, seed 2700000, built after the hand-trap rule | |
+| `pilot/v3d-staged`, `pilot/v3d-staged-rest` | `run.sh staged`, the same 19 decks and then the other 52, seed 2700000, built from this repository's current pilot | `run.sh staged OUT all 2700000` |

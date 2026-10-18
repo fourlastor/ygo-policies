@@ -10,18 +10,24 @@ pub mod alternate;
 mod combat;
 mod conversion;
 mod counters;
+mod flips;
 pub mod knowledge;
+mod lasting;
 mod life;
 mod materials;
+mod presence;
 pub mod requirements;
+mod stall;
 mod timing;
 mod transactions;
 pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
 pub use combat::SUPPORTED_CODES as COMBAT_SUPPORTED_CODES;
 pub use counters::SUPPORTED_CODES as COUNTER_SUPPORTED_CODES;
+pub use lasting::SUPPORTED_CODES as LASTING_SUPPORTED_CODES;
 pub use life::SUPPORTED_CODES as LIFE_SUPPORTED_CODES;
 pub use life::offers_opponent_damage as offers_opponent_damage_transaction;
 pub use materials::SUPPORTED_CODES as MATERIAL_SUPPORTED_CODES;
+pub use stall::SUPPORTED_CODES as STALL_SUPPORTED_CODES;
 pub use timing::SUPPORTED_CODES as TIMING_SUPPORTED_CODES;
 pub use transactions::SUPPORTED_CODES as TRANSACTION_SUPPORTED_CODES;
 
@@ -44,6 +50,17 @@ impl Generic {
     fn shared_effect(code: u32) -> bool {
         staples::value(code).is_some()
             || matches!(code, staples::SWORDS_OF_REVEALING_LIGHT | staples::BRIONAC | staples::SCRAP_DRAGON)
+    }
+
+    /// Its effect answers the opponent from the hand (Battle Fader, Swift
+    /// Scarecrow, Effect Veiler) and its body is nothing: Summoned, it is
+    /// wasted. A body worth having (Honest, Herald of Orange Light as Ritual
+    /// fodder) keeps the shared rule.
+    fn hand_trap(ctx: &Ctx, code: u32) -> bool {
+        let data = ctx.data(code);
+        data.attack <= 300 && data.defense <= 300 && ctx.db.effects(code).iter().any(|effect| {
+            effect.range & range::HAND != 0 && effect.effect_type & (effect_type::TRIGGER | effect_type::QUICK) != 0
+        })
     }
 
     fn body_value(ctx: &Ctx, code: u32) -> i32 {
@@ -220,6 +237,22 @@ impl Generic {
             let threat = ctx.opp_best_attack();
             if threat > 0 && data.attack > threat { value += 800.0; }
         }
+        if hint == Hint::SpecialSummon && !data.is(types::EXTRA | types::RITUAL) {
+            // What it does as it arrives (a Gladiator Beast tagged in, a Six
+            // Samurai brought out): its own Special Summon triggers. Their
+            // conditions stay opaque; this is a prior, not a promise. Which
+            // Fusion or Ritual Monster to make is the summon's own choice.
+            value += ctx.db.effects(code).iter()
+                .filter(|effect| effect.event == event::SPECIAL_SUMMON_SUCCESS && effect.effect_type & effect_type::TRIGGER != 0)
+                .map(|effect| {
+                    if effect.category & Self::REMOVE != 0 { 1200.0 }
+                    else if effect.category & (Self::ACCESS | cat::TO_HAND) != 0 { 1000.0 }
+                    else if effect.category & (cat::SPECIAL_SUMMON | cat::TOKEN) != 0 { 900.0 }
+                    else if effect.category & cat::DAMAGE != 0 { 500.0 }
+                    else { 300.0 }
+                })
+                .fold(0.0, f64::max);
+        }
         if hint == Hint::AddToHand {
             let copies = ctx.hand().iter().filter(|card| card.code.is_some_and(|other| ctx.canonical(other) == ctx.canonical(code))).count();
             value -= 650.0 * copies as f64;
@@ -366,6 +399,8 @@ impl Strategy for Generic {
 
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         if let Some(index) = alternate::main_phase(t) { return Some(index); }
+        if let Some(index) = lasting::main_phase(t) { return Some(index); }
+        if let Some(index) = flips::flip_summon(t) { return Some(index); }
         if let Some(index) = life::activate_before_development(t) { return Some(index); }
         if let Some(index) = t.choices().find(|(index, choice)| {
             t.fresh(*index) && transactions::activate_before_development(t, choice)
@@ -459,6 +494,13 @@ impl Strategy for Generic {
     fn summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
         if let Some(score) = alternate::summon_score(t, choice) { return Some(score); }
         let code = choice.code()?;
+        if Self::hand_trap(&t.ctx, code) && !self.connects_synchro(t, code) {
+            return Some(None);
+        }
+        if Self::normal_summon_reward(&t.ctx, code) <= 0.0 && !self.connects_synchro(t, code) {
+            if let Some(score) = stall::summon_score(t, choice) { return Some(score); }
+            if let Some(score) = presence::summon_score(t, choice) { return Some(score); }
+        }
         let data = t.ctx.data(code);
         if data.tributes() as usize > t.ctx.monsters(t.ctx.me).len() {
             // The engine has already offered this legal action. A reduced or
@@ -581,6 +623,10 @@ impl Strategy for Generic {
             return Some(Response::new(110.0));
         }
         let code = t.ctx.canonical(choice.code()?);
+        if self.allow_staple(t, code) {
+            if let Some(response) = lasting::chain(t, index) { return Some(response); }
+            if let Some(response) = stall::chain(t, index) { return Some(response); }
+        }
         if Self::shared_effect(code) {
             return None;
         }
@@ -1622,5 +1668,62 @@ mod tests {
             let chosen = pilot.choose(&obs, &prompt);
             assert_eq!(prompt.choices[chosen].kind, expected, "unseen card {code}");
         }
+    }
+
+    fn effect(effect_type: u16, category: u64, range: u16) -> EffectDescriptor {
+        EffectDescriptor { effect_type, category, range, ..EffectDescriptor::default() }
+    }
+
+    #[test]
+    fn a_set_flip_monster_is_flip_summoned_when_its_effect_has_work_but_not_into_a_lethal_attack() {
+        let worm = 900_005_101;
+        let database = profiled(vec![CardData { code: worm, kind: types::MONSTER | types::EFFECT | types::FLIP,
+            attack: 750, defense: 600, level: 3, ..CardData::default() }],
+            [(worm, vec![effect(0x1 | 0x20, 0x40, 0)])].into());
+        let prompt = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::ChangePosition, Some(worm), Location::MonsterZone),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        let mut obs = observation();
+        let mut set = on_field(worm, 0, Location::MonsterZone, Position::FACE_DOWN_DEFENSE);
+        (set.attack, set.defense) = (750, 600);
+        obs.cards.push(set);
+        obs.pile_sizes = vec![(1, Location::Deck, 30)];
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), 0);
+        // Nothing to mill.
+        obs.pile_sizes = vec![(1, Location::Deck, 0)];
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &prompt), 1);
+        // Face-up in Attack Position, it would take an attack that ends the duel.
+        obs.pile_sizes = vec![(1, Location::Deck, 30)];
+        let mut giant = on_field(900_005_102, 1, Location::MonsterZone, Position::FACE_UP_ATTACK);
+        giant.attack = 8800;
+        obs.cards.push(giant);
+        assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &prompt), 1);
+    }
+
+    #[test]
+    fn a_pure_hand_trap_stays_in_the_hand_and_a_weak_body_that_needs_no_field_is_set() {
+        let fader = 900_005_111;
+        let gardna = 900_005_112;
+        let booster = 900_005_113;
+        let database = profiled(vec![
+            CardData { code: fader, kind: types::MONSTER | types::EFFECT, level: 1, ..CardData::default() },
+            CardData { code: gardna, kind: types::MONSTER | types::EFFECT, attack: 0, defense: 2000, level: 4, ..CardData::default() },
+            CardData { code: booster, kind: types::MONSTER | types::EFFECT, attack: 0, defense: 2000, level: 4, ..CardData::default() },
+        ], [
+            (fader, vec![effect(0x2 | 0x80, cat::SPECIAL_SUMMON, range::HAND)]),
+            (gardna, vec![effect(0x1 | 0x200, cat::TO_HAND | cat::SEARCH, 0)]),
+            (booster, vec![effect(0x2, 0, range::MONSTER)]),
+        ].into());
+        let summons = |code| decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::SetMonster, Some(code), Location::Hand),
+            choice(ChoiceKind::NormalSummon, Some(code), Location::Hand),
+            choice(ChoiceKind::EndTurn, None, Location::Other),
+        ]);
+        let obs = observation();
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &summons(fader)), 2);
+        assert_eq!(Agent::seeded(Generic, database.clone(), 1).choose(&obs, &summons(gardna)), 0);
+        // Its effect works face-up: onto an empty field, the shared rule Summons it.
+        assert_eq!(Agent::seeded(Generic, database, 1).choose(&obs, &summons(booster)), 1);
     }
 }
