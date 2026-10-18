@@ -20,6 +20,7 @@ pub use conversion::SUPPORTED_CODES as CONVERSION_SUPPORTED_CODES;
 pub use combat::SUPPORTED_CODES as COMBAT_SUPPORTED_CODES;
 pub use counters::SUPPORTED_CODES as COUNTER_SUPPORTED_CODES;
 pub use life::SUPPORTED_CODES as LIFE_SUPPORTED_CODES;
+pub use life::offers_opponent_damage as offers_opponent_damage_transaction;
 pub use materials::SUPPORTED_CODES as MATERIAL_SUPPORTED_CODES;
 pub use timing::SUPPORTED_CODES as TIMING_SUPPORTED_CODES;
 pub use transactions::SUPPORTED_CODES as TRANSACTION_SUPPORTED_CODES;

@@ -253,6 +253,7 @@ generic mirrors each selected specialist deck: generic versus the frozen baselin
   --mcts-root-warmup false (experimental complete root-world cycle; shared fixed budget)\n\
   --opponent-model generic|specialist (default generic; specialist is a benchmark diagnostic)\n\
   --evaluation-weights JSON_OBJECT (sparse nonnegative existing-feature overrides; beam/MCTS only)\n\
+  --evaluation-profile off|lp-density-v1 (default off; own-deck LP profile; excludes manual weights)\n\
   --worlds 4 --max-candidates 6 --max-playouts 24 --horizon 0 --millis 200\n\
   --depth 1|2 (default 1; depth 2 adds nested sampled rollout search; ignored by --plain true)\n\
   --millis 0 uses only deterministic work limits; --horizon 0 rolls out to the duel limit.\n\
@@ -349,6 +350,7 @@ fn run() -> Result<()> {
             "--mcts-root-warmup",
             "--opponent-model",
             "--evaluation-weights",
+            "--evaluation-profile",
         ]
         .contains(&key.as_str())
         {
@@ -362,7 +364,7 @@ fn run() -> Result<()> {
         }
     }
     if mode != "generic" {
-        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights"] {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights", "--evaluation-profile"] {
             if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
@@ -953,6 +955,54 @@ fn generic_evaluation_weights(value: Option<&str>, method: &str, plain: bool, ma
     engine::evaluation::parse_weights(value).map(Some)
 }
 
+fn generic_evaluation_profile(value: Option<&str>, manual_weights: bool, method: &str,
+    plain: bool, max_playouts: usize, terminal_only_mcts: bool, effects: bool)
+    -> Result<engine::evaluation::EvaluationProfile> {
+    use engine::evaluation::EvaluationProfile;
+    let profile = EvaluationProfile::parse(value.unwrap_or("off"))?;
+    if profile == EvaluationProfile::Off { return Ok(profile); }
+    if manual_weights { return Err("--evaluation-profile and --evaluation-weights are mutually exclusive".into()); }
+    if !effects { return Err("--evaluation-profile requires --effects true".into()); }
+    if plain || max_playouts == 0 || !["beam", "mcts"].contains(&method) {
+        return Err("--evaluation-profile requires active --method beam or mcts search".into());
+    }
+    if terminal_only_mcts {
+        return Err("--evaluation-profile is unused with --mcts-terminal true and --horizon 0".into());
+    }
+    Ok(profile)
+}
+
+fn generic_profile_metadata(profile: engine::evaluation::EvaluationProfile,
+    decks: &BTreeMap<String, Deck>, core_path: Option<&Path>, cards: &Path, scripts: &Path)
+    -> Result<Value> {
+    if profile == engine::evaluation::EvaluationProfile::Off {
+        return Ok(json!({"mode": "off"}));
+    }
+    // Preflight only public definitions, before workers and timing begin. The
+    // same evaluator arithmetic runs independently on the actual searcher deck.
+    let core = Core::open(core_path, cards, scripts)?;
+    let codes: BTreeSet<_> = decks.values().flat_map(|deck| deck.main.iter().copied()).collect();
+    let profiles = core.effect_profiles(&codes.into_iter().collect::<Vec<_>>())?;
+    let mut evaluator = engine::evaluation::Evaluator::open(cards)?;
+    evaluator.set_profiles(&profiles)?;
+    let described: BTreeMap<_, _> = decks.iter().map(|(name, deck)| {
+        evaluator.lp_density_profile(&deck.main).map(|value| (name.clone(), value.metadata()))
+    }).collect::<Result<_>>()?;
+    Ok(json!({"mode": profile.name(), "decks": described}))
+}
+
+fn generic_validate_profile_record(row: &Value, profile: &Value) -> Result<()> {
+    if profile["mode"] == "off" || row["game"].get("error").is_some() { return Ok(()); }
+    let deck = row["deck"].as_str().ok_or("Profile record has no deck")?;
+    let mut expected = profile["decks"].get(deck).cloned()
+        .ok_or_else(|| format!("Profile metadata has no deck {deck}"))?;
+    expected["mode"] = profile["mode"].clone();
+    if row["game"]["evaluation_profile"] != expected {
+        return Err(format!("Runtime evaluation profile disagrees with metadata for {deck}"));
+    }
+    Ok(())
+}
+
 fn generic_run(
     args: &BTreeMap<String, String>,
     root: &Path,
@@ -1006,6 +1056,7 @@ fn generic_run(
             "--mcts-root-warmup",
             "--opponent-model",
             "--evaluation-weights",
+            "--evaluation-profile",
         ]
         .contains(&key.as_str())
         {
@@ -1103,6 +1154,9 @@ fn generic_run(
     let evaluation_weights = generic_evaluation_weights(
         args.get("--evaluation-weights").map(String::as_str), method, plain, max_playouts,
         mcts.is_some_and(|options| options.terminal) && horizon == 0)?;
+    let evaluation_profile = generic_evaluation_profile(
+        args.get("--evaluation-profile").map(String::as_str), evaluation_weights.is_some(), method,
+        plain, max_playouts, mcts.is_some_and(|options| options.terminal) && horizon == 0, effects)?;
     let effective_weights = evaluation_weights.unwrap_or(engine::evaluation::HEURISTIC_COEFFICIENTS);
     let depth = number("--depth", 1)?;
     if (planner.is_some() || mcts.is_some()) && depth != 1 { return Err("--depth applies only to rollout search".into()); }
@@ -1147,13 +1201,14 @@ fn generic_run(
         deck_ids.insert(name.clone(), file_identity(&file));
     }
     let jobs = generic_jobs(&pilots, games, seed);
-    let metadata = json!({"mode": "generic", "arguments": args, "candidate_policy": "generic",
+    let profile_metadata = generic_profile_metadata(evaluation_profile, &deck_map, core_path, cards, scripts)?;
+    let mut metadata = json!({"mode": "generic", "arguments": args, "candidate_policy": "generic",
         "matchup": "same-deck generic versus frozen specialist; seats alternate",
         "games_per_matchup": games, "planned_jobs": jobs.len(), "seed": seed, "workers": workers,
         "shuffle": "SplitMix64 Fisher-Yates v1; stable generic-mirror/deck-name seed",
         "policy_seed": "engine seed + seat", "rules": "MasterRule1 (0xD0700)",
         "decision_limit": limit, "life_points": [8000,8000], "target": 0.55, "exceptions": exceptions,
-        "plain": plain, "effect_profiles": effects, "search": {"opponent_model": opponent_model, "evaluation_weights": engine::evaluation::named_weights(&effective_weights), "worlds": worlds, "max_candidates": max_candidates,
+        "plain": plain, "effect_profiles": effects, "search": {"opponent_model": opponent_model, "evaluation_profile": profile_metadata, "evaluation_weights": engine::evaluation::named_weights(&effective_weights), "worlds": worlds, "max_candidates": max_candidates,
             "max_playouts": max_playouts, "horizon": horizon, "depth": depth, "millis": millis, "strict": strict,
             "method": method, "mcts": mcts.map(|p| json!({"iterations":p.iterations,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies,"terminal":p.terminal,"worlds":mcts_worlds,"validate_roots":mcts_validate_roots,"adversarial_opponent":p.adversarial_opponent,"root_warmup":p.root_warmup})), "validation": if horizon == 0 { "terminal" } else { "heuristic" }, "beam": planner.map(|p| json!({"width":p.width,"actions":p.actions,"nodes":p.nodes,"decisions":p.decisions,"replies":p.replies}))},
         "timing_reproducibility": if millis == 0 || plain { "deterministic work cap" } else { "wall-time budget may change choices under machine load" },
@@ -1163,6 +1218,9 @@ fn generic_run(
         "core": git_revision(&root.join("vendor/ocgcore")), "lua": git_revision(&root.join("vendor/ocgcore/lua/src")),
         "checkout": git_revision(root), "baseline": file_identity(&baseline), "candidate": file_identity(&candidate),
         "decks": deck_ids, "catalog": catalog, "policies": pilots});
+    if evaluation_profile != engine::evaluation::EvaluationProfile::Off {
+        metadata["search"].as_object_mut().unwrap().remove("evaluation_weights");
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -1197,7 +1255,7 @@ fn generic_run(
                             ([&candidate, &baseline], ["generic", specialist])
                         } else { ([&baseline, &candidate], [specialist, "generic"]) };
                         let options = PlayOptions { seed: job.seed, limit, trace, life_points: [8000; 2], record };
-                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights };
+                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights, evaluation_profile };
                         let game_started = std::time::Instant::now();
                         let game = match engine::play_fast(&core, &decks, libraries, names, cards, options, fast) {
                             Ok(game) => game, Err(error) => json!({"error": error}),
@@ -1215,6 +1273,7 @@ fn generic_run(
         drop(tx);
         for row in rx {
             let row = row?;
+            generic_validate_profile_record(&row, &metadata["search"]["evaluation_profile"])?;
             writeln!(file, "{row}").map_err(|e| e.to_string())?;
             rows.push(row);
             if rows.len() % games.max(64) == 0 || rows.len() == jobs.len() {
@@ -1286,6 +1345,44 @@ mod tests {
             .unwrap_or(engine::evaluation::HEURISTIC_COEFFICIENTS);
         assert_eq!(engine::evaluation::named_weights(&defaults).as_object().unwrap().len(), 13);
         assert_eq!(defaults, engine::evaluation::HEURISTIC_COEFFICIENTS);
+    }
+
+    #[test]
+    fn generic_profile_flag_rejects_ignored_or_ambiguous_settings() {
+        use engine::evaluation::EvaluationProfile::{Off, LpDensityV1};
+        assert_eq!(generic_evaluation_profile(None, false, "rollout", true, 0, false, false).unwrap(), Off);
+        assert_eq!(generic_evaluation_profile(Some("off"), true, "mcts", false, 256, false, true).unwrap(), Off);
+        for method in ["beam", "mcts"] {
+            assert_eq!(generic_evaluation_profile(Some("lp-density-v1"), false, method, false, 256, false, true).unwrap(), LpDensityV1);
+            assert!(generic_evaluation_profile(Some("lp-density-v1"), true, method, false, 256, false, true).is_err());
+            assert!(generic_evaluation_profile(Some("lp-density-v1"), false, method, true, 256, false, true).is_err());
+            assert!(generic_evaluation_profile(Some("lp-density-v1"), false, method, false, 0, false, true).is_err());
+            assert!(generic_evaluation_profile(Some("lp-density-v1"), false, method, false, 256, false, false).is_err());
+        }
+        assert!(generic_evaluation_profile(Some("lp-density-v1"), false, "rollout", false, 256, false, true).is_err());
+        assert!(generic_evaluation_profile(Some("lp-density-v1"), false, "mcts", false, 256, true, true).is_err());
+        assert!(generic_evaluation_profile(Some("unknown"), false, "mcts", false, 256, false, true).is_err());
+        // Off never initializes an engine or reads cards for profile metadata.
+        let missing = Path::new("/not/a/profile/asset");
+        assert_eq!(generic_profile_metadata(Off, &BTreeMap::new(), None, missing, missing).unwrap(), json!({"mode":"off"}));
+    }
+
+    #[test]
+    fn generic_profile_records_must_match_the_effective_deck_metadata() {
+        let weights = engine::evaluation::parse_weights(r#"{"accessible_cards":0.3,"life_buffer":4.0}"#).unwrap();
+        let described = json!({"main_cards":40,"credited_copies":11,"alpha":1.0,
+            "main_deck_fnv1a64":"0123456789abcdef","effective_weights":engine::evaluation::named_weights(&weights)});
+        let metadata = json!({"mode":"lp-density-v1","decks":{"example":described}});
+        let mut actual = described.clone();
+        actual["mode"] = json!("lp-density-v1");
+        let mut row = json!({"deck":"example","game":{"evaluation_profile":actual}});
+        assert!(generic_validate_profile_record(&row, &metadata).is_ok());
+        row["game"]["evaluation_profile"]["effective_weights"]["accessible_cards"] = json!(0.8);
+        assert!(generic_validate_profile_record(&row, &metadata).is_err());
+        assert!(generic_validate_profile_record(&json!({"deck":"example","game":{}}), &metadata).is_err());
+        assert!(generic_validate_profile_record(&json!({"deck":"missing","game":{}}), &metadata).is_err());
+        assert!(generic_validate_profile_record(&json!({"deck":"example","game":{"error":"failed"}}), &metadata).is_ok());
+        assert!(generic_validate_profile_record(&json!({}), &json!({"mode":"off"})).is_ok());
     }
 
     #[test]

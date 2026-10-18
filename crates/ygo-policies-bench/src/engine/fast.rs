@@ -10,7 +10,7 @@
 use super::search::{HiddenWorlds, Listed, Table};
 use super::*;
 use super::planner::{self, PlannedAction, PlannerOptions, PlannerResult};
-use super::evaluation::Evaluator;
+use super::evaluation::{Evaluator, EvaluationProfile};
 use super::ismcts;
 use super::public_memory::PublicIdentityMemory;
 use std::collections::VecDeque;
@@ -52,17 +52,27 @@ pub struct FastOptions {
     /// Explicit existing-feature coefficients, fixed across all branches.
     /// Only beam/MCTS search uses this evaluator; plain/rollout reject overrides.
     pub evaluation_weights: Option<[f64; 13]>,
+    /// Opt-in own-deck composition experiment, fixed before any branch.
+    pub evaluation_profile: EvaluationProfile,
 }
 
 impl FastOptions {
     fn validate_evaluation_weights(&self) -> Result<()> {
-        if let Some(weights) = &self.evaluation_weights {
+        if self.evaluation_profile != EvaluationProfile::Off && self.evaluation_weights.is_some() {
+            return Err("Evaluation profile and manual weights are mutually exclusive".into());
+        }
+        if self.evaluation_profile != EvaluationProfile::Off && !self.effects {
+            return Err("Evaluation profile requires native effect metadata (--effects true)".into());
+        }
+        if self.evaluation_weights.is_some() || self.evaluation_profile != EvaluationProfile::Off {
             if self.max_playouts == 0 || self.planner.is_none() && self.mcts.is_none() {
-                return Err("Evaluation weights require active beam or MCTS search".into());
+                return Err("Evaluation weights/profile require active beam or MCTS search".into());
             }
             if self.mcts.is_some_and(|options| options.terminal) && self.horizon == 0 {
-                return Err("Evaluation weights are unused by terminal-only MCTS proposals and validation".into());
+                return Err("Evaluation weights/profile are unused by terminal-only MCTS proposals and validation".into());
             }
+        }
+        if let Some(weights) = &self.evaluation_weights {
             super::evaluation::validate_weights(weights)?;
         }
         Ok(())
@@ -1127,10 +1137,18 @@ pub fn play_fast(
         }
         table.feed(player, &duel.start_message(player as u8))?;
     }
+    let mut evaluation_profile = None;
     let evaluator = if fast.planner.is_some() || fast.mcts.is_some() {
         let mut evaluator = Evaluator::open(cards)?;
         if let Some(weights) = fast.evaluation_weights { evaluator.set_weights(weights)?; }
         if let Some(profiles) = &profiles { evaluator.set_profiles(profiles)?; }
+        if fast.evaluation_profile == EvaluationProfile::LpDensityV1 {
+            let profile = evaluator.lp_density_profile(&decks[fast.searcher].main)?;
+            evaluator.set_weights(profile.weights)?;
+            let mut described = profile.metadata();
+            described["mode"] = serde_json::json!(fast.evaluation_profile.name());
+            evaluation_profile = Some(described);
+        }
         Some(evaluator)
     } else { None };
     let context = Context {
@@ -1248,6 +1266,9 @@ pub fn play_fast(
             }).collect());
             if let Some(recorded) = &recorded {
                 row["record"] = record_json(recorded, names);
+            }
+            if let Some(profile) = &evaluation_profile {
+                row["evaluation_profile"] = profile.clone();
             }
             return Ok(row);
         }
@@ -1370,6 +1391,7 @@ mod tests {
             effects: true, planner: None, mcts: None, mcts_worlds: 4,
             mcts_validate_roots: false, specialist_opponent: false,
             evaluation_weights: Some(super::super::evaluation::HEURISTIC_COEFFICIENTS),
+            evaluation_profile: EvaluationProfile::Off,
         };
         assert!(options.validate_evaluation_weights().is_err());
         options.mcts = Some(MctsOptions { iterations: 128, actions: 6, nodes: 1024,
@@ -1391,6 +1413,23 @@ mod tests {
         options.evaluation_weights = None;
         options.mcts = None;
         options.max_playouts = 0;
+        assert!(options.validate_evaluation_weights().is_ok());
+        options.evaluation_profile = EvaluationProfile::LpDensityV1;
+        assert!(options.validate_evaluation_weights().is_err());
+        options.max_playouts = 256;
+        options.planner = Some(PlannerOptions { width: 2, actions: 2, nodes: 8, decisions: 16, replies: 1 });
+        assert!(options.validate_evaluation_weights().is_ok());
+        options.evaluation_weights = Some(super::super::evaluation::HEURISTIC_COEFFICIENTS);
+        assert!(options.validate_evaluation_weights().is_err(), "manual/profile conflict");
+        options.evaluation_weights = None;
+        options.effects = false;
+        assert!(options.validate_evaluation_weights().is_err(), "incomplete metadata");
+        options.effects = true;
+        options.planner = None;
+        options.mcts = Some(MctsOptions { iterations: 8, actions: 2, nodes: 16,
+            decisions: 16, replies: 1, terminal: true, adversarial_opponent: false, root_warmup: false });
+        assert!(options.validate_evaluation_weights().is_err(), "terminal-only ignores profiles");
+        options.horizon = 1;
         assert!(options.validate_evaluation_weights().is_ok());
     }
 
@@ -1484,7 +1523,7 @@ mod tests {
                 effects: true, planner: None,
                 mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
                     decisions: 384, replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false }),
-                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None,
+                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
             },
             // Nonempty metadata must not be sent to the old specialist ABI.
             profiles: Some(serde_json::json!({"95492061":[]})), evaluator: None,
@@ -1646,7 +1685,7 @@ mod tests {
             effects: false,
             planner: None,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
         };
         let first = play_fast(
             &core,
@@ -1717,17 +1756,21 @@ mod tests {
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
         };
-        let play = || play_fast(
+        let play = |evaluation_profile| play_fast(
             &core, &decks, [&library, &opponent], ["generic", "blackwing"],
-            &cards, run, options,
+            &cards, run, FastOptions { evaluation_profile, ..options },
         ).unwrap();
-        let first = play();
-        let second = play();
+        let first = play(EvaluationProfile::Off);
+        let second = play(EvaluationProfile::LpDensityV1);
+        assert!(first.get("evaluation_profile").is_none());
+        assert_eq!(second["evaluation_profile"]["alpha"], 0.0);
+        assert_eq!(second["evaluation_profile"]["effective_weights"],
+            super::super::evaluation::named_weights(&super::super::evaluation::HEURISTIC_COEFFICIENTS));
         assert_eq!(first["winner"], second["winner"]);
         assert_eq!(first["digest"], second["digest"]);
         for key in ["proposal_nodes", "proposal_leaves", "proposal_improvements",
@@ -1787,18 +1830,22 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,
             }),
         };
-        let play = || play_fast(
+        let play = |evaluation_profile| play_fast(
             &core, &decks, [&opponent, &library], ["blackwing", "generic"],
-            &cards, run, options,
+            &cards, run, FastOptions { evaluation_profile, ..options },
         ).unwrap();
-        let first = play();
-        let second = play();
+        let first = play(EvaluationProfile::Off);
+        let second = play(EvaluationProfile::LpDensityV1);
+        assert!(first.get("evaluation_profile").is_none());
+        assert_eq!(second["evaluation_profile"]["alpha"], 0.0);
+        assert_eq!(second["evaluation_profile"]["effective_weights"],
+            super::super::evaluation::named_weights(&super::super::evaluation::HEURISTIC_COEFFICIENTS));
         assert_eq!(first["winner"], second["winner"]);
         assert_eq!(first["digest"], second["digest"]);
         for key in ["mcts_simulations", "mcts_completed", "mcts_nodes",
@@ -1860,7 +1907,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,

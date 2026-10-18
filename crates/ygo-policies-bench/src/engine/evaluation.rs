@@ -40,6 +40,63 @@ pub const FEATURE_NAMES: [&str; 13] = [
 /// Engine-confirmed outcomes remain outside this estimate.
 pub const HEURISTIC_COEFFICIENTS: [f64; 13] = [0.8, 0.5, 0.2, 0.45, 0.6, 0.8, 0.45, 0.6, 0.45, 2.5, 0.55, 0.7, 1.0];
 
+/// Opt-in composition experiment. The default retains the fixed evaluator.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EvaluationProfile {
+    #[default]
+    Off,
+    LpDensityV1,
+}
+
+impl EvaluationProfile {
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "off" => Ok(Self::Off),
+            "lp-density-v1" => Ok(Self::LpDensityV1),
+            _ => Err("--evaluation-profile must be off or lp-density-v1".into()),
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self { Self::Off => "off", Self::LpDensityV1 => "lp-density-v1" }
+    }
+}
+
+/// Frozen own-deck composition, calculated once before any search branch.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LpDensityProfile {
+    pub main_cards: usize,
+    pub credited_copies: usize,
+    pub alpha: f64,
+    pub weights: [f64; 13],
+    /// FNV1a64 over sorted original Main Deck codes as little-endian u32s.
+    pub main_deck_fnv1a64: u64,
+}
+
+impl LpDensityProfile {
+    pub fn metadata(&self) -> Value {
+        serde_json::json!({"main_cards": self.main_cards, "credited_copies": self.credited_copies,
+            "alpha": self.alpha, "main_deck_fnv1a64": format!("{:016x}", self.main_deck_fnv1a64),
+            "effective_weights": named_weights(&self.weights)})
+    }
+}
+
+fn lp_density_weights(credited: usize, total: usize) -> (f64, [f64; 13]) {
+    // Callers reject an empty deck. These thresholds are frozen experimental
+    // choices, not learned coefficients or an assertion about optimal play.
+    let alpha = (8.0 * credited as f64 / total as f64 - 1.0).clamp(0.0, 1.0);
+    let mut weights = HEURISTIC_COEFFICIENTS;
+    if alpha == 1.0 {
+        // Literal endpoint preserves parity with the existing manual preset.
+        weights[0] = 0.3;
+        weights[10] = 4.0;
+    } else if alpha > 0.0 {
+        weights[0] = 0.8 - 0.5 * alpha;
+        weights[10] = 0.55 + 3.45 * alpha;
+    }
+    (alpha, weights)
+}
+
 /// Parse a sparse, explicitly named benchmark override. Unspecified features
 /// retain their defaults; this never derives weights from cards or duel state.
 pub fn parse_weights(json: &str) -> Result<[f64; 13], String> {
@@ -104,6 +161,9 @@ const VOLCANIC_SCATTERSHOT: u32 = 69750546;
 pub struct Evaluator {
     cards: Arc<dyn CardDatabase>,
     profiles: Option<Arc<ProfiledCards>>,
+    // Empty descriptor arrays are valid. Track loaded keys separately so the
+    // opt-in composition experiment cannot silently use incomplete metadata.
+    profile_codes: Option<Arc<HashSet<u32>>>,
     weights: [f64; 13],
 }
 
@@ -124,7 +184,7 @@ impl Evaluator {
     }
 
     pub fn new(cards: Arc<dyn CardDatabase>) -> Self {
-        Self { cards, profiles: None, weights: HEURISTIC_COEFFICIENTS }
+        Self { cards, profiles: None, profile_codes: None, weights: HEURISTIC_COEFFICIENTS }
     }
 
     /// Explicit benchmark settings, fixed before evaluating any branch.
@@ -163,8 +223,46 @@ impl Evaluator {
         }
         // Reuse the shared exact-first/near-art alias rules. Distant aliases
         // share a printed name, not necessarily an effect implementation.
+        let mut codes: HashSet<_> = parsed.keys().copied().collect();
+        for code in parsed.keys() {
+            if let Some(data) = self.cards.card(*code) {
+                if data.alias != 0 && code.abs_diff(data.alias) < 20 { codes.insert(data.alias); }
+            }
+        }
+        self.profile_codes = Some(Arc::new(codes));
         self.profiles = Some(Arc::new(ProfiledCards::new(self.cards.clone(), parsed)));
         Ok(())
+    }
+
+    /// Profile only the original own Main Deck. Monster effects, Extra/Side
+    /// cards, current hands, opponent cards and deck names are not inputs.
+    pub fn lp_density_profile(&self, main: &[u32]) -> Result<LpDensityProfile, String> {
+        if main.is_empty() { return Err("LP density profile requires a nonempty Main Deck".into()); }
+        let profiles = self.profiles.as_ref().ok_or("LP density profile requires native effect profiles")?;
+        let loaded = self.profile_codes.as_ref().ok_or("LP density profile requires native effect profiles")?;
+        let mut credited = 0;
+        for &code in main {
+            let data = self.cards.card(code).ok_or_else(|| format!("LP density profile has unknown card {code}"))?;
+            let canonical = if data.alias != 0 && code.abs_diff(data.alias) < 20 { data.alias } else { code };
+            if !loaded.contains(&code) && !loaded.contains(&canonical) {
+                return Err(format!("LP density profile has no native definition for card {code}"));
+            }
+            if !data.is_spell() && !data.is_trap() { continue; }
+            let union = profiles.effects(code).iter()
+                .filter(|effect| effect.effect_type & kind::ACTION != 0)
+                .fold(0, |union, effect| union | effect.category);
+            let native_lp = union & category::DAMAGE != 0
+                && union & !(category::DAMAGE | category::RECOVER) == 0;
+            let known_damage = ygo_policies::generic::offers_opponent_damage_transaction(canonical);
+            credited += usize::from(native_lp || known_damage);
+        }
+        let mut sorted = main.to_vec();
+        sorted.sort_unstable();
+        let fingerprint = sorted.iter().flat_map(|code| code.to_le_bytes())
+            .fold(0xcbf29ce484222325_u64, |hash, byte| (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3));
+        let (alpha, weights) = lp_density_weights(credited, main.len());
+        Ok(LpDensityProfile { main_cards: main.len(), credited_copies: credited, alpha,
+            weights, main_deck_fnv1a64: fingerprint })
     }
 
     pub fn value(&self, observation: &Value, viewer: u8) -> f64 {
@@ -792,6 +890,135 @@ mod tests {
             cards.0.insert(code, CardData { code, attack, defense: attack, level, kind, ..Default::default() });
         }
         Evaluator::new(Arc::new(cards))
+    }
+
+    fn profile_evaluator() -> Evaluator {
+        let mut cards = MemoryCards::default();
+        for (code, card_kind) in [(1, types::SPELL), (2, types::SPELL),
+            (3, types::MONSTER), (4, types::SPELL), (5, types::TRAP),
+            (6, types::SPELL), (7, types::SPELL), (8842266, types::SPELL),
+            (8842267, types::SPELL)] {
+            cards.0.insert(code, CardData { code, kind: card_kind,
+                alias: if code == 8842267 { 8842266 } else { 0 }, ..Default::default() });
+        }
+        let mut evaluator = Evaluator::new(Arc::new(cards));
+        evaluator.set_profiles(&json!({
+            "1":[{"category":category::DAMAGE,"effect_type":kind::ACTIVATE,"range":0},
+                 {"category":category::DAMAGE,"effect_type":kind::IGNITION,"range":BACKROW}],
+            "2":[{"category":category::DAMAGE | category::DESTROY,"effect_type":kind::ACTIVATE,"range":0}],
+            "3":[{"category":category::DAMAGE,"effect_type":kind::IGNITION,"range":MONSTER}],
+            "4":[{"category":category::DAMAGE,"effect_type":2,"range":BACKROW}],
+            "5":[{"category":category::DAMAGE | category::RECOVER,"effect_type":kind::ACTIVATE,"range":0}],
+            "6":[{"category":category::DAMAGE,"effect_type":kind::ACTIVATE,"range":0},
+                 {"category":category::TO_HAND,"effect_type":kind::IGNITION,"range":GRAVE}],
+            "7":[], "8842266":[{"category":0,"effect_type":kind::ACTIVATE,"range":0}]
+        })).unwrap();
+        evaluator
+    }
+
+    #[test]
+    fn lp_density_counts_copies_once_and_qualifies_only_frozen_lp_facts() {
+        let evaluator = profile_evaluator();
+        let main = [1, 1, 2, 3, 4, 5, 6, 7, 8842266, 8842267];
+        let profile = evaluator.lp_density_profile(&main).unwrap();
+        assert_eq!((profile.main_cards, profile.credited_copies), (10, 5));
+        assert_eq!(profile.alpha, 1.0);
+        let mut reversed = main;
+        reversed.reverse();
+        assert_eq!(evaluator.lp_density_profile(&reversed).unwrap(), profile);
+        // Two descriptors on code1 still give exactly one credit per copy.
+        assert_eq!(evaluator.lp_density_profile(&[1, 7, 7, 7]).unwrap().credited_copies, 1);
+        // Initial category metadata is opaque for Poison; its existing damage
+        // option and narrow alternate-art alias are the source-backed fallback.
+        assert_eq!(evaluator.lp_density_profile(&[8842266, 8842267]).unwrap().credited_copies, 2);
+        assert_eq!(evaluator.lp_density_profile(&[2, 3, 4, 6, 7]).unwrap().credited_copies, 0);
+    }
+
+    #[test]
+    fn lp_density_frozen_thresholds_keep_exact_endpoints_and_other_coefficients() {
+        let evaluator = profile_evaluator();
+        for (count, expected_alpha) in [(0, 0.0), (5, 0.0), (6, 0.2), (8, 0.6), (10, 1.0), (16, 1.0)] {
+            let mut main = vec![7; 40];
+            main[..count].fill(1);
+            let profile = evaluator.lp_density_profile(&main).unwrap();
+            assert!((profile.alpha - expected_alpha).abs() < 1e-12);
+            for index in 0..13 {
+                if index != 0 && index != 10 {
+                    assert_eq!(profile.weights[index].to_bits(), HEURISTIC_COEFFICIENTS[index].to_bits());
+                }
+            }
+            if expected_alpha == 0.0 { assert_eq!(profile.weights.map(f64::to_bits), HEURISTIC_COEFFICIENTS.map(f64::to_bits)); }
+            if expected_alpha == 1.0 {
+                assert_eq!(profile.weights.map(f64::to_bits), parse_weights(r#"{"accessible_cards":0.3,"life_buffer":4.0}"#).unwrap().map(f64::to_bits));
+            }
+            assert_eq!(profile.metadata()["effective_weights"].as_object().unwrap().len(), 13);
+        }
+    }
+
+    #[test]
+    fn lp_density_requires_complete_definitions_and_never_mutates_scoring_itself() {
+        let mut evaluator = profile_evaluator();
+        let obs = observation(vec![card(0, "Hand", 1, 0)]);
+        let before = evaluator.value(&obs, 0).to_bits();
+        let profile = evaluator.lp_density_profile(&[1; 40]).unwrap();
+        assert_eq!(evaluator.value(&obs, 0).to_bits(), before);
+        assert!(evaluator.lp_density_profile(&[]).is_err());
+        assert!(evaluator.lp_density_profile(&[999]).is_err());
+        evaluator.set_profiles(&json!({"1":[]})).unwrap();
+        assert!(evaluator.lp_density_profile(&[7]).is_err(), "missing differs from a valid empty profile");
+        assert_eq!(evaluator.lp_density_profile(&[1]).unwrap().credited_copies, 0);
+        let mut no_profiles = Evaluator::new(evaluator.cards.clone());
+        assert!(no_profiles.lp_density_profile(&[1]).is_err());
+        no_profiles.set_weights(profile.weights).unwrap();
+        assert_eq!(no_profiles.weights[0], 0.3);
+        assert!(EvaluationProfile::parse("lp-density-v2").is_err());
+        assert_eq!(EvaluationProfile::default(), EvaluationProfile::Off);
+    }
+
+    #[test]
+    fn lp_density_profile_does_not_use_unlisted_card_definitions_or_live_state() {
+        let mut evaluator = profile_evaluator();
+        let main = [7; 40];
+        let before = evaluator.lp_density_profile(&main).unwrap();
+        let mut descriptors = serde_json::Map::new();
+        descriptors.insert("7".into(), json!([]));
+        // Extra/opponent definitions can be loaded but are not in Main Deck.
+        for code in 20..30 {
+            descriptors.insert(code.to_string(), json!([
+                {"category":category::DAMAGE,"effect_type":kind::ACTIVATE,"range":0}
+            ]));
+        }
+        evaluator.set_profiles(&Value::Object(descriptors)).unwrap();
+        assert_eq!(evaluator.lp_density_profile(&main).unwrap(), before);
+        let state = observation(vec![card(1, "Hand", 1, 0)]);
+        let plain = evaluator.value(&state, 0);
+        evaluator.set_weights(before.weights).unwrap();
+        assert_eq!(evaluator.value(&state, 0).to_bits(), plain.to_bits());
+    }
+
+    #[test]
+    #[ignore = "native public-definition audit for all71 frozen own-deck profile sentinels"]
+    fn lp_density_native_catalog_matches_frozen_profile_values() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = super::super::Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let expected: Value = serde_json::from_slice(&std::fs::read(
+            root.join("benchmarks/generic-policy-v2/deck-profile-values.json")).unwrap()).unwrap();
+        let mut changed = Vec::new();
+        for entry in ygo_policies::registry::POLICIES {
+            let deck = super::super::Deck::load(&root.join("decks").join(format!("{}.ydk", entry.deck))).unwrap();
+            let mut evaluator = Evaluator::open(&cards).unwrap();
+            evaluator.set_profiles(&core.effect_profiles(&deck.main).unwrap()).unwrap();
+            let actual = evaluator.lp_density_profile(&deck.main).unwrap();
+            let expected = &expected["profiles"][entry.id];
+            assert_eq!(actual.main_cards as u64, expected["main_cards"].as_u64().unwrap(), "{}", entry.id);
+            assert_eq!(actual.credited_copies as u64, expected["credited_copies"].as_u64().unwrap(), "{}", entry.id);
+            assert_eq!(actual.alpha, expected["alpha"].as_f64().unwrap(), "{}", entry.id);
+            assert_eq!(named_weights(&actual.weights), expected["effective_weights"], "{}", entry.id);
+            if actual.alpha > 0.0 { changed.push(entry.id); }
+        }
+        changed.sort_unstable();
+        assert_eq!(changed, ["burn", "chain-burn"]);
     }
 
     fn card(player: u8, location: &str, code: u32, attack: i32) -> Value {

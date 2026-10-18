@@ -145,6 +145,25 @@ v24 host, UCT default, explicit warmup false and unchanged weights. Quality
 counters were zero. The shared face-down banished-card guard recorded zero
 skips, so this sample does not demonstrate that guard being exercised.
 
+The [v25 Commander diagnostic](commander-v25/report.md) combines numerical-hint
+adaptation inside the candidate FFI with guarded Commander transaction logic;
+the control FFI retains its old hint behavior. On 128 fresh Psychic pairs per
+mode, plain changed 55 to 57 wins (2 gained, 0 lost; paired 95% interval −0.59
+to +3.72 points), while MCTS32 stayed at 63 (7 gained, 7 lost; −5.75 to +5.75).
+This establishes neither a search-strength gain nor the 55% target. Default
+weights and the host stayed fixed, all quality counters were zero, and the
+316 policy plus 33 adapter tests passed. Overlapping builds make timing incidental.
+
+The [v26 first-Heart diagnostic](exodia-first-heart-v26/report.md) changed only
+the Exodia Duality selection rule. On 128 fresh pairs per mode, plain stayed at
+31 wins with no discordant winners; its degenerate normal interval is not an
+equivalence result. MCTS32 changed 31 to 32 wins (1 gained, 0 lost; paired 95%
+interval −0.75 to +2.31 points). Default weights and the v25 host stayed fixed,
+all quality counters were zero, and 13 alternate-rule plus 322 policy tests
+passed. Fresh searches covered about 1.4% of candidate decisions; hidden-monster
+and active-chain guards limit coverage without establishing recoverable gains.
+Neither stronger play nor the 55% target is demonstrated.
+
 The [v14 sequencing experiment](sequence-v14/report.md) tests a separate route
 from weight tuning: Demise now accounts for its LP cost and friendly collateral,
 and uses profitable field wipes before developing more cards. Fresh paired plain

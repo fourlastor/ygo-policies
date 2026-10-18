@@ -125,6 +125,17 @@ fn transaction(code: u32, poison_heal: bool) -> Option<Transaction> {
     })
 }
 
+/// Whether the existing, source-backed LP transaction facts offer damage to
+/// the opponent. This describes a printed option, not current legality, net
+/// payoff, or an inferred deck strategy. Callers canonicalize alternate art.
+pub fn offers_opponent_damage(code: u32) -> bool {
+    transaction(code, false).is_some_and(|transaction| {
+        transaction.changes.iter().any(|change| {
+            matches!(change, Change::Damage(Recipient::Opponent, _))
+        })
+    })
+}
+
 fn exact_activation(t: &Turn, choice: &Choice) -> Option<u32> {
     let at = choice.at()?;
     let code = t.ctx.canonical(choice.code()?);
@@ -534,6 +545,16 @@ mod tests {
     use crate::agent::Memory;
     use crate::cards::{types, CardData, MemoryCards};
     use crate::model::{CardRef, ChainLink, Decision, Hint, Member, Observation, Phase, Position};
+
+    #[test]
+    fn opponent_damage_fact_describes_printed_options_without_conversion_inference() {
+        for code in [BARREL, DESSERTS, POISON, STRIKE, EXPLOSION, OOKAZI, THIEF, FIRE] {
+            assert!(offers_opponent_damage(code), "missing existing damage option {code}");
+        }
+        for code in [FORTUNE, GIFT, RAIN, UPSTART, SOUL, DIAN, NURSE, SIMOCHI, 102380, 0] {
+            assert!(!offers_opponent_damage(code), "invented damage option {code}");
+        }
+    }
 
     fn db() -> MemoryCards {
         MemoryCards(
