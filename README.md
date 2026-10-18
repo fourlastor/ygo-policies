@@ -20,6 +20,16 @@ EDOPro already filtered pass through unchanged.
 
 ## Policies
 
+The experimental `generic` policy can pilot an arbitrary deck without selecting
+one of the specialist strategies below. It is available through the normal
+registry/FFI; optional engine-hosted rollouts, transaction beam search, and
+information-set MCTS add bounded lookahead. All policy and evaluation rules are
+Rust code, with no fitted model. Card knowledge is shared across unfamiliar deck
+combinations; current additions focus on the supplied decks' 951 main/extra cards.
+It is deliberately outside the fixed deck catalog. See
+[generic policy and measured limitations](benchmarks/generic-policy-v2/README.md).
+It has not met the requested 55% mirror-win target; see the linked evaluation before using it as a replacement.
+
 | id | deck (`decks/`) | plan |
 | --- | --- | --- |
 | `blackwing` | Blackwing Assassin | Blackwing swarm, Synchro follow-ups |
@@ -53,6 +63,46 @@ EDOPro already filtered pass through unchanged.
 | `draconic-might` | Draconic Might | Red-Eyes Darkness Metal Dragon every turn, guarded by Prime Material Dragon, Jinzo and Horus LV8; Armed Dragon and Horus LV lines |
 | `countdown` | Claudi-oh's Countdown | Final Countdown behind attack locks kept by Skill Drain; one cover a turn, Cyber Valley and Shining Angel for the rest |
 | `verdict` | Claudi-oh's Verdict | Skill Drain beatdown: Beast King Barbaros and big Level 4 monsters behind the era's Traps |
+| `exodia` | Astra's Exodia | Multiple Hearts of the Underdog and Draw Phase Reloads; Normal Monsters defend while keeping all five pieces in hand |
+| `fabled` | Fabled Encore | Discard-triggered summons, Grimro searches, Ragin hand refills and Synchros |
+| `counter-fairy` | Heaven's Rebuttal | Counter Traps with Artemis draws, Sanctuary/Meltiel removal and Van'Dalgyon |
+| `macro-dd` | D.D. Border Patrol | Macro Cosmos / Dimensional Fissure, returning D.D. monsters and Monarch tributes |
+| `gusto` | Gusto's Reprisal | Gusto recruitment, Sphreez reflected battle damage and graveyard recycling |
+| `agents` | Heaven's Dispatch | Earth/Venus Fairy swarm, Hyperion removal and Kristya |
+| `scrap` | Scrap Renaissance | Scrapstorm setup, Chimera/Golem recovery, Scrap Dragon removal |
+| `zombie` | Graveyard Shift | Recruiters, Zombie Master/Mezuki revival and Plaguespreader Synchros |
+| `herald` | Herald's Veto | Herald ritual control, Fairy recovery, Kristya and Royal Decree |
+| `fish` | Tidal Assembly | Coelacanth recruitment, Oyster tokens and Fish Synchros |
+| `cyber` | Power Surge | Cyber names, Power Bond, Future Fusion and Overload finishers |
+| `gemini` | Second Bloom | Lonefire/Gigaplant, Supervise revival and Gemini Spark removal |
+| `psychic` | Mind Over Matter | Teleporter Synchros, Psychic Jumper exchanges and LP recovery |
+| `deckout` | Last Page | Needle Worm/Jar milling, Book flip cycling and battle shields |
+| `chain-burn` | Chain Reaction | Different-name draw/burn chains, Chain Strike and Accumulated Fortune |
+| `nurse` | A Bitter Cure | Resolve Nurse/Simochi before Gift Card and LP-gain burn |
+| `benkei` | A Thousand Blades | Concentrated equips, Ben Kei multiattacks and Maha Vailo backup |
+| `alien` | Visitors from Beyond | Ammonite into Gol'gar, reusable backrow and Code A revival |
+| `spirit` | Passing Spirits | Kinka revival, returning Creature Swap gifts and tribute Spirits |
+| `naturia` | The Quiet Grove | Naturia recruitment, Bamboo Shoot tributes and Synchro negation |
+| `garden` | Garden of Thorns | Plant development, Black Garden tokens and Rose Tentacles attacks |
+| `destiny-board` | The Final Sentence | Four opposing End Phases, hand shields and reserved message zones |
+| `venom` | Crown of Venom | Snake Rain, Vennominon revival and Rise into Vennominaga |
+| `batteryman` | Full Charge | Micro-Cell/Charger recruitment, AA swarms and Short Circuit |
+| `gem-knight` | Prismatic Forge | Armadillo materials, recyclable Fusion and Prismaura removal |
+| `flamvell` | Ashes to Inferno | Firedog recruitment, ordered Laval milling and Rekindling Synchros |
+| `nordic` | Road to Ragnarok | Hamster/Tanngnjostr recruitment, Thor and Valkyrie into Odin |
+| `cloudian` | Eye of the Storm | Sanctuary/Barrier defense, Fog Counters and Cloudian removal |
+| `volcanic` | Volcanic Aftershock | Shell ammunition, Scattershot wipes and Doomfire battle pressure |
+| `dark-world` | Gates Unopened | Effect discards, early Dark World bosses and Raven Synchros |
+| `worm` | Visitors Beneath | Xex/Yagan, repeated Flips and diverse Worm Zero materials |
+| `chaos` | Between Light and Dark | LIGHT/DARK trades, Chaos Sorcerer and reactive monster effects |
+| `demise` | Armageddon Hour | Demise field wipe, Doom Dozer and Megamorph finishers |
+| `amazoness` | Queens of the Wild | Village replacements, Queen protection and reflected battle damage |
+| `jurrac` | Footprints in Fire | Battle recruitment, Aeolo revival and Dinosaur Synchros |
+| `genex` | Clockwork Current | Undine setup, reusable Normal Summons and Machine Synchros |
+| `ice-barrier` | Winter Parliament | Triangle name diversity, Gantala recovery and WATER Synchros |
+| `reptilianne` | The Still Gaze | Zero-ATK control, Viper theft, Vaskii tributes and Hydra draws |
+| `iron-chain` | Rust Never Sleeps | Repairman/Coil recursion, Synchros and opportunistic milling |
+| `malefic` | Eclipse Without End | Supported 4000-ATK summons, Skill Drain and field protection |
 
 Each policy is written for its own deck list in `decks/`, and every list is
 legal under the World Championship 2011 Forbidden & Limited list.  Fifteen of them
@@ -62,7 +112,11 @@ Darkness Metal Dragon needs the card's script from ProjectIgnis' `pre-errata/`
 folder, which EDOPro loads.  `countdown` and `verdict` are the boss's decks for
 *Beat Claudi-oh*, built to rank first: one wins without attacking, the other
 by attacking ([how they were built and measured](benchmarks/claudi-oh.md)).
-[DECK-TIER-LIST.md](DECK-TIER-LIST.md) ranks every deck by measured strength.
+`exodia` adds a measured WC2011 Exodia deck ([construction and validation](benchmarks/exodia.md)).
+[DECK-TIER-LIST.md](DECK-TIER-LIST.md) records the measured 32-deck ranking.
+The four newest decks have [initial validation](benchmarks/four-new-decks.md)
+and await a full ranking refresh. [DECK-IDEAS.md](DECK-IDEAS.md) records other
+engines and play styles available in the pool for future additions.
 
 ## Layout
 
@@ -229,6 +283,9 @@ answers to them, an Infernity pilot that kept cards in its hand, and what a
 search then gave Infernity, Fortune Lady and Draconic Might.
 [Which pilots the search has been run on](benchmarks/search-status.md), and
 which are still to do.
+[The expanded roster's first optimization pass](benchmarks/new-decks-optimization.md)
+records all 39 additions, their search diagnostics and independent before/after
+comparisons, with execution limited to eight workers.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.

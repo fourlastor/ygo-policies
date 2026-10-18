@@ -1,0 +1,79 @@
+{
+  "games": 3312,
+  "failures": 0,
+  "limits": 0,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.5198471207301927,
+          0.57803144151559
+        ],
+        "games": 1120,
+        "rate": 0.5491071428571429
+      },
+      "deck": "Eclipse Without End",
+      "elo": 1535.4421052147145,
+      "policy": "malefic",
+      "reference": {
+        "ci95": [
+          0.5041669703645999,
+          0.6374482742332506
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.5721153846153846,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.4201994051874164,
+          0.4783628121214998
+        ],
+        "games": 1120,
+        "rate": 0.44910714285714287
+      },
+      "deck": "The Still Gaze",
+      "elo": 1463.2133133092161,
+      "policy": "reptilianne",
+      "reference": {
+        "ci95": [
+          0.36255172576674943,
+          0.4958330296354001
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.42788461538461536,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.36818144991857155,
+          0.42538376425395946
+        ],
+        "games": 1120,
+        "rate": 0.3964285714285714
+      },
+      "deck": "Rust Never Sleeps",
+      "elo": 1424.4436851149258,
+      "policy": "iron-chain",
+      "reference": {
+        "ci95": [
+          0.26681455098079165,
+          0.3933088619843673
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.3269230769230769,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

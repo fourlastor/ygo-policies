@@ -36,7 +36,7 @@ target/release/policy-bench round-robin \
   --policies arcana,blackwing,monarch --games 256 \
   --output small-tournament.jsonl --markdown small-ranking.md
 
-# The complete current roster (31 policies = 119,040 games at 256 per pair).
+# The complete current roster (71 policies = 636,160 games at 256 per pair).
 target/release/policy-bench round-robin \
   --policies all --games 256 --workers 6 \
   --output tournament.jsonl --markdown DECK-TIER-LIST.md
@@ -105,7 +105,7 @@ is a floor on what a better pilot of the same deck would gain.
 
 ```bash
 target/release/policy-bench search --policies monarch --opponents existing \
-  --games 64 --workers 20 --output monarch-search.jsonl
+  --games 64 --workers 8 --output monarch-search.jsonl
 ```
 
 At a decision of the searching seat the duel is snapshotted.  Every
@@ -236,6 +236,70 @@ Tests: `cargo test -p ygo-policies-bench`. The tests cover schedule uniqueness,
 seat balance, subset-stable seeds, paired uncertainty, rating orientation and
 refusal to rank failed/incomplete runs. Engine smoke tests are ordinary CLI runs;
 running `compare` with the same library twice should produce identical transcripts.
+
+## Experimental generic mirrors
+
+`policy-bench generic --policies all --baseline FROZEN_LIBRARY --games 64
+--output generic.jsonl` seats the same `generic` policy on each specialist's
+deck against that frozen specialist, alternating seats. `--plain true` disables
+search. `--method rollout|beam|mcts|staged` chooses the planner (default `rollout`).
+
+`--method staged` is the strongest measured setting: the choice of
+`policy-bench search` on these information-safe worlds.  Every alternative is
+played to the end of the duel in the same sampled worlds as the pilot's answer;
+after each of `--stages 8,24,64` (worlds) only the alternatives ahead of the
+pilot's go on, the best `--kept 2` after the first; the pilot's answer is left
+only for one ahead by a paired z of `--z 1.645` after the last stage.
+`--search-chains true` also searches inside an open chain, and
+`--resample-set-monsters true` deals the other player's unknown Set monsters
+again (from the monsters it could have Set: the engine's swap takes an
+untouched face-down monster) instead of leaving every decision taken while
+one is on the field to the pilot.  These are the defaults; `--max-candidates`
+defaults to 8 and no `--millis`, `--horizon` or `--depth` applies.  Rows count
+`resampled_set_monsters` and `undealt_roots` (roots left to the pilot because
+a Set monster could not be swapped).  See
+[the measured results](../../benchmarks/generic-policy-v3/README.md).
+`--pilot specialist` is a benchmark of the search's headroom, not a generic
+policy: the deck's own specialist, from `--library`, plays the searching seat
+and its side of every simulated game (with `--plain true`, the same specialist
+alone is the control). `--borrow KINDS` (plain play only) measures where the
+generic falls short of a deck's specialist. On the named decision kinds, or
+`Idle:ACTION` for a Main Phase decision by the specialist's action, or `all`,
+the generic plays the answer of a copy of the specialist that follows the
+duel; rows count what was borrowed. `replay --recheck true --ask NAME` tells
+where another policy, asked in the same seat, would have answered otherwise.
+The search accepts `--worlds`, `--max-candidates`, `--max-playouts`, `--horizon`,
+and a soft per-decision `--millis` budget; `--depth 1|2` applies to rollouts only.
+Beam/MCTS construct executable continuations in proposal worlds and compare
+them with unchanged generic play in independent common validation worlds.
+Their `--horizon 0` validates to terminal; nonzero uses the requested turn horizon.
+Search currently assumes known opponent deck composition. Unknown opposing
+face-down monsters still block resampling; publicly remembered ones are safe.
+Its report tests the 55% target separately for every required matchup; it does
+not turn an aggregate rate into a passing per-deck result. See the
+[algorithm, assumptions, and measured results](../../benchmarks/generic-policy-v2/README.md).
+
+The current strength-oriented development configuration is explicit and has no
+wall-clock cap; its measured search latency exceeds 200 ms:
+
+```sh
+policy-bench generic --baseline FROZEN_LIBRARY --library CANDIDATE_LIBRARY \
+  --policies all --method mcts --mcts-iterations 128 --mcts-worlds 4 \
+  --mcts-actions 8 --mcts-nodes 1024 --mcts-decisions 384 --mcts-replies 1 \
+  --mcts-terminal false --mcts-validate-roots false --worlds 4 \
+  --max-candidates 8 --max-playouts 256 --horizon 1 --millis 0 \
+  --games 16 --seed 2460000 --output generic.jsonl
+```
+
+`--mcts-validate-roots true` also compares the other measured root moves with
+their frozen continuations. It is experimental and has not shown an improvement
+over the cheaper best-only validation. `--max-playouts` counts proposal
+simulations plus validation rollouts for MCTS, while beam counts proposal
+transitions plus validation rollouts; these are not equal units of engine work.
+
+The engine is also exported as a Rust library. The `generic_decks` example loads
+two arbitrary `.ydk` files directly and never identifies a registered deck.
+The existing 71-deck catalog and specialist policies are unchanged.
 
 ## Card facts from the engine
 

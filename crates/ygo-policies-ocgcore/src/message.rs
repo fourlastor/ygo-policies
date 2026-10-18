@@ -1,7 +1,7 @@
 //! Parsed OCGCore messages: the ones the projection and the decisions use.
 //! Everything else parses as [`Message::Other`].
 
-use crate::query::{read_location, read_record, Query};
+use crate::query::{read_query, read_query_location, Query};
 use crate::wire::{error, msg, Loc, Reader, Result};
 
 /// A card offered by a selection message.
@@ -215,15 +215,13 @@ pub fn parse(message: &[u8]) -> Result<Message> {
         msg::UPDATE_DATA => {
             let player = r.u8()?;
             let location = r.u8()?;
-            let records = read_location(r.bytes(r.remaining())?)?;
-            UpdateData { player, location, cards: records.iter().map(|c| c.as_ref().map(|c| c.parse())).collect() }
+            UpdateData { player, location, cards: read_query_location(r.bytes(r.remaining())?)? }
         }
         msg::UPDATE_CARD => {
             let player = r.u8()?;
             let location = r.u8()?;
             let sequence = r.u8()?;
-            let record = read_record(r)?;
-            UpdateCard { player, location, sequence, card: record.map(|c| c.parse()) }
+            UpdateCard { player, location, sequence, card: read_query(r)? }
         }
         msg::SELECT_IDLECMD => SelectIdle(Idle {
             player: r.u8()?,
@@ -466,4 +464,121 @@ pub fn start_message(seat: u8, life_points: [u32; 2], deck: [u16; 2], extra: [u1
         out.extend_from_slice(&extra[player].to_le_bytes());
     }
     out
+}
+
+#[cfg(test)]
+mod typed_query_tests {
+    use super::*;
+    use std::io::Read;
+
+    fn legacy_update(message: &[u8]) -> Result<Message> {
+        let (&id, body) = message.split_first().ok_or_else(|| error("empty message"))?;
+        let mut r = Reader::new(body);
+        match id {
+            msg::UPDATE_DATA => {
+                let player = r.u8()?;
+                let location = r.u8()?;
+                let records = crate::query::read_location(r.bytes(r.remaining())?)?;
+                Ok(Message::UpdateData { player, location,
+                    cards: records.iter().map(|card| card.as_ref().map(|card| card.parse())).collect() })
+            }
+            msg::UPDATE_CARD => {
+                let player = r.u8()?;
+                let location = r.u8()?;
+                let sequence = r.u8()?;
+                let record = crate::query::read_record(&mut r)?;
+                Ok(Message::UpdateCard { player, location, sequence, card: record.map(|card| card.parse()) })
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn base64(text: &str) -> Vec<u8> {
+        let digit = |byte| match byte {
+            b'A'..=b'Z' => byte - b'A', b'a'..=b'z' => byte - b'a' + 26,
+            b'0'..=b'9' => byte - b'0' + 52, b'+' => 62, b'/' => 63, _ => unreachable!(),
+        };
+        let digits: Vec<_> = text.bytes().filter(|byte| *byte != b'=').map(digit).collect();
+        digits.chunks(4).flat_map(|chunk| {
+            let value = chunk.iter().fold(0u32, |value, digit| value << 6 | u32::from(*digit))
+                << (6 * (4 - chunk.len()));
+            [(value >> 16) as u8, (value >> 8) as u8, value as u8]
+                .into_iter().take(chunk.len().saturating_sub(1))
+        }).collect()
+    }
+
+    #[test]
+    fn typed_updates_match_native_recordings_and_visibility() {
+        // These existing fixtures contain the raw native query buffers saved
+        // by real duel hosts, including hidden zones and positive counters.
+        let fixtures: [&[u8]; 2] = [
+            include_bytes!("../tests/fixtures/blackwing-Blackwing_Assassin-9100.json.gz"),
+            include_bytes!("../tests/fixtures/spellcaster-Amazoness_Law-7000.json.gz"),
+        ];
+        let (mut updates, mut cards, mut positive_counters) = (0, 0, 0);
+        for fixture in fixtures {
+            let mut json = String::new();
+            flate2::read::GzDecoder::new(fixture).read_to_string(&mut json).unwrap();
+            let trace: serde_json::Value = serde_json::from_str(&json).unwrap();
+            for step in trace["steps"].as_array().unwrap() {
+                for encoded in step["messages"].as_array().unwrap() {
+                    let bytes = base64(encoded.as_str().unwrap());
+                    if !matches!(bytes[0], msg::UPDATE_DATA | msg::UPDATE_CARD) { continue; }
+                    let expected = legacy_update(&bytes).unwrap();
+                    assert_eq!(parse(&bytes).unwrap(), expected);
+                    for viewer in [None, Some(0), Some(1)] {
+                        let mut streamed = parse(&bytes).unwrap();
+                        let mut legacy = expected.clone();
+                        crate::redact::filter_update(&mut streamed, viewer).unwrap();
+                        crate::redact::filter_update(&mut legacy, viewer).unwrap();
+                        assert_eq!(streamed, legacy);
+                    }
+                    updates += 1;
+                    if let Message::UpdateData { cards: observed, .. } = expected {
+                        cards += observed.iter().flatten().count();
+                        positive_counters += observed.iter().flatten()
+                            .filter(|card| card.counters.unwrap_or(0) > 0).count();
+                        // Feed the identical native records through UPDATE_CARD
+                        // too, checking that header-relative errors/framing and
+                        // individual empty-zone records use the same decoder.
+                        let mut location = Reader::new(&bytes[3..]);
+                        let length = location.u32().unwrap() as usize;
+                        let payload = location.bytes(length).unwrap();
+                        let mut records = Reader::new(payload);
+                        for (sequence, expected) in observed.into_iter().enumerate() {
+                            let start = records.position();
+                            crate::query::read_record(&mut records).unwrap();
+                            let mut message = vec![msg::UPDATE_CARD, bytes[1], bytes[2], sequence as u8];
+                            message.extend_from_slice(&payload[start..records.position()]);
+                            let actual = parse(&message).unwrap();
+                            assert_eq!(actual, legacy_update(&message).unwrap());
+                            assert_eq!(actual, Message::UpdateCard {
+                                player: bytes[1], location: bytes[2], sequence: sequence as u8, card: expected,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        assert!(updates > 2_000, "fixture coverage: {updates}");
+        assert!(cards > 5_000, "fixture coverage: {cards}");
+        assert!(positive_counters > 0);
+    }
+
+    #[test]
+    fn typed_update_header_errors_match_legacy() {
+        let record = crate::wire::Writer::default()
+            .u16(8).u32(crate::wire::query::CODE).u32(123)
+            .u16(4).u32(crate::wire::query::END).0;
+        let mut location = vec![msg::UPDATE_DATA, 1, crate::wire::location::HAND];
+        location.extend_from_slice(&(record.len() as u32).to_le_bytes());
+        location.extend_from_slice(&record);
+        let mut card = vec![msg::UPDATE_CARD, 0, crate::wire::location::MZONE, 2];
+        card.extend_from_slice(&record);
+        for message in [location, card] {
+            for end in 0..=message.len() {
+                assert_eq!(parse(&message[..end]), legacy_update(&message[..end]), "prefix {end}");
+            }
+        }
+    }
 }

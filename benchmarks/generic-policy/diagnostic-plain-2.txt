@@ -1,0 +1,125 @@
+row 2, the game duel: generic against heroes, seed 753810286, 6 turns, won by heroes
+   generic draws Elemental HERO Ocean, Elemental HERO Ocean, Starlight Road, Mystical Space Typhoon, Elemental HERO Woodsman
+   heroes draws E - Emergency Call, Miracle Fusion, Snowman Eater, Elemental HERO Neos Alius, Polymerization
+
+== Turn 1: generic ==
+   generic (8000 LP): hand [Elemental HERO Ocean, Elemental HERO Ocean, Starlight Road, Mystical Space Typhoon, Elemental HERO Woodsman]; monsters [-]; Spells/Traps [-]
+   heroes (8000 LP): hand [E - Emergency Call, Miracle Fusion, Snowman Eater, Elemental HERO Neos Alius, Polymerization]; monsters [-]; Spells/Traps [-]
+   generic draws Fusion Gate
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Elemental HERO Woodsman
+   generic activates Fusion Gate [the Spell & Trap Zone]
+   (generic could activate Mystical Space Typhoon and does not)
+   generic activates Fusion Gate [the Spell & Trap Zone]
+   generic's Elemental HERO Ocean: the hand to the banished pile
+   generic's Elemental HERO Woodsman is used as material
+   generic Special Summons Elemental HERO Gaia
+   generic activates Elemental HERO Gaia [the Monster Zone]
+   generic activates Fusion Gate [the Spell & Trap Zone]
+   generic's Elemental HERO Ocean: the hand to the banished pile
+   generic's Elemental HERO Gaia is used as material
+   generic Special Summons Elemental HERO Gaia
+   generic activates Elemental HERO Gaia [the Monster Zone]
+   generic Sets Starlight Road
+   generic Sets Mystical Space Typhoon
+ - End Phase
+
+== Turn 2: heroes ==
+   heroes (8000 LP): hand [E - Emergency Call, Miracle Fusion, Snowman Eater, Elemental HERO Neos Alius, Polymerization]; monsters [-]; Spells/Traps [-]
+   generic (8000 LP): hand [-]; monsters [Elemental HERO Gaia (ATK)]; Spells/Traps [Mystical Space Typhoon (Set), Starlight Road (Set), Fusion Gate]
+   heroes draws King of the Swamp
+   (generic could activate Mystical Space Typhoon and does not)
+ - Standby Phase
+ - Main Phase 1
+   heroes activates E - Emergency Call [the Spell & Trap Zone]
+   heroes's Elemental HERO Stratos: the Deck to the hand
+   heroes Normal Summons Elemental HERO Stratos
+   heroes: use Elemental HERO Stratos? yes
+   heroes activates Elemental HERO Stratos [the Monster Zone]
+   heroes's Elemental HERO Neos Alius: the Deck to the hand
+   generic activates Fusion Gate [the Spell & Trap Zone]
+   heroes's Snowman Eater: the hand to the banished pile
+   heroes's Elemental HERO Neos Alius: the hand to the banished pile
+   heroes Special Summons Elemental HERO Absolute Zero
+ - Battle Phase
+   heroes's Elemental HERO Absolute Zero attacks Elemental HERO Gaia
+       generic takes 300 damage: 7700 LP
+   generic's Elemental HERO Gaia is destroyed by battle
+   heroes's Elemental HERO Stratos attacks directly
+       generic takes 1800 damage: 5900 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 3: generic ==
+   generic (5900 LP): hand [-]; monsters [-]; Spells/Traps [Mystical Space Typhoon (Set), Starlight Road (Set), Fusion Gate]
+   heroes (8000 LP): hand [King of the Swamp, Polymerization, Miracle Fusion, Elemental HERO Neos Alius]; monsters [Elemental HERO Absolute Zero (ATK), Elemental HERO Stratos (ATK)]; Spells/Traps [-]
+   generic draws Elemental HERO Voltic
+   (generic could activate Mystical Space Typhoon and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Sets Elemental HERO Voltic
+ - End Phase
+
+== Turn 4: heroes ==
+   heroes (8000 LP): hand [King of the Swamp, Polymerization, Miracle Fusion, Elemental HERO Neos Alius]; monsters [Elemental HERO Absolute Zero (ATK), Elemental HERO Stratos (ATK)]; Spells/Traps [-]
+   generic (5900 LP): hand [-]; monsters [Elemental HERO Voltic (Set)]; Spells/Traps [Mystical Space Typhoon (Set), Starlight Road (Set), Fusion Gate]
+   heroes draws Super Polymerization
+   (heroes could activate Super Polymerization and does not)
+   (generic could activate Mystical Space Typhoon and does not)
+ - Standby Phase
+ - Main Phase 1
+   heroes Normal Summons Elemental HERO Neos Alius
+ - Battle Phase
+   heroes's Elemental HERO Neos Alius attacks Elemental HERO Voltic
+   generic's Elemental HERO Voltic changes to Defense Position
+   generic's Elemental HERO Voltic is destroyed by battle
+   heroes's Elemental HERO Stratos attacks directly
+       generic takes 1800 damage: 4100 LP
+   heroes's Elemental HERO Absolute Zero attacks directly
+       generic takes 2500 damage: 1600 LP
+ - Main Phase 2
+ - End Phase
+
+== Turn 5: generic ==
+   generic (1600 LP): hand [-]; monsters [-]; Spells/Traps [Mystical Space Typhoon (Set), Starlight Road (Set), Fusion Gate]
+   heroes (8000 LP): hand [King of the Swamp, Polymerization, Miracle Fusion, Super Polymerization]; monsters [Elemental HERO Absolute Zero (ATK), Elemental HERO Neos Alius (ATK), Elemental HERO Stratos (ATK)]; Spells/Traps [-]
+   generic draws Armored Bee
+   (generic could activate Mystical Space Typhoon and does not)
+ - Standby Phase
+ - Main Phase 1
+   generic Normal Summons Armored Bee
+   generic activates Armored Bee [the Monster Zone]
+       targeting heroes's Elemental HERO Absolute Zero
+ - Battle Phase
+   generic's Armored Bee attacks Elemental HERO Absolute Zero
+       heroes takes 350 damage: 7650 LP
+   heroes's Elemental HERO Absolute Zero is destroyed by battle
+   heroes activates Elemental HERO Absolute Zero [the Graveyard]
+   generic's Armored Bee is destroyed
+ - Main Phase 2
+ - End Phase
+
+== Turn 6: heroes ==
+   heroes (7650 LP): hand [King of the Swamp, Polymerization, Miracle Fusion, Super Polymerization]; monsters [Elemental HERO Neos Alius (ATK), Elemental HERO Stratos (ATK)]; Spells/Traps [-]
+   generic (1600 LP): hand [-]; monsters [-]; Spells/Traps [Mystical Space Typhoon (Set), Starlight Road (Set), Fusion Gate]
+   heroes draws Miracle Fusion
+   (heroes could activate Super Polymerization and does not)
+   (generic could activate Mystical Space Typhoon and does not)
+ - Standby Phase
+ - Main Phase 1
+   heroes Normal Summons Elemental HERO Neos Alius
+ - Battle Phase
+   heroes's Elemental HERO Stratos attacks directly
+       generic takes 1800 damage: -200 LP
+
+heroes wins: Life Points.
+
+Cards when each turn ends (hand / Set / face-up Spells and Traps / monsters / LP):
+ turn  generic                      heroes
+    1  0 / 2 / 1 / 1 / 8000         5 / 0 / 0 / 0 / 8000
+    2  0 / 2 / 1 / 0 / 5900         4 / 0 / 0 / 2 / 8000
+    3  0 / 2 / 1 / 1 / 5900         4 / 0 / 0 / 2 / 8000
+    4  0 / 2 / 1 / 0 / 1600         4 / 0 / 0 / 3 / 8000
+    5  0 / 2 / 1 / 0 / 1600         4 / 0 / 0 / 2 / 7650
+    6  0 / 2 / 1 / 0 / -200         5 / 0 / 0 / 2 / 7650

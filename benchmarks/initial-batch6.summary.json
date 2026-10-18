@@ -1,0 +1,103 @@
+{
+  "games": 3424,
+  "failures": 0,
+  "limits": 0,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.4579901093447547,
+          0.5239070993858594
+        ],
+        "games": 880,
+        "rate": 0.4909090909090909
+      },
+      "deck": "Prismatic Forge",
+      "elo": 1495.8355792673854,
+      "policy": "gem-knight",
+      "reference": {
+        "ci95": [
+          0.334899025374004,
+          0.4668396321890054
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.39903846153846156,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.42528962179043833,
+          0.4909849685886522
+        ],
+        "games": 880,
+        "rate": 0.45795454545454545
+      },
+      "deck": "Full Charge",
+      "elo": 1471.9865262320602,
+      "policy": "batteryman",
+      "reference": {
+        "ci95": [
+          0.37646360148363367,
+          0.510244202838086
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.4423076923076923,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.40057843304237895,
+          0.4659134813459006
+        ],
+        "games": 880,
+        "rate": 0.4329545454545455
+      },
+      "deck": "The Final Sentence",
+      "elo": 1453.729099496032,
+      "policy": "destiny-board",
+      "reference": {
+        "ci95": [
+          0.3257330750324003,
+          0.4571235499175624
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.3894230769230769,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.1353515432907173,
+          0.183530935198641
+        ],
+        "games": 880,
+        "rate": 0.15795454545454546
+      },
+      "deck": "Crown of Venom",
+      "elo": 1212.752931858438,
+      "policy": "venom",
+      "reference": {
+        "ci95": [
+          0.07089107578955164,
+          0.15494558707553246
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.10576923076923077,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

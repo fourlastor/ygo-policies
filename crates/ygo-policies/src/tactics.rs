@@ -105,24 +105,32 @@ pub fn extra_deck_summon<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize>
     let mut allowed = Vec::new();
     for i in options {
         let choice = t.choice(i);
-        match s.special_summon(t, choice) {
-            Some(false) => continue,
-            Some(true) => allowed.push(i),
+        let permission = s.special_summon(t, choice);
+        if permission == Some(false) { continue; }
+        let score = match s.extra_summon_score(t, choice) {
+            Some(None) => continue,
+            Some(Some(score)) => Some(score),
             None => {
-                if ctx.main1() && ctx.monsters(ctx.opp).is_empty() {
+                if permission != Some(true) && ctx.main1() && ctx.monsters(ctx.opp).is_empty() {
                     // Open field: several direct attackers beat one big one.
                     let attack: i32 = ctx.monsters(ctx.me).iter().filter(|c| ctx.can_attack(c)).map(|c| c.attack).sum();
                     if attack >= ctx.data(choice.code().unwrap_or(0)).attack {
                         continue;
                     }
                 }
-                allowed.push(i);
+                None
             }
-        }
+        };
+        allowed.push((i, score));
     }
     allowed
         .into_iter()
-        .max_by_key(|i| value(s, &ctx, t.choice(*i).code(), None))
+        .map(|(index, score)| (index, score.unwrap_or_else(|| {
+            value(s, &ctx, t.choice(index).code(), None) as f64
+        })))
+        // Like max_by_key, max_by retains the last equally ranked option.
+        .max_by(|(_, left), (_, right)| left.total_cmp(right))
+        .map(|(index, _)| index)
 }
 
 pub fn reposition<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
@@ -178,9 +186,9 @@ pub fn set_spell_trap<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
 /// destroy, monsters that take their attacker with them, Damage Step ATK
 /// changes, monsters that switch position when attacked.
 pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick: i32) -> Outcome {
-    let striking = ctx.facts(attacker).striking;
     if !target.position.face_up && !target.known() {
         // Unknown face-down monster: only strong attackers risk it.
+        let striking = ctx.facts(attacker).striking;
         let atk = attacker.attack + striking.bonus;
         if atk >= 1900 {
             return Outcome::Win { trick: false };
@@ -191,6 +199,20 @@ pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick:
         return Outcome::Lose;
     }
     let met = ctx.attack_meets(Some(attacker), target);
+    default_outcome_with_meets(ctx, attacker, target, trick, met)
+}
+
+/// Resolve a known target with explicitly supplied battle facts. Exact
+/// transaction forecasts can remove a hypothetical stat-change prior before
+/// comparing the actual offered change, without losing shared battle rules.
+pub(crate) fn default_outcome_with_meets(
+    ctx: &Ctx,
+    attacker: &CardView,
+    target: &CardView,
+    trick: i32,
+    met: crate::ctx::Meets,
+) -> Outcome {
+    let striking = ctx.facts(attacker).striking;
     let removes = ctx.strike_removes(attacker, target);
     // No battle: one of the two is gone before damage calculation.
     if met.facts.attacker != Fate::Unharmed && met.facts.before_damage {
@@ -256,7 +278,7 @@ fn attack_burn(ctx: &Ctx, attacker: &CardView, target: &CardView) -> i32 {
         Burn::Fixed(n) => n,
         Burn::AttackerAtk => atk,
         Burn::Reflected => {
-            if met.defending { 0 } else { (atk - met.stat).max(0) }
+            if met.defending && !ctx.facts(attacker).striking.piercing { 0 } else { (atk - met.stat).max(0) }
         }
     }
 }
@@ -470,4 +492,94 @@ fn breaks_shield(ctx: &Ctx, attacker: &CardView, target: &CardView, attackers: &
     };
     let left = (met.facts.survives as u32).saturating_sub(target.battles) as usize;
     beats(attacker) && attackers.iter().filter(|(_, a)| a.at != attacker.at && beats(a)).count() >= left
+}
+
+#[cfg(test)]
+mod extra_summon_tests {
+    use super::*;
+    use crate::agent::Memory;
+    use crate::cards::{CardData, MemoryCards};
+    use crate::model::{Choice, Decision, DecisionKind, Hint, Member, Observation, Phase, Position};
+
+    #[derive(Default)]
+    struct Rules {
+        code: u32,
+        permission: Option<bool>,
+        score: Option<Option<f64>>,
+    }
+    impl Strategy for Rules {
+        fn special_summon(&self, _: &Turn, choice: &Choice) -> Option<bool> {
+            if choice.code() == Some(self.code) { self.permission } else { None }
+        }
+        fn extra_summon_score(&self, _: &Turn, choice: &Choice) -> Option<Option<f64>> {
+            if choice.code() == Some(self.code) { self.score } else { None }
+        }
+    }
+
+    fn fixture(open_field: bool, available_attack: i32) -> (Observation, MemoryCards, Decision) {
+        let body = |controller, attack| CardView {
+            at: CardRef { controller, location: Location::MonsterZone, sequence: 0 },
+            code: Some(900008103 + u32::from(controller)), position: Position::FACE_UP_ATTACK,
+            attack, defense: 0, level: 4, can_attack: true, battles: 0, counters: 0, coin_effect: None,
+        };
+        let mut cards = vec![body(0, available_attack)];
+        if !open_field { cards.push(body(1, 1000)); }
+        let obs = Observation { me: 0, turn: 2, turn_player: Some(0), phase: Some(Phase::Main1),
+            life_points: [8000; 2], cards, pile_sizes: vec![], chain: vec![],
+            battle_attacker: None, battle_target: None, event_cards: vec![], summon_used: true,
+            chain_known: true, can_attack_known: true, coin_toss: None };
+        let database = MemoryCards([(900008100, 2000), (900008101, 3000), (900008102, 3000)]
+            .into_iter().map(|(code, attack)| (code, CardData { code, attack,
+                kind: types::MONSTER | types::SYNCHRO, ..CardData::default() })).collect());
+        let choices = (0..3).map(|sequence| Choice { kind: ChoiceKind::SpecialSummon,
+            card: Some(Member { at: CardRef { controller: 0, location: Location::Extra, sequence },
+                code: Some(900008100 + sequence), value: 0, required: false }),
+            members: vec![], description: 0, place: None }).collect();
+        let prompt = Decision { kind: DecisionKind::Idle, hint: Hint::None, minimum: 0,
+            maximum: 0, selected: vec![], subject: None, choices };
+        (obs, database, prompt)
+    }
+
+    #[test]
+    fn default_extra_ranking_keeps_open_field_permissions_and_last_equal_choice() {
+        for (open_field, attack, rules, expected) in [
+            (true, 1000, Rules::default(), Some(2)),
+            (true, 4000, Rules::default(), None),
+            (false, 4000, Rules::default(), Some(2)),
+            (true, 4000, Rules { code: 900008100, permission: Some(true), score: None }, Some(0)),
+            (false, 4000, Rules { code: 900008102, permission: Some(false), score: None }, Some(1)),
+        ] {
+            let (obs, database, prompt) = fixture(open_field, attack);
+            let mut memory = Memory::default();
+            let turn = Turn { ctx: Ctx::new(&obs, &database), decision: &prompt, memory: &mut memory };
+            assert_eq!(extra_deck_summon(&rules, &turn), expected);
+        }
+    }
+
+    #[test]
+    fn explicit_extra_score_owns_ranking_and_timing_but_not_an_existing_veto() {
+        for (open_field, rules, expected) in [
+            (false, Rules { code: 900008100, permission: None, score: Some(Some(4000.0)) }, Some(0)),
+            (true, Rules { code: 900008100, permission: None, score: Some(Some(4000.0)) }, Some(0)),
+            (false, Rules { code: 900008102, permission: Some(true), score: Some(None) }, Some(1)),
+            (true, Rules { code: 900008100, permission: Some(false), score: Some(Some(4000.0)) }, None),
+        ] {
+            let (obs, database, prompt) = fixture(open_field, 4000);
+            let mut memory = Memory::default();
+            let turn = Turn { ctx: Ctx::new(&obs, &database), decision: &prompt, memory: &mut memory };
+            assert_eq!(extra_deck_summon(&rules, &turn), expected);
+        }
+    }
+
+    #[test]
+    fn explicit_extra_score_does_not_bypass_the_action_loop_guard() {
+        let (obs, database, mut prompt) = fixture(true, 4000);
+        prompt.choices.truncate(1);
+        let rules = Rules { code: 900008100, permission: None, score: Some(Some(4000.0)) };
+        let mut memory = Memory::default();
+        let mut turn = Turn { ctx: Ctx::new(&obs, &database), decision: &prompt, memory: &mut memory };
+        assert_eq!(extra_deck_summon(&rules, &turn), Some(0));
+        for _ in 0..3 { turn.pick(0); }
+        assert_eq!(extra_deck_summon(&rules, &turn), None);
+    }
 }

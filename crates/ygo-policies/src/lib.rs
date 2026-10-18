@@ -14,6 +14,7 @@ pub mod agent;
 pub mod cards;
 pub mod ctx;
 pub mod decks;
+pub mod generic;
 pub mod knowledge;
 pub mod model;
 pub mod staples;
@@ -35,8 +36,15 @@ pub mod registry {
     struct Forkable<P>(P);
 
     impl<P: Policy + Clone + 'static> Policy for Forkable<P> {
+        fn set_effect_profiles(&mut self, profiles: crate::cards::EffectProfiles) -> bool {
+            self.0.set_effect_profiles(profiles)
+        }
         fn choose(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision) -> usize {
             self.0.choose(obs, decision)
+        }
+
+        fn commit_choice(&mut self, obs: &crate::model::Observation, decision: &crate::model::Decision, index: usize) -> bool {
+            self.0.commit_choice(obs, decision, index)
         }
 
         fn fork(&self) -> Option<Box<dyn Policy>> {
@@ -94,11 +102,63 @@ pub mod registry {
         entry!("draconic-might", draconic_might::DraconicMight),
         entry!("countdown", countdown::Countdown),
         entry!("verdict", verdict::Verdict),
+        entry!("exodia", exodia::Exodia),
+        entry!("fabled", fabled::Fabled),
+        entry!("counter-fairy", counter_fairy::CounterFairy),
+        entry!("macro-dd", macro_dd::MacroDd),
+        entry!("gusto", gusto::Gusto),
+        entry!("agents", agents::Agents),
+        entry!("scrap", scrap::Scrap),
+        entry!("zombie", zombie::Zombie),
+        entry!("herald", herald::Herald),
+        entry!("fish", fish::Fish),
+        entry!("cyber", cyber::Cyber),
+        entry!("gemini", gemini::Gemini),
+        entry!("psychic", psychic::Psychic),
+        entry!("deckout", deckout::Deckout),
+        entry!("chain-burn", chain_burn::ChainBurn),
+        entry!("nurse", nurse::Nurse),
+        entry!("benkei", benkei::Benkei),
+        entry!("alien", alien::Alien),
+        entry!("spirit", spirit::Spirit),
+        entry!("naturia", naturia::Naturia),
+        entry!("garden", garden::Garden),
+        entry!("destiny-board", destiny_board::DestinyBoard),
+        entry!("venom", venom::Venom),
+        entry!("batteryman", batteryman::Batteryman),
+        entry!("gem-knight", gem_knight::GemKnight),
+        entry!("flamvell", flamvell::Flamvell),
+        entry!("nordic", nordic::Nordic),
+        entry!("cloudian", cloudian::Cloudian),
+        entry!("volcanic", volcanic::Volcanic),
+        entry!("dark-world", dark_world::DarkWorld),
+        entry!("worm", worm::Worm),
+        entry!("chaos", chaos::Chaos),
+        entry!("demise", demise::Demise),
+        entry!("amazoness", amazoness::Amazoness),
+        entry!("jurrac", jurrac::Jurrac),
+        entry!("genex", genex::Genex),
+        entry!("ice-barrier", ice_barrier::IceBarrier),
+        entry!("reptilianne", reptilianne::Reptilianne),
+        entry!("iron-chain", iron_chain::IronChain),
+        entry!("malefic", malefic::Malefic),
     ];
 
     pub fn find(id: &str) -> Option<&'static Entry> {
-        POLICIES.iter().find(|e| e.id == id)
+        if id == "generic" {
+            Some(&GENERIC)
+        } else {
+            POLICIES.iter().find(|e| e.id == id)
+        }
     }
+
+    /// This policy takes any supplied deck; it does not add a deck to the
+    /// specialist round-robin roster.
+    pub const GENERIC: Entry = Entry {
+        id: "generic",
+        deck: "",
+        build: |db, seed| Box::new(Forkable(Agent::seeded(crate::generic::Generic, db, seed))),
+    };
 
     pub fn create(id: &str, db: Arc<dyn CardDatabase>) -> Option<Box<dyn Policy>> {
         create_seeded(id, db, 0)

@@ -1,0 +1,103 @@
+{
+  "games": 3936,
+  "failures": 0,
+  "limits": 0,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.6835905723621506,
+          0.7394005361275576
+        ],
+        "games": 1008,
+        "rate": 0.7123015873015873
+      },
+      "deck": "Between Light and Dark",
+      "elo": 1668.4286478715474,
+      "policy": "chaos",
+      "reference": {
+        "ci95": [
+          0.6365556244237204,
+          0.759967060450261
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.7019230769230769,
+        "required_opponents": 13
+      },
+      "tier": "strong"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5267166801049152,
+          0.5879257698595852
+        ],
+        "games": 1008,
+        "rate": 0.5575396825396826
+      },
+      "deck": "Gates Unopened",
+      "elo": 1543.8288584890884,
+      "policy": "dark-world",
+      "reference": {
+        "ci95": [
+          0.5041669703645999,
+          0.6374482742332506
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.5721153846153846,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5068341975772634,
+          0.5682763730891334
+        ],
+        "games": 1008,
+        "rate": 0.5376984126984127
+      },
+      "deck": "Armageddon Hour",
+      "elo": 1528.7620517732105,
+      "policy": "demise",
+      "reference": {
+        "ci95": [
+          0.38111339138921496,
+          0.5150354292390281
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.44711538461538464,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.3553730306504427,
+          0.4153420694205565
+        ],
+        "games": 1008,
+        "rate": 0.38492063492063494
+      },
+      "deck": "Visitors Beneath",
+      "elo": 1412.053933167813,
+      "policy": "worm",
+      "reference": {
+        "ci95": [
+          0.2938620627293385,
+          0.42290744807496067
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.3557692307692308,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

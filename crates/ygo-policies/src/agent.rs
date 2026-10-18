@@ -18,6 +18,20 @@ pub trait Policy: Send {
     /// Return an index into `decision.choices`.
     fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize;
 
+    /// Attach public, printed effect descriptors before play. These describe
+    /// card definitions, never a hidden hand or live activation conditions.
+    fn set_effect_profiles(&mut self, _profiles: crate::cards::EffectProfiles) -> bool {
+        false
+    }
+
+    /// Commit an externally chosen legal action on the state from immediately
+    /// before `choose`. Search must restore that state first: applying this to
+    /// the already chosen policy would retain the discarded action's memory.
+    /// Return false when this policy cannot support external choices.
+    fn commit_choice(&mut self, _obs: &Observation, _decision: &Decision, _index: usize) -> bool {
+        false
+    }
+
     /// An independent copy, including memory and random state, when supported.
     fn fork(&self) -> Option<Box<dyn Policy>> {
         None
@@ -71,6 +85,18 @@ impl TieBreak {
     }
 }
 
+/// The observed destination and actual picks in a Fusion material transaction.
+#[derive(Clone, Debug)]
+pub struct FusionSelection {
+    /// The actual own Extra Deck Fusion card selected by a preceding prompt.
+    pub destination: u32,
+    /// Activation which led to that selection, if the policy observed it.
+    pub source: Option<u32>,
+    /// Selected identities may disappear from later SelectUnselect choices;
+    /// remember only members which were present in an actual chosen answer.
+    pub selected: Vec<Member>,
+}
+
 /// Per-agent memory that survives between prompts.
 #[derive(Clone, Default, Debug)]
 pub struct Memory {
@@ -82,12 +108,69 @@ pub struct Memory {
     pub last_activated: Option<u32>,
     /// Passcodes of the card effects we activated this turn, in order.
     pub activated: Vec<u32>,
+    /// Passive transaction context. Ordinary policies need not consume it.
+    pub fusion_selection: Option<FusionSelection>,
     picks: HashMap<(ChoiceKind, Option<u32>, Option<CardRef>), u32>,
     turn: u32,
     /// Board signature when we last responded in a chain, for engines that do
     /// not expose the chain: an unchanged board means it is still building.
     chain_mark: Option<u64>,
     pub ties: TieBreak,
+}
+
+impl Memory {
+    fn prepare_fusion_selection(&mut self, observation: &Observation, decision: &Decision) {
+        let selection = matches!(decision.kind, DecisionKind::SelectCards | DecisionKind::SelectToggle | DecisionKind::SelectSum);
+        if selection && decision.hint == Hint::FusionMaterial {
+            if let Some(fusion) = &mut self.fusion_selection {
+                // Native SelectUnselect reports the authoritative selected
+                // references, including removals and any rejected prior pick.
+                fusion.selected.retain(|member| decision.selected.contains(&member.at));
+            }
+        } else if !(selection && matches!(decision.hint, Hint::Confirm | Hint::SpecialSummon)
+            || decision.kind == DecisionKind::Option)
+        {
+            self.fusion_selection = None;
+        }
+        if observation.turn != self.turn { self.fusion_selection = None; }
+    }
+
+    fn record_fusion_choice(&mut self, ctx: &Ctx, decision: &Decision, choice: &Choice) {
+        if choice.kind == ChoiceKind::Cancel {
+            self.fusion_selection = None;
+            return;
+        }
+        if decision.hint == Hint::FusionMaterial {
+            if choice.kind == ChoiceKind::Finish {
+                self.fusion_selection = None;
+            } else if let Some(fusion) = &mut self.fusion_selection {
+                match choice.kind {
+                    ChoiceKind::Toggle => if let Some(member) = choice.card {
+                        if decision.selected.contains(&member.at) {
+                            fusion.selected.retain(|selected| selected.at != member.at);
+                        } else if !fusion.selected.iter().any(|selected| selected.at == member.at) {
+                            fusion.selected.push(member);
+                        }
+                    },
+                    ChoiceKind::Cards => fusion.selected = choice.members.clone(),
+                    _ => {},
+                }
+            }
+            return;
+        }
+        if !matches!(decision.kind, DecisionKind::SelectCards | DecisionKind::SelectToggle)
+            || !matches!(decision.hint, Hint::Confirm | Hint::SpecialSummon)
+        { return; }
+        let mut chosen: Vec<Member> = choice.card.iter().chain(&choice.members).copied().collect();
+        chosen.sort_by_key(|member| (member.at.controller, member.at.location as u8, member.at.sequence));
+        chosen.dedup_by_key(|member| member.at);
+        self.fusion_selection = if let [member] = chosen.as_slice() {
+            member.code.filter(|&code| member.at.controller == ctx.me && member.at.location == Location::Extra
+                && ctx.data(code).is(crate::cards::types::FUSION)).map(|destination| FusionSelection {
+                    destination: ctx.canonical(destination), source: self.last_activated.map(|code| ctx.canonical(code)), selected: Vec::new(),
+                })
+        } else { None };
+    }
 }
 
 /// A chain response: how much we want it, and what its targets should be.
@@ -284,6 +367,13 @@ pub trait Strategy: Send {
     fn special_summon(&self, t: &Turn, choice: &Choice) -> Option<bool> {
         None
     }
+    /// Contextual Extra Deck summon score in the same units as `value`.
+    /// `None` preserves the shared timing and ranking; `Some(None)` declines
+    /// this summon. An explicit score also owns the open-field attack trade,
+    /// but cannot override `special_summon` returning `Some(false)`.
+    fn extra_summon_score(&self, t: &Turn, choice: &Choice) -> Option<Option<f64>> {
+        None
+    }
     /// Veto a position change whose triggered effect makes it undesirable.
     fn allow_reposition(&self, t: &Turn, card: &CardView) -> bool {
         true
@@ -304,8 +394,18 @@ pub trait Strategy: Send {
     fn chain(&mut self, t: &Turn, index: usize) -> Option<Response> {
         None
     }
+    /// An engine-gated effect whose legal repetitions exceed the loop guard.
+    /// The policy must still reject activations that do not make progress.
+    fn allow_repeated_chain(&self, t: &Turn, index: usize) -> bool {
+        false
+    }
     fn select(&self, t: &Turn, member: &Member) -> Option<f64> {
         None
+    }
+    /// Opt into positive-value optional picks after a native cost selection's
+    /// minimum is met. Existing policies retain the conservative minimum.
+    fn continue_optional_selection(&self, t: &Turn) -> bool {
+        false
     }
     fn yes_no(&self, t: &Turn) -> Option<bool> {
         None
@@ -318,6 +418,10 @@ pub trait Strategy: Send {
         None
     }
     fn option(&self, t: &Turn) -> Option<usize> {
+        None
+    }
+    /// Choose a value from an engine-provided announcement prompt.
+    fn announce(&self, t: &Turn) -> Option<usize> {
         None
     }
 }
@@ -338,43 +442,75 @@ impl<S: Strategy> Agent<S> {
     pub fn seeded(strategy: S, db: Arc<dyn CardDatabase>, seed: u64) -> Self {
         Agent { strategy, db, memory: Memory { ties: TieBreak::new(seed), ..Memory::default() } }
     }
-}
 
-impl<S: Strategy> Policy for Agent<S> {
-    fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize {
-        if decision.choices.is_empty() {
-            return 0;
-        }
+    fn prepare_choice(&mut self, obs: &Observation, decision: &Decision) {
+        self.memory.prepare_fusion_selection(obs, decision);
         if obs.turn != self.memory.turn {
             self.memory.turn = obs.turn;
             self.memory.picks.clear();
             self.memory.activated.clear();
         }
+        if matches!(decision.kind, DecisionKind::Idle | DecisionKind::Battle) {
+            self.memory.intent.clear();
+            self.memory.chain_mark = None;
+        }
+    }
+}
+
+impl<S: Strategy> Policy for Agent<S> {
+    fn set_effect_profiles(&mut self, profiles: crate::cards::EffectProfiles) -> bool {
+        self.db = Arc::new(crate::cards::ProfiledCards::new(self.db.clone(), profiles));
+        true
+    }
+
+    fn choose(&mut self, obs: &Observation, decision: &Decision) -> usize {
+        if decision.choices.is_empty() {
+            return 0;
+        }
+        self.prepare_choice(obs, decision);
         let db = self.db.clone();
         let mut t = Turn { ctx: Ctx::new(obs, db.as_ref()), decision, memory: &mut self.memory };
         let s = &mut self.strategy;
         let answer = match decision.kind {
-            DecisionKind::Idle => {
-                t.memory.intent.clear();
-                t.memory.chain_mark = None;
-                idle(s, &mut t)
-            }
-            DecisionKind::Battle => {
-                t.memory.intent.clear();
-                t.memory.chain_mark = None;
-                battle(s, &mut t)
-            }
+            DecisionKind::Idle => idle(s, &mut t),
+            DecisionKind::Battle => battle(s, &mut t),
             DecisionKind::Chain { .. } => chain(s, &mut t),
             DecisionKind::YesNo => yes_no(s, &mut t),
             DecisionKind::Position => position(s, &t),
             DecisionKind::SelectCards | DecisionKind::SelectSum => select(s, &t),
             DecisionKind::SelectToggle => toggle(s, &t),
             DecisionKind::Option => s.option(&t),
+            DecisionKind::Announce => s.announce(&t),
             // No card depends on zones: any zone, at random.
             DecisionKind::Place => Some(t.memory.ties.index(decision.choices.len())),
             _ => None,
         };
-        answer.filter(|i| *i < decision.choices.len()).unwrap_or(0)
+        let answer = answer.filter(|i| *i < decision.choices.len()).unwrap_or(0);
+        t.memory.record_fusion_choice(&t.ctx, decision, &decision.choices[answer]);
+        answer
+    }
+
+    fn commit_choice(&mut self, obs: &Observation, decision: &Decision, index: usize) -> bool {
+        let Some(choice) = decision.choices.get(index) else { return false };
+        self.prepare_choice(obs, decision);
+        let mut t = Turn { ctx: Ctx::new(obs, self.db.as_ref()), decision, memory: &mut self.memory };
+        // The previous action's targets cannot be reused for a different
+        // activation or attack. Follow-up selections can score the new targets.
+        if matches!(choice.kind, ChoiceKind::Activate | ChoiceKind::Attack) {
+            t.memory.intent.clear();
+        }
+        if choice.kind == ChoiceKind::Yes && choice.card.is_some() {
+            t.memory.intent.clear();
+            if let Some(code) = decision.subject.or_else(|| choice.code()) {
+                t.memory.last_activated = Some(code);
+                t.memory.activated.push(code);
+            }
+        }
+        if matches!(decision.kind, DecisionKind::Idle | DecisionKind::Battle | DecisionKind::Chain { .. }) {
+            t.pick(index);
+        }
+        t.memory.record_fusion_choice(&t.ctx, decision, choice);
+        true
     }
 }
 
@@ -522,7 +658,7 @@ fn chain<S: Strategy>(s: &mut S, t: &mut Turn) -> Option<usize> {
     let own_top = t.own_top();
     let mut best: Option<(f64, usize, Vec<CardRef>)> = None;
     for (i, choice) in t.choices() {
-        if choice.kind != ChoiceKind::Activate || !t.fresh(i) {
+        if choice.kind != ChoiceKind::Activate || (!t.fresh(i) && !s.allow_repeated_chain(t, i)) {
             continue;
         }
         // The plan passed on our monsters' Ignition effects; resolving them
@@ -695,10 +831,189 @@ fn toggle<S: Strategy>(s: &S, t: &Turn) -> Option<usize> {
         .collect();
     let enough = t.decision.selected.len() as u32 >= t.decision.minimum;
     let best = t.memory.ties.best(scored.iter().copied());
-    if finish.is_some() && enough && (t.decision.hint.is_cost() || best.map_or(true, |b| b.0 < 0.0)) {
+    if finish.is_some() && enough && ((t.decision.hint.is_cost() && !s.continue_optional_selection(t)) || best.map_or(true, |b| b.0 < 0.0)) {
         return finish;
     }
     best.map(|b| b.1)
         .or(finish)
         .or_else(|| t.choices().find(|(_, c)| c.kind == ChoiceKind::Cancel).map(|(i, _)| i))
+}
+
+#[cfg(test)]
+mod commit_tests {
+    use super::*;
+    use crate::cards::MemoryCards;
+
+    #[derive(Clone, Default)]
+    struct Planner { calls: usize }
+
+    impl Strategy for Planner {
+        fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
+            self.calls += 1;
+            t.pick_targeting(0, vec![CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 }])
+        }
+    }
+
+    fn observation() -> Observation {
+        Observation {
+            me: 0, turn: 1, turn_player: Some(0), phase: Some(Phase::Main1),
+            life_points: [8000, 8000], cards: Vec::new(), pile_sizes: Vec::new(),
+            chain: Vec::new(), battle_attacker: None, battle_target: None,
+            event_cards: Vec::new(), summon_used: false, chain_known: true,
+            can_attack_known: true, coin_toss: None,
+        }
+    }
+
+    fn choice(kind: ChoiceKind, code: u32) -> Choice {
+        Choice {
+            kind, card: Some(Member {
+                at: CardRef { controller: 0, location: Location::Hand, sequence: code },
+                code: Some(code), value: 0, required: false,
+            }), members: Vec::new(), description: 0, place: None,
+        }
+    }
+
+    fn decision(kind: DecisionKind, choices: Vec<Choice>) -> Decision {
+        Decision { kind, hint: Hint::None, minimum: 0, maximum: 0,
+            selected: Vec::new(), subject: None, choices }
+    }
+
+    #[test]
+    fn alternate_activation_commits_its_own_memory_from_prior_state() {
+        let obs = observation();
+        let decision = decision(DecisionKind::Idle, vec![
+            choice(ChoiceKind::Activate, 10), choice(ChoiceKind::Activate, 20),
+        ]);
+        let mut original = Agent::new(Planner::default(), Arc::new(MemoryCards::default()));
+        let mut alternate = original.clone();
+        assert_eq!(original.choose(&obs, &decision), 0);
+        assert_eq!(original.strategy.calls, 1);
+        assert_eq!(original.memory.last_activated, Some(10));
+        assert_eq!(original.memory.intent.len(), 1);
+
+        assert!(alternate.commit_choice(&obs, &decision, 1));
+        assert_eq!(alternate.strategy.calls, 0);
+        assert_eq!(alternate.memory.last_activated, Some(20));
+        assert_eq!(alternate.memory.activated, vec![20]);
+        assert!(alternate.memory.intent.is_empty());
+        assert_eq!(alternate.memory.picks.get(&Turn::pick_key(&decision.choices[1])), Some(&1));
+        assert!(!alternate.memory.picks.contains_key(&Turn::pick_key(&decision.choices[0])));
+    }
+
+    #[test]
+    fn alternate_no_does_not_record_the_declined_activation() {
+        let obs = observation();
+        let mut decision = decision(DecisionKind::YesNo, vec![
+            choice(ChoiceKind::Yes, 20), choice(ChoiceKind::No, 20),
+        ]);
+        decision.subject = Some(20);
+        let mut original = Agent::new(Planner::default(), Arc::new(MemoryCards::default()));
+        original.memory.turn = obs.turn;
+        original.memory.last_activated = Some(10);
+        original.memory.activated = vec![10];
+        let mut alternate = original.clone();
+        assert_eq!(original.choose(&obs, &decision), 0);
+        assert!(alternate.commit_choice(&obs, &decision, 1));
+        assert_eq!(alternate.memory.last_activated, Some(10));
+        assert_eq!(alternate.memory.activated, vec![10]);
+        assert!(alternate.commit_choice(&obs, &decision, 0));
+        assert_eq!(alternate.memory.last_activated, Some(20));
+        assert_eq!(alternate.memory.activated, vec![10, 20]);
+    }
+
+    fn fusion_target() -> Decision {
+        let mut prompt=decision(DecisionKind::SelectCards,vec![choice(ChoiceKind::Toggle,100),choice(ChoiceKind::Toggle,200)]);
+        prompt.hint=Hint::Confirm;
+        prompt.minimum=1;
+        prompt.maximum=1;
+        for choice in &mut prompt.choices { choice.card.as_mut().unwrap().at.location=Location::Extra; }
+        prompt
+    }
+
+    fn fusion_agent() -> Agent<Planner> {
+        use crate::cards::{types,CardData};
+        Agent::new(Planner::default(),Arc::new(MemoryCards([100,200].into_iter().map(|code| (code,CardData {
+            code,kind:types::MONSTER|types::FUSION,attack:code as i32,..CardData::default()
+        })).collect())))
+    }
+
+    #[test]
+    fn fusion_destination_records_actual_normal_and_override_choices() {
+        let obs=observation();
+        let target=fusion_target();
+        let mut normal=fusion_agent();
+        normal.memory.last_activated=Some(77565204);
+        let mut forced=normal.clone();
+        let selected=normal.choose(&obs,&target);
+        let other=1-selected;
+        assert!(forced.commit_choice(&obs,&target,other));
+        assert_eq!(normal.memory.fusion_selection.as_ref().unwrap().destination,target.choices[selected].code().unwrap());
+        assert_eq!(forced.memory.fusion_selection.as_ref().unwrap().destination,target.choices[other].code().unwrap());
+        assert_eq!(forced.memory.fusion_selection.as_ref().unwrap().source,Some(77565204));
+        // Sequential target selection may finish with the selected destination
+        // carried only in members, after its Toggle was already answered.
+        let destination=target.choices[selected].card.unwrap();
+        let mut finish=decision(DecisionKind::SelectCards,vec![choice(ChoiceKind::Finish,0)]);
+        finish.hint=Hint::Confirm;
+        finish.selected.push(destination.at);
+        finish.choices[0].card=None;
+        finish.choices[0].members.push(destination);
+        assert_eq!(normal.choose(&obs,&finish),0);
+        assert_eq!(normal.memory.fusion_selection.as_ref().unwrap().destination,destination.code.unwrap());
+    }
+
+    #[test]
+    fn fusion_selected_codes_survive_native_toggles_and_clone_independently() {
+        let obs=observation();
+        let mut original=fusion_agent();
+        assert!(original.commit_choice(&obs,&fusion_target(),0));
+        let mut materials=decision(DecisionKind::SelectToggle,vec![choice(ChoiceKind::Toggle,300)]);
+        materials.hint=Hint::FusionMaterial;
+        materials.choices[0].card.as_mut().unwrap().at.location=Location::Deck;
+        assert!(original.commit_choice(&obs,&materials,0));
+        let first=materials.choices[0].card.unwrap();
+        let mut branch=original.clone();
+        materials.selected.push(first.at);
+        materials.choices[0]=choice(ChoiceKind::Toggle,400);
+        materials.choices[0].card.as_mut().unwrap().at.location=Location::Deck;
+        // Neither selected deck card exists in observation; the next native
+        // prompt offers only the remaining candidate, not the selected one.
+        assert!(branch.commit_choice(&obs,&materials,0));
+        assert_eq!(original.memory.fusion_selection.as_ref().unwrap().selected.iter().map(|m|m.code).collect::<Vec<_>>(),vec![Some(300)]);
+        assert_eq!(branch.memory.fusion_selection.as_ref().unwrap().selected.iter().map(|m|m.code).collect::<Vec<_>>(),vec![Some(300),Some(400)]);
+        materials.selected.clear();
+        assert!(branch.commit_choice(&obs,&materials,0));
+        assert_eq!(branch.memory.fusion_selection.as_ref().unwrap().selected.iter().map(|m|m.code).collect::<Vec<_>>(),vec![Some(400)]);
+    }
+
+    #[test]
+    fn fusion_context_ends_at_unrelated_prompts_and_material_finish() {
+        let obs=observation();
+        for hint in [Hint::Destroy,Hint::FusionMaterial] {
+            let mut agent=fusion_agent();
+            assert!(agent.commit_choice(&obs,&fusion_target(),0));
+            let mut end=decision(DecisionKind::SelectToggle,vec![choice(ChoiceKind::Finish,0)]);
+            end.hint=hint;
+            assert!(agent.commit_choice(&obs,&end,0));
+            assert!(agent.memory.fusion_selection.is_none());
+        }
+        let mut agent=fusion_agent();
+        assert!(agent.commit_choice(&obs,&fusion_target(),0));
+        assert!(agent.commit_choice(&obs,&decision(DecisionKind::Idle,vec![choice(ChoiceKind::EndTurn,0)]),0));
+        assert!(agent.memory.fusion_selection.is_none());
+    }
+
+    #[test]
+    fn ordinary_strategy_still_finishes_cost_selection_at_legal_minimum() {
+        struct Positive;
+        impl Strategy for Positive {
+            fn select(&self, _: &Turn, _: &Member) -> Option<f64> { Some(10000.0) }
+        }
+        let mut agent=Agent::new(Positive,Arc::new(MemoryCards::default()));
+        let mut prompt=decision(DecisionKind::SelectToggle,vec![choice(ChoiceKind::Toggle,300),choice(ChoiceKind::Finish,0)]);
+        prompt.hint=Hint::FusionMaterial;
+        prompt.minimum=1;
+        prompt.selected.push(CardRef { controller:0,location:Location::Deck,sequence:10 });
+        assert_eq!(agent.choose(&observation(),&prompt),1);
+    }
 }

@@ -1,0 +1,103 @@
+{
+  "games": 3168,
+  "failures": 0,
+  "limits": 0,
+  "ranking": [
+    {
+      "all": {
+        "ci95": [
+          0.5442591805238843,
+          0.6118685397576922
+        ],
+        "games": 816,
+        "rate": 0.5784313725490197
+      },
+      "deck": "The Quiet Grove",
+      "elo": 1561.9149981071575,
+      "policy": "naturia",
+      "reference": {
+        "ci95": [
+          0.46110132546675453,
+          0.5955447723723858
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.5288461538461539,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.5147276315455065,
+          0.5828521936304789
+        ],
+        "games": 816,
+        "rate": 0.5490196078431373
+      },
+      "deck": "Visitors from Beyond",
+      "elo": 1539.3748079737072,
+      "policy": "alien",
+      "reference": {
+        "ci95": [
+          0.456347152933088,
+          0.5908579285995289
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.5240384615384616,
+        "required_opponents": 13
+      },
+      "tier": "mid"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.4183594327322957,
+          0.4865002377211187
+        ],
+        "games": 816,
+        "rate": 0.4522058823529412
+      },
+      "deck": "Garden of Thorns",
+      "elo": 1465.621058250124,
+      "policy": "garden",
+      "reference": {
+        "ci95": [
+          0.3257330750324003,
+          0.4571235499175624
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.3894230769230769,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    },
+    {
+      "all": {
+        "ci95": [
+          0.25207055923109933,
+          0.31369921873576645
+        ],
+        "games": 816,
+        "rate": 0.2818627450980392
+      },
+      "deck": "Passing Spirits",
+      "elo": 1326.5636157840238,
+      "policy": "spirit",
+      "reference": {
+        "ci95": [
+          0.2803061420223026,
+          0.40814031986242644
+        ],
+        "games": 208,
+        "opponents": 13,
+        "rate": 0.34134615384615385,
+        "required_opponents": 13
+      },
+      "tier": "weak"
+    }
+  ]
+}

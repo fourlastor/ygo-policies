@@ -179,13 +179,17 @@ impl Core {
     /// Returns how many recorded answers were left when the duel ended.
     pub fn replay(&self, record: &Recorded, asked: Option<&Asked>, watch: &mut dyn FnMut(Replayed)) -> Result<usize> {
         let mut duel = record.duel(self)?;
-        let seat = match asked {
+        // The asked policy follows the duel as it was played: after a
+        // disagreement it remembers the recorded answer, not its own, when it
+        // can take an override.
+        let (seat, follows) = match asked {
             Some(asked) => {
                 let seat = asked.library.seat(asked.policy, asked.cards, asked.seat as i32, record.seed[0])?;
+                let follows = seat.enable_response_overrides().is_ok();
                 seat.feed(&duel.start_message(asked.seat))?;
-                Some(seat)
+                (Some(seat), follows)
             }
-            None => None,
+            None => (None, false),
         };
         let mut answers = record.responses.iter();
         let mut responder = None;
@@ -222,6 +226,11 @@ impl Core {
                     if let (Some(seat), Some(own)) = (&seat, own) {
                         if own != *answer {
                             watch(Replayed::Otherwise(&seat.last_answer()?, answer));
+                            // A whole selection must be expanded before it can
+                            // be overridden; one it cannot offer stays its own.
+                            if follows && seat.override_response(answer).is_err() {
+                                let _ = seat.alternative_responses(12).and_then(|_| seat.override_response(answer));
+                            }
                         }
                     }
                     watch(Replayed::Answer(*player, answer));

@@ -9,11 +9,13 @@ Search has privileged deck-composition and random-state access, so its gap is
 not a guaranteed gain achievable by an ordinary policy. The policies themselves
 receive only information their player is permitted to know.
 
-Twenty-nine pilots have been through it. The other 2 are to follow, a few at a
-time: a logged search of about 400 games takes 7 to 25 minutes on 22 workers,
-and reading it and measuring each rule it suggests takes a few hours more.
+Sixty-nine of the 71 pilots have now been searched. The 39 additions completed
+an initial diagnostic and measured optimization pass at a maximum of eight
+workers. Older reports retain their originally recorded worker counts.
 
 ## Done
+
+### Original roster
 
 The first five pilots were searched against 12 reference decks. The later
 rounds use the current 13, excluding a pilot's self-match: Burn, Spellcaster,
@@ -54,16 +56,78 @@ Search gaps estimate remaining headroom; they are not hard ceilings.
 | Legendary Six Samurai | 2 | 73.1% | 90.4% | 17.3 | 59.51% → 70.83% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
 | Gravekeeper's Tomb | 2 | 60.6% | 77.9% | 17.3 | 65.41% → 67.25% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
 | Machina Gadgets | 2 | 81.7% | 92.3% | 10.6 | 70.36% → 78.40% (the 30 other decks, held out) | [samurai-gravekeeper-machina-rules.md](samurai-gravekeeper-machina-rules.md) |
+| Astra's Exodia | 2 | 69.2% | 77.9% | 8.7 | 80.24% → 78.48% (faster Heart replacement, held out) | [exodia.md](exodia.md) |
 
 A deck is not finished after one search: a second one on the improved
 Infernity pilot led to 2.7 points more.  Fortune Lady still has a 19.5-point search gap and has only been searched once.
 
+### Expanded roster: first optimization pass
+
+Each initial policy was searched for 52 games against the 13 reference decks,
+seed 920000, using 4/12/24 worlds. These are **before-tuning diagnostics**, not
+follow-up searches on the final policies or hard ceilings. All 2,028 games
+finished without errors, decision caps or failed rollouts.
+
+The rules column is a separate fresh-seed paired comparison against all 32
+original policies: 2,048 pairs per addition, seed 950000. The opponent code and
+decklists are fixed. "Improved" means the individual paired 95% interval is
+above zero; intervals are exploratory and are not adjusted for 39 comparisons.
+"No clear gain" retains useful behavior changes without claiming a measured
+strength gain. See [the method and full intervals](new-decks-optimization.md).
+
+| Deck | Policy | Initial search: alone | With search | Gap | Held-out rules: before → after | Result |
+|---|---|---:|---:|---:|---|---|
+| Fabled Encore | `fabled` | 38.5% | 48.1% | 9.6 | 39.70% → 39.79% | No clear gain |
+| Heaven's Rebuttal | `counter-fairy` | 48.1% | 59.6% | 11.5 | 49.22% → 52.20% | Improved |
+| D.D. Border Patrol | `macro-dd` | 65.4% | 82.7% | 17.3 | 68.16% → 68.16% | Unchanged |
+| Gusto's Reprisal | `gusto` | 44.2% | 76.9% | 32.7 | 50.49% → 51.51% | No clear gain |
+| Heaven's Dispatch | `agents` | 48.1% | 69.2% | 21.2 | 58.35% → 64.94% | Improved |
+| Scrap Renaissance | `scrap` | 61.5% | 82.7% | 21.2 | 66.50% → 67.63% | Improved |
+| Graveyard Shift | `zombie` | 50.0% | 71.2% | 21.2 | 45.41% → 47.51% | Improved |
+| Herald's Veto | `herald` | 40.4% | 48.1% | 7.7 | 28.37% → 32.76% | Improved |
+| Tidal Assembly | `fish` | 46.2% | 57.7% | 11.5 | 51.27% → 52.15% | Improved |
+| Power Surge | `cyber` | 17.3% | 23.1% | 5.8 | 23.14% → 23.14% | Unchanged |
+| Second Bloom | `gemini` | 67.3% | 84.6% | 17.3 | 56.98% → 57.18% | No clear gain |
+| Mind Over Matter | `psychic` | 51.9% | 71.2% | 19.2 | 45.31% → 48.73% | Improved |
+| Last Page | `deckout` | 36.5% | 44.2% | 7.7 | 37.30% → 49.19% | Improved |
+| Chain Reaction | `chain-burn` | 26.9% | 32.7% | 5.8 | 27.29% → 27.88% | Improved |
+| A Bitter Cure | `nurse` | 30.8% | 42.3% | 11.5 | 39.11% → 39.11% | Unchanged |
+| A Thousand Blades | `benkei` | 32.7% | 42.3% | 9.6 | 31.30% → 35.11% | Improved |
+| Visitors from Beyond | `alien` | 59.6% | 76.9% | 17.3 | 50.83% → 58.35% | Improved |
+| Passing Spirits | `spirit` | 23.1% | 42.3% | 19.2 | 28.86% → 28.86% | No clear gain |
+| The Quiet Grove | `naturia` | 46.2% | 73.1% | 26.9 | 53.54% → 55.32% | Improved |
+| Garden of Thorns | `garden` | 42.3% | 59.6% | 17.3 | 41.89% → 45.61% | Improved |
+| The Final Sentence | `destiny-board` | 40.4% | 53.8% | 13.5 | 49.22% → 50.98% | Improved |
+| Crown of Venom | `venom` | 15.4% | 17.3% | 1.9 | 16.06% → 16.06% | Unchanged |
+| Full Charge | `batteryman` | 51.9% | 59.6% | 7.7 | 42.04% → 48.73% | Improved |
+| Prismatic Forge | `gem-knight` | 46.2% | 48.1% | 1.9 | 44.34% → 45.02% | No clear gain |
+| Ashes to Inferno | `flamvell` | 28.8% | 51.9% | 23.1 | 43.02% → 44.68% | Improved |
+| Road to Ragnarok | `nordic` | 57.7% | 80.8% | 23.1 | 53.08% → 59.47% | Improved |
+| Eye of the Storm | `cloudian` | 42.3% | 55.8% | 13.5 | 48.78% → 49.80% | No clear gain |
+| Volcanic Aftershock | `volcanic` | 44.2% | 55.8% | 11.5 | 42.19% → 49.41% | Improved |
+| Gates Unopened | `dark-world` | 46.2% | 53.8% | 7.7 | 55.76% → 57.18% | Improved |
+| Visitors Beneath | `worm` | 38.5% | 55.8% | 17.3 | 37.01% → 41.46% | Improved |
+| Between Light and Dark | `chaos` | 65.4% | 82.7% | 17.3 | 64.60% → 67.19% | Improved |
+| Armageddon Hour | `demise` | 44.2% | 57.7% | 13.5 | 50.49% → 51.27% | No clear gain |
+| Queens of the Wild | `amazoness` | 42.3% | 69.2% | 26.9 | 46.14% → 51.86% | Improved |
+| Footprints in Fire | `jurrac` | 36.5% | 59.6% | 23.1 | 51.86% → 51.61% | No clear gain |
+| Clockwork Current | `genex` | 53.8% | 78.8% | 25.0 | 48.78% → 49.22% | No clear gain |
+| Winter Parliament | `ice-barrier` | 30.8% | 50.0% | 19.2 | 36.65% → 42.63% | Improved |
+| The Still Gaze | `reptilianne` | 46.2% | 61.5% | 15.4 | 44.53% → 44.58% | No clear gain |
+| Rust Never Sleeps | `iron-chain` | 28.8% | 57.7% | 28.8 | 35.45% → 41.94% | Improved |
+| Eclipse Without End | `malefic` | 48.1% | 67.3% | 19.2 | 50.63% → 56.98% | Improved |
+
 ## To do
 
 The 2 other decks, in the order of the [current tier list](../DECK-TIER-LIST.md)
-refreshed on 2026-10-07.
+refreshed on 2026-10-08 across all 71 decks.
 
 | # | Deck | Policy | Win rate | Tier | |
 |---:|---|---|---:|---|---|
-| 1 | Claudi-oh's Countdown | `countdown` | 91.4% | strong |  |
-| 2 | Claudi-oh's Verdict | `verdict` | 80.8% | strong |  |
+| 1 | Claudi-oh's Countdown | `countdown` | 88.1% | strong |  |
+| 2 | Claudi-oh's Verdict | `verdict` | 79.8% | strong |  |
+
+The expanded policies have not yet had follow-up searches after these rules.
+The initial gaps above remain a guide for the next pass, especially where the
+paired comparison found no clear gain. Venom's small diagnostic gap alongside
+its low win rate suggests revisiting its list as well as its pilot.

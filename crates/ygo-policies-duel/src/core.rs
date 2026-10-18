@@ -95,6 +95,24 @@ pub(crate) struct Query {
 
 type LoadScript = unsafe extern "C" fn(Handle, *const u8, u32, *const c_char) -> i32;
 
+/// ABI layout of the read-only declaration fields in search_bridge.cpp.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct InitialEffect {
+    pub(crate) category: u64,
+    pub(crate) description: u64,
+    pub(crate) flags: u64,
+    pub(crate) event: u32,
+    pub(crate) effect_type: u16,
+    pub(crate) range: u16,
+    pub(crate) has_cost: u8,
+    pub(crate) card_target: u8,
+}
+
+type InitialEffects = unsafe extern "C" fn(
+    Handle, u32, Handle, unsafe extern "C" fn(Handle, *const InitialEffect),
+) -> i32;
+
 // Linked from the pinned vendor tree by build.rs.  Another build of the
 // engine can be loaded in its place (see [`Core::open`]).
 extern "C" {
@@ -113,7 +131,14 @@ extern "C" {
     fn OCG_DuelCreateSnapshot(duel: Handle, out: *mut Handle) -> i32;
     fn OCG_DuelRestoreSnapshot(duel: Handle, snapshot: Handle) -> i32;
     fn OCG_DuelDestroySnapshot(snapshot: Handle);
+    fn OCG_DuelArenaUsed(duel: Handle) -> u64;
+    fn OCG_DuelSnapshotSize(snapshot: Handle) -> u64;
     fn OCG_DuelSwapHiddenCards(duel: Handle, team: u8, loc1: u32, seq1: u32, loc2: u32, seq2: u32) -> i32;
+    fn YGO_DuelReseed(duel: Handle, seed: u64) -> i32;
+    fn YGO_DuelInitialEffects(
+        duel: Handle, code: u32, output: Handle,
+        append: unsafe extern "C" fn(Handle, *const InitialEffect),
+    ) -> i32;
 }
 
 /// What a search needs beyond the public OCGCore API: the fork's snapshots
@@ -126,6 +151,11 @@ pub(crate) struct Extensions {
     pub(crate) swap: unsafe extern "C" fn(Handle, u8, u32, u32, u32, u32) -> i32,
     pub(crate) count: unsafe extern "C" fn(Handle, u8, u32) -> u32,
     pub(crate) card: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
+    pub(crate) reseed: Option<unsafe extern "C" fn(Handle, u64) -> i32>,
+    /// These diagnostics are optional independently of each other and of
+    /// search support on older dynamically loaded cores.
+    pub(crate) arena_used: Option<unsafe extern "C" fn(Handle) -> u64>,
+    pub(crate) snapshot_size: Option<unsafe extern "C" fn(Handle) -> u64>,
 }
 
 impl Extensions {
@@ -138,6 +168,9 @@ impl Extensions {
             swap: OCG_DuelSwapHiddenCards,
             count: OCG_DuelQueryCount,
             card: OCG_DuelQuery,
+            reseed: Some(YGO_DuelReseed),
+            arena_used: Some(OCG_DuelArenaUsed),
+            snapshot_size: Some(OCG_DuelSnapshotSize),
         }
     }
 
@@ -151,6 +184,9 @@ impl Extensions {
             swap: symbol(library, b"OCG_DuelSwapHiddenCards").or_else(|_| symbol(library, b"YGO_DuelSwapHiddenCards")).ok()?,
             count: symbol(library, b"OCG_DuelQueryCount").ok()?,
             card: symbol(library, b"OCG_DuelQuery").ok()?,
+            reseed: symbol(library, b"YGO_DuelReseed").ok(),
+            arena_used: symbol(library, b"OCG_DuelArenaUsed").ok(),
+            snapshot_size: symbol(library, b"OCG_DuelSnapshotSize").ok(),
         })
     }
 }
@@ -213,6 +249,8 @@ pub struct Core {
     pub(crate) messages: unsafe extern "C" fn(Handle, *mut u32) -> *const u8,
     pub(crate) respond: unsafe extern "C" fn(Handle, *const u8, u32),
     pub(crate) query: unsafe extern "C" fn(Handle, *mut u32, *const Query) -> *const u8,
+    pub(crate) initial_effects: Option<InitialEffects>,
+    pub(crate) effect_profile_cache: RefCell<HashMap<u32, serde_json::Value>>,
 }
 
 impl Core {
@@ -315,6 +353,11 @@ impl Core {
                 messages: api!(OCG_DuelGetMessage),
                 respond: api!(OCG_DuelSetResponse),
                 query: api!(OCG_DuelQueryLocation),
+                initial_effects: match &library {
+                    Some(library) => symbol(library, b"YGO_DuelInitialEffects").ok(),
+                    None => Some(YGO_DuelInitialEffects),
+                },
+                effect_profile_cache: RefCell::new(HashMap::new()),
                 extensions: match &library {
                     Some(library) => Extensions::load(library),
                     None => Some(Extensions::built_in()),
@@ -328,6 +371,17 @@ impl Core {
     /// The built-in one does.
     pub fn has_snapshots(&self) -> bool {
         self.extensions.is_some()
+    }
+
+    /// Whether simulated branches can randomize future engine chance events.
+    pub fn has_reseed(&self) -> bool {
+        self.extensions.as_ref().is_some_and(|extensions| extensions.reseed.is_some())
+    }
+
+    /// Whether this core can inspect card-script effect declarations.
+    /// This is independent of the snapshot/search extensions.
+    pub fn has_effect_profiles(&self) -> bool {
+        self.initial_effects.is_some()
     }
 
     /// Printed data of a card, if the database (or [`Core::define`]) has it.
@@ -354,6 +408,7 @@ impl Core {
     /// that no script touches.  Duels read card data when they start, so a
     /// card can be redefined between duels.
     pub fn define(&mut self, code: u32, card: Printed) {
+        self.effect_profile_cache.get_mut().remove(&code);
         let sets: Box<[u16]> = Box::new([0]);
         let data = CardData {
             code,
