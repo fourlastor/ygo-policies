@@ -257,6 +257,10 @@ generic mirrors each selected specialist deck: generic versus the frozen baselin
   --mcts-adversarial-opponent false (pessimistic opponent UCT proposals; shared fixed budget)\n\
   --mcts-root-warmup false (experimental complete root-world cycle; shared fixed budget)\n\
   --opponent-model generic|specialist (default generic; specialist is a benchmark diagnostic)\n\
+  --pilot generic|specialist (default generic; specialist measures the search's headroom: the\n\
+  deck's own specialist from --library plays the searching seat and its simulated games)\n\
+  --borrow all|Idle,Chain,... (with --plain true: on those decision kinds the generic plays the\n\
+  answer of its deck's specialist, which follows the duel; rows count what was borrowed)\n\
   --evaluation-weights JSON_OBJECT (sparse nonnegative existing-feature overrides; beam/MCTS only)\n\
   --evaluation-profile off|lp-density-v1 (default off; own-deck LP profile; excludes manual weights)\n\
   --worlds 4 --max-candidates 6 --max-playouts 24 --horizon 0 --millis 200\n\
@@ -269,7 +273,9 @@ the last one) and tells it turn by turn with nothing hidden (to --output, else p
   --record true: --duel is then the row (the first is 0, default the last) and --which the\n\
   duel of that row (search, baseline, candidate or game; default the searched one).\n\
   --recheck true also asks the policy that played, as --library has it now, at each of its\n\
-  decisions, and says where it would answer otherwise."
+  decisions, and says where it would answer otherwise; --ask NAME asks that policy instead\n\
+  (a deck's specialist, in the seat of the generic that played its deck). The asked policy\n\
+  follows the duel as played: after a disagreement it remembers the recorded answer."
     );
 }
 
@@ -329,6 +335,7 @@ fn run() -> Result<()> {
             "--log",
             "--record",
             "--which",
+            "--ask",
             "--plain",
             "--max-candidates",
             "--max-playouts",
@@ -360,6 +367,8 @@ fn run() -> Result<()> {
             "--kept",
             "--search-chains",
             "--resample-set-monsters",
+            "--pilot",
+            "--borrow",
         ]
         .contains(&key.as_str())
         {
@@ -373,7 +382,7 @@ fn run() -> Result<()> {
         }
     }
     if mode != "generic" {
-        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights", "--evaluation-profile", "--stages", "--kept", "--search-chains", "--resample-set-monsters"] {
+        for key in ["--effects", "--method", "--beam-width", "--beam-actions", "--beam-nodes", "--beam-decisions", "--beam-replies", "--mcts-iterations", "--mcts-actions", "--mcts-nodes", "--mcts-decisions", "--mcts-replies", "--mcts-terminal", "--mcts-worlds", "--mcts-validate-roots", "--mcts-adversarial-opponent", "--mcts-root-warmup", "--opponent-model", "--evaluation-weights", "--evaluation-profile", "--stages", "--kept", "--search-chains", "--resample-set-monsters", "--pilot", "--borrow"] {
             if args.contains_key(key) { return Err(format!("{key} is supported only by generic mode")); }
         }
     }
@@ -440,8 +449,14 @@ fn run() -> Result<()> {
             "false" => None,
             _ => return Err("Invalid --recheck".into()),
         };
+        // Another policy asked in the same seat: a deck's specialist at each
+        // decision of the generic that played its deck.
+        let ask = args.get("--ask");
+        if ask.is_some() && library.is_none() {
+            return Err("--ask needs --recheck true".into());
+        }
         let asked = match (&library, &record.policy) {
-            (Some(library), Some((policy, seat))) => Some(Asked { library, policy, cards: &cards, seat: *seat }),
+            (Some(library), Some((policy, seat))) => Some(Asked { library, policy: ask.unwrap_or(policy), cards: &cards, seat: *seat }),
             (Some(_), None) => return Err("--recheck needs a duel from the database: a bare replay does not say which policy played it".into()),
             (None, _) => None,
         };
@@ -1071,6 +1086,8 @@ fn generic_run(
             "--search-chains",
             "--resample-set-monsters",
             "--z",
+            "--pilot",
+            "--borrow",
         ]
         .contains(&key.as_str())
         {
@@ -1167,6 +1184,33 @@ fn generic_run(
     if specialist_opponent && plain {
         return Err("--opponent-model specialist requires search".into());
     }
+    // A benchmark of the search's headroom, not a generic policy: the deck's own
+    // specialist (from --library, which can take the search's overrides) pilots
+    // the searching seat and its simulated games.
+    let pilot = args.get("--pilot").map(String::as_str).unwrap_or("generic");
+    let specialist_pilot = match pilot {
+        "generic" => false,
+        "specialist" => true,
+        _ => return Err("--pilot must be generic or specialist".into()),
+    };
+    // A benchmark of where the generic falls short: on these decision kinds it
+    // plays the answer its deck's specialist gives in its place.
+    let borrow = match args.get("--borrow").map(String::as_str) {
+        None => 0u32,
+        Some("all") => u32::MAX,
+        Some(kinds) => kinds.split(',').try_fold(0u32, |bits, kind| {
+            let idle = kind.strip_prefix("Idle:").and_then(|action| engine::BORROW_IDLE.iter().position(|&k| k == action));
+            match (idle, engine::BORROW_KINDS.iter().position(|&k| k == kind)) {
+                (Some(i), _) => Ok(bits | 1 << (16 + i)),
+                (None, Some(i)) => Ok(bits | 1 << i),
+                _ => Err(format!("--borrow takes all, decision kinds among {} or Idle:ACTION with an action among {}",
+                    engine::BORROW_KINDS.join(","), engine::BORROW_IDLE.join(","))),
+            }
+        })?,
+    };
+    if borrow != 0 && (!plain || specialist_pilot) {
+        return Err("--borrow is a plain-play diagnostic of the generic pilot".into());
+    }
     if root_warmup && (method != "mcts" || plain) {
         return Err("--mcts-root-warmup true requires MCTS search".into());
     }
@@ -1229,7 +1273,10 @@ fn generic_run(
     let candidate_library = PolicyLibrary::open(&candidate)?;
     // Generic deliberately has no default deck/catalog entry: creation is separate
     // from deck choice and the exact same policy handles every selected deck.
-    candidate_library.seat("generic", cards, 0, seed)?;
+    // A specialist pilot needs it only as the opponent model.
+    if !specialist_pilot || (!plain && !specialist_opponent) {
+        candidate_library.seat("generic", cards, 0, seed)?;
+    }
     drop(candidate_library);
     let mut deck_map = BTreeMap::new();
     let mut deck_ids = BTreeMap::new();
@@ -1263,6 +1310,13 @@ fn generic_run(
         metadata["search"]["staged"] = json!({"stages": s.stages, "z": s.z, "kept": s.kept,
             "chains": s.chains, "set_monsters": s.set_monsters});
     }
+    if borrow != 0 {
+        metadata["borrow"] = json!(args["--borrow"]);
+    }
+    if specialist_pilot {
+        metadata["candidate_policy"] = json!("specialist");
+        metadata["matchup"] = json!("benchmark only: the deck's specialist from --library versus the frozen specialist; seats alternate");
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -1293,16 +1347,17 @@ fn generic_run(
                         let seat = job.seat;
                         let specialist = job.b.as_str();
                         let decks = [deck_map[specialist].clone(), deck_map[specialist].clone()];
+                        let own = if specialist_pilot { specialist } else { "generic" };
                         let (libraries, names) = if seat == 0 {
-                            ([&candidate, &baseline], ["generic", specialist])
-                        } else { ([&baseline, &candidate], [specialist, "generic"]) };
+                            ([&candidate, &baseline], [own, specialist])
+                        } else { ([&baseline, &candidate], [specialist, own]) };
                         let options = PlayOptions { seed: job.seed, limit, trace, life_points: [8000; 2], record };
-                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights, evaluation_profile, staged };
+                        let fast = engine::FastOptions { searcher: seat, worlds, max_candidates, max_playouts, horizon, depth, millis, strict, effects, planner, mcts, mcts_worlds, mcts_validate_roots, specialist_opponent, evaluation_weights, evaluation_profile, staged, borrow };
                         let game_started = std::time::Instant::now();
                         let game = match engine::play_fast(&core, &decks, libraries, names, cards, options, fast) {
                             Ok(game) => game, Err(error) => json!({"error": error}),
                         };
-                        let row = json!({"mode": "generic", "opponent": specialist, "candidate_policy": "generic",
+                        let row = json!({"mode": "generic", "opponent": specialist, "candidate_policy": own,
                             "deck": specialist, "seed": job.seed, "seat": seat, "plain": plain,
                             "seconds": game_started.elapsed().as_secs_f64(), "game": game});
                         tx.send(Ok(row)).map_err(|e| e.to_string())?;
@@ -1334,7 +1389,7 @@ fn generic_run(
         }
         Ok(())
     })?;
-    let summary = generic_summary(
+    let mut summary = generic_summary(
         &rows,
         &pilots,
         games,
@@ -1342,6 +1397,7 @@ fn generic_run(
         &exceptions,
         started.elapsed().as_secs_f64(),
     );
+    if specialist_pilot { summary["candidate_policy"] = json!("specialist"); }
     std::fs::write(
         output.with_extension("summary.json"),
         serde_json::to_string_pretty(&summary).unwrap(),

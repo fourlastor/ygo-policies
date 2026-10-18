@@ -5,6 +5,8 @@
 #   its libygo_policies.so as BASELINE; it reproduces astra's frozen baseline game for game.
 # Usage: BASELINE=/path/to/7ddad06/libygo_policies.so run.sh ARM OUTPUT [DECKS] [SEED]
 #   ARM: plain | mcts32 | staged (the measured defaults) | staged-strict (no chains, no Set monsters)
+#        headroom (benchmark only: the staged search piloted by the deck's own specialist, which
+#        is also the opponent model) | specialist-plain (that specialist alone, the control)
 # The 16-deck schedule is the default; DECKS=all with SEED=2700000 is the roster.
 set -eu
 R=$(cd "$(dirname "$0")/../.." && pwd)
@@ -22,5 +24,7 @@ mcts32) "${B[@]}" --method mcts --depth 1 --horizon 1 --millis 0 --worlds 4 --ma
   --mcts-validate-roots false --mcts-worlds 4 --mcts-adversarial-opponent false --mcts-root-warmup false --opponent-model generic ;;
 staged) "${B[@]}" --method staged --opponent-model generic ;;
 staged-strict) "${B[@]}" --method staged --search-chains false --resample-set-monsters false --opponent-model generic ;;
+headroom) "${B[@]}" --method staged --opponent-model specialist --pilot specialist ;;
+specialist-plain) "${B[@]}" --plain true --pilot specialist ;;
 *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac

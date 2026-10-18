@@ -56,6 +56,42 @@ pub struct FastOptions {
     pub evaluation_profile: EvaluationProfile,
     /// The staged search instead of the rollout choice: see [`StagedOptions`].
     pub staged: Option<StagedOptions>,
+    /// Benchmark diagnostic, plain play only: on the decision kinds whose bits
+    /// are set (see [`BORROW_KINDS`]), the searching seat plays the answer its
+    /// deck's specialist would give in its place. Zero borrows nothing.
+    pub borrow: u32,
+}
+
+/// The decision kinds [`FastOptions::borrow`] names, one bit each; the next
+/// bit stands for any other kind. From bit 16, `Idle:` names a Main Phase
+/// decision by what the specialist chose to do in it.
+pub const BORROW_KINDS: [&str; 12] = [
+    "Idle", "Battle", "Chain", "YesNo", "Option", "SelectCards", "SelectToggle", "SelectSum", "Position", "Place",
+    "Sort", "Announce",
+];
+pub const BORROW_IDLE: [&str; 8] = [
+    "NormalSummon", "SetMonster", "SpecialSummon", "SetSpellTrap", "Activate", "ChangePosition", "EnterBattle", "EndTurn",
+];
+
+fn borrow_bits(own: &serde_json::Value, theirs: &serde_json::Value) -> u32 {
+    let name = match &own["decision"]["kind"] {
+        serde_json::Value::String(kind) => kind.as_str(),
+        serde_json::Value::Object(kind) => kind.keys().next().map_or("", String::as_str),
+        _ => "",
+    };
+    let kind = 1 << BORROW_KINDS.iter().position(|&kind| kind == name).unwrap_or(BORROW_KINDS.len());
+    if name != "Idle" {
+        return kind;
+    }
+    let chosen = &theirs["decision"]["choices"][theirs["choice"].as_u64().unwrap_or(0) as usize]["kind"];
+    let action = BORROW_IDLE.iter().position(|&action| chosen.as_str() == Some(action)).unwrap_or(BORROW_IDLE.len());
+    kind | 1 << (16 + action)
+}
+
+/// Make a seat remember `response` as its answer to the pending prompt.
+fn follow(seat: &LibrarySeat, response: &[u8]) -> bool {
+    seat.override_response(response).is_ok()
+        || seat.alternative_responses(12).and_then(|_| seat.override_response(response)).is_ok()
 }
 
 /// The staged choice of `policy-bench search` (`search.rs`) on this module's
@@ -1295,6 +1331,9 @@ pub fn play_fast(
     if fast.searcher > 1 {
         return Err("Generic searcher must be seat 0 or 1".into());
     }
+    if fast.borrow != 0 && fast.max_playouts > 0 {
+        return Err("Borrowing the specialist's answers is a plain-play diagnostic".into());
+    }
     if fast.max_playouts > 0
         && (!core.has_snapshots()
             || !core.has_reseed()
@@ -1342,11 +1381,22 @@ pub fn play_fast(
         if names[player] == "generic" {
             if let Some(profiles) = &profiles { table.seats[player].set_effect_profiles(profiles)?; }
         }
-        if player == fast.searcher && fast.max_playouts > 0 {
+        if player == fast.searcher && (fast.max_playouts > 0 || fast.borrow != 0) {
             table.seats[player].enable_response_overrides()?;
         }
         table.feed(player, &duel.start_message(player as u8))?;
     }
+    // The deck's specialist, from the searching seat's library, in that seat:
+    // it sees what the seat sees and remembers the answers actually played.
+    let shadow = if fast.borrow != 0 {
+        let seat = policies[fast.searcher].seat(names[1 - fast.searcher], cards, fast.searcher as i32,
+            seed + fast.searcher as u64)?;
+        seat.enable_response_overrides()?;
+        seat.feed(&duel.start_message(fast.searcher as u8))?;
+        Some(seat)
+    } else { None };
+    let mut shadow_answer: Option<Vec<u8>> = None;
+    let (mut borrowed, mut disagreements, mut unborrowable, mut unfollowed) = (0u64, 0u64, 0u64, 0u64);
     let mut evaluation_profile = None;
     let evaluator = if fast.planner.is_some() || fast.mcts.is_some() {
         let mut evaluator = Evaluator::open(cards)?;
@@ -1391,6 +1441,7 @@ pub fn play_fast(
             if let Some((_, path)) = &mut tree { path.message(&sent.bytes, context.viewer)?; }
             if sent.refresh {
                 table.update(&sent.bytes)?;
+                if let Some(shadow) = &shadow { shadow.feed(&sent.bytes)?; }
                 continue;
             }
             match sent.bytes[0] {
@@ -1399,6 +1450,9 @@ pub fn play_fast(
                 msg::CHAINING => chain = true,
                 msg::CHAIN_END => chain = false,
                 _ => {}
+            }
+            if let Some(shadow) = &shadow {
+                if let Some(answer) = shadow.feed(&sent.bytes)? { shadow_answer = Some(answer); }
             }
             for player in 0..2 {
                 let started = Instant::now();
@@ -1463,6 +1517,10 @@ pub fn play_fast(
             row["search_opponent_model"] = serde_json::json!(if fast.specialist_opponent { "specialist" } else { "generic" });
             row["resampled_set_monsters"] = serde_json::json!(stats.resampled_set_monsters);
             row["undealt_roots"] = serde_json::json!(stats.undealt_roots);
+            if shadow.is_some() {
+                row["borrow"] = serde_json::json!({"disagreements": disagreements, "borrowed": borrowed,
+                    "unborrowable": unborrowable, "unfollowed": unfollowed});
+            }
             if fast.specialist_opponent {
                 row["search_information"] = serde_json::json!("known deck composition and specialist opponent policy; sampled hidden arrangement and future RNG; public-history model memory");
             } else if fast.mcts.is_some_and(|options| options.adversarial_opponent) {
@@ -1490,6 +1548,22 @@ pub fn play_fast(
             }
             continue;
         };
+        if player == fast.searcher {
+            if let (Some(shadow), Some(theirs)) = (&shadow, shadow_answer.take()) {
+                if theirs != answer {
+                    disagreements += 1;
+                    let wanted = fast.borrow & borrow_bits(&table.seats[player].last_answer()?, &shadow.last_answer()?) != 0;
+                    // The seat that does not decide remembers the answer played.
+                    if wanted && follow(&table.seats[player], &theirs) {
+                        answer = theirs;
+                        borrowed += 1;
+                    } else {
+                        unborrowable += u64::from(wanted);
+                        unfollowed += u64::from(!follow(shadow, &answer));
+                    }
+                }
+            }
+        }
         let mut searched_this_decision = false;
         if player == fast.searcher && fast.max_playouts > 0 {
             let started = Instant::now();
@@ -1613,7 +1687,7 @@ mod tests {
             effects: true, planner: None, mcts: None, mcts_worlds: 4,
             mcts_validate_roots: false, specialist_opponent: false,
             evaluation_weights: Some(super::super::evaluation::HEURISTIC_COEFFICIENTS),
-            evaluation_profile: EvaluationProfile::Off, staged: None,
+            evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
         };
         assert!(options.validate_evaluation_weights().is_err());
         options.mcts = Some(MctsOptions { iterations: 128, actions: 6, nodes: 1024,
@@ -1745,7 +1819,7 @@ mod tests {
                 effects: true, planner: None,
                 mcts: Some(MctsOptions { iterations: 128, actions: 8, nodes: 1024,
                     decisions: 384, replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false }),
-                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
+                mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: true, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
             },
             // Nonempty metadata must not be sent to the old specialist ABI.
             profiles: Some(serde_json::json!({"95492061":[]})), evaluator: None,
@@ -1886,7 +1960,7 @@ mod tests {
             searcher: 0, worlds: 4, depth: 1, max_candidates: 6, max_playouts: 1_000_000, horizon: 0, millis: 0,
             strict: true, effects: true, planner: None, mcts: None, mcts_worlds: 4, mcts_validate_roots: false,
             specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off,
-            staged: Some(StagedOptions { stages: [2, 4, 8], ..StagedOptions::MEASURED }),
+            staged: Some(StagedOptions { stages: [2, 4, 8], ..StagedOptions::MEASURED }), borrow: 0,
         };
         let play = || play_fast(&core, &decks, [&library, &library], ["generic", "deckout"], &cards, run, fast).unwrap();
         let (first, second) = (play(), play());
@@ -1946,7 +2020,7 @@ mod tests {
             effects: false,
             planner: None,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
         };
         let first = play_fast(
             &core,
@@ -2017,7 +2091,7 @@ mod tests {
             max_playouts: 512, horizon: 1, millis: 0, strict: true,
             effects: true,
             mcts: None,
-            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
+            mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
             planner: Some(PlannerOptions {
                 width: 6, actions: 4, nodes: 64, decisions: 256, replies: 1,
             }),
@@ -2091,7 +2165,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: false, specialist_opponent, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,
@@ -2168,7 +2242,7 @@ mod tests {
         let options = FastOptions {
             searcher: 1, worlds: 4, depth: 1, max_candidates: 6,
             max_playouts: 256, horizon: 1, millis: 0, strict: true,
-            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None,
+            effects: true, planner: None, mcts_worlds: 4, mcts_validate_roots: true, specialist_opponent: false, evaluation_weights: None, evaluation_profile: EvaluationProfile::Off, staged: None, borrow: 0,
             mcts: Some(MctsOptions {
                 iterations: 128, actions: 6, nodes: 1024, decisions: 256,
                 replies: 1, terminal: false, adversarial_opponent: false, root_warmup: false,

@@ -99,7 +99,7 @@ fn load_row(input: &Path, row: Option<i64>, which: Option<&str>) -> Result<Recor
     let name = |index: usize| played["record"]["players"][index].as_str().map_or_else(|| format!("Player {}", index + 1), str::to_owned);
     // The row's own policy and its seat: the one that searched, in a search row.
     let seat = row["seat"].as_u64().unwrap_or(0) as u8;
-    let policy = row["a"].as_str().map(|policy| (policy.to_owned(), seat));
+    let policy = row["a"].as_str().or_else(|| row["candidate_policy"].as_str()).map(|policy| (policy.to_owned(), seat));
     let ending = match played["winner"].as_u64() {
         Some(winner) if winner < 2 => format!("won by {}", name(winner as usize)),
         Some(_) => "a draw".to_owned(),
@@ -152,6 +152,8 @@ struct Story<'a> {
     waited: Option<(std::ops::Range<usize>, u8, Vec<u32>)>,
     text: String,
     holdings: Vec<Holding>,
+    /// The policy asked at each decision, when it is not the one that played.
+    asker: Option<&'a str>,
 }
 
 impl Story<'_> {
@@ -457,11 +459,15 @@ impl Story<'_> {
         let bytes = |response: &Value| -> Vec<u8> { response.as_array().into_iter().flatten().filter_map(|b| Some(b.as_u64()? as u8)).collect() };
         let then = own["responses"].as_array().and_then(|all| all.iter().position(|r| bytes(r) == recorded)).map(|index| self.choice(&choices[index]));
         let player = &self.players[own["observation"]["me"].as_u64().unwrap_or(0) as usize];
+        let who = match self.asker {
+            Some(asker) => format!("{asker}, in {player}'s place,"),
+            None => format!("as built now, {player}"),
+        };
         match then {
             // Another copy of the same card.
             Some(then) if then == now => {}
-            Some(then) => self.say(format!(">> as built now, {player} would {now} here, not {then}")),
-            None => self.say(format!(">> as built now, {player} would {now} here")),
+            Some(then) => self.say(format!(">> {who} would {now} here, not {then}")),
+            None => self.say(format!(">> {who} would {now} here")),
         }
     }
 
@@ -504,6 +510,7 @@ pub fn narrate(core: &mut Core, record: &Record, names: &HashMap<u32, String>, a
         waited: None,
         text: format!("{}\n", record.title),
         holdings: Vec::new(),
+        asker: asked.filter(|asked| record.policy.as_ref().is_none_or(|(played, _)| played != asked.policy)).map(|asked| asked.policy),
     };
     let unused = core.replay(&record.recorded, asked, &mut |step| match step {
         Replayed::Message(message) => story.see(message),

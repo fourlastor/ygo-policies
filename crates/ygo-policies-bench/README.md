@@ -259,6 +259,15 @@ defaults to 8 and no `--millis`, `--horizon` or `--depth` applies.  Rows count
 `resampled_set_monsters` and `undealt_roots` (roots left to the pilot because
 a Set monster could not be swapped).  See
 [the measured results](../../benchmarks/generic-policy-v3/README.md).
+`--pilot specialist` is a benchmark of the search's headroom, not a generic
+policy: the deck's own specialist, from `--library`, plays the searching seat
+and its side of every simulated game (with `--plain true`, the same specialist
+alone is the control). `--borrow KINDS` (plain play only) measures where the
+generic falls short of a deck's specialist. On the named decision kinds, or
+`Idle:ACTION` for a Main Phase decision by the specialist's action, or `all`,
+the generic plays the answer of a copy of the specialist that follows the
+duel; rows count what was borrowed. `replay --recheck true --ask NAME` tells
+where another policy, asked in the same seat, would have answered otherwise.
 The search accepts `--worlds`, `--max-candidates`, `--max-playouts`, `--horizon`,
 and a soft per-decision `--millis` budget; `--depth 1|2` applies to rollouts only.
 Beam/MCTS construct executable continuations in proposal worlds and compare

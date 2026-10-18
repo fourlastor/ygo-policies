@@ -12,7 +12,7 @@ use ygo_policies_ocgcore::{
 mod search;
 pub use search::{play_searching, SearchOptions};
 mod fast;
-pub use fast::{play_fast, FastOptions, StagedOptions};
+pub use fast::{play_fast, FastOptions, StagedOptions, BORROW_IDLE, BORROW_KINDS};
 pub mod evaluation;
 mod planner;
 pub use planner::PlannerOptions;
