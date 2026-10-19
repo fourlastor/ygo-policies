@@ -1136,7 +1136,9 @@ mod tests {
     }
 
     /// The duel `play_fast` plays, with a search seat in the searching seat:
-    /// the seat is fed what that seat was, and steps nothing itself.
+    /// the seat is fed what that seat was, and steps nothing itself.  It
+    /// describes its cards with the stored profiles, `play_fast` with those
+    /// its engine reads from the scripts.
     fn play_with_search_seat<P: ygo_policies_search::Pilots>(
         core: &Core,
         decks: &[Deck; 2],
@@ -1148,10 +1150,7 @@ mod tests {
     ) -> (Vec<(u8, Vec<u8>)>, serde_json::Value) {
         let dealt = DuelOptions { life_points: run.life_points, ..DuelOptions::seeded(run.seed) };
         let duel = std::rc::Rc::new(std::cell::RefCell::new(core.deal(&dealt, decks).unwrap()));
-        let codes: Vec<_> = decks[searcher].main.iter().chain(&decks[searcher].extra).copied().collect();
-        let profiles = Some(core.effect_profiles(&codes).unwrap());
-        let mut seat = ygo_policies_search::SearchSeat::new(duel.clone(), pilots, searcher as u8, run.seed, profiles, options)
-            .unwrap();
+        let mut seat = ygo_policies_search::SearchSeat::new(duel.clone(), pilots, searcher as u8, run.seed, options).unwrap();
         let responses = host(&duel, run.limit, |player, message| {
             if player == searcher { seat.feed(message).unwrap() } else { other.feed(message).unwrap() }
         });
@@ -1208,6 +1207,7 @@ mod tests {
                 assert_eq!(stats["searched"], played["searched"], "{seed}");
                 assert_eq!(stats["deviations"], played["deviations"], "{seed}");
                 assert_eq!(stats["failed_searches"], 0, "{seed}: {}", stats["search_errors"]);
+                assert_eq!(stats["unprofiled_cards"], serde_json::json!([]), "{seed}");
             }
             assert!(through_library["searched"].as_u64().unwrap() > 0, "{seed}: nothing was searched");
         }
@@ -1245,10 +1245,9 @@ mod tests {
             let dealt = DuelOptions { life_points: run.life_points, ..DuelOptions::seeded(seed) };
             let duel = hosted.deal(&dealt, &decks).unwrap();
             let options = serde_json::json!({"stages": staged.stages, "limit": run.limit});
+            // No effect profiles given, as a game gives none: the seat has its own.
             let search = unsafe { library.search_seat(&cards, searcher as i32, seed, &engine, duel.handle(), Some(&options)) }
                 .unwrap();
-            let codes: Vec<_> = decks[searcher].main.iter().chain(&decks[searcher].extra).copied().collect();
-            search.set_effect_profiles(&hosted.effect_profiles(&codes).unwrap()).unwrap();
             let responses = host(&std::cell::RefCell::new(duel), run.limit, |player, message| {
                 if player == searcher { search.feed(message).unwrap() } else { other.feed(message).unwrap() }
             });
@@ -1258,6 +1257,7 @@ mod tests {
             assert_eq!(stats["searched"], played["searched"], "{seed}");
             assert_eq!(stats["deviations"], played["deviations"], "{seed}");
             assert_eq!(stats["failed_searches"], 0, "{seed}: {}", stats["search_errors"]);
+            assert_eq!(stats["unprofiled_cards"], serde_json::json!([]), "{seed}");
         }
     }
 

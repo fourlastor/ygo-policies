@@ -9,8 +9,10 @@ use ygo_policies_ocgcore::message;
 use ygo_policies_ocgcore::wire::msg;
 
 use crate::memory::PublicIdentityMemory;
+use crate::profiles::profiles_of;
 use crate::seat::{PilotSeat, Pilots};
 use crate::staged::{candidates, choose_staged, unknown_set_monsters, unsafe_selection, Context, StagedOptions, Stats};
+use crate::worlds::own_cards;
 use crate::Result;
 
 /// How a [`SearchSeat`] searches.
@@ -74,6 +76,9 @@ pub struct SeatStats {
     pub unsafe_selections: u64,
     /// Searches that dealt the other player's Set monsters again.
     pub resampled_set_monsters: u64,
+    /// The seat's own cards with no stored effect profile, which its pilot
+    /// plays without knowing their effects.
+    pub unprofiled: Vec<u32>,
     /// Each answer that is not the pilot's: the decision and turn, what it
     /// replaced with what, on how many worlds and by how much.
     pub deviations: Vec<serde_json::Value>,
@@ -87,7 +92,8 @@ impl SeatStats {
         json!({
             "asked": self.asked, "searched": self.searched, "in_chain": self.in_chain, "facing_set": self.facing_set,
             "search_skipped_facedown_banished": self.facedown_banished, "unsafe_selections": self.unsafe_selections,
-            "resampled_set_monsters": self.resampled_set_monsters, "deviations": self.deviations,
+            "resampled_set_monsters": self.resampled_set_monsters, "unprofiled_cards": self.unprofiled,
+            "deviations": self.deviations,
             "search_decision_ms": self.search_ms, "playouts": self.search.playouts,
             "failed_playouts": self.search.failed_playouts, "unresolved_playouts": self.search.unresolved_playouts,
             "failed_searches": self.search.failed_searches, "undealt_roots": self.search.undealt_roots,
@@ -116,6 +122,9 @@ pub struct SearchSeat<'a, P: Pilots> {
     /// `MSG_START`: the public history its model is built from.
     history: Vec<u8>,
     memory: PublicIdentityMemory,
+    /// Whether the effects of the seat's own cards are described yet: given,
+    /// or looked up at its first message.
+    profiled: bool,
     chain: bool,
     /// Answers given in the duel so far, by both players.
     decisions: usize,
@@ -126,17 +135,12 @@ pub struct SearchSeat<'a, P: Pilots> {
 impl<'a, P: Pilots> SearchSeat<'a, P> {
     /// Seat `viewer` of `duel`, the generic pilot from `pilots` seeded with
     /// `seed + viewer` and the worlds dealt from `seed`, as `play_fast` seats
-    /// a searcher in a duel of that seed.  `profiles` describes the effects
-    /// of the seat's own cards (`Core::effect_profiles`) to its pilot and to
-    /// the other player's model.
-    pub fn new(
-        duel: Rc<RefCell<Duel<'a>>>,
-        pilots: P,
-        viewer: u8,
-        seed: u64,
-        profiles: Option<serde_json::Value>,
-        options: SearchOptions,
-    ) -> Result<Self> {
+    /// a searcher in a duel of that seed.  Fed its first message, the seat
+    /// describes the effects of its own cards to its pilot and to the other
+    /// player's model, as `play_fast` does, with the profiles stored for the
+    /// card pool ([`profiles`](crate::profiles)) of the cards it has in the
+    /// duel then: no script runs.
+    pub fn new(duel: Rc<RefCell<Duel<'a>>>, pilots: P, viewer: u8, seed: u64, options: SearchOptions) -> Result<Self> {
         let staged = options.staged;
         if viewer > 1 {
             return Err("A search seat is seat 0 or 1".into());
@@ -153,17 +157,14 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
                 which lends its log handler for a duel it did not make".into());
         }
         let pilot = pilots.seat("generic", viewer, seed + viewer as u64)?;
-        if let Some(profiles) = &profiles {
-            pilot.set_effect_profiles(profiles)?;
-        }
         pilot.enable_response_overrides()?;
         let context = Context {
-            pilots, model_name: "generic".into(), viewer, seed, limit: options.limit, horizon: 0, profiles,
+            pilots, model_name: "generic".into(), viewer, seed, limit: options.limit, horizon: 0, profiles: None,
             specialist_opponent: false, adversarial_opponent: false,
         };
         Ok(Self {
             duel, context, options, pilot, history: Vec::new(), memory: PublicIdentityMemory::default(),
-            chain: false, decisions: 0, turns: 0, stats: SeatStats::default(),
+            profiled: false, chain: false, decisions: 0, turns: 0, stats: SeatStats::default(),
         })
     }
 
@@ -171,6 +172,9 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
     /// decide, the response for the engine comes back, searched.
     pub fn feed(&mut self, message: &[u8]) -> Result<Option<Vec<u8>>> {
         let id = *message.first().ok_or("Empty message")?;
+        if !self.profiled {
+            self.profile_own_cards()?;
+        }
         self.memory.observe(message)?;
         let start = self.history.len();
         self.history.extend_from_slice(&(message.len() as u32).to_le_bytes());
@@ -204,11 +208,28 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
     }
 
     /// Describe the effects of the seat's own cards (`Core::effect_profiles`)
-    /// to its pilot and to the other player's model, before its first question.
+    /// to its pilot and to the other player's model in place of the stored
+    /// ones, before its first message.
     pub fn set_effect_profiles(&mut self, profiles: serde_json::Value) -> Result<()> {
+        if !self.history.is_empty() {
+            return Err("A search seat takes effect profiles before its first message".into());
+        }
         self.pilot.set_effect_profiles(&profiles)?;
         self.context.profiles = Some(profiles);
+        self.profiled = true;
         Ok(())
+    }
+
+    /// The stored profiles of the cards the seat has in the duel at its first
+    /// message: its Deck list, which `play_fast` describes.
+    fn profile_own_cards(&mut self) -> Result<()> {
+        let (profiles, unprofiled) = {
+            let duel = self.duel.try_borrow().map_err(|_| "The host holds the duel while its search seat is fed")?;
+            let codes = own_cards(&duel, self.context.viewer)?;
+            profiles_of(&codes)?
+        };
+        self.stats.unprofiled = unprofiled;
+        self.set_effect_profiles(profiles)
     }
 
     /// What the seat has done so far.
@@ -259,5 +280,41 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
             }
         }
         Ok(answer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use ygo_policies_duel::{Core, Deck, DuelOptions};
+    use ygo_policies_ocgcore::SqliteCards;
+
+    use super::*;
+    use crate::LocalPilots;
+
+    #[test]
+    fn a_seat_describes_its_own_deck_list_as_the_scripts_do_and_takes_profiles_given_first() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let pilots = LocalPilots { cards: Arc::new(SqliteCards::open(&cards).unwrap()) };
+        let decks = ["Blackwing Assassin", "Emperor, Arise!"].map(|name| Deck::load(&root.join(format!("decks/{name}.ydk"))).unwrap());
+        let duel = Rc::new(RefCell::new(core.deal(&DuelOptions::seeded(7), &decks).unwrap()));
+        let seat = |viewer: u8| SearchSeat::new(duel.clone(), pilots.clone(), viewer, 7, SearchOptions::MEASURED).unwrap();
+        for viewer in 0..2 {
+            let mut seat = seat(viewer);
+            seat.feed(&duel.borrow().start_message(viewer)).unwrap();
+            let deck = &decks[viewer as usize];
+            let codes: Vec<_> = deck.main.iter().chain(&deck.extra).copied().collect();
+            assert_eq!(seat.context.profiles, Some(core.effect_profiles(&codes).unwrap()), "seat {viewer}");
+            assert!(seat.stats.unprofiled.is_empty(), "seat {viewer}: {:?}", seat.stats.unprofiled);
+            assert!(seat.set_effect_profiles(json!({})).is_err(), "seat {viewer}: after its first message");
+        }
+        let mut given = seat(0);
+        given.set_effect_profiles(json!({"44095762": []})).unwrap();
+        given.feed(&duel.borrow().start_message(0)).unwrap();
+        assert_eq!(given.context.profiles, Some(json!({"44095762": []})));
     }
 }

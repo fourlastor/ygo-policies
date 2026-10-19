@@ -145,13 +145,18 @@ engines and play styles available in the pool for future additions.
   again.  It can also play on a duel a host made (`Duel::borrow`).
 - `crates/ygo-policies-search`: the generic policy's staged search, shared by
   the benchmark and the C ABI.  `SearchSeat` is one more seat of a duel: fed
-  like any other, it plays its worlds on that duel while it answers.
+  like any other, it plays its worlds on that duel while it answers, and
+  describes its own cards' effects to its pilot from the profiles stored in
+  `data/`.
 - `crates/ygo-policies-bench`: `policy-bench`, native-engine matchups, paired
   baseline/candidate comparisons, round robins, generated tier lists, the
   card probes that generate the shared card knowledge, and a search on top
   of a pilot that shows where its answers lose games.
 - `data/`: the World Championship 2011 card pool and Forbidden & Limited list
-  (an EDOPro lflist), and what the engine shows about each of its monsters.
+  (an EDOPro lflist), what the engine shows about each of its monsters, and
+  the effects each card's script registers (`wc2011-effect-profiles.txt`,
+  written by `ygo-policies-duel`'s `effect_profiles` example; the search
+  crate's tests say when the pinned scripts no longer match it).
 
 The policy libraries do not link OCGCore: the search seat plays on the engine
 library its host gives it. Card data comes from any `cards.cdb` (EDOPro ships

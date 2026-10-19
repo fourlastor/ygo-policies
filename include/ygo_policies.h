@@ -52,18 +52,23 @@ YgoPolicy *ygo_policy_create_seeded(const char *policy_id, const char *cards_cdb
    again, 8 candidates, a world is a draw after 8192 answers) or an object
    setting any of "stages", "z", "kept", "chains", "set_monsters",
    "candidates" and "limit".  NULL on failure.
+   The seat describes the effects of its own cards to its pilot and to the
+   opponent's model by itself, as measured: when it is fed its first message,
+   it looks up the cards it has in the duel among the profiles stored for the
+   World Championship 2011 pool (data/wc2011-effect-profiles.txt), and runs no
+   script.  ygo_policy_set_effect_profiles_json gives others instead, before its
+   first message only.
    A search seat cannot be cloned, and keeps response overrides on; the other
-   calls apply to its pilot: ygo_policy_set_effect_profiles_json describes the
-   seat's own cards to its pilot and to the opponent's model (recommended, as
-   measured), and ygo_policy_override_response tells it which answer was played
-   when the host played another one. */
+   calls apply to its pilot: ygo_policy_override_response tells it which answer
+   was played when the host played another one. */
 YgoPolicy *ygo_policy_create_search(const char *cards_cdb_path, int32_t seat, uint64_t seed,
                                     const char *engine_path, void *duel, const char *options_json);
 
 /* JSON of what a search seat has done so far: "asked", "searched", the
    decisions left to its pilot ("in_chain", "facing_set",
    "search_skipped_facedown_banished", "unsafe_selections", "undealt_roots"),
-   "resampled_set_monsters", "deviations" (each answer that is not the pilot's),
+   "resampled_set_monsters", "unprofiled_cards" (its own cards with no stored
+   effect profile), "deviations" (each answer that is not the pilot's),
    "search_decision_ms", "playouts", "failed_playouts", "unresolved_playouts",
    "failed_searches" and "search_errors".  NULL for a plain seat; valid until
    the next call. */

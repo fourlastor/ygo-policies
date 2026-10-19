@@ -181,7 +181,8 @@ pub unsafe extern "C" fn ygo_policy_create_seeded(
 }
 
 /// The generic policy with the staged search, seated as `seat` of the host's
-/// `duel`, on which it plays its worlds while it answers.
+/// `duel`, on which it plays its worlds while it answers.  It describes its
+/// own cards' effects to its pilot with the stored profiles.
 ///
 /// # Safety
 /// `cards_cdb_path` and `engine_path` are NUL-terminated strings, and so is
@@ -212,7 +213,7 @@ pub unsafe extern "C" fn ygo_policy_create_search(
             )?,
         };
         let duel = Rc::new(RefCell::new(Duel::borrow(core, duel)));
-        let search = SearchSeat::new(duel, LocalPilots { cards: db }, seat, seed, None, options)?;
+        let search = SearchSeat::new(duel, LocalPilots { cards: db }, seat, seed, options)?;
         Ok(YgoPolicy::handle(Player::Search(Box::new(search))))
     })
 }

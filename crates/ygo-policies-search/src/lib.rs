@@ -11,6 +11,7 @@
 //! loaded from a file (the bench compares builds this way) or one in process.
 pub mod local;
 pub mod memory;
+pub mod profiles;
 mod search_seat;
 mod seat;
 mod staged;

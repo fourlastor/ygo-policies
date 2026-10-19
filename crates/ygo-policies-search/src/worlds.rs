@@ -103,6 +103,25 @@ fn hidden(duel: &Duel, viewer: u8, all_spell_zones: bool, monsters: &[u32]) -> R
     Ok(slots)
 }
 
+/// The codes of the cards `viewer` has in the duel, in no order: before
+/// the duel moves any, its Deck list, which a player knows.  Nothing else of
+/// them (where they are, in what order) is kept.
+pub(crate) fn own_cards(duel: &Duel, viewer: u8) -> Result<Vec<u32>> {
+    let mut codes = Vec::new();
+    // Piles of any size, then the Monster and Spell & Trap Zones.
+    for (location, zones) in [(1, None), (2, None), (0x10, None), (0x20, None), (0x40, None), (4, Some(7)), (8, Some(8))] {
+        for sequence in 0..zones.map_or_else(|| duel.count(viewer, location), Ok)? {
+            let (code, _, _) = card_query(&duel.card(query::CODE, viewer, location, sequence)?);
+            if code != 0 {
+                codes.push(code);
+            }
+        }
+    }
+    codes.sort_unstable();
+    codes.dedup();
+    Ok(codes)
+}
+
 /// Exact exchanges for a root inventory and world seed. Planning consumes
 /// the same random numbers and keeps the original exchange order.
 fn swap_plan(duel: &Duel, slots: &[Slot], viewer: u8, seed: u64, canonical: bool) -> Result<Vec<(Slot, Slot)>> {
