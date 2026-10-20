@@ -206,3 +206,25 @@ fn exodia_stall_with_large_synchro_searches_finishes() {
     assert_eq!(answers, 932);
     assert_eq!(won, Some((0, 16)), "the duel ends with Exodia's victory");
 }
+
+#[test]
+fn batteryman_fuel_cell_left_without_a_target_resolves_and_the_duel_goes_on() {
+    // Seed 47410671, a duel of a network against itself: Batteryman Fuel Cell
+    // Tributes Batteryman Charger, which the opponent's Mark of the Rose is
+    // equipped to, and the opponent has no card left for it to target.
+    // CardScripts' script failed on that missing target as the chain
+    // resolved, after the 465th answer, and the duel stopped there; mended
+    // (`src/script_fixes.rs`), the chain resolves and the duel asks on.
+    let json = serde_json::from_str(include_str!("fixtures/batteryman-fuel-cell-without-a-target.json")).unwrap();
+    let record = Recorded::from_json(&json).unwrap();
+    let mut answers = 0;
+    let mut solved = false;
+    let played = core().replay(&record, None, &mut |shown| match shown {
+        Replayed::Answer(..) => answers += 1,
+        Replayed::Message(Message::ChainSolved { .. }) if answers == 465 => solved = true,
+        _ => {}
+    });
+    assert_eq!(answers, 465);
+    assert!(solved, "the chain resolves");
+    assert_eq!(played, Err("The record ends before the duel does".to_owned()));
+}

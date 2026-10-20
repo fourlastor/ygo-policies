@@ -142,7 +142,9 @@ engines and play styles available in the pool for future additions.
   builds OCGCore and Lua from `vendor/` (its `bundled` feature) or loads a
   build of them, loads the card database, the scripts and the Decks, and
   gives a duel its caller steps, with snapshots and records of duels to play
-  again.  It can also play on a duel a host made (`Duel::borrow`).
+  again.  It can also play on a duel a host made (`Duel::borrow`).  The few
+  card scripts it mends are played in place of CardScripts' own (in
+  `scripts/`, each with why in `src/script_fixes.rs`).
 - `crates/ygo-policies-search`: the generic policy's staged search, shared by
   the benchmark and the C ABI.  `SearchSeat` is one more seat of a duel: fed
   like any other, it plays its worlds on that duel while it answers, and

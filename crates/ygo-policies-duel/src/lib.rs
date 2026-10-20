@@ -81,6 +81,7 @@ mod deck;
 mod duel;
 mod policy;
 mod record;
+mod script_fixes;
 
 pub use crate::core::{Core, Printed};
 pub use crate::deck::Deck;

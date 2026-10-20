@@ -269,7 +269,9 @@ pub struct Core {
 impl Core {
     /// The engine, the card database `cards` (EDOPro's `cards.cdb` layout,
     /// set codes included) and the scripts under `script_dir`: its root
-    /// helpers, then `official/`, then `pre-errata/` for names still missing.
+    /// helpers, then `official/`, then `pre-errata/` for names still missing,
+    /// the scripts this crate mends played in place of theirs
+    /// (`script_fixes.rs`).
     ///
     /// `path` is another build of OCGCore to load instead of the one this
     /// crate compiles (its C API must match), and the only one there is
@@ -278,8 +280,12 @@ impl Core {
     /// [`Duel::swap`](crate::Duel::swap) need.
     pub fn open(path: Option<&Path>, cards: &Path, script_dir: &Path) -> Result<Self> {
         let data = Self::read_cards(cards)?;
-        let mut script_data = HashMap::new();
-        // Root helpers first, then official cards, then missing pre-errata scripts.
+        let mut script_data: HashMap<String, Vec<u8>> = crate::script_fixes::SCRIPT_FIXES
+            .iter()
+            .map(|(name, script)| (name.to_string(), script.as_bytes().to_vec()))
+            .collect();
+        // The mended scripts, then root helpers, official cards and missing
+        // pre-errata scripts.
         for folder in ["", "official", "pre-errata"] {
             let dir = script_dir.join(folder);
             if !dir.is_dir() {

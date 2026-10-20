@@ -512,13 +512,21 @@ pub fn narrate(core: &mut Core, record: &Record, names: &HashMap<u32, String>, a
         holdings: Vec::new(),
         asker: asked.filter(|asked| record.policy.as_ref().is_none_or(|(played, _)| played != asked.policy)).map(|asked| asked.policy),
     };
-    let unused = core.replay(&record.recorded, asked, &mut |step| match step {
+    let played = core.replay(&record.recorded, asked, &mut |step| match step {
         Replayed::Message(message) => story.see(message),
         Replayed::Answer(player, bytes) => story.answered(player, bytes),
         Replayed::Otherwise(own, recorded) => story.otherwise(own, recorded),
-    })?;
-    if unused > 0 {
-        let _ = writeln!(story.text, "({unused} recorded answers were not needed.)");
+    });
+    match played {
+        Ok(0) => {}
+        Ok(unused) => {
+            let _ = writeln!(story.text, "({unused} recorded answers were not needed.)");
+        }
+        // A duel that stopped, a card's script failing in it say: told as far
+        // as it went, and why it went no further.
+        Err(error) => {
+            let _ = writeln!(story.text, "The duel stops here: {error}");
+        }
     }
     let holdings = story.holdings();
     Ok(story.text + &holdings)

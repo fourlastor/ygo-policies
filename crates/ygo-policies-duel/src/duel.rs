@@ -507,6 +507,13 @@ impl<'a> Duel<'a> {
         Ok(Step { messages, state })
     }
 
+    /// What the engine logged as errors in this duel, which [`Duel::step`]
+    /// returns as its error from then on: a card's script that failed, or an
+    /// arena found full.  A step's other errors are of the messages it read.
+    pub fn errors(&self) -> Vec<String> {
+        self.errors.borrow().clone()
+    }
+
     /// Answer the selection the engine waits on.
     pub fn respond(&mut self, response: &[u8]) {
         unsafe { (self.core.respond)(self.handle, response.as_ptr(), response.len() as u32) }
