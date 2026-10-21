@@ -228,3 +228,29 @@ fn batteryman_fuel_cell_left_without_a_target_resolves_and_the_duel_goes_on() {
     assert!(solved, "the chain resolves");
     assert_eq!(played, Err("The record ends before the duel does".to_owned()));
 }
+
+#[test]
+fn a_monster_that_destroys_itself_has_its_union_destroyed_instead_and_then_goes() {
+    // Seed 104158858, random answers in both seats: Malefic Cyber End Dragon,
+    // which destroys itself without a face-up Field Spell, with Machina
+    // Gearframe equipped, which is destroyed in its place. The 564th answer
+    // Sets Malefic World over the face-up Necrovalley, destroyed by rule.
+    // The engine then destroyed Gearframe in the Dragon's place, and before
+    // Gearframe was gone asked the Dragon to destroy itself again, Gearframe
+    // to be destroyed instead again, and so on until the duel's arena was
+    // full. Gearframe goes, then the Dragon.
+    const GEARFRAME: u32 = 42940404;
+    const DRAGON: u32 = 1710476;
+    let json = serde_json::from_str(include_str!("fixtures/malefic-cyber-end-dragon-with-gearframe.json")).unwrap();
+    let record = Recorded::from_json(&json).unwrap();
+    let mut answers = 0;
+    let mut gone = Vec::new();
+    let played = core().replay(&record, None, &mut |shown| match shown {
+        Replayed::Answer(..) => answers += 1,
+        Replayed::Message(Message::Move { code, to, .. }) if answers == 564 && to.location == 0x10 => gone.push(*code),
+        _ => {}
+    });
+    assert_eq!(answers, 564);
+    assert_eq!(gone, [47355498, GEARFRAME, DRAGON], "Necrovalley, Gearframe in the Dragon's place, then the Dragon");
+    assert_eq!(played, Err("The record ends before the duel does".to_owned()));
+}
