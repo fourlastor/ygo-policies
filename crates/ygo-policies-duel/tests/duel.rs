@@ -208,25 +208,35 @@ fn exodia_stall_with_large_synchro_searches_finishes() {
 }
 
 #[test]
-fn batteryman_fuel_cell_left_without_a_target_resolves_and_the_duel_goes_on() {
-    // Seed 47410671, a duel of a network against itself: Batteryman Fuel Cell
-    // Tributes Batteryman Charger, which the opponent's Mark of the Rose is
-    // equipped to, and the opponent has no card left for it to target.
-    // CardScripts' script failed on that missing target as the chain
-    // resolved, after the 465th answer, and the duel stopped there; mended
-    // (`src/script_fixes.rs`), the chain resolves and the duel asks on.
+fn batteryman_fuel_cell_is_not_offered_where_its_cost_would_leave_it_no_target() {
+    // Seed 47410671, a duel of a network against itself: with its 462nd
+    // answer Batteryman Fuel Cell's effect is activated, Tributing Batteryman
+    // Charger, which the opponent's Mark of the Rose is equipped to, and the
+    // opponent has no card left for it to target. CardScripts' script failed
+    // on that missing target as the chain resolved, after the 465th answer,
+    // and the duel stopped there. As CardScripts mended it
+    // (`src/script_fixes.rs`) the effect is not offered where its cost would
+    // leave it nothing to target, there and at the 456th and 459th answers
+    // before it, and is offered where it would not, as it was.
+    const FUEL_CELL: u32 = 74730899;
     let json = serde_json::from_str(include_str!("fixtures/batteryman-fuel-cell-without-a-target.json")).unwrap();
     let record = Recorded::from_json(&json).unwrap();
     let mut answers = 0;
-    let mut solved = false;
-    let played = core().replay(&record, None, &mut |shown| match shown {
+    let (mut asked, mut offered) = (Vec::new(), Vec::new());
+    // The record's answers play the same duel up to the 462nd, which does
+    // not answer what is asked there any more.
+    let _ = core().replay(&record, None, &mut |shown| match shown {
         Replayed::Answer(..) => answers += 1,
-        Replayed::Message(Message::ChainSolved { .. }) if answers == 465 => solved = true,
+        Replayed::Message(Message::SelectIdle(idle)) if answers < 462 => {
+            asked.push(answers + 1);
+            if idle.activate.iter().any(|effect| effect.code == FUEL_CELL) {
+                offered.push(answers + 1);
+            }
+        }
         _ => {}
     });
-    assert_eq!(answers, 465);
-    assert!(solved, "the chain resolves");
-    assert_eq!(played, Err("The record ends before the duel does".to_owned()));
+    assert!(asked.ends_with(&[456, 459, 462]), "the Main Phase asks before each of those answers");
+    assert_eq!(offered, [286, 290, 327, 342, 414]);
 }
 
 #[test]
