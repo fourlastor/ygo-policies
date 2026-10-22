@@ -529,6 +529,21 @@ impl Projection {
 
     /// What `me` sees, in the policies' vocabulary.
     pub fn observation(&self, me: u8, db: &dyn CardDatabase) -> Observation {
+        self.observed(me, db, false)
+    }
+
+    /// The same as [`Projection::observation`], with every card this
+    /// projection knows shown with its identity: the other player's
+    /// face-down cards and Extra Deck as well.  Of a projection fed the
+    /// engine's messages unredacted, which then knows every card a message
+    /// names, that is the duel with nothing hidden but the Decks' order,
+    /// from `me`'s seat: what a critic that sees the hidden cards in training
+    /// reads, and never a seat that plays.
+    pub fn observation_whole(&self, me: u8, db: &dyn CardDatabase) -> Observation {
+        self.observed(me, db, true)
+    }
+
+    fn observed(&self, me: u8, db: &dyn CardDatabase, whole: bool) -> Observation {
         let mut cards = Vec::new();
         let mut pile_sizes = Vec::new();
         for (p, side) in self.sides.iter().enumerate() {
@@ -541,18 +556,18 @@ impl Projection {
             ];
             for (loc, pile) in piles {
                 pile_sizes.push((p, loc, pile.len() as u32));
-                if loc == Location::Extra && p != me {
+                if loc == Location::Extra && p != me && !whole {
                     continue;
                 }
                 for (sequence, card) in pile.iter().enumerate() {
-                    cards.push(self.view(me, db, CardRef { controller: p, location: loc, sequence: sequence as u32 }, card));
+                    cards.push(self.view(me, db, CardRef { controller: p, location: loc, sequence: sequence as u32 }, card, whole));
                 }
             }
             pile_sizes.push((p, Location::Deck, side.deck));
             for (loc, zone) in [(Location::MonsterZone, &side.monsters[..]), (Location::SpellTrapZone, &side.spells[..])] {
                 for (sequence, card) in zone.iter().enumerate() {
                     if let Some(card) = card {
-                        cards.push(self.view(me, db, CardRef { controller: p, location: loc, sequence: sequence as u32 }, card));
+                        cards.push(self.view(me, db, CardRef { controller: p, location: loc, sequence: sequence as u32 }, card, whole));
                     }
                 }
             }
@@ -585,8 +600,11 @@ impl Projection {
         }
     }
 
-    fn view(&self, me: u8, db: &dyn CardDatabase, at: CardRef, card: &Card) -> CardView {
-        let seen = at.controller == me || card.face_up() || !matches!(at.location, Location::MonsterZone | Location::SpellTrapZone);
+    fn view(&self, me: u8, db: &dyn CardDatabase, at: CardRef, card: &Card, whole: bool) -> CardView {
+        let seen = whole
+            || at.controller == me
+            || card.face_up()
+            || !matches!(at.location, Location::MonsterZone | Location::SpellTrapZone);
         let code = card.code.filter(|_| seen || at.controller == me);
         let printed = code.and_then(|c| db.card(c));
         let stat = |current: Option<i32>, base: fn(&ygo_policies::cards::CardData) -> i32| {
@@ -683,5 +701,33 @@ mod tests {
         assert!(!projection.summon_used);
         projection.apply(&Message::Set { code: 0, loc: at(0, location::MZONE, position::FACEDOWN_DEFENSE) });
         assert!(projection.summon_used);
+    }
+
+    /// Fed the engine's messages as they are, a projection knows the other
+    /// player's cards.  Its observation still names nothing face-down on the
+    /// other player's field, nor that player's Extra Deck; the whole
+    /// observation names every card the projection knows.
+    #[test]
+    fn the_whole_observation_names_every_card_the_projection_knows() {
+        const TRAP: u32 = 44095762;
+        const FUSION: u32 = 23995346;
+        let db = ygo_policies::cards::MemoryCards::default();
+        let mut projection = Projection::new(Some(0));
+        projection.apply(&Message::Start { seat: 0, observer: false, life_points: [8000; 2], deck: [40; 2], extra: [0, 1] });
+        projection.apply(&Message::Draw { player: 1, cards: vec![(TRAP, position::FACEDOWN)] });
+        let hand = Loc { controller: 1, location: location::HAND, sequence: 0, position: position::FACEDOWN };
+        let set = Loc { controller: 1, location: location::SZONE, sequence: 2, position: position::FACEDOWN };
+        projection.apply(&Message::Move { code: TRAP, from: hand, to: set, reason: 0 });
+        projection.card_mut(1, location::EXTRA, 0).expect("the other player's Extra Deck").code = Some(FUSION);
+        let named = |observation: &Observation, location: Location| {
+            observation.cards.iter().filter(|card| card.at.controller == 1 && card.at.location == location).map(|card| card.code).collect::<Vec<_>>()
+        };
+        let seen = projection.observation(0, &db);
+        assert_eq!(named(&seen, Location::SpellTrapZone), [None]);
+        assert!(named(&seen, Location::Extra).is_empty());
+        let whole = projection.observation_whole(0, &db);
+        assert_eq!(named(&whole, Location::SpellTrapZone), [Some(TRAP)]);
+        assert_eq!(named(&whole, Location::Extra), [Some(FUSION)]);
+        assert_eq!(whole.pile_sizes, seen.pile_sizes);
     }
 }
