@@ -81,16 +81,14 @@ impl Strategy for ChainBurn {
         }
 
         // Accumulated Fortune needs a fourth link and Chain Strike grows with
-        // each: a chain is opened only with three of its cards ready to go on it.
+        // each: our cards go on a chain only when it can reach three links
+        // with the different ones ready, Fortune the fourth.
         let ctx = t.ctx;
         let fortune_set = ctx
             .spell_traps(ctx.me)
             .iter()
             .any(|c| !c.position.face_up && c.code == Some(FORTUNE));
-        if ctx.obs.chain.is_empty()
-            && fortune_set
-            && matches!(code, JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON)
-        {
+        if fortune_set && matches!(code, JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON) {
             let ready: HashSet<u32> = t
                 .choices()
                 .filter(|(_, c)| c.kind == ChoiceKind::Activate)
@@ -101,8 +99,9 @@ impl Strategy for ChainBurn {
                         JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON | STRIKE
                     )
                 })
+                .filter(|k| !ctx.obs.chain.iter().any(|l| ctx.canonical(l.code) == *k))
                 .collect();
-            if ready.len() < 3 {
+            if ctx.obs.chain.len() + ready.len() < 3 {
                 return Some(Response::no());
             }
         }

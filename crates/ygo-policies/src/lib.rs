@@ -3226,6 +3226,29 @@ mod tests {
     }
 
     #[test]
+    fn chain_burn_joins_a_chain_only_when_fortune_can_come_fourth() {
+        const FORTUNE: u32 = 98444741;
+        const JAR: u32 = 83968380;
+        const LEGACY: u32 = 30461781;
+        const LAVA: u32 = 102380;
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.pile_sizes = vec![(0, Location::Deck, 30)];
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, FORTUNE, false), card(0, Location::SpellTrapZone, 1, JAR, false),
+            card(0, Location::SpellTrapZone, 2, LEGACY, false)];
+        obs.chain = vec![ChainLink { code: LAVA, controller: 1, source: CardRef { controller: 1, location: Location::Hand, sequence: 0 }, targets: Vec::new() }];
+        let window = |codes: &[(u32, u32)]| {
+            let mut choices: Vec<Choice> = codes.iter().map(|&(code, at)| activate(code, Location::SpellTrapZone, at)).collect();
+            choices.push(choice(ChoiceKind::Pass));
+            decide(DecisionKind::Chain { forced: false, triggers: false }, None, choices)
+        };
+        let mut policy = crate::registry::create("chain-burn", Arc::new(MemoryCards::default())).unwrap();
+        assert_eq!(policy.choose(&obs, &window(&[(JAR, 1)])), 1, "their link and Jar: Fortune would come third");
+        let mut policy = crate::registry::create("chain-burn", Arc::new(MemoryCards::default())).unwrap();
+        assert_ne!(policy.choose(&obs, &window(&[(JAR, 1), (LEGACY, 2)])), 2);
+    }
+
+    #[test]
     fn chain_burn_builds_its_chains_after_the_draw_and_standby_phases() {
         const JAR: u32 = 83968380;
         const LAVA: u32 = 102380;
