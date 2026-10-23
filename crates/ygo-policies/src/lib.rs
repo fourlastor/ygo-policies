@@ -2977,6 +2977,20 @@ mod tests {
     }
 
     #[test]
+    fn cyber_summons_its_chimeratech_fusions_in_attack() {
+        const OVERDRAGON: u32 = 64599569;
+        const FORTRESS: u32 = 79229522;
+        let db = Arc::new(MemoryCards([creature(OVERDRAGON, 9, 0, 0, 0), creature(FORTRESS, 8, 0, 0, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("cyber", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(1, 0, None, Position::FACE_UP_ATTACK, 2600, 1000)];
+        let positions = vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)), choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))];
+        for code in [OVERDRAGON, FORTRESS] {
+            assert_eq!(policy.choose(&obs, &decide(DecisionKind::Position, Some(code), positions.clone())), 0, "{code}");
+        }
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

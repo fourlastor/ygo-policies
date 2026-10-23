@@ -4,7 +4,7 @@ use super::support;
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, Hint, Location, Member};
+use crate::model::{Choice, ChoiceKind, Hint, Location, Member, Position};
 pub const DECK: &str = "Power Surge";
 const CYBER: u32 = 70095154;
 const ZWEI: u32 = 5373478;
@@ -21,6 +21,7 @@ const LIMITER: u32 = 23171610;
 const TWIN: u32 = 74157028;
 const END: u32 = 1546123;
 const OVERDRAGON: u32 = 64599569;
+const FORTRESS: u32 = 79229522;
 #[derive(Clone, Default)]
 pub struct Cyber;
 impl Strategy for Cyber {
@@ -129,6 +130,11 @@ impl Strategy for Cyber {
             BOND | OVERLOAD | POLY | ZWEI | FUTURE | VALLEY | LIMITER => Response::no(),
             _ => return support::chain(t, i),
         })
+    }
+    fn position(&self, t: &Turn, code: u32) -> Option<Position> {
+        // Their ATK comes from their materials as they are summoned: the
+        // printed 0 says nothing of it, and Defense only wastes it.
+        matches!(t.ctx.canonical(code), OVERDRAGON | FORTRESS).then_some(Position::FACE_UP_ATTACK)
     }
     fn select(&self, t: &Turn, m: &Member) -> Option<f64> {
         let ctx = t.ctx;
