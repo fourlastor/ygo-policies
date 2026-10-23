@@ -142,3 +142,32 @@ Head to head in the Chain Burn mirror against the network (1,040 games, 520
 seeds from 985000, both ways) the final pilot does worse: 43.9% ± 1.1%
 before, 39.4% ± 1.1% after. Its gains are against pilots; against the
 network's own chains, holding cards for longer ones loses.
+
+## Herald (Herald's Veto)
+
+The network attacked face-down monsters with Dunames Dark Witch, Manju and
+Herald of Perfection where the pilot went to Main Phase 2: the shared rule
+attacks an unknown face-down monster only from 1900 ATK, which none of the
+deck's attackers has. Given the network's answers there alone it won 8.5
+points more.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| Attack unknown face-down monsters from 1800 ATK | `21d49d3` | +8.56 ± 1.88 | (1400 kept) |
+| Attack unknown face-down monsters from 1400 ATK | `21d49d3` | +9.04 ± 1.95 | yes |
+
+What is left of the gap is spread over small pieces, none worth more than
+2.3 points to the network alone: Herald of Perfection's negations of small
+plays (Crystal Promise, Gladiator Proving Ground, Treeborn Frog), Summons the
+pilot keeps in hand as Fairy fuel, Royal Decree and Beckoning Light in chain
+windows.
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**39.61% → 50.04%, +10.44 points, paired 95% half-width 1.67**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 30.9%, the
+final pilot 39.5%, the network 55.5%; 35% ± 4% of the network's gap closed.
+
+Head to head in the Herald mirror against the network (1,040 games, 520
+seeds from 985000, both ways): 28.5% ± 1.3% before, 42.0% ± 1.2% after.
