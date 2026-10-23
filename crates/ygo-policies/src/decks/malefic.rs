@@ -106,6 +106,8 @@ impl Strategy for Malefic {
             } else {
                 2300.0
             }),
+            // Set, Parallel Gear holds the field until a Malefic needs it.
+            (ChoiceKind::SetMonster, GEAR) => return None,
             (_, GEAR | 89631139 | CYBER | STAR | BLUE | TRUTH) => None,
             _ => return None,
         })

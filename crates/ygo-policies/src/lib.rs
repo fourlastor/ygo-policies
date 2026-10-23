@@ -3364,6 +3364,17 @@ mod tests {
     }
 
     #[test]
+    fn malefic_sets_parallel_gear() {
+        const GEAR: u32 = 74509280;
+        let db = Arc::new(MemoryCards([creature(GEAR, 2, 0, 0, 0x23)].into_iter().collect()));
+        let mut policy = crate::registry::create("malefic", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, GEAR, false), monster(1, 0, None, Position::FACE_UP_ATTACK, 1800, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, GEAR, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
