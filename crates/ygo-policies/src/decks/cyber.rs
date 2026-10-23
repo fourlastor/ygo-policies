@@ -179,11 +179,13 @@ impl Strategy for Cyber {
                 Hint::SpecialSummon | Hint::Confirm | Hint::None
             )
         {
+            // Future Fusion: Twin sends two Cyber Dragons and keeps the Deck's
+            // other Machines; Overdragon where Twin cannot be made.
             return Some(if src == Some(FUTURE) {
-                if code == OVERDRAGON {
-                    9000.0
-                } else {
-                    1000.0
+                match code {
+                    TWIN => 9500.0,
+                    OVERDRAGON => 9000.0,
+                    _ => 1000.0,
                 }
             } else {
                 value(self, &ctx, Some(code), None) as f64

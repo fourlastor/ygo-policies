@@ -3066,6 +3066,22 @@ mod tests {
     }
 
     #[test]
+    fn cyber_brings_cyber_twin_dragon_with_future_fusion() {
+        const FUTURE: u32 = 77565204;
+        const TWIN: u32 = 74157028;
+        const OVERDRAGON: u32 = 64599569;
+        let mut policy = crate::registry::create("cyber", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, FUTURE, false), card(0, Location::Extra, 0, OVERDRAGON, false), card(0, Location::Extra, 1, TWIN, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(FUTURE, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert!(policy.commit_choice(&obs, &idle, 0));
+        let fusion = Decision { hint: Hint::Confirm, minimum: 1, maximum: 1,
+            ..decide(DecisionKind::SelectCards, None, vec![toggle(Location::Extra, 0, OVERDRAGON), toggle(Location::Extra, 1, TWIN)]) };
+        let fusion = Decision { choices: fusion.choices.into_iter().map(|c| Choice { kind: ChoiceKind::Cards, members: vec![c.card.unwrap()], card: None, ..c }).collect(), ..fusion };
+        assert_eq!(policy.choose(&obs, &fusion), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
