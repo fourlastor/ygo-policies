@@ -55,7 +55,13 @@ impl Strategy for Cyber {
         if let Some(i) = t.activate(FUTURE) {
             return t.pick(i);
         }
-        if ctx.main1() && t.has(ChoiceKind::EnterBattle) {
+        // Zwei and Proto are Cyber Dragon once face-up on the field: summon
+        // them before fusing, for a bigger fusion than the hand alone makes.
+        let summon_first = t.choices().any(|(_, c)| {
+            c.kind == ChoiceKind::NormalSummon
+                && c.code().map_or(false, |code| matches!(ctx.canonical(code), ZWEI | PROTO))
+        });
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) && !summon_first {
             if ctx.my_lp() > 3000 {
                 if let Some(i) = t.activate(BOND) {
                     return t.pick(i);
@@ -94,7 +100,7 @@ impl Strategy for Cyber {
                 }
             }
         }
-        if !ctx.face_up_on_field(ctx.me, TWIN) && !ctx.face_up_on_field(ctx.me, END) {
+        if !summon_first && !ctx.face_up_on_field(ctx.me, TWIN) && !ctx.face_up_on_field(ctx.me, END) {
             if let Some(i) = t.activate(POLY) {
                 return t.pick(i);
             }

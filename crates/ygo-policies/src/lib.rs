@@ -3022,6 +3022,26 @@ mod tests {
     }
 
     #[test]
+    fn cyber_summons_zwei_before_it_fuses() {
+        const CYBER: u32 = 70095154;
+        const ZWEI: u32 = 5373478;
+        const BOND: u32 = 37630732;
+        let db = Arc::new(MemoryCards([creature(CYBER, 5, 2100, 1600, 0), creature(ZWEI, 4, 1500, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![monster(0, 0, Some(CYBER), Position::FACE_UP_ATTACK, 2100, 1600), card(0, Location::Hand, 0, ZWEI, false), card(0, Location::Hand, 1, BOND, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, ZWEI, 0), activate(BOND, Location::Hand, 1), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("cyber", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        // Once summoned, the fusion.
+        obs.summon_used = true;
+        obs.cards[1] = monster(0, 1, Some(ZWEI), Position::FACE_UP_ATTACK, 1500, 1000);
+        let idle = decide(DecisionKind::Idle, None, vec![activate(BOND, Location::Hand, 1), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("cyber", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
