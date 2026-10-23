@@ -200,3 +200,27 @@ final pilot 47.2%, the network 64.8%; 39% ± 5% of the network's gap closed.
 
 Head to head in the Iron Chain mirror against the network (1,040 games, 520
 seeds from 985000, both ways): 18.9% ± 1.1% before, 30.9% ± 1.3% after.
+
+## Amazoness (Queens of the Wild)
+
+The network played the deck in Attack: it Normal Summoned what the pilot Set,
+Special Summoned in Attack what the pilot put in Defense, and flipped its
+monsters to Attack before battle. Village, Fighting Spirit and Swords Woman
+all pay in Attack.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| A2: Amazoness never Set, Normal Summoned face-up | `21d49d3` | +5.48 ± 2.58 | yes |
+| A1: Amazoness Special Summoned in Attack (alone +4.04 ± 1.51) | A2 | +1.92 ± 1.22 | yes |
+| A3: Amazoness switched to Attack before the Battle Phase (alone +2.40 ± 1.58) | A1, A2 | +0.00 ± 0.27 | no |
+| Paladin over Sage in searches: 1,040; 2,080; 1,040 fresh from seed 975000 | A1, A2 | +1.54 ± 1.60; +1.44 ± 1.11; +0.38 ± 1.51 | no |
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**57.32% → 61.67%, +4.34 points, paired 95% half-width 1.46**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 49.1%, the
+final pilot 54.6%, the network 67.5%; 30% ± 6% of the network's gap closed.
+
+Head to head in the Amazoness mirror against the network (1,040 games, 520
+seeds from 985000, both ways): 29.0% ± 1.2% before, 36.5% ± 1.2% after.
