@@ -3156,6 +3156,44 @@ mod tests {
     }
 
     #[test]
+    fn chain_burn_opens_a_chain_only_with_three_links_ready_for_fortune() {
+        const FORTUNE: u32 = 98444741;
+        const JAR: u32 = 83968380;
+        const LEGACY: u32 = 30461781;
+        const RECKLESS: u32 = 37576645;
+        let db = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, FORTUNE, false), card(0, Location::SpellTrapZone, 1, JAR, false),
+            card(0, Location::SpellTrapZone, 2, LEGACY, false), card(0, Location::SpellTrapZone, 3, RECKLESS, false)];
+        obs.phase = Some(Phase::Draw);
+        obs.pile_sizes = vec![(0, Location::Deck, 30)];
+        let window = |codes: &[(u32, u32)]| {
+            let mut choices: Vec<Choice> = codes.iter().map(|&(code, at)| activate(code, Location::SpellTrapZone, at)).collect();
+            choices.push(choice(ChoiceKind::Pass));
+            decide(DecisionKind::Chain { forced: false, triggers: false }, None, choices)
+        };
+        let mut policy = crate::registry::create("chain-burn", db.clone()).unwrap();
+        // Two links ready: Fortune would never come; wait.
+        assert_eq!(policy.choose(&obs, &window(&[(JAR, 1), (LEGACY, 2)])), 2);
+        let mut policy = crate::registry::create("chain-burn", db).unwrap();
+        // Three: open the chain.
+        assert_ne!(policy.choose(&obs, &window(&[(JAR, 1), (LEGACY, 2), (RECKLESS, 3)])), 3);
+    }
+
+    #[test]
+    fn chain_burn_keeps_poison_of_the_old_man_for_a_chain() {
+        use crate::cards::types;
+        const POISON: u32 = 8842266;
+        let poison = crate::cards::CardData { code: POISON, kind: types::SPELL | types::QUICKPLAY, ..Default::default() };
+        let mut policy = crate::registry::create("chain-burn", Arc::new(MemoryCards([(POISON, poison)].into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, POISON, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(POISON, Location::Hand, 0),
+            Choice { kind: ChoiceKind::SetSpellTrap, ..activate(POISON, Location::Hand, 0) }, choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

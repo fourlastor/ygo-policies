@@ -1,5 +1,7 @@
 //! Chain Reaction: extend chains with different draw/burn cards, then
 //! collect Accumulated Fortune and a late Chain Strike. Defense buys reloads.
+use std::collections::HashSet;
+
 use super::support;
 use crate::agent::{Response, Strategy, Turn};
 use crate::ctx::Ctx;
@@ -49,7 +51,9 @@ impl Strategy for ChainBurn {
         if let Some(i) = t.find(ChoiceKind::SpecialSummon, Some(LAVA), Some(Location::Hand)) {
             return t.pick(i);
         }
-        for code in [TRIO, POISON] {
+        // Poison of the Old Man is Set, to go on a chain: alone it is one
+        // link that opens none.
+        for code in [TRIO] {
             if let Some(i) = t.activate(code) {
                 return t.pick(i);
             }
@@ -75,6 +79,32 @@ impl Strategy for ChainBurn {
             return Some(Response::no());
         }
 
+        // Accumulated Fortune needs a fourth link and Chain Strike grows with
+        // each: a chain is opened only with three of its cards ready to go on it.
+        let ctx = t.ctx;
+        let fortune_set = ctx
+            .spell_traps(ctx.me)
+            .iter()
+            .any(|c| !c.position.face_up && c.code == Some(FORTUNE));
+        if ctx.obs.chain.is_empty()
+            && fortune_set
+            && matches!(code, JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON)
+        {
+            let ready: HashSet<u32> = t
+                .choices()
+                .filter(|(_, c)| c.kind == ChoiceKind::Activate)
+                .filter_map(|(_, c)| c.code().map(|k| ctx.canonical(k)))
+                .filter(|k| {
+                    matches!(
+                        *k,
+                        JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON | STRIKE
+                    )
+                })
+                .collect();
+            if ready.len() < 3 {
+                return Some(Response::no());
+            }
+        }
         Some(match code {
             JAR | LEGACY if t.ctx.deck_size(t.ctx.me) > 1 => Response::new(145.0),
             RECKLESS if t.ctx.deck_size(t.ctx.me) > 2 => Response::new(140.0),
