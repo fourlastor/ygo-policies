@@ -248,3 +248,25 @@ final pilot 65.6%, the network 71.7%; 49% ± 9% of the network's gap closed.
 
 Head to head in the Malefic mirror against the network (1,040 games, 520
 seeds from 985000, both ways): 34.6% ± 1.3% before, 46.8% ± 1.3% after.
+
+## Fish (Tidal Assembly)
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| R: Coelacanth recruits Royal Swamp Eel, then Unshaven Angler, before Oyster Meister, whatever Tuners are out (alone) | `21d49d3` | +0.19 ± 1.48 | with J |
+| J: Stardust Dragon first among the Synchros (alone) | `21d49d3` | +0.87 ± 1.35 | with R |
+| R and J together: 1,040; 1,040 fresh from seed 975000 | `21d49d3` | +2.02 ± 1.77; +2.74 ± 1.73 | yes |
+| Mother Grizzly face-up before a Battle Phase: 1,040; 1,040 fresh | R, J | +1.63 ± 1.26; −0.05 ± 1.46 | no |
+| Mother Grizzly never Set | R, J | +1.63 ± 1.34 | no |
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**50.66% → 52.68%, +2.02 points, paired 95% half-width 1.29**: more than
+nothing by two standard errors, but not the 2 points by two standard errors
+the pass's mark asks. Fish's work does not hold out.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 50.8%, the
+final pilot 53.1%, the network 67.3%; 14% ± 5% of the network's gap closed.
+
+Head to head in the Fish mirror against the network (1,040 games, 520 seeds
+from 985000, both ways): 27.4% ± 1.4% before, 36.8% ± 1.4% after.
