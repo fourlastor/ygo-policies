@@ -3283,6 +3283,19 @@ mod tests {
     }
 
     #[test]
+    fn herald_attacks_face_down_monsters_with_its_fairies() {
+        const WITCH: u32 = 12493482;
+        let db = Arc::new(MemoryCards([creature(WITCH, 4, 1800, 1050, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("herald", db).unwrap();
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![monster(0, 0, Some(WITCH), Position::FACE_UP_ATTACK, 1800, 1050), monster(1, 0, None, Position::FACE_DOWN_DEFENSE, 0, 0)];
+        let battle = decide(DecisionKind::Battle, None, vec![Choice { kind: ChoiceKind::Attack, ..activate(WITCH, Location::MonsterZone, 0) }, choice(ChoiceKind::EnterMain2)]);
+        assert_eq!(policy.choose(&obs, &battle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

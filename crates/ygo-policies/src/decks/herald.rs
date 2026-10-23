@@ -1,7 +1,7 @@
 //! Herald's Veto: assemble Herald with Dawn/Advanced Ritual Art, retain
 //! Fairy ammunition, recover it with Dark Factory, and protect with Decree.
 use super::support;
-use crate::agent::{value, Response, Strategy, Turn};
+use crate::agent::{value, Outcome, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
 use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member};
@@ -192,6 +192,12 @@ impl Strategy for Herald {
             });
         }
         support::material_score(&ctx, m, t.decision.hint)
+    }
+    fn attack_outcome(&self, _: &Ctx, attacker: &CardView, target: &CardView) -> Option<Outcome> {
+        // A face-down monster is most often a small one, and Herald of
+        // Perfection answers the Flip effect it hides: our Fairies swing.
+        (!target.position.face_up && !target.known() && attacker.attack >= 1400)
+            .then_some(Outcome::Win { trick: false })
     }
     fn attack_trick(&self, ctx: &Ctx, c: &CardView) -> i32 {
         support::honest_trick(ctx, c)
