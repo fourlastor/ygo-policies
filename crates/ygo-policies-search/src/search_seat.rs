@@ -106,7 +106,10 @@ impl SeatStats {
 /// duel.  It is fed every message of the duel, its own `MSG_START` first,
 /// like any other seat, and answers each of its seat's questions as
 /// `policy-bench generic --method staged` does in that seat: the same
-/// pilot, the same guards, the same worlds.
+/// pilot, the same guards, the same worlds.  Seated with
+/// [`SearchSeat::with_pilots`], another policy can pilot it and be the
+/// other player's model, as `--pilot specialist` and `--opponent-model
+/// specialist` have the deck's own specialists.
 ///
 /// It plays its worlds on the host's duel itself: while it answers it
 /// snapshots the duel, deals and plays every world, and restores it before
@@ -130,6 +133,9 @@ pub struct SearchSeat<'a, P: Pilots> {
     decisions: usize,
     turns: u32,
     stats: SeatStats,
+    /// Whether the pilot is the generic policy, the one that is told what
+    /// the seat's own cards do.
+    generic_pilot: bool,
 }
 
 impl<'a, P: Pilots> SearchSeat<'a, P> {
@@ -141,6 +147,22 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
     /// card pool ([`profiles`](crate::profiles)) of the cards it has in the
     /// duel then: no script runs.
     pub fn new(duel: Rc<RefCell<Duel<'a>>>, pilots: P, viewer: u8, seed: u64, options: SearchOptions) -> Result<Self> {
+        Self::with_pilots(duel, pilots, viewer, seed, options, "generic", None)
+    }
+
+    /// [`SearchSeat::new`] with `pilot` from `pilots` in the generic one's
+    /// place, and the other player's model `model` (the generic one when
+    /// none is named).  A pilot or a model other than the generic policy is
+    /// told nothing of what the cards do: a deck's specialist knows its own.
+    pub fn with_pilots(
+        duel: Rc<RefCell<Duel<'a>>>,
+        pilots: P,
+        viewer: u8,
+        seed: u64,
+        options: SearchOptions,
+        pilot: &str,
+        model: Option<&str>,
+    ) -> Result<Self> {
         let staged = options.staged;
         if viewer > 1 {
             return Err("A search seat is seat 0 or 1".into());
@@ -156,15 +178,17 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
             return Err("A search seat needs an engine with snapshots, the hidden-card swap and random reseeding, \
                 which lends its log handler for a duel it did not make".into());
         }
-        let pilot = pilots.seat("generic", viewer, seed + viewer as u64)?;
+        let generic_pilot = pilot == "generic";
+        let model = model.unwrap_or("generic");
+        let pilot = pilots.seat(pilot, viewer, seed + viewer as u64)?;
         pilot.enable_response_overrides()?;
         let context = Context {
-            pilots, model_name: "generic".into(), viewer, seed, limit: options.limit, horizon: 0, profiles: None,
-            specialist_opponent: false, adversarial_opponent: false,
+            pilots, model_name: model.into(), viewer, seed, limit: options.limit, horizon: 0, profiles: None,
+            specialist_opponent: model != "generic", adversarial_opponent: false,
         };
         Ok(Self {
             duel, context, options, pilot, history: Vec::new(), memory: PublicIdentityMemory::default(),
-            profiled: false, chain: false, decisions: 0, turns: 0, stats: SeatStats::default(),
+            profiled: false, chain: false, decisions: 0, turns: 0, stats: SeatStats::default(), generic_pilot,
         })
     }
 
@@ -214,7 +238,9 @@ impl<'a, P: Pilots> SearchSeat<'a, P> {
         if !self.history.is_empty() {
             return Err("A search seat takes effect profiles before its first message".into());
         }
-        self.pilot.set_effect_profiles(&profiles)?;
+        if self.generic_pilot {
+            self.pilot.set_effect_profiles(&profiles)?;
+        }
         self.context.profiles = Some(profiles);
         self.profiled = true;
         Ok(())
@@ -316,5 +342,27 @@ mod tests {
         given.set_effect_profiles(json!({"44095762": []})).unwrap();
         given.feed(&duel.borrow().start_message(0)).unwrap();
         assert_eq!(given.context.profiles, Some(json!({"44095762": []})));
+    }
+
+    #[test]
+    fn a_seat_piloted_by_specialists_tells_them_nothing_of_the_cards() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let cards = root.join("vendor/BabelCdb/cards.cdb");
+        let core = Core::open(None, &cards, &root.join("vendor/CardScripts")).unwrap();
+        let pilots = LocalPilots { cards: Arc::new(SqliteCards::open(&cards).unwrap()) };
+        let decks = ["Blackwing Assassin", "Emperor, Arise!"].map(|name| Deck::load(&root.join(format!("decks/{name}.ydk"))).unwrap());
+        let duel = Rc::new(RefCell::new(core.deal(&DuelOptions::seeded(7), &decks).unwrap()));
+        let mut seat = SearchSeat::with_pilots(
+            duel.clone(), pilots.clone(), 0, 7, SearchOptions::MEASURED, "blackwing", Some("monarch"),
+        )
+        .unwrap();
+        // The specialist takes no profiles: given them, its seat would refuse.
+        seat.feed(&duel.borrow().start_message(0)).unwrap();
+        assert!(!seat.generic_pilot);
+        assert_eq!(seat.context.model_name, "monarch");
+        assert!(seat.context.specialist_opponent);
+        let generic = SearchSeat::with_pilots(duel.clone(), pilots, 1, 7, SearchOptions::MEASURED, "generic", None).unwrap();
+        assert!(generic.generic_pilot && !generic.context.specialist_opponent);
+        assert_eq!(generic.context.model_name, "generic");
     }
 }
