@@ -3335,6 +3335,22 @@ mod tests {
     }
 
     #[test]
+    fn amazoness_plays_its_monsters_in_attack() {
+        const SAGE: u32 = 53162898;
+        const PALADIN: u32 = 47480070;
+        let db = Arc::new(MemoryCards([creature(SAGE, 4, 1400, 400, 0x4), creature(PALADIN, 4, 1700, 300, 0x4)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![card(0, Location::Hand, 0, SAGE, false), monster(1, 0, None, Position::FACE_UP_ATTACK, 2400, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::SetMonster, SAGE, 0), from_hand(ChoiceKind::NormalSummon, SAGE, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("amazoness", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        let positions = vec![choice(ChoiceKind::Position(Position::FACE_UP_ATTACK)), choice(ChoiceKind::Position(Position::FACE_UP_DEFENSE))];
+        let mut policy = crate::registry::create("amazoness", db).unwrap();
+        assert_eq!(policy.choose(&obs, &decide(DecisionKind::Position, Some(PALADIN), positions)), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

@@ -1,8 +1,8 @@
 //! Queens of the Wild: Village replacements, Queen protection, and Swords Woman reflection.
 use super::support;
-use crate::agent::{Response, Strategy, Turn};
+use crate::agent::{value, Response, Strategy, Turn};
 use crate::ctx::Ctx;
-use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member, Position};
 pub const DECK: &str = "Queens of the Wild";
 const QUEEN: u32 = 15951532;
 const SWORD: u32 = 94004268;
@@ -10,6 +10,7 @@ const SAGE: u32 = 53162898;
 const VILLAGE: u32 = 712559;
 const SPIRIT: u32 = 36100154;
 const WILL: u32 = 22082163;
+const AMAZONESS: u16 = 0x4;
 #[derive(Clone, Default)]
 pub struct Amazoness;
 impl Strategy for Amazoness {
@@ -48,8 +49,15 @@ impl Strategy for Amazoness {
     }
     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
         let code = c.code()?;
+        // Face-down an Amazoness holds nothing the deck plays for.
+        if c.kind == ChoiceKind::SetMonster && t.ctx.data(code).in_set(AMAZONESS) {
+            return Some(None);
+        }
         if c.kind != ChoiceKind::NormalSummon {
             return None;
+        }
+        if code != QUEEN && code != SWORD && t.ctx.data(code).in_set(AMAZONESS) {
+            return Some(Some(value(self, &t.ctx, Some(code), None) as f64));
         }
         if code == QUEEN {
             return Some((!t.ctx.face_up_on_field(t.ctx.me, QUEEN)).then_some(3700.0));
@@ -120,6 +128,13 @@ impl Strategy for Amazoness {
             }
         }
         None
+    }
+    fn position(&self, t: &Turn, code: u32) -> Option<Position> {
+        // Village, Fighting Spirit and Swords Woman all pay in Attack.
+        t.ctx
+            .data(code)
+            .in_set(AMAZONESS)
+            .then_some(Position::FACE_UP_ATTACK)
     }
     fn attack_trick(&self, ctx: &Ctx, c: &CardView) -> i32 {
         if ctx.view_data(c).in_set(0x4)
