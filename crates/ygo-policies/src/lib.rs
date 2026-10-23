@@ -3082,6 +3082,38 @@ mod tests {
     }
 
     #[test]
+    fn zombie_tributes_for_il_blud_from_the_hand() {
+        const IL_BLUD: u32 = 70595331;
+        const TURTLE: u32 = 77044671;
+        let db = Arc::new(MemoryCards([creature(IL_BLUD, 6, 2100, 800, 0), creature(TURTLE, 4, 1200, 1400, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("zombie", db).unwrap();
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![monster(0, 0, Some(TURTLE), Position::FACE_DOWN_DEFENSE, 1200, 1400), card(0, Location::Hand, 0, IL_BLUD, false),
+            monster(1, 0, None, Position::FACE_UP_ATTACK, 1800, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, IL_BLUD, 0), from_hand(ChoiceKind::SetMonster, IL_BLUD, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
+    fn zombie_flips_its_waiting_recruiters_to_attack() {
+        const TURTLE: u32 = 77044671;
+        let db = Arc::new(MemoryCards([creature(TURTLE, 4, 1200, 1400, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.summon_used = true;
+        obs.cards = vec![monster(0, 0, Some(TURTLE), Position::FACE_DOWN_DEFENSE, 1200, 1400), monster(1, 0, None, Position::FACE_UP_ATTACK, 1800, 1000)];
+        let flip = Choice { kind: ChoiceKind::ChangePosition, ..activate(TURTLE, Location::MonsterZone, 0) };
+        let idle = decide(DecisionKind::Idle, None, vec![flip.clone(), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("zombie", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+        // With no Battle Phase to follow, it waits.
+        let idle = decide(DecisionKind::Idle, None, vec![flip, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("zombie", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

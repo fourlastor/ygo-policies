@@ -4,7 +4,7 @@ use super::support;
 use crate::agent::{value, Response, Strategy, Turn};
 use crate::cards::races;
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, Hint, Location, Member};
+use crate::model::{CardView, Choice, ChoiceKind, Hint, Location, Member};
 use crate::tactics;
 pub const DECK: &str = "Graveyard Shift";
 const MASTER: u32 = 17259470;
@@ -21,6 +21,14 @@ const RYKO: u32 = 21502796;
 #[derive(Clone, Default)]
 pub struct Zombie;
 impl Zombie {
+    /// A change of position of one of our monsters that `wanted`.
+    fn reposition(t: &Turn, wanted: impl Fn(&CardView) -> bool) -> Option<usize> {
+        let ctx = t.ctx;
+        t.find_where(|c| {
+            c.kind == ChoiceKind::ChangePosition
+                && c.at().and_then(|at| ctx.card(at)).map_or(false, &wanted)
+        })
+    }
     fn revive_score(&self, ctx: &Ctx, code: u32) -> f64 {
         if code == PLAGUE && tactics::synchro_with_tuner(self, ctx, 2).is_some() {
             return 5500.0;
@@ -51,6 +59,20 @@ impl Strategy for Zombie {
             return Some(i);
         }
         let ctx = t.ctx;
+        // Face-down, Pyramid Turtle and Spirit Reaper only wait: face-up they
+        // attack, and Turtle recruits when a battle destroys it.
+        if ctx.main1() && t.has(ChoiceKind::EnterBattle) {
+            let waiting = |card: &CardView| {
+                !card.position.face_up
+                    && matches!(
+                        card.code.map(|code| ctx.canonical(code)),
+                        Some(TURTLE | REAPER)
+                    )
+            };
+            if let Some(i) = Self::reposition(t, waiting) {
+                return t.pick(i);
+            }
+        }
         if let Some(i) = t.activate(FOOLISH) {
             return t.pick(i);
         }
@@ -100,6 +122,9 @@ impl Strategy for Zombie {
             {
                 Some(4500.0)
             }
+            // From the hand, a 2100 ATK Zombie for one Tribute, as the
+            // shared rule weighs it.
+            (ChoiceKind::NormalSummon, IL_BLUD) => return None,
             (_, IL_BLUD) => None,
             (ChoiceKind::NormalSummon, MASTER) => Some(
                 if ctx
