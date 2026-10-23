@@ -107,3 +107,38 @@ some 9 points to the network, but plain holds lose.
 Head to head in the Zombie mirror against the network (1,040 games, 520 seeds
 from 985000, both ways): the pilot at `21d49d3` wins 13.6% ± 1.0%, the final
 pilot 17.8% ± 1.2%.
+
+## Chain Burn (Chain Reaction)
+
+The network's gap was almost all in chain windows. It fired the draw and burn
+cards about as often as the pilot, but at other moments: rarely to open a
+chain or onto a single link (1–25% of the windows offered), often onto chains
+of two links or more (45–95%), in Main Phase 1 and at the Battle Phase rather
+than at the turn's start; and it played Accumulated Fortune five times as
+often (0.54 a game against 0.11).
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| K: with Fortune Set, a chain opened only with three different chain cards ready | `21d49d3` | +3.37 ± 1.51 | yes |
+| K, whether Fortune is Set or not | `21d49d3` | +3.08 ± 1.74 | (K kept) |
+| N: Poison of the Old Man Set, not played alone from the main phase | K | +0.67 ± 0.62 | yes |
+| P: Poison chained only from the field | K, N | +2.31 ± 1.18 | yes |
+| S: Swift Scarecrow only for attackers worth half our Life Points (alone +1.44 ± 1.01) | K, N, P | +1.83 ± 1.04 | yes |
+| T: no draw or burn cards in the Draw and Standby Phases | the above | +3.46 ± 1.84 | yes |
+| U: with Fortune Set, any chain joined only when Fortune can come fourth | the above (2,080 pairs) | +2.00 ± 1.00 | yes |
+| U, whether Fortune is Set or not | the above | −7.60 ± 2.36 | no |
+| Fortune, then Chain Strike, Set first | the above (2,080 pairs) | +0.19 ± 0.63 | no |
+| Waboku only for attackers worth half our Life Points | the above (2,080 pairs) | +1.44 ± 0.84 | yes |
+| Threatening Roar only for a quarter (alone; with Waboku) | the above | +0.10 ± 0.57; +1.63 ± 1.34 | no |
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**31.49% → 48.99%, +17.50 points, paired 95% half-width 1.87**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 22.8%, the
+final pilot 41.2%, the network 56.0%; 55% ± 4% of the network's gap closed.
+
+Head to head in the Chain Burn mirror against the network (1,040 games, 520
+seeds from 985000, both ways) the final pilot does worse: 43.9% ± 1.1%
+before, 39.4% ± 1.1% after. Its gains are against pilots; against the
+network's own chains, holding cards for longer ones loses.
