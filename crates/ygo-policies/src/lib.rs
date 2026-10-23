@@ -3114,6 +3114,48 @@ mod tests {
     }
 
     #[test]
+    fn zombie_sets_ryko_first_and_summons_trooper_against_small_monsters() {
+        const RYKO: u32 = 21502796;
+        const MASTER: u32 = 17259470;
+        const TROOPER: u32 = 85087012;
+        const SKELETON: u32 = 1;
+        let db = Arc::new(MemoryCards([creature(RYKO, 1, 200, 100, 0), creature(MASTER, 4, 1800, 0, 0), creature(TROOPER, 3, 400, 400, 0),
+            creature(SKELETON, 2, 900, 900, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![card(0, Location::Hand, 0, RYKO, false), card(0, Location::Hand, 1, MASTER, false), card(0, Location::Graveyard, 0, SKELETON, true)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, MASTER, 1), from_hand(ChoiceKind::SetMonster, RYKO, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("zombie", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards[0] = card(0, Location::Hand, 0, TROOPER, false);
+        obs.cards.push(monster(1, 0, None, Position::FACE_UP_ATTACK, 1000, 1000));
+        let summon = Choice { kind: ChoiceKind::NormalSummon, ..activate(TROOPER, Location::Hand, 0) };
+        let set = Choice { kind: ChoiceKind::SetMonster, ..activate(TROOPER, Location::Hand, 0) };
+        let idle = decide(DecisionKind::Idle, None, vec![set.clone(), summon.clone(), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("zombie", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        // Against a bigger monster, Trooper is not offered up.
+        obs.cards[3] = monster(1, 0, None, Position::FACE_UP_ATTACK, 2400, 1000);
+        let idle = decide(DecisionKind::Idle, None, vec![set, summon, choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("zombie", db).unwrap();
+        assert_ne!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
+    fn zombie_puts_its_weaker_attackers_in_defense_after_battle() {
+        const GOBLIN: u32 = 63665875;
+        let db = Arc::new(MemoryCards([creature(GOBLIN, 4, 1100, 1050, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("zombie", db).unwrap();
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.phase = Some(Phase::Main2);
+        obs.summon_used = true;
+        obs.cards = vec![monster(0, 0, Some(GOBLIN), Position::FACE_UP_ATTACK, 1100, 1050), monster(1, 0, None, Position::FACE_UP_ATTACK, 1800, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::ChangePosition, ..activate(GOBLIN, Location::MonsterZone, 0) }, choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

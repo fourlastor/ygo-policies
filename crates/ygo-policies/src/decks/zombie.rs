@@ -73,6 +73,17 @@ impl Strategy for Zombie {
                 return t.pick(i);
             }
         }
+        // After the Battle Phase an attacker weaker than theirs only loses
+        // Life Points in Attack Position: our recruiters trigger in Defense too.
+        if !ctx.main1() && ctx.my_turn() {
+            let threat = ctx.opp_best_attack();
+            let exposed = |card: &CardView| {
+                card.position.face_up && card.position.attack && card.attack < threat
+            };
+            if let Some(i) = Self::reposition(t, exposed) {
+                return t.pick(i);
+            }
+        }
         if let Some(i) = t.activate(FOOLISH) {
             return t.pick(i);
         }
@@ -150,6 +161,16 @@ impl Strategy for Zombie {
                     .any(|c| ctx.view_data(c).is_tuner()) =>
             {
                 Some(3500.0)
+            }
+            // Flipped, Ryko destroys a card and sends three to the Graveyard
+            // our revivals draw on: our first Set.
+            (ChoiceKind::SetMonster, RYKO) => Some(3800.0),
+            // Against nothing stronger, and with a Battle Phase to come, Turtle
+            // attacks to recruit and Trooper sends its three to the Graveyard.
+            (ChoiceKind::NormalSummon, TROOPER)
+                if t.has(ChoiceKind::EnterBattle) && ctx.opp_best_attack() <= 1200 =>
+            {
+                Some(3000.0)
             }
             (ChoiceKind::SetMonster, GOBLIN | TURTLE | REAPER) => Some(1700.0),
             _ => return None,
