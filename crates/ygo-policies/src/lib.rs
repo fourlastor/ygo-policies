@@ -3194,6 +3194,38 @@ mod tests {
     }
 
     #[test]
+    fn chain_burn_chains_poison_only_from_the_field() {
+        const POISON: u32 = 8842266;
+        const LAVA: u32 = 102380;
+        let mut policy = crate::registry::create("chain-burn", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.cards = vec![card(0, Location::Hand, 0, POISON, false), card(0, Location::SpellTrapZone, 0, POISON, false)];
+        obs.chain = vec![ChainLink { code: LAVA, controller: 1, source: CardRef { controller: 1, location: Location::Hand, sequence: 0 }, targets: Vec::new() }];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(POISON, Location::Hand, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(policy.choose(&obs, &window), 1);
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(POISON, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        assert_eq!(policy.choose(&obs, &window), 0);
+    }
+
+    #[test]
+    fn chain_burn_keeps_swift_scarecrow_for_a_costly_battle_phase() {
+        const SCARECROW: u32 = 18964575;
+        let db = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![card(0, Location::Hand, 0, SCARECROW, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1500, 1000)];
+        obs.battle_attacker = Some(CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 });
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(SCARECROW, Location::Hand, 0), choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("chain-burn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 1, "1500 of 8000: let it through");
+        obs.cards[1].attack = 4000;
+        let mut policy = crate::registry::create("chain-burn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

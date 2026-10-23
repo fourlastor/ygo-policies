@@ -18,6 +18,7 @@ const LEGACY: u32 = 30461781;
 const LAVA: u32 = 102380;
 const TRIO: u32 = 29843091;
 const WALL: u32 = 67095270;
+const SCARECROW: u32 = 18964575;
 #[derive(Clone, Default)]
 pub struct ChainBurn;
 impl ChainBurn {
@@ -106,6 +107,25 @@ impl Strategy for ChainBurn {
             }
         }
         Some(match code {
+            // Poison of the Old Man goes on chains from the field, Set: from
+            // the hand it only spends itself.
+            POISON if t.choice(i).at().map(|a| a.location) == Some(Location::Hand) => {
+                Response::no()
+            }
+            // Swift Scarecrow is kept for a Battle Phase that would cost half
+            // our Life Points or more.
+            SCARECROW
+                if 2 * t
+                    .ctx
+                    .monsters(t.ctx.opp)
+                    .iter()
+                    .filter(|c| c.position.face_up && c.position.attack)
+                    .map(|c| c.attack)
+                    .sum::<i32>()
+                    < t.ctx.my_lp() =>
+            {
+                Response::no()
+            }
             JAR | LEGACY if t.ctx.deck_size(t.ctx.me) > 1 => Response::new(145.0),
             RECKLESS if t.ctx.deck_size(t.ctx.me) > 2 => Response::new(140.0),
             TRIO => Response::new(150.0),
