@@ -2991,6 +2991,37 @@ mod tests {
     }
 
     #[test]
+    fn cyber_makes_fortress_dragon_only_of_their_machines() {
+        use crate::cards::races;
+        const CYBER: u32 = 70095154;
+        const TROOPER: u32 = 85087012;
+        const FORTRESS: u32 = 79229522;
+        const GADGET: u32 = 1;
+        const BEAST: u32 = 2;
+        let machine = |(code, data): (u32, crate::cards::CardData)| (code, crate::cards::CardData { race: races::MACHINE, ..data });
+        let db = Arc::new(MemoryCards([machine(creature(CYBER, 5, 2100, 1600, 0)), machine(creature(TROOPER, 3, 400, 400, 0)),
+            machine(creature(FORTRESS, 8, 0, 0, 0)), machine(creature(GADGET, 4, 1400, 1300, 0)), creature(BEAST, 4, 1800, 1000, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![
+            monster(0, 0, Some(CYBER), Position::FACE_UP_ATTACK, 2100, 1600),
+            monster(0, 1, Some(TROOPER), Position::FACE_UP_ATTACK, 1900, 400),
+            monster(1, 0, Some(BEAST), Position::FACE_UP_ATTACK, 1800, 1000),
+            card(0, Location::Extra, 0, FORTRESS, false),
+        ];
+        let idle = decide(DecisionKind::Idle, None, vec![
+            Choice { kind: ChoiceKind::SpecialSummon, ..activate(FORTRESS, Location::Extra, 0) },
+            choice(ChoiceKind::EnterBattle),
+            choice(ChoiceKind::EndTurn),
+        ]);
+        let mut policy = crate::registry::create("cyber", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "our own two attackers make no better monster");
+        obs.cards[2] = monster(1, 0, Some(GADGET), Position::FACE_UP_ATTACK, 1400, 1300);
+        let mut policy = crate::registry::create("cyber", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0, "it takes their Machine away");
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

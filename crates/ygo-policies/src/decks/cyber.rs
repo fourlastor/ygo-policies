@@ -114,6 +114,24 @@ impl Strategy for Cyber {
             _ => return None,
         })
     }
+    fn extra_summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
+        let ctx = t.ctx;
+        if ctx.canonical(c.code()?) != FORTRESS {
+            return None;
+        }
+        // 1000 ATK a material: from our own field it trades Cyber Dragon and
+        // another attacker for one monster no stronger.  It pays when it
+        // takes their Machines away.
+        let theirs = ctx
+            .monsters(ctx.opp)
+            .iter()
+            .any(|m| m.position.face_up && ctx.view_data(m).race & races::MACHINE != 0);
+        if theirs {
+            None
+        } else {
+            Some(None)
+        }
+    }
     fn chain(&mut self, t: &Turn, i: usize) -> Option<Response> {
         let ctx = t.ctx;
         let c = t.choice(i);
