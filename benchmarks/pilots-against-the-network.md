@@ -171,3 +171,32 @@ final pilot 39.5%, the network 55.5%; 35% ± 4% of the network's gap closed.
 
 Head to head in the Herald mirror against the network (1,040 games, 520
 seeds from 985000, both ways): 28.5% ± 1.3% before, 42.0% ± 1.2% after.
+
+## Iron Chain (Rust Never Sleeps)
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| E: Ryko, Lightsworn Hunter the first Set | `21d49d3` | +6.73 ± 2.42 | yes |
+| F: Card Trooper Normal Summoned when a Battle Phase follows and their best attacker has 1200 ATK or less (alone +2.12 ± 1.57) | E (2,080 pairs) | +1.68 ± 1.16 | yes |
+| G: Debris Dragon Normal Summoned when a monster of 500 ATK or less waits in the Graveyard, never Set (alone, 2,080 pairs) | E, F | +0.91 ± 1.22 | with H |
+| H: Dandylion an early Set (alone) | E, F | +0.38 ± 1.53 | with G |
+| G and H together: 1,040 pairs; 2,080; 1,040 fresh pairs from seed 975000 | E, F | +1.83 ± 2.28; +1.68 ± 1.54; +2.21 ± 2.23 | yes |
+| Poison Chain not played from the main phase; Iron Chain Coil not used there; both | E, F | +0.19 ± 1.19; −2.60 ± 1.23; −2.31 ± 1.59 | no |
+| Dark Hole only against two monsters or more with none of ours: 1,040; 2,080; 1,040 fresh | E, F, G, H | +1.25 ± 1.74; +1.39 ± 1.16; +0.19 ± 1.60 | no |
+| Dark Hole only against two monsters or more | E, F, G, H | +1.15 ± 1.43 | no |
+
+Debris Dragon and Dandylion pay only together: Debris brings Dandylion back.
+Their pass was reached on 2,080 pairs after 1,040 did not pass; fresh pairs
+agreed, and all 3,120 together give about +1.9 with a standard error of 0.65.
+The first Dark Hole rule passed on 2,080 pairs the same way, but fresh pairs
+did not confirm it, so it was dropped.
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**44.21% → 52.54%, +8.33 points, paired 95% half-width 2.01**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 35.9%, the
+final pilot 47.2%, the network 64.8%; 39% ± 5% of the network's gap closed.
+
+Head to head in the Iron Chain mirror against the network (1,040 games, 520
+seeds from 985000, both ways): 18.9% ± 1.1% before, 30.9% ± 1.3% after.
