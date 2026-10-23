@@ -520,7 +520,7 @@ mod extra_summon_tests {
         let body = |controller, attack| CardView {
             at: CardRef { controller, location: Location::MonsterZone, sequence: 0 },
             code: Some(900008103 + u32::from(controller)), position: Position::FACE_UP_ATTACK,
-            attack, defense: 0, level: 4, can_attack: true, battles: 0, counters: 0, coin_effect: None,
+            attack, defense: 0, level: 4, can_attack: true, battles: 0, counters: 0, coin_effect: None, negated: false,
         };
         let mut cards = vec![body(0, available_attack)];
         if !open_field { cards.push(body(1, 1000)); }

@@ -4,7 +4,7 @@
 //! A card record is a run of `[u16 size][u32 flag][size - 4 bytes]` fields
 //! closed by a `QUERY_END` field; an empty zone is a lone `u16 0`.
 
-use crate::wire::{query, Reader, Result};
+use crate::wire::{query, status, Reader, Result};
 
 /// One card record, field by field, exactly as the engine wrote it.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -47,6 +47,7 @@ impl<'a> RawRecord<'a> {
             attack: self.u32(query::ATTACK).map(|v| v as i32),
             defense: self.u32(query::DEFENSE).map(|v| v as i32),
             counters,
+            disabled: self.u32(query::STATUS).map(|bits| bits & status::DISABLED != 0),
             is_public: self.get(query::IS_PUBLIC).map(|_| self.is_public()),
         }
     }
@@ -76,6 +77,8 @@ pub struct Query {
     pub attack: Option<i32>,
     pub defense: Option<i32>,
     pub counters: Option<u32>,
+    /// Its effects are negated (`STATUS_DISABLED`).
+    pub disabled: Option<bool>,
     pub is_public: Option<bool>,
 }
 
@@ -100,7 +103,7 @@ pub(crate) fn read_query(r: &mut Reader<'_>) -> Result<Option<Query>> {
         // Unknown flags, including combinations of recognized flag bits, do
         // not consume the first occurrence of any recognized scalar field.
         if !matches!(flag, query::CODE | query::POSITION | query::LEVEL | query::RANK
-            | query::ATTACK | query::DEFENSE | query::COUNTERS | query::IS_PUBLIC)
+            | query::ATTACK | query::DEFENSE | query::COUNTERS | query::STATUS | query::IS_PUBLIC)
             || seen & flag != 0
         { continue; }
         seen |= flag;
@@ -112,6 +115,7 @@ pub(crate) fn read_query(r: &mut Reader<'_>) -> Result<Option<Query>> {
             query::RANK => record.rank = scalar(),
             query::ATTACK => record.attack = scalar().map(|value| value as i32),
             query::DEFENSE => record.defense = scalar().map(|value| value as i32),
+            query::STATUS => record.disabled = scalar().map(|bits| bits & status::DISABLED != 0),
             query::IS_PUBLIC => record.is_public = Some(value.first().is_some_and(|value| *value != 0)),
             query::COUNTERS => {
                 let mut counters = Reader::new(value);
@@ -232,6 +236,18 @@ mod tests {
     }
 
     #[test]
+    fn a_cards_status_tells_whether_its_effects_are_negated() {
+        for (bits, disabled) in [(0u32, false), (0x1, true), (0x2, false), (0x401, true)] {
+            let mut record = Vec::new();
+            field(&mut record, query::CODE, &123u32.to_le_bytes());
+            field(&mut record, query::STATUS, &bits.to_le_bytes());
+            field(&mut record, query::END, &[]);
+            assert_record_parity(&record);
+            assert_eq!(read_query(&mut Reader::new(&record)).unwrap().unwrap().disabled, Some(disabled));
+        }
+    }
+
+    #[test]
     fn typed_queries_preserve_empty_records_and_large_counter_counts() {
         assert_eq!(read_query(&mut Reader::new(&[0, 0])).unwrap(), None);
         let mut end_only = Vec::new();
@@ -293,7 +309,7 @@ mod tests {
             random
         };
         let flags = [query::CODE, query::POSITION, query::LEVEL, query::RANK,
-            query::ATTACK, query::DEFENSE, query::COUNTERS, query::IS_PUBLIC,
+            query::ATTACK, query::DEFENSE, query::COUNTERS, query::STATUS, query::IS_PUBLIC,
             query::ALIAS, query::CODE | query::POSITION, 0, 0x4000_0000];
         for case in 0..512 {
             let mut record = Vec::new();

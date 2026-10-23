@@ -29,7 +29,7 @@ fn card(code: u32, location: Location, sequence: u32) -> CardView {
     CardView {
         at: member(code, location, sequence).at, code: Some(code),
         position: Position::FACE_DOWN_DEFENSE, attack: 0, defense: 0, level: 1,
-        can_attack: false, battles: 0, counters: 0, coin_effect: None,
+        can_attack: false, battles: 0, counters: 0, coin_effect: None, negated: false,
     }
 }
 

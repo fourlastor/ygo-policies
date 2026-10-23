@@ -72,6 +72,9 @@ pub struct CardView {
     /// Registered Arcana coin effect, learned from public client hints. Unknown
     /// after a silent effect change; never inferred from the last random toss.
     pub coin_effect: Option<CoinEffect>,
+    /// Face-up on the field with its effects negated, as the engine tells of
+    /// it (`STATUS_DISABLED`); false where the front end does not ask.
+    pub negated: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

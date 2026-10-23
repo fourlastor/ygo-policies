@@ -170,7 +170,14 @@ pub mod query {
 
     /// What a front end should ask `OCG_DuelQueryLocation` for when it
     /// forwards `MSG_UPDATE_DATA` (the fields the projection uses).
-    pub const RECOMMENDED: u32 = CODE | POSITION | LEVEL | RANK | ATTACK | DEFENSE | COUNTERS | IS_PUBLIC;
+    pub const RECOMMENDED: u32 =
+        CODE | POSITION | LEVEL | RANK | ATTACK | DEFENSE | COUNTERS | STATUS | IS_PUBLIC;
+}
+
+/// Bits of a card's `QUERY_STATUS`.
+pub mod status {
+    /// Its effects are negated.
+    pub const DISABLED: u32 = 0x1;
 }
 
 pub mod hint {

@@ -861,6 +861,7 @@ fn visible_observation(value: &Value, viewer: u8) -> Observation {
             battles: card["battles"].as_u64().unwrap_or(0) as u32,
             counters: if hidden { 0 } else { card["counters"].as_u64().unwrap_or(0) as u32 },
             coin_effect,
+            negated: !hidden && card["negated"].as_bool().unwrap_or(false),
         })
     }).collect();
     let pile_sizes = value["pile_sizes"].as_array().into_iter().flatten().filter_map(|pile| {

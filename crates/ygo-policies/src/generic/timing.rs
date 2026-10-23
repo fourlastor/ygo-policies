@@ -191,7 +191,7 @@ mod tests {
     fn view(code: u32, location: Location, sequence: u32) -> CardView {
         CardView { at: CardRef { controller: 0, location, sequence }, code: Some(code),
             position: Position::FACE_UP_ATTACK, attack: 300, defense: 1200, level: 3,
-            can_attack: false, battles: 0, counters: 0, coin_effect: None }
+            can_attack: false, battles: 0, counters: 0, coin_effect: None, negated: false }
     }
 
     fn observation(code: u32) -> Observation {

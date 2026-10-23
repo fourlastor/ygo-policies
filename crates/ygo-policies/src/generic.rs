@@ -802,7 +802,7 @@ mod tests {
         CardView {
             at: CardRef { controller, location, sequence: 0 }, code: Some(code), position,
             attack: 1800, defense: 1000, level: 4, can_attack: true,
-            battles: 0, counters: 0, coin_effect: None,
+            battles: 0, counters: 0, coin_effect: None, negated: false,
         }
     }
 
@@ -1658,7 +1658,7 @@ mod tests {
                 at: CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 },
                 code: Some(900000199), position: Position::FACE_UP_ATTACK,
                 attack: threat, defense: 0, level: 4, can_attack: true,
-                battles: 0, counters: 0, coin_effect: None,
+                battles: 0, counters: 0, coin_effect: None, negated: false,
             });
             let prompt = decision(DecisionKind::Idle, vec![
                 choice(ChoiceKind::EndTurn, None, Location::Other),

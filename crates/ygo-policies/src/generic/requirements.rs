@@ -323,7 +323,7 @@ mod tests {
     fn view(code: u32, location: Location, sequence: u32) -> CardView {
         CardView { at: CardRef { controller: 0, location, sequence }, code: Some(code),
             position: Position::FACE_UP_ATTACK, attack: 1200, defense: 1000, level: 4,
-            can_attack: true, battles: 0, counters: 0, coin_effect: None }
+            can_attack: true, battles: 0, counters: 0, coin_effect: None, negated: false }
     }
 
     fn member(card: &CardView) -> Member {

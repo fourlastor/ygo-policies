@@ -1153,7 +1153,7 @@ mod tests {
             can_attack: true,
             battles: 0,
             counters: 0,
-            coin_effect: None,
+            coin_effect: None, negated: false,
         }
     }
 

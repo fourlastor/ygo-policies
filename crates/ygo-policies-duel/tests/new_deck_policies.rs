@@ -52,7 +52,7 @@ fn card(db: &dyn CardDatabase, p: u8, loc: Location, seq: u32, code: u32) -> Car
         can_attack: true,
         battles: 0,
         counters: 0,
-        coin_effect: None,
+        coin_effect: None, negated: false,
     }
 }
 fn choice(kind: ChoiceKind, card: Option<&CardView>) -> Choice {

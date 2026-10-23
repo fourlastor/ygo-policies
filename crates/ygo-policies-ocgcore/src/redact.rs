@@ -259,7 +259,8 @@ mod tests {
                         for public in [0u8, 1] {
                             let mut record = Vec::new();
                             for (flag, value) in [(query::CODE, 12345), (query::POSITION, pos), (query::ATTACK, 1800),
-                                                   (query::DEFENSE, 1000), (query::LEVEL, 4), (query::RANK, 0)] {
+                                                   (query::DEFENSE, 1000), (query::LEVEL, 4), (query::RANK, 0),
+                                                   (query::STATUS, 1)] {
                                 record.extend_from_slice(&8u16.to_le_bytes());
                                 record.extend_from_slice(&flag.to_le_bytes());
                                 record.extend_from_slice(&value.to_le_bytes());
@@ -333,7 +334,8 @@ mod tests {
     #[test]
     fn queries_of_hidden_cards_keep_only_their_position() {
         let mut record = Vec::new();
-        for (flag, value) in [(query::CODE, 4206964u32), (query::POSITION, position::FACEDOWN_DEFENSE), (query::ATTACK, 1800)] {
+        for (flag, value) in [(query::CODE, 4206964u32), (query::POSITION, position::FACEDOWN_DEFENSE), (query::ATTACK, 1800),
+                              (query::STATUS, 1)] {
             record.extend_from_slice(&8u16.to_le_bytes());
             record.extend_from_slice(&flag.to_le_bytes());
             record.extend_from_slice(&value.to_le_bytes());
@@ -349,9 +351,11 @@ mod tests {
         assert_eq!(records.len(), 2);
         let hidden = records[0].as_ref().unwrap().parse();
         assert_eq!((hidden.code, hidden.attack, hidden.position), (None, None, Some(position::FACEDOWN_DEFENSE)));
+        assert_eq!(hidden.disabled, None);
         assert!(records[1].is_none());
         let own_view = redact(&message, Some(0)).unwrap().unwrap();
         let own = read_location(&own_view[3..]).unwrap();
         assert_eq!(own[0].as_ref().unwrap().parse().code, Some(4206964));
+        assert_eq!(own[0].as_ref().unwrap().parse().disabled, Some(true));
     }
 }

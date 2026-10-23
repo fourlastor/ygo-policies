@@ -106,7 +106,7 @@ mod tests {
     fn view(code: u32, controller: u8, location: Location, sequence: u32, position: Position) -> CardView {
         let attack = database().0[&code].attack;
         CardView { at: CardRef { controller, location, sequence }, code: Some(code), position, attack, defense: 2000,
-            level: 4, can_attack: true, battles: 0, counters: 0, coin_effect: None }
+            level: 4, can_attack: true, battles: 0, counters: 0, coin_effect: None, negated: false }
     }
 
     /// Their turn, their Effect Monster face-up; ours is `ours`, face-up.

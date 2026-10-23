@@ -192,7 +192,7 @@ mod tests {
         CardView {
             at: CardRef { controller, location, sequence: 0 }, code: Some(code),
             position: Position::FACE_UP_ATTACK, attack, defense: 1000, level: 4,
-            can_attack: true, battles: 0, counters: 0, coin_effect: None,
+            can_attack: true, battles: 0, counters: 0, coin_effect: None, negated: false,
         }
     }
 

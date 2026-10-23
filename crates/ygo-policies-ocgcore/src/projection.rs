@@ -27,6 +27,9 @@ pub struct Card {
     pub defense: Option<i32>,
     pub level: Option<u32>,
     pub counters: u32,
+    /// Its effects are negated, by the engine's status of the card, when the
+    /// front end forwards card queries.
+    pub negated: bool,
     /// Declared an attack this turn.
     pub attacked: bool,
     /// Damage calculations it has been through this turn.
@@ -65,6 +68,9 @@ impl Card {
         }
         if let Some(counters) = query.counters {
             self.counters = counters;
+        }
+        if let Some(disabled) = query.disabled {
+            self.negated = disabled;
         }
     }
 }
@@ -301,6 +307,7 @@ impl Projection {
                     card.defense = None;
                     card.level = None;
                     card.counters = 0;
+                    card.negated = false;
                     card.attacked = false;
                     card.battles = 0;
                     card.materials.clear();
@@ -624,6 +631,9 @@ impl Projection {
             battles: if at.location == Location::MonsterZone { card.battles } else { 0 },
             counters: card.counters,
             coin_effect: card.coin_effect.filter(|_| at.location == Location::MonsterZone && card.face_up() && code.is_some()),
+            negated: card.negated
+                && card.face_up()
+                && matches!(at.location, Location::MonsterZone | Location::SpellTrapZone),
         }
     }
 
@@ -729,5 +739,42 @@ mod tests {
         assert_eq!(named(&whole, Location::SpellTrapZone), [Some(TRAP)]);
         assert_eq!(named(&whole, Location::Extra), [Some(FUSION)]);
         assert_eq!(whole.pile_sizes, seen.pile_sizes);
+    }
+
+    /// The engine's status of a card tells that its effects are negated: so
+    /// is a face-up card on the field shown, and not once it leaves.
+    #[test]
+    fn a_face_up_card_whose_effects_are_negated_is_shown_so() {
+        const MONSTER: u32 = 46986414;
+        let db = ygo_policies::cards::MemoryCards::default();
+        let mut projection = Projection::new(Some(0));
+        projection.apply(&Message::Start { seat: 0, observer: false, life_points: [8000; 2], deck: [40; 2], extra: [0, 0] });
+        let zone = Loc { controller: 1, location: location::MZONE, sequence: 0, position: position::FACEUP_ATTACK };
+        let deck = Loc { controller: 1, location: location::DECK, sequence: 0, position: position::FACEDOWN };
+        projection.apply(&Message::Move { code: MONSTER, from: deck, to: zone, reason: 0 });
+        let negated = |projection: &Projection| {
+            let observation = projection.observation(0, &db);
+            observation.cards.iter().find(|card| card.at.location == Location::MonsterZone).map(|card| card.negated)
+        };
+        let refresh = |disabled, position| Message::UpdateData {
+            player: 1,
+            location: location::MZONE,
+            cards: vec![Some(Query { code: Some(MONSTER), position: Some(position), disabled: Some(disabled), ..Query::default() })],
+        };
+        assert_eq!(negated(&projection), Some(false));
+        projection.apply(&refresh(true, position::FACEUP_ATTACK));
+        assert_eq!(negated(&projection), Some(true));
+        projection.apply(&refresh(false, position::FACEUP_ATTACK));
+        assert_eq!(negated(&projection), Some(false));
+        // Face-down, nothing of it is shown.
+        projection.apply(&refresh(true, position::FACEDOWN_DEFENSE));
+        assert_eq!(negated(&projection), Some(false));
+        projection.apply(&refresh(true, position::FACEUP_ATTACK));
+        assert_eq!(negated(&projection), Some(true));
+        let grave = Loc { controller: 1, location: location::GRAVE, sequence: 0, position: position::FACEUP };
+        let zone = Loc { position: position::FACEUP_ATTACK, ..zone };
+        projection.apply(&Message::Move { code: MONSTER, from: zone, to: grave, reason: 0 });
+        let left = projection.card_mut(1, location::GRAVE, 0).expect("in the Graveyard");
+        assert!(!left.negated);
     }
 }
