@@ -224,3 +224,27 @@ final pilot 54.6%, the network 67.5%; 30% ± 6% of the network's gap closed.
 
 Head to head in the Amazoness mirror against the network (1,040 games, 520
 seeds from 985000, both ways): 29.0% ± 1.2% before, 36.5% ± 1.2% after.
+
+## Malefic (Eclipse Without End)
+
+The opponent's Field Spell counted as support for the Malefics, so the pilot
+kept its own in hand: with no Field Spell of its own the network played
+Malefic World 79% of the times it could (the pilot 47%) and Terraforming 80%
+(the pilot 21%). It also Set Malefic Parallel Gear, which the pilot never did
+outside one combo.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| Our own Field Spell, whatever the opponent's | `21d49d3` | +2.79 ± 1.34 | yes |
+| Malefic Parallel Gear may be Set | the above | +2.40 ± 1.49 | yes |
+| Terraforming for Malefic World whenever it is not in hand or ours: 1,040; 2,080; 1,040 fresh from seed 975000 | the above | +1.15 ± 1.25; +1.06 ± 0.92; +1.92 ± 1.27 | yes |
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**57.94% → 64.56%, +6.62 points, paired 95% half-width 1.47**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 59.7%, the
+final pilot 65.6%, the network 71.7%; 49% ± 9% of the network's gap closed.
+
+Head to head in the Malefic mirror against the network (1,040 games, 520
+seeds from 985000, both ways): 34.6% ± 1.3% before, 46.8% ± 1.3% after.
