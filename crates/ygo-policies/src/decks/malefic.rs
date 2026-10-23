@@ -47,12 +47,13 @@ impl Strategy for Malefic {
             .spell_traps(ctx.me)
             .iter()
             .any(|c| c.position.face_up && ctx.view_data(c).is(crate::cards::types::FIELD));
-        if !own_field {
-            if !ctx.in_hand(WORLD) && !ctx.in_hand(VALLEY) {
-                if let Some(i) = t.activate(73628505) {
-                    return t.pick(i);
-                }
+        // Terraforming fetches Malefic World first, also over a Necrovalley.
+        if !ctx.in_hand(WORLD) && !ctx.face_up_on_field(ctx.me, WORLD) {
+            if let Some(i) = t.activate(73628505) {
+                return t.pick(i);
             }
+        }
+        if !own_field {
             for k in [WORLD, VALLEY] {
                 if let Some(i) = t.activate(k) {
                     return t.pick(i);

@@ -3364,6 +3364,19 @@ mod tests {
     }
 
     #[test]
+    fn malefic_fetches_malefic_world_over_a_necrovalley() {
+        use crate::cards::types;
+        const TERRAFORMING: u32 = 73628505;
+        const VALLEY: u32 = 47355498;
+        let field = (VALLEY, crate::cards::CardData { code: VALLEY, kind: types::SPELL | types::FIELD, ..Default::default() });
+        let mut policy = crate::registry::create("malefic", Arc::new(MemoryCards([field].into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, TERRAFORMING, false), card(0, Location::SpellTrapZone, 5, VALLEY, true)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(TERRAFORMING, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn malefic_sets_parallel_gear() {
         const GEAR: u32 = 74509280;
         let db = Arc::new(MemoryCards([creature(GEAR, 2, 0, 0, 0x23)].into_iter().collect()));
