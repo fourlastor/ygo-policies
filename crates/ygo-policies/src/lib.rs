@@ -3042,6 +3042,30 @@ mod tests {
     }
 
     #[test]
+    fn cyber_banishes_every_machine_it_may_to_overload_fusion() {
+        const OVERLOAD: u32 = 3659803;
+        const CYBER: u32 = 70095154;
+        const PROTO: u32 = 26439287;
+        let mut policy = crate::registry::create("cyber", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![card(0, Location::Graveyard, 0, CYBER, true), card(0, Location::Graveyard, 1, PROTO, true),
+            card(0, Location::Graveyard, 2, PROTO, true), card(0, Location::Hand, 0, OVERLOAD, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(OVERLOAD, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert!(policy.commit_choice(&obs, &idle, 0));
+        let materials = Decision {
+            kind: DecisionKind::SelectToggle,
+            hint: Hint::FusionMaterial,
+            minimum: 1,
+            maximum: 1,
+            selected: vec![obs.cards[0].at, obs.cards[1].at],
+            subject: None,
+            choices: vec![toggle(Location::Graveyard, 2, PROTO), choice(ChoiceKind::Finish)],
+        };
+        assert_eq!(policy.choose(&obs, &materials), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

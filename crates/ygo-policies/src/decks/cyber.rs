@@ -160,6 +160,12 @@ impl Strategy for Cyber {
         // printed 0 says nothing of it, and Defense only wastes it.
         matches!(t.ctx.canonical(code), OVERDRAGON | FORTRESS).then_some(Position::FACE_UP_ATTACK)
     }
+    /// Overdragon has 800 ATK a material: Overload Fusion banishes every
+    /// Machine of the Graveyard it may, not only the two it must.
+    fn continue_optional_selection(&self, t: &Turn) -> bool {
+        t.decision.hint == Hint::FusionMaterial
+            && t.memory.last_activated.map(|k| t.ctx.canonical(k)) == Some(OVERLOAD)
+    }
     fn select(&self, t: &Turn, m: &Member) -> Option<f64> {
         let ctx = t.ctx;
         let code = ctx.canonical(m.code?);
