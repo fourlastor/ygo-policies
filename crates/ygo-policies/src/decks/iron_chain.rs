@@ -108,13 +108,19 @@ impl Strategy for IronChain {
     }
     fn summon_score(&self, t: &Turn, c: &Choice) -> Option<Option<f64>> {
         let k = c.code()?;
-        if c.kind == ChoiceKind::SetMonster
-            && k == RYKO
-            && !t.ctx.effects_drained()
-            && t.ctx.monsters(t.ctx.me).is_empty()
-            && t.ctx.opp_best_attack() >= 1800
+        // Flipped, Ryko destroys a card and sends three to the Graveyard
+        // Repairman and Coil draw on: our first Set.
+        if c.kind == ChoiceKind::SetMonster && k == RYKO && !t.ctx.effects_drained() {
+            return Some(Some(5000.0));
+        }
+        // Against nothing stronger, and with a Battle Phase to come, Card
+        // Trooper sends its three to the Graveyard.
+        if c.kind == ChoiceKind::NormalSummon
+            && k == TROOPER
+            && t.has(ChoiceKind::EnterBattle)
+            && t.ctx.opp_best_attack() <= 1200
         {
-            return Some(Some(2400.0));
+            return Some(Some(4500.0));
         }
         if c.kind == ChoiceKind::NormalSummon
             && k == 63977008

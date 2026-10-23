@@ -3296,6 +3296,25 @@ mod tests {
     }
 
     #[test]
+    fn iron_chain_sets_ryko_first_and_summons_trooper_against_small_monsters() {
+        const RYKO: u32 = 21502796;
+        const REPAIR: u32 = 53274132;
+        const TROOPER: u32 = 85087012;
+        let db = Arc::new(MemoryCards([creature(RYKO, 1, 200, 100, 0), creature(REPAIR, 4, 1600, 1200, 0x25), creature(TROOPER, 3, 400, 400, 0)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![card(0, Location::Hand, 0, RYKO, false), card(0, Location::Hand, 1, REPAIR, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, REPAIR, 1), from_hand(ChoiceKind::SetMonster, RYKO, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("iron-chain", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+        obs.cards[0] = card(0, Location::Hand, 0, TROOPER, false);
+        obs.cards.push(monster(1, 0, None, Position::FACE_UP_ATTACK, 1000, 1000));
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, REPAIR, 1), from_hand(ChoiceKind::NormalSummon, TROOPER, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("iron-chain", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
