@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use super::support;
 use crate::agent::{Response, Strategy, Turn};
 use crate::ctx::Ctx;
-use crate::model::{Choice, ChoiceKind, Location};
+use crate::model::{Choice, ChoiceKind, Location, Phase};
 pub const DECK: &str = "Chain Reaction";
 const STRIKE: u32 = 91623717;
 const FORTUNE: u32 = 98444741;
@@ -105,6 +105,17 @@ impl Strategy for ChainBurn {
             if ready.len() < 3 {
                 return Some(Response::no());
             }
+        }
+        // The chains are built in Main Phase 1 and at the Battle Phase, where
+        // their board is fullest and Threatening Roar opens one: not at the
+        // turn's start.
+        if matches!(ctx.phase(), Some(Phase::Draw | Phase::Standby))
+            && matches!(
+                code,
+                JAR | LEGACY | RECKLESS | DESSERTS | BARREL | POISON | STRIKE
+            )
+        {
+            return Some(Response::no());
         }
         Some(match code {
             // Poison of the Old Man goes on chains from the field, Set: from

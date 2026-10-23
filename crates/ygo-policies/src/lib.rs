@@ -3165,7 +3165,7 @@ mod tests {
         let mut obs = observation();
         obs.cards = vec![card(0, Location::SpellTrapZone, 0, FORTUNE, false), card(0, Location::SpellTrapZone, 1, JAR, false),
             card(0, Location::SpellTrapZone, 2, LEGACY, false), card(0, Location::SpellTrapZone, 3, RECKLESS, false)];
-        obs.phase = Some(Phase::Draw);
+        obs.turn_player = Some(1);
         obs.pile_sizes = vec![(0, Location::Deck, 30)];
         let window = |codes: &[(u32, u32)]| {
             let mut choices: Vec<Choice> = codes.iter().map(|&(code, at)| activate(code, Location::SpellTrapZone, at)).collect();
@@ -3223,6 +3223,23 @@ mod tests {
         obs.cards[1].attack = 4000;
         let mut policy = crate::registry::create("chain-burn", db).unwrap();
         assert_eq!(policy.choose(&obs, &window), 0);
+    }
+
+    #[test]
+    fn chain_burn_builds_its_chains_after_the_draw_and_standby_phases() {
+        const JAR: u32 = 83968380;
+        const LAVA: u32 = 102380;
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.pile_sizes = vec![(0, Location::Deck, 30)];
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, JAR, false)];
+        obs.chain = vec![ChainLink { code: LAVA, controller: 1, source: CardRef { controller: 1, location: Location::Hand, sequence: 0 }, targets: Vec::new() }];
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(JAR, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        for (phase, answer) in [(Phase::Draw, 1), (Phase::Standby, 1), (Phase::Main1, 0)] {
+            obs.phase = Some(phase);
+            let mut policy = crate::registry::create("chain-burn", Arc::new(MemoryCards::default())).unwrap();
+            assert_eq!(policy.choose(&obs, &window), answer, "{phase:?}");
+        }
     }
 
     #[test]
