@@ -3315,6 +3315,26 @@ mod tests {
     }
 
     #[test]
+    fn iron_chain_summons_debris_dragon_for_dandylion() {
+        const DEBRIS: u32 = 14943837;
+        const DANDYLION: u32 = 15341821;
+        const REPAIR: u32 = 53274132;
+        let db = Arc::new(MemoryCards([creature(DEBRIS, 4, 1000, 2000, 0), creature(DANDYLION, 3, 300, 300, 0), creature(REPAIR, 4, 1600, 1200, 0x25)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.cards = vec![card(0, Location::Hand, 0, DEBRIS, false), card(0, Location::Hand, 1, REPAIR, false), card(0, Location::Graveyard, 0, DANDYLION, true)];
+        obs.cards[2].attack = 300;
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, REPAIR, 1), from_hand(ChoiceKind::SetMonster, DEBRIS, 0), from_hand(ChoiceKind::NormalSummon, DEBRIS, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("iron-chain", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 2);
+        // Dandylion in hand is the first Set.
+        obs.cards = vec![card(0, Location::Hand, 0, DANDYLION, false), card(0, Location::Hand, 1, REPAIR, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, REPAIR, 1), from_hand(ChoiceKind::SetMonster, DANDYLION, 0), choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("iron-chain", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

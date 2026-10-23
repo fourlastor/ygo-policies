@@ -12,6 +12,8 @@ const DRAGON: u32 = 19974580;
 const POISON: u32 = 33302407;
 const RYKO: u32 = 21502796;
 const TROOPER: u32 = 85087012;
+const DEBRIS: u32 = 14943837;
+const DANDYLION: u32 = 15341821;
 #[derive(Clone, Default)]
 pub struct IronChain;
 impl Strategy for IronChain {
@@ -121,6 +123,25 @@ impl Strategy for IronChain {
             && t.ctx.opp_best_attack() <= 1200
         {
             return Some(Some(4500.0));
+        }
+        // Normal Summoned, Debris Dragon brings back a small monster for a
+        // Synchro: Set, it does nothing.
+        if k == DEBRIS {
+            let target = t
+                .ctx
+                .graveyard(t.ctx.me)
+                .iter()
+                .any(|v| t.ctx.view_data(v).is_monster() && v.attack <= 500);
+            return Some(match c.kind {
+                ChoiceKind::NormalSummon if target && !t.ctx.effects_drained() => Some(4400.0),
+                ChoiceKind::SetMonster => None,
+                _ => return None,
+            });
+        }
+        // Dandylion leaves two tokens when it goes to the Graveyard, and Debris
+        // Dragon brings it back.
+        if c.kind == ChoiceKind::SetMonster && k == DANDYLION {
+            return Some(Some(4300.0));
         }
         if c.kind == ChoiceKind::NormalSummon
             && k == 63977008
