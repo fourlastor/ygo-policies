@@ -3351,6 +3351,19 @@ mod tests {
     }
 
     #[test]
+    fn malefic_plays_its_own_field_spell_whatever_theirs() {
+        use crate::cards::types;
+        const WORLD: u32 = 27564031;
+        const RAINBOW: u32 = 34487429;
+        let field = |code| (code, crate::cards::CardData { code, kind: types::SPELL | types::FIELD, ..Default::default() });
+        let mut policy = crate::registry::create("malefic", Arc::new(MemoryCards([field(WORLD), field(RAINBOW)].into_iter().collect()))).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, WORLD, false), card(1, Location::SpellTrapZone, 5, RAINBOW, true)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(WORLD, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

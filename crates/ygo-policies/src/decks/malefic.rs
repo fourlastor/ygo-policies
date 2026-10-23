@@ -41,7 +41,13 @@ impl Strategy for Malefic {
     }
     fn main_phase(&mut self, t: &mut Turn) -> Option<usize> {
         let ctx = t.ctx;
-        if !Self::supported(&ctx) {
+        // Their Field Spell supports our Malefics only until it goes: ours
+        // is played whatever theirs.
+        let own_field = ctx
+            .spell_traps(ctx.me)
+            .iter()
+            .any(|c| c.position.face_up && ctx.view_data(c).is(crate::cards::types::FIELD));
+        if !own_field {
             if !ctx.in_hand(WORLD) && !ctx.in_hand(VALLEY) {
                 if let Some(i) = t.activate(73628505) {
                     return t.pick(i);
