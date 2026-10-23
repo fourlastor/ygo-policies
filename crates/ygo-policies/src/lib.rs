@@ -3226,6 +3226,23 @@ mod tests {
     }
 
     #[test]
+    fn chain_burn_keeps_waboku_for_a_costly_battle_phase() {
+        const WABOKU: u32 = 12607053;
+        let db = Arc::new(MemoryCards::default());
+        let mut obs = observation();
+        obs.turn_player = Some(1);
+        obs.phase = Some(Phase::BattleStep);
+        obs.cards = vec![card(0, Location::SpellTrapZone, 0, WABOKU, false), monster(1, 0, Some(1), Position::FACE_UP_ATTACK, 1500, 1000)];
+        obs.battle_attacker = Some(CardRef { controller: 1, location: Location::MonsterZone, sequence: 0 });
+        let window = decide(DecisionKind::Chain { forced: false, triggers: false }, None, vec![activate(WABOKU, Location::SpellTrapZone, 0), choice(ChoiceKind::Pass)]);
+        let mut policy = crate::registry::create("chain-burn", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 1);
+        obs.cards[1].attack = 4000;
+        let mut policy = crate::registry::create("chain-burn", db).unwrap();
+        assert_eq!(policy.choose(&obs, &window), 0);
+    }
+
+    #[test]
     fn chain_burn_joins_a_chain_only_when_fortune_can_come_fourth() {
         const FORTUNE: u32 = 98444741;
         const JAR: u32 = 83968380;

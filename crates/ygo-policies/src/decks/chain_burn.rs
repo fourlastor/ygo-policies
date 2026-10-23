@@ -19,9 +19,18 @@ const LAVA: u32 = 102380;
 const TRIO: u32 = 29843091;
 const WALL: u32 = 67095270;
 const SCARECROW: u32 = 18964575;
+const WABOKU: u32 = 12607053;
 #[derive(Clone, Default)]
 pub struct ChainBurn;
 impl ChainBurn {
+    /// What their face-up attackers could deal this Battle Phase.
+    fn threat(ctx: &Ctx) -> i32 {
+        ctx.monsters(ctx.opp)
+            .iter()
+            .filter(|c| c.position.face_up && c.position.attack)
+            .map(|c| c.attack)
+            .sum()
+    }
     fn burn(&self, t: &Turn, code: u32) -> i32 {
         let ctx = t.ctx;
         match code {
@@ -124,18 +133,9 @@ impl Strategy for ChainBurn {
             }
             // Swift Scarecrow is kept for a Battle Phase that would cost half
             // our Life Points or more.
-            SCARECROW
-                if 2 * t
-                    .ctx
-                    .monsters(t.ctx.opp)
-                    .iter()
-                    .filter(|c| c.position.face_up && c.position.attack)
-                    .map(|c| c.attack)
-                    .sum::<i32>()
-                    < t.ctx.my_lp() =>
-            {
-                Response::no()
-            }
+            SCARECROW if 2 * Self::threat(&t.ctx) < t.ctx.my_lp() => Response::no(),
+            // Waboku too: it leaves their monsters to attack again.
+            WABOKU if 2 * Self::threat(&t.ctx) < t.ctx.my_lp() => Response::no(),
             JAR | LEGACY if t.ctx.deck_size(t.ctx.me) > 1 => Response::new(145.0),
             RECKLESS if t.ctx.deck_size(t.ctx.me) > 2 => Response::new(140.0),
             TRIO => Response::new(150.0),
