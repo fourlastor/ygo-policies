@@ -22,6 +22,7 @@ const HAZARD: u32 = 49669730;
 const SALVAGE: u32 = 96947648;
 const FOOLISH: u32 = 81439173;
 const GUNGNIR: u32 = 65749035;
+const STARDUST: u32 = 44508094;
 #[derive(Clone, Default)]
 pub struct Fish;
 impl Strategy for Fish {
@@ -36,6 +37,8 @@ impl Strategy for Fish {
             WAVE => 2200,
             MORAY | SALVAGE => 1800,
             GUNGNIR => 3000,
+            // Stardust guards the board our recruits built.
+            STARDUST => 3100,
             _ => return support::extra_value(code),
         })
     }
@@ -154,11 +157,14 @@ impl Strategy for Fish {
                         .iter()
                         .filter(|c| ctx.view_data(c).is_tuner())
                         .count();
+                // Eel, a Tuner, and Angler, two materials for a Fish Synchro,
+                // before Oyster Meister, whatever Tuners are out: with
+                // Stardust first among the Synchros they make.
                 return Some(match code {
-                    EEL if tuners == 0 => 6000.0,
+                    EEL => 6000.0,
+                    ANGLER => 5500.0,
                     OYSTER => 5000.0,
-                    ANGLER => 3500.0,
-                    EEL | BORG => {
+                    BORG => {
                         if tuners < 2 {
                             4000.0
                         } else {

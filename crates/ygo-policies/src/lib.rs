@@ -3388,6 +3388,26 @@ mod tests {
     }
 
     #[test]
+    fn fish_recruits_eel_and_angler_for_stardust() {
+        const KING: u32 = 88307361;
+        const EEL: u32 = 37953640;
+        const ANGLER: u32 = 92084010;
+        const OYSTER: u32 = 83239739;
+        const TUNER: u32 = 1;
+        let tuner = |code| (code, crate::cards::CardData { code, kind: crate::cards::types::MONSTER | crate::cards::types::TUNER, level: 3, ..Default::default() });
+        let db = Arc::new(MemoryCards([tuner(EEL), tuner(TUNER), creature(ANGLER, 3, 1500, 1600, 0), creature(OYSTER, 3, 1600, 200, 0), creature(KING, 5, 2800, 2200, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("fish", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![monster(0, 0, Some(KING), Position::FACE_UP_ATTACK, 2800, 2200), monster(0, 1, Some(TUNER), Position::FACE_UP_ATTACK, 1000, 1000)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(KING, Location::MonsterZone, 0), choice(ChoiceKind::EndTurn)]);
+        assert!(policy.commit_choice(&obs, &idle, 0));
+        let recruit = Decision { hint: Hint::SpecialSummon, minimum: 1, maximum: 1,
+            ..decide(DecisionKind::SelectCards, None, vec![toggle(Location::Deck, 0, OYSTER), toggle(Location::Deck, 1, ANGLER), toggle(Location::Deck, 2, EEL)]) };
+        let recruit = Decision { choices: recruit.choices.into_iter().map(|c| Choice { kind: ChoiceKind::Cards, members: vec![c.card.unwrap()], card: None, ..c }).collect(), ..recruit };
+        assert_eq!(policy.choose(&obs, &recruit), 2, "with a Tuner out, still Eel before Oyster Meister");
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
