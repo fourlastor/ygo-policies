@@ -69,3 +69,41 @@ network's gap.
 Head to head in the Cyber mirror against the network (1,040 games, 520 seeds
 from 985000, each both ways): the pilot at `21d49d3` wins 24.9% ± 1.3%, the
 final pilot 44.3% ± 1.5%.
+
+## Zombie (Graveyard Shift)
+
+Rules over the library before them, Zombie against the thirteen, 1,040 pairs
+from seed 970000 unless said. Related rules were measured together as well as
+apart before any was dropped.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| A: Il Blud Normal Summoned from the hand for a Tribute (the deck had vetoed it) | `21d49d3` | +3.37 ± 1.99 | yes |
+| B: face-down Pyramid Turtle and Spirit Reaper flipped in Main Phase 1 before a Battle Phase | A (2,080 pairs) | +1.44 ± 1.17 | yes |
+| F: Card Trooper Normal Summoned when a Battle Phase follows and their best attacker has 1200 ATK or less | A, B | +2.50 ± 1.64 | yes |
+| E: Ryko, Lightsworn Hunter the first Set (alone over A, B: +1.92 ± 2.03) | A, B, F | +2.79 ± 2.07 | yes |
+| C: a face-up attacker weaker than their best to Defense outside Main Phase 1 (alone over A: +0.48 ± 0.68) | A, B, E, F | +0.58 ± 0.46 | yes |
+| D: Pyramid Turtle Normal Summoned against small monsters | A, B, E, F; with C | +0.48 ± 1.54; +0.67 ± 1.61 | no |
+| G: Dark Hole only against two monsters or more | all kept | −0.38 ± 1.22 | no |
+| H: Torrential Tribute only against two monsters or more | all kept | −1.15 ± 0.84 | no |
+| G and H together | all kept | −2.12 ± 1.48 | no |
+| I: Plaguespreader revived only against a monster | all kept | −0.10 ± 0.94 | no |
+| Plaguespreader never revived from the Main Phase | all kept | +0.29 ± 1.68 | no |
+| J: Stardust Dragon and Revived King Ha Des over the other Synchros | all kept | −0.38 ± 1.44 | no |
+
+Ryko set first pays only with Card Trooper summoned face-up: both send cards
+from the Deck to the Graveyard the revivals draw on.
+
+Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
+**52.94% → 58.55%, +5.61 points, paired 95% half-width 1.87**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen): the pilot at `21d49d3` wins 49.6%, the
+final pilot 56.0%, the network 76.3%; 24% ± 5% of the network's gap closed.
+What is left lies in when to fire removal and revivals, which the network
+judges position by position: holding them where the pilot fires them is worth
+some 9 points to the network, but plain holds lose.
+
+Head to head in the Zombie mirror against the network (1,040 games, 520 seeds
+from 985000, both ways): the pilot at `21d49d3` wins 13.6% ± 1.0%, the final
+pilot 17.8% ± 1.2%.
