@@ -3453,6 +3453,20 @@ mod tests {
     }
 
     #[test]
+    fn lightsworn_wipes_with_judgment_dragon_before_its_summon() {
+        const JUDGMENT_DRAGON: u32 = 57774843;
+        const GAROTH: u32 = 59019082;
+        let db = Arc::new(MemoryCards([creature(JUDGMENT_DRAGON, 8, 3000, 2600, 0x38), creature(GAROTH, 4, 1850, 1300, 0x38)].into_iter().collect()));
+        let mut policy = crate::registry::create("lightsworn", db).unwrap();
+        let mut obs = observation();
+        obs.turn = 3;
+        obs.cards = vec![monster(0, 0, Some(JUDGMENT_DRAGON), Position::FACE_UP_ATTACK, 3000, 2600), card(0, Location::Hand, 0, GAROTH, false),
+            monster(1, 0, None, Position::FACE_DOWN_DEFENSE, 0, 0)];
+        let idle = decide(DecisionKind::Idle, None, vec![from_hand(ChoiceKind::NormalSummon, GAROTH, 0), activate(JUDGMENT_DRAGON, Location::MonsterZone, 0), choice(ChoiceKind::EnterBattle), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

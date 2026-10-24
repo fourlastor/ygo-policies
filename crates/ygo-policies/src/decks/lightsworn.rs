@@ -199,7 +199,13 @@ impl Strategy for Lightsworn {
         let ctx = t.ctx;
         // Judgment Dragon's wipe.
         if let Some(i) = t.activate_from(JUDGMENT_DRAGON, Location::MonsterZone) {
-            if Self::wipe_pays(&ctx) {
+            // With the Normal Summon still to come, the wipe clears their side
+            // for it and for Judgment Dragon's attack, when they have more
+            // cards than we have monsters besides it.
+            let theirs = ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len();
+            let ours = ctx.monsters(ctx.me).iter().filter(|c| !ctx.is(c, JUDGMENT_DRAGON)).count();
+            let before_summon = !ctx.obs.summon_used && ctx.my_lp() > 1500 && theirs > ours;
+            if Self::wipe_pays(&ctx) || before_summon {
                 return t.pick(i);
             }
         }
