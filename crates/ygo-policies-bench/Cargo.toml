@@ -3,6 +3,7 @@ name = "ygo-policies-bench"
 description = "Paired policy benchmarks, searches and replays on OCGCore duels"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [dependencies]
 rusqlite.workspace = true

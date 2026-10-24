@@ -3,6 +3,7 @@ name = "ygo-policies-ffi"
 description = "C ABI for the policies: feed OCGCore messages, read back responses"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [lib]
 name = "ygo_policies"

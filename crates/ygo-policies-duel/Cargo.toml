@@ -3,6 +3,7 @@ name = "ygo-policies-duel"
 description = "OCGCore duels a caller steps: the engine build, card data and scripts, decks, snapshots and replay records"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [features]
 default = ["bundled"]

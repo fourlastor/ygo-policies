@@ -3,6 +3,7 @@ name = "ygo-policies-search"
 description = "The generic policy's staged search: alternatives played out to the end in worlds dealt again from what a seat cannot see"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [features]
 default = ["bundled"]

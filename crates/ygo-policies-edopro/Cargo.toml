@@ -3,6 +3,7 @@ name = "ygo-policies-edopro"
 description = "EDOPro network client: a policy joins an EDOPro room as a player"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [[bin]]
 name = "edopro-bot"

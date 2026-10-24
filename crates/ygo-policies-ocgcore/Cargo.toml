@@ -3,6 +3,7 @@ name = "ygo-policies-ocgcore"
 description = "OCGCore front end: engine messages in, policy responses out"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
 
 [features]
 default = ["sqlite"]

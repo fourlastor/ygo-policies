@@ -303,3 +303,18 @@ comparisons, with execution limited to eight workers.
 [Arcana's measured improvement](benchmarks/arcana.md) was validated on 6,656
 held-out pairs against the existing 13 policies. Run all tests, including the
 benchmark crate, with `YGO_CARDS_CDB="$PWD/vendor/BabelCdb/cards.cdb" cargo test --workspace`.
+
+## License
+
+The code of this repository is licensed under the
+[Apache License 2.0](LICENSE).
+
+Its submodules keep their own licenses. The duel engine (`vendor/ocgcore`,
+a fork of [ygopro-core](https://github.com/fourlastor/ygopro-core)) and
+ProjectIgnis' card scripts (`vendor/CardScripts`) are under the GNU Affero
+General Public License v3, and the card database (`vendor/BabelCdb`) comes
+under ProjectIgnis' own terms. The engine is built into the crates that play
+duels and runs the scripts, so anything distributed with it built in (the
+bench, the shared library) falls under the AGPL-3.0. The scripts under
+`crates/ygo-policies-duel/scripts/` are CardScripts' files, mended, under
+the AGPL-3.0 too.
