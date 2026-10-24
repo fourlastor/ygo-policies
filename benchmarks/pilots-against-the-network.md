@@ -342,7 +342,7 @@ Held out, against the 58 decks' pilots from seed 990000 (2,320 pairs):
 **63.19% → 63.97%, +0.78 points, paired 95% half-width 0.45**, far under the
 mark; in the training repository's census on new deals the final pilot wins
 64.2% against 64.8% before (the network 75.7%), and in the mirror against the
-network 37.8% against 36.7%. Not pushed: the user decides.
+network 37.8% against 36.7%. Kept and pushed by the user's word.
 
 ## Heroes (Fusion Heroes)
 
