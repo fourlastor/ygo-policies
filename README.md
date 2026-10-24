@@ -142,9 +142,9 @@ engines and play styles available in the pool for future additions.
   builds OCGCore and Lua from `vendor/` (its `bundled` feature) or loads a
   build of them, loads the card database, the scripts and the Decks, and
   gives a duel its caller steps, with snapshots and records of duels to play
-  again.  It can also play on a duel a host made (`Duel::borrow`).  The few
-  card scripts it mends are played in place of CardScripts' own (in
-  `scripts/`, each with why in `src/script_fixes.rs`).
+  again.  It can also play on a duel a host made (`Duel::borrow`).  A card
+  script it mends is played in place of CardScripts' own (in `scripts/`,
+  with why in `src/script_fixes.rs`); none is now.
 - `crates/ygo-policies-search`: the generic policy's staged search, shared by
   the benchmark and the C ABI.  `SearchSeat` is one more seat of a duel: fed
   like any other, it plays its worlds on that duel while it answers, and
@@ -315,6 +315,4 @@ ProjectIgnis' card scripts (`vendor/CardScripts`) are under the GNU Affero
 General Public License v3, and the card database (`vendor/BabelCdb`) comes
 under ProjectIgnis' own terms. The engine is built into the crates that play
 duels and runs the scripts, so anything distributed with it built in (the
-bench, the shared library) falls under the AGPL-3.0. The scripts under
-`crates/ygo-policies-duel/scripts/` are CardScripts' files, mended, under
-the AGPL-3.0 too.
+bench, the shared library) falls under the AGPL-3.0.

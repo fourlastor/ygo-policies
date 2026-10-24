@@ -214,10 +214,10 @@ fn batteryman_fuel_cell_is_not_offered_where_its_cost_would_leave_it_no_target()
     // Charger, which the opponent's Mark of the Rose is equipped to, and the
     // opponent has no card left for it to target. CardScripts' script failed
     // on that missing target as the chain resolved, after the 465th answer,
-    // and the duel stopped there. As CardScripts mended it
-    // (`src/script_fixes.rs`) the effect is not offered where its cost would
-    // leave it nothing to target, there and at the 456th and 459th answers
-    // before it, and is offered where it would not, as it was.
+    // and the duel stopped there. As CardScripts mended it (`188c4b93`,
+    // ProjectIgnis/CardScripts#1281) the effect is not offered where its
+    // cost would leave it nothing to target, there and at the 456th and
+    // 459th answers before it, and is offered where it would not, as it was.
     const FUEL_CELL: u32 = 74730899;
     let json = serde_json::from_str(include_str!("fixtures/batteryman-fuel-cell-without-a-target.json")).unwrap();
     let record = Recorded::from_json(&json).unwrap();
