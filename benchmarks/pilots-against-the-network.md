@@ -270,3 +270,15 @@ final pilot 53.1%, the network 67.3%; 14% ± 5% of the network's gap closed.
 
 Head to head in the Fish mirror against the network (1,040 games, 520 seeds
 from 985000, both ways): 27.4% ± 1.4% before, 36.8% ± 1.4% after.
+
+## Tele-DAD and Dark World: no rule
+
+In both decks the network's gap is real (Tele-DAD +14.6 ± 2.5, Dark World
++11.3 ± 2.5, given all of its answers on 520 deals) but no part of it carries
+the gain alone or with its related parts. Tele-DAD: the whole main phase
++12.3 ± 2.4, but the normal Summons +2.5 ± 2.0, the Special Summons −1.0 ±
+1.8, the held activations +5.0 ± 2.0 with no card inside them above +0.4.
+Dark World: the held activations +3.3 ± 2.0, Dark Hole within them +2.3 ±
+1.0, but as a rule (only against two monsters or more, none of ours) +0.38 ±
+1.48 and +0.67 ± 1.32 on fresh pairs; Stardust Dragon first among the
+Synchros −0.48 ± 1.42. Both pilots are unchanged.
