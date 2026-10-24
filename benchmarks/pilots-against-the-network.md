@@ -286,3 +286,24 @@ Dark World: the held activations +3.3 ± 2.0, Dark Hole within them +2.3 ±
 1.0, but as a rule (only against two monsters or more, none of ours) +0.38 ±
 1.48 and +0.67 ± 1.32 on fresh pairs; Stardust Dragon first among the
 Synchros −0.48 ± 1.42. Both pilots are unchanged.
+
+## Dragunity (Dragunity Flight)
+
+One of the thirteen existing decks: its pilot is everyone's opponent. The
+development pairs are 960 (80 against each of the twelve others), and the
+held-out opponents the 58 decks outside the thirteen.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| Stardust Dragon before Scrap Dragon and Trident Dragion (it had no score and went by its 2500 ATK) | `21d49d3` and the decks before | +3.33 ± 2.11 | yes |
+
+Held out, against the 58 decks' pilots from seed 990000 (2,320 pairs):
+**60.69% → 64.40%, +3.71 points, paired 95% half-width 1.39**.
+
+Beside it, in the training repository's census on new deals (1,040, seeds
+from 980000, against the thirteen, its own improved pilot among them in the
+mirror): the pilot at `21d49d3` wins 59.8%, the final pilot 61.1%, the
+network 70.3%; 12% ± 10% of the network's gap closed.
+
+Head to head in the Dragunity mirror against the network (1,040 games, 520
+seeds from 985000, both ways): 31.9% ± 1.3% before, 40.8% ± 1.2% after.
