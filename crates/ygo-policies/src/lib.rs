@@ -3437,6 +3437,22 @@ mod tests {
     }
 
     #[test]
+    fn gladiator_keeps_gyzarus_for_cards_to_destroy() {
+        const GYZARUS: u32 = 48156348;
+        let db = Arc::new(MemoryCards([creature(GYZARUS, 6, 2400, 1500, 0x1019)].into_iter().collect()));
+        let mut obs = observation();
+        obs.turn = 2;
+        obs.summon_used = true;
+        obs.cards = vec![card(0, Location::Extra, 0, GYZARUS, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![Choice { kind: ChoiceKind::SpecialSummon, ..activate(GYZARUS, Location::Extra, 0) }, choice(ChoiceKind::EndTurn)]);
+        let mut policy = crate::registry::create("gladiator", db.clone()).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 1, "nothing of theirs to destroy");
+        obs.cards.push(card(1, Location::SpellTrapZone, 0, 1, false));
+        let mut policy = crate::registry::create("gladiator", db).unwrap();
+        assert_eq!(policy.choose(&obs, &idle), 0);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();

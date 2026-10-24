@@ -172,6 +172,9 @@ impl Strategy for Gladiator {
         let code = ctx.canonical(choice.code().unwrap_or(0));
         Some(match code {
             BLACK_ROSE | RED_DRAGON_ARCHFIEND => false,
+            // Gyzarus spends two Beasts for its removal: with nothing of
+            // theirs to destroy it waits, here as in the plan.
+            GYZARUS => ctx.monsters(ctx.opp).len() + ctx.spell_traps(ctx.opp).len() >= 1,
             TEST_TIGER => Self::control_beast(&ctx),
             _ => true,
         })
