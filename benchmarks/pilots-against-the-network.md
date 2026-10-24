@@ -330,3 +330,25 @@ Beside it, in the training repository's census on new deals: the pilot at
 `21d49d3` wins 54.2%, the final pilot 57.7%, the network 67.4%; 26% ± 6% of
 the network's gap closed. Head to head in the Gladiator mirror against the
 network: 40.5% ± 1.3% before, 44.8% ± 1.3% after.
+
+## Lightsworn (Lightsworn Judgment)
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| Judgment Dragon's wipe before the Normal Summon when they have as many cards as our other monsters (broke an earlier test: an equal trade is refused) | the latest library | +0.62 ± 0.71 | no |
+| The same when they have more cards than our other monsters: 960; 1,920; 960 fresh from seed 975000 | the latest library | +0.42 ± 0.50; +0.62 ± 0.43; +0.73 ± 0.74 | yes, locally |
+
+Held out, against the 58 decks' pilots from seed 990000 (2,320 pairs):
+**63.19% → 63.97%, +0.78 points, paired 95% half-width 0.45**, far under the
+mark; in the training repository's census on new deals the final pilot wins
+64.2% against 64.8% before (the network 75.7%), and in the mirror against the
+network 37.8% against 36.7%. Not pushed: the user decides.
+
+## Heroes (Fusion Heroes)
+
+No rule. On 520 deals the network's gap is +11.2 ± 2.2, spread: summons +3.5
+± 1.8 (Neos Alius replaced +3.3 ± 1.3), held activations +3.3 ± 1.9 (the
+Fusion spells held +1.0 ± 1.9; with them fired before battle instead +1.5 ±
+2.0). As a rule, Prisma and Armored Bee before Neos Alius: +1.25 ± 1.29 on
+960 pairs, +0.36 ± 0.90 on 1,920 (and +1.88 ± 1.41 on fresh pairs, not
+counted after two misses). The pilot is unchanged.
