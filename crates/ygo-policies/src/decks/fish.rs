@@ -182,7 +182,13 @@ impl Strategy for Fish {
             });
         }
         if t.decision.hint == Hint::ToGraveyard && m.at.location == Location::Deck {
-            return Some(if code == BORG { 5000.0 } else { 0.0 });
+            // Coelacanth revived recruits as well as Normal Summoned: it goes
+            // first, for Monster Reborn or Call of the Haunted.
+            return Some(match code {
+                KING => 6000.0,
+                BORG => 5000.0,
+                _ => 0.0,
+            });
         }
         if t.decision.hint == Hint::Discard && code == BORG && !ctx.monsters_banished() {
             return Some(4000.0);

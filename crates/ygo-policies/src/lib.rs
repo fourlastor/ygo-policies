@@ -3388,6 +3388,22 @@ mod tests {
     }
 
     #[test]
+    fn fish_buries_coelacanth_for_a_revival() {
+        const FOOLISH: u32 = 81439173;
+        const KING: u32 = 88307361;
+        const BORG: u32 = 93369354;
+        let mut policy = crate::registry::create("fish", Arc::new(MemoryCards::default())).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Hand, 0, FOOLISH, false)];
+        let idle = decide(DecisionKind::Idle, None, vec![activate(FOOLISH, Location::Hand, 0), choice(ChoiceKind::EndTurn)]);
+        assert!(policy.commit_choice(&obs, &idle, 0));
+        let send = Decision { hint: Hint::ToGraveyard, minimum: 1, maximum: 1,
+            ..decide(DecisionKind::SelectCards, None, vec![toggle(Location::Deck, 0, BORG), toggle(Location::Deck, 1, KING)]) };
+        let send = Decision { choices: send.choices.into_iter().map(|c| Choice { kind: ChoiceKind::Cards, members: vec![c.card.unwrap()], card: None, ..c }).collect(), ..send };
+        assert_eq!(policy.choose(&obs, &send), 1);
+    }
+
+    #[test]
     fn fish_recruits_eel_and_angler_for_stardust() {
         const KING: u32 = 88307361;
         const EEL: u32 = 37953640;
