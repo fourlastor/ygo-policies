@@ -307,3 +307,26 @@ network 70.3%; 12% ± 10% of the network's gap closed.
 
 Head to head in the Dragunity mirror against the network (1,040 games, 520
 seeds from 985000, both ways): 31.9% ± 1.3% before, 40.8% ± 1.2% after.
+
+## Gladiator (Fight, Gladiators!)
+
+One of the thirteen. The network never made Gladiator Beast Gyzarus against
+an empty field (in 189 of 190 such Main Phases it did not), where the shared
+Extra Deck summon did, though the deck's plan already waited for a card to
+destroy.
+
+| Rule | Measured over | Change, paired 95% | Kept |
+|---|---|---:|---|
+| Gyzarus only against a card of theirs | the latest library | +3.96 ± 1.39 (960 pairs) | yes |
+| Hoplomus Set as the first wall (no monster of ours, no attack to come or their attacker 1900 ATK or more); on the first turn only | Gyzarus | −0.42 ± 1.56; −0.31 ± 1.14 | no |
+
+Held out, against the 58 decks' pilots from seed 990000 (2,320 pairs):
+**61.85% → 64.35%, +2.50 points, paired 95% half-width 0.80**: more than
+nothing by six standard errors, but the gain less two standard errors is
+1.7, under the pass's mark of 2. Kept and pushed, as Fish was by the user's
+word, with nothing else found.
+
+Beside it, in the training repository's census on new deals: the pilot at
+`21d49d3` wins 54.2%, the final pilot 57.7%, the network 67.4%; 26% ± 6% of
+the network's gap closed. Head to head in the Gladiator mirror against the
+network: 40.5% ± 1.3% before, 44.8% ± 1.3% after.
