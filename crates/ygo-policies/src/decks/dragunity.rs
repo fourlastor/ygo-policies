@@ -38,6 +38,7 @@ const TERRAFORMING: u32 = 73628505;
 const DRAGON_RAVINE: u32 = 62265044;
 const CATASTOR: u32 = 26593852;
 const SCRAP_DRAGON: u32 = 76774528;
+const STARDUST: u32 = 44508094;
 const TRIDENT_DRAGION: u32 = 39402797;
 const BARCHA: u32 = 25682811;
 const VAJRAYANA: u32 = 21249921;
@@ -88,6 +89,8 @@ impl Dragunity {
             TRISHULA => 2700.0 + 250.0 * their_cards.min(2.0) + 300.0,
             MIST_WURM => 2500.0 + 200.0 * their_cards.min(3.0),
             BARCHA => 2000.0 + 300.0 * equips_in_graveyard + 400.0,
+            // Stardust keeps the board our equips built.
+            STARDUST => 2900.0,
             SCRAP_DRAGON => 2800.0,
             TRIDENT_DRAGION => 2600.0,
             BRIONAC => 2300.0 + 100.0 * their_cards.min(3.0),
@@ -103,7 +106,7 @@ impl Dragunity {
 impl Strategy for Dragunity {
     fn value(&self, ctx: &Ctx, code: u32) -> Option<i32> {
         Some(match code {
-            TRISHULA | SCRAP_DRAGON | TRIDENT_DRAGION | MIST_WURM | BARCHA | BRIONAC | CATASTOR | VAJRAYANA => {
+            TRISHULA | STARDUST | SCRAP_DRAGON | TRIDENT_DRAGION | MIST_WURM | BARCHA | BRIONAC | CATASTOR | VAJRAYANA => {
                 Self::synchro_score(ctx, code) as i32
             }
             LIGHT_AND_DARKNESS => 2800,

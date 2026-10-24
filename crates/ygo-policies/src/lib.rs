@@ -3424,6 +3424,19 @@ mod tests {
     }
 
     #[test]
+    fn dragunity_makes_stardust_dragon_first() {
+        const STARDUST: u32 = 44508094;
+        const SCRAP: u32 = 76774528;
+        let db = Arc::new(MemoryCards([creature(STARDUST, 8, 2500, 2000, 0), creature(SCRAP, 8, 2800, 2000, 0)].into_iter().collect()));
+        let mut policy = crate::registry::create("dragunity", db).unwrap();
+        let mut obs = observation();
+        obs.cards = vec![card(0, Location::Extra, 0, SCRAP, false), card(0, Location::Extra, 1, STARDUST, false)];
+        let synchro = |code, at| Choice { kind: ChoiceKind::SpecialSummon, ..activate(code, Location::Extra, at) };
+        let idle = decide(DecisionKind::Idle, None, vec![synchro(SCRAP, 0), synchro(STARDUST, 1), choice(ChoiceKind::EndTurn)]);
+        assert_eq!(policy.choose(&obs, &idle), 1);
+    }
+
+    #[test]
     fn karakuri_special_summons_cyber_dragon_before_its_normal_summon() {
         let db = Arc::new(MemoryCards([creature(70095154, 5, 2100, 1600, 0), creature(30230789, 2, 500, 1500, 0x11)].into_iter().collect()));
         let mut policy = crate::registry::create("karakuri", db).unwrap();
