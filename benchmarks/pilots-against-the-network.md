@@ -258,18 +258,22 @@ seeds from 985000, both ways): 34.6% ± 1.3% before, 46.8% ± 1.3% after.
 | R and J together: 1,040; 1,040 fresh from seed 975000 | `21d49d3` | +2.02 ± 1.77; +2.74 ± 1.73 | yes |
 | Mother Grizzly face-up before a Battle Phase: 1,040; 1,040 fresh | R, J | +1.63 ± 1.26; −0.05 ± 1.46 | no |
 | Mother Grizzly never Set | R, J | +1.63 ± 1.34 | no |
+| F1: Foolish Burial sends Coelacanth, for Monster Reborn or Call of the Haunted (the network did in 119 of 125): 1,040; 1,040 fresh | R, J | +2.60 ± 1.49; +2.36 ± 1.53 | yes |
+| Mother Grizzly face-up before a Battle Phase; above Deep Sea Diva and flipped | R, J, F1 | +1.06 ± 1.23; +0.96 ± 1.51 | no |
 
-Held out, against the other 57 decks' pilots from seed 990000 (2,280 pairs):
-**50.66% → 52.68%, +2.02 points, paired 95% half-width 1.29**: more than
-nothing by two standard errors, but not the 2 points by two standard errors
-the pass's mark asks. Fish's work does not hold out.
+With R and J only, the held-out reading (seed 990000) was 50.66% → 52.68%,
++2.02 ± 1.29: under the mark. Looking again found F1 among the choices of
+what to send to the Graveyard. With it, held out against the other 57 decks'
+pilots on seeds not used before (from 995000, 2,280 pairs): **50.29% →
+56.58%, +6.29 points, paired 95% half-width 1.49**. On the seeds of the first
+reading (990000), +3.46 ± 1.50.
 
 Beside it, in the training repository's census on new deals (1,040, seeds
 from 980000, against the thirteen): the pilot at `21d49d3` wins 50.8%, the
-final pilot 53.1%, the network 67.3%; 14% ± 5% of the network's gap closed.
+final pilot 56.2%, the network 67.3%; 33% ± 7% of the network's gap closed.
 
 Head to head in the Fish mirror against the network (1,040 games, 520 seeds
-from 985000, both ways): 27.4% ± 1.4% before, 36.8% ± 1.4% after.
+from 985000, both ways): 27.4% ± 1.3% before, 38.7% ± 1.3% after.
 
 ## Tele-DAD and Dark World: no rule
 
