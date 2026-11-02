@@ -187,13 +187,15 @@ pub fn set_spell_trap<S: Strategy + ?Sized>(s: &S, t: &Turn) -> Option<usize> {
 /// changes, monsters that switch position when attacked.
 pub fn default_outcome(ctx: &Ctx, attacker: &CardView, target: &CardView, trick: i32) -> Outcome {
     if !target.position.face_up && !target.known() {
-        // Unknown face-down monster: only strong attackers risk it.
+        // Unknown face-down monster: what it shows is worth the battle, for
+        // all but the weakest attackers.  Waiting for a strong one lets a Set
+        // board stall most of a Deck.
         let striking = ctx.facts(attacker).striking;
         let atk = attacker.attack + striking.bonus;
-        if atk >= 1900 {
+        if atk >= 600 {
             return Outcome::Win { trick: false };
         }
-        if trick > 0 && atk + trick >= 1900 {
+        if trick > 0 && atk + trick >= 600 {
             return Outcome::Win { trick: true };
         }
         return Outcome::Lose;

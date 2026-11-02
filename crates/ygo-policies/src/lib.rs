@@ -539,8 +539,11 @@ mod tests {
         let ctx = crate::ctx::Ctx::new(&obs, &db);
         assert_eq!(ctx.facts(&hidden), Facts::NONE);
         assert!(!ctx.battle_proof(&hidden));
-        // An unknown face-down monster: an 1800 attacker does not risk it.
-        assert_eq!(default_outcome(&ctx, &ours, &hidden, 0), Outcome::Lose);
+        // An unknown face-down monster: an 1800 attacker risks it, a 500 one
+        // does not.
+        let weak = monster(0, 1, Some(1), Position { face_up: true, attack: true }, 500, 1000);
+        assert_eq!(default_outcome(&ctx, &ours, &hidden, 0), Outcome::Win { trick: false });
+        assert_eq!(default_outcome(&ctx, &weak, &hidden, 0), Outcome::Lose);
         // Flipped face-up, it is The Fool: battle cannot destroy it.
         let fool = monster(1, 0, Some(THE_FOOL), Position { face_up: true, attack: false }, 0, 0);
         obs.cards = vec![ours.clone(), fool.clone()];
