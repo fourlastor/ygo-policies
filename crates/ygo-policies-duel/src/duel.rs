@@ -286,7 +286,11 @@ impl Core {
         };
         unsafe {
             let mut handle = ptr::null_mut();
-            let status = (self.create)(&mut handle, &raw);
+            let create = match self.create_without_arena {
+                Some(create) if !self.arenas => create,
+                _ => self.create,
+            };
+            let status = create(&mut handle, &raw);
             if status != 0 {
                 return Err(format!("OCG_CreateDuel: {status}"));
             }
@@ -352,7 +356,8 @@ impl<'a> Duel<'a> {
     /// snapshots, the hidden-card swap and random reseeding, and, for a
     /// borrowed duel, can lend its log handler ([`Duel::with_logs`]).
     pub fn can_search(&self) -> bool {
-        self.core.has_reseed()
+        self.core.has_snapshots()
+            && self.core.has_reseed()
             && (self.owned || self.core.extensions.as_ref().is_some_and(|extensions| extensions.swap_log.is_some()))
     }
 

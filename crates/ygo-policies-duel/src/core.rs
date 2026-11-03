@@ -122,6 +122,7 @@ pub(crate) type LogHandler = unsafe extern "C" fn(Handle, *const c_char, i32);
 #[cfg(feature = "bundled")]
 extern "C" {
     fn OCG_CreateDuel(out: *mut Handle, options: *const Options) -> i32;
+    fn OCG_CreateDuelWithoutArena(out: *mut Handle, options: *const Options) -> i32;
     fn OCG_DestroyDuel(duel: Handle);
     fn OCG_DuelNewCard(duel: Handle, card: *const NewCard);
     fn OCG_StartDuel(duel: Handle);
@@ -255,6 +256,10 @@ pub struct Core {
     pub(crate) extensions: Option<Extensions>,
     pub(crate) resources: Box<Resources>,
     pub(crate) create: unsafe extern "C" fn(*mut Handle, *const Options) -> i32,
+    /// The fork's duel without an arena, where this engine has it.
+    pub(crate) create_without_arena: Option<unsafe extern "C" fn(*mut Handle, *const Options) -> i32>,
+    /// Whether this core's duels are made with an arena ([`Core::without_arenas`]).
+    pub(crate) arenas: bool,
     pub(crate) destroy: unsafe extern "C" fn(Handle),
     pub(crate) new_card: unsafe extern "C" fn(Handle, *const NewCard),
     pub(crate) start: unsafe extern "C" fn(Handle),
@@ -394,6 +399,14 @@ impl Core {
                     load: api!(OCG_LoadScript),
                 }),
                 create: api!(OCG_CreateDuel),
+                create_without_arena: match &library {
+                    Some(library) => symbol(library, b"OCG_CreateDuelWithoutArena").ok(),
+                    #[cfg(feature = "bundled")]
+                    None => Some(OCG_CreateDuelWithoutArena),
+                    #[cfg(not(feature = "bundled"))]
+                    None => unreachable!(),
+                },
+                arenas: true,
                 destroy: api!(OCG_DestroyDuel),
                 new_card: api!(OCG_DuelNewCard),
                 start: api!(OCG_StartDuel),
@@ -423,10 +436,19 @@ impl Core {
         }
     }
 
+    /// This core with its duels made without an arena, where its engine can
+    /// ([`Core::duel`]): they have no bound of their own and take no snapshot,
+    /// so that no search plays on them.  The bound is what a long duel can
+    /// reach where a host never snapshots one.
+    pub fn without_arenas(mut self) -> Self {
+        self.arenas = false;
+        self
+    }
+
     /// Whether this engine has arena snapshots and the hidden-card swap.
-    /// The built-in one does.
+    /// The built-in one does, unless its duels are made without arenas.
     pub fn has_snapshots(&self) -> bool {
-        self.extensions.is_some()
+        self.arenas && self.extensions.is_some()
     }
 
     /// Whether simulated branches can randomize future engine chance events.

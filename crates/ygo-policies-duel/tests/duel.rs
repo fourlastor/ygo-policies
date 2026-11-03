@@ -88,6 +88,35 @@ fn a_stepped_duel_ends_and_its_record_plays_it_again() {
 }
 
 #[test]
+fn a_duel_made_without_an_arena_plays_as_one_made_with_and_takes_no_snapshot() {
+    let (with, without) = (core(), core().without_arenas());
+    assert!(with.has_snapshots() && !without.has_snapshots());
+    let decks = decks();
+    let options = DuelOptions::seeded(7);
+    let mut duels = [with.deal(&options, &decks).unwrap(), without.deal(&options, &decks).unwrap()];
+    assert!(duels[0].arena_used_bytes().unwrap() > 0);
+    assert_eq!(duels[1].arena_used_bytes(), Some(0));
+    assert!(duels[1].snapshot().is_err() && !duels[1].can_search());
+    let mut seats = [seats(&duels[0], 7), seats(&duels[1], 7)];
+    let mut answers = 0;
+    loop {
+        let steps = [advance(&mut duels[0], &mut seats[0]), advance(&mut duels[1], &mut seats[1])];
+        assert_eq!(steps[0], steps[1]);
+        match &steps[0] {
+            Ok((_, answer)) => {
+                duels[0].respond(answer);
+                duels[1].respond(answer);
+                answers += 1;
+            }
+            Err(outcome) => {
+                assert!(outcome.is_some() && answers > 0);
+                break;
+            }
+        }
+    }
+}
+
+#[test]
 fn a_snapshot_brings_the_duel_back_and_a_swap_changes_it() {
     let core = core();
     assert!(core.has_snapshots());
